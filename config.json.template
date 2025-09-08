@@ -1,0 +1,16 @@
+{
+  "_comment": "Optional overrides - most settings are auto-detected",
+  "owner": "YOUR_GITHUB_USERNAME",
+  "dest": "~/workspace",
+  "use_https": false,
+  "max_retries": 2,
+  "skip_uv_install": false,
+  "auto_stash": false,
+  "sync_only": false,
+  "log_file": "~/logs/repo-sync.log",
+  "vscode_templates": {
+    "windows": "./vscode-templates/windows",
+    "linux": "./vscode-templates/linux",
+    "wsl": "./vscode-templates/linux"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  // windows specific vscode settings (example)
+  "files.eol": "\r\n",
+  "terminal.integrated.shell.windows": "pwsh",
+  "editor.formatOnSave": true
+}

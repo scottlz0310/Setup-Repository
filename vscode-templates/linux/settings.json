@@ -1,0 +1,6 @@
+{
+  // linux specific vscode settings (example)
+  "files.eol": "\n",
+  "terminal.integrated.shell.linux": "/bin/bash",
+  "editor.formatOnSave": true
+}

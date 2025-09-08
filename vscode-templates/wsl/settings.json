@@ -1,0 +1,7 @@
+{
+  // wsl specific vscode settings (example)
+  "files.eol": "\n",
+  "terminal.integrated.shell.linux": "/bin/bash",
+  "remote.WSL.fileWatcher.polling": true,
+  "editor.formatOnSave": true
+}
