@@ -50,3 +50,17 @@ Thumbs.db
 *.swp
 *.swo
 *~
+
+# Auto-generated entries
+*.pyc
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+
+# Auto-generated entries
+uv.lock
+
+# Auto-generated entries
+.vscode/launch.json
+.vscode/tasks.json
