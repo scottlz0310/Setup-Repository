@@ -61,6 +61,9 @@ venv/
 # Auto-generated entries
 uv.lock
 
+# Dependencies
+requirements.txt
+
 # Auto-generated entries
 .vscode/launch.json
 .vscode/tasks.json
