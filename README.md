@@ -55,3 +55,49 @@ winget install uv
 - 🔧 モダンなパッケージマネージャー対応
 - 🌐 日本語インターフェース
 
+## 🧪 開発・テスト
+
+### テスト実行
+
+```bash
+# 全テスト実行
+uv run pytest
+
+# 単体テストのみ実行
+uv run pytest tests/unit/ -v
+
+# 統合テストのみ実行
+uv run pytest tests/integration/ -v
+
+# カバレッジ付きテスト実行
+uv run pytest --cov=src/setup_repo --cov-report=html
+
+# 特定のマーカーでテスト実行
+uv run pytest -m unit
+uv run pytest -m integration
+uv run pytest -m "not slow"
+```
+
+### コード品質チェック
+
+```bash
+# リンティング
+uv run ruff check .
+
+# フォーマッティング
+uv run ruff format .
+
+# 型チェック
+uv run mypy src/
+
+# 全品質チェック実行
+uv run ruff check . && uv run ruff format . && uv run mypy src/ && uv run pytest
+```
+
+### 開発依存関係のインストール
+
+```bash
+# 開発依存関係を含む全依存関係をインストール
+uv sync --dev
+```
+

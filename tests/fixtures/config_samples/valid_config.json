@@ -1,0 +1,15 @@
+{
+  "github_token": "ghp_test_token_1234567890abcdef",
+  "github_username": "sample_user",
+  "clone_destination": "/home/user/repositories",
+  "auto_install_dependencies": true,
+  "setup_vscode": true,
+  "platform_specific_setup": true,
+  "dry_run": false,
+  "verbose": true,
+  "package_managers": {
+    "linux": "apt",
+    "windows": "scoop",
+    "macos": "homebrew"
+  }
+}

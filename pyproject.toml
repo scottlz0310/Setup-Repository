@@ -31,8 +31,12 @@ dependencies = []
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "pytest-xdist>=3.0",
     "ruff>=0.1.0",
     "mypy>=1.0",
+    "coverage>=7.0",
+    "pre-commit>=3.0",
 ]
 
 [project.scripts]
@@ -46,12 +50,30 @@ Issues = "https://github.com/scottlz0310/Setup-Repository/issues"
 [tool.ruff]
 target-version = "py39"
 line-length = 88
-select = ["E", "F", "W", "I", "N", "UP", "B", "A", "C4", "T20"]
+select = [
+    "E",    # pycodestyle errors
+    "F",    # pyflakes
+    "W",    # pycodestyle warnings
+    "I",    # isort
+    "N",    # pep8-naming
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "A",    # flake8-builtins
+    "C4",   # flake8-comprehensions
+    "T20",  # flake8-print (デバッグprint禁止)
+    "SIM",  # flake8-simplify
+    "TCH",  # flake8-type-checking
+]
 ignore = []
 
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
+
+[tool.ruff.lint.isort]
+known-first-party = ["setup_repo"]
+force-single-line = false
+split-on-trailing-comma = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/setup_repo"]
@@ -61,3 +83,71 @@ python_version = "3.9"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
+disallow_any_unimported = true
+disallow_any_expr = false  # 段階的厳格化 - 初期段階では緩和
+disallow_any_decorated = false  # 段階的厳格化 - 初期段階では緩和
+disallow_any_explicit = false  # 段階的厳格化 - 初期段階では緩和
+disallow_any_generics = true
+disallow_subclassing_any = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_optional = true
+show_error_codes = true
+show_column_numbers = true
+
+[[tool.mypy.overrides]]
+module = [
+    "tests.*",
+]
+disallow_untyped_defs = false  # テストコードでは型チェックを緩和
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--cov=src/setup_repo",
+    "--cov-report=term-missing",
+    "--cov-report=html:htmlcov",
+    "--cov-report=xml:coverage.xml",
+    "--cov-fail-under=60",  # 段階的厳格化 - 初期段階では60%
+    "-v",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+]
+filterwarnings = [
+    "error",
+    "ignore::UserWarning",
+    "ignore::DeprecationWarning",
+]
+
+[tool.coverage.run]
+source = ["src/setup_repo"]
+omit = [
+    "*/tests/*",
+    "*/test_*",
+    "*/__pycache__/*",
+    "*/.*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
