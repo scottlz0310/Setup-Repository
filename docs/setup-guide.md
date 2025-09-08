@@ -3,8 +3,8 @@
 ## 🚀 初回セットアップ
 
 ### 前提条件
-- Python 3.9以上
-- Git
+- Python 最新版 (3.9以上)
+- Git 最新版
 
 ### クイックスタート
 
@@ -127,16 +127,16 @@ export GITHUB_TOKEN=your_personal_access_token
 
 ### よくある問題
 
-**Q: Python 3.9が見つからない**
+**Q: Pythonが見つからない**
 ```bash
 # Ubuntu/Debian
-sudo apt update && sudo apt install python3.9 python3.9-pip
+sudo apt update && sudo apt install python3 python3-pip
 
 # Windows
-winget install Python.Python.3.12
+winget install Python.Python
 
 # macOS
-brew install python@3.9
+brew install python
 ```
 
 **Q: Gitが見つからない**

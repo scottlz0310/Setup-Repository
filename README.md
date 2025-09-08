@@ -13,7 +13,7 @@ sudo snap install --classic uv
 ```powershell
 scoop install uv
 # または
-winget install --id=astral-sh.uv
+winget install uv
 ```
 
 ## 🏃‍♂️ クイックスタート

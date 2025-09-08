@@ -67,7 +67,7 @@ class SetupWizard:
             print("\\n🪟 Windows:")
             print("  Python: https://www.python.org/downloads/")
             print("  Git: https://git-scm.com/download/win")
-            print("  または: winget install Python.Python.3.12 Git.Git")
+            print("  または: winget install Python.Python Git.Git")
         
         elif self.platform_info.name == "wsl":
             print("\\n🐧 WSL:")
