@@ -36,7 +36,7 @@ dev = [
 ]
 
 [project.scripts]
-repo-sync = "repo_sync:main"
+setup-repo = "setup_repo.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/scottlz0310/Setup-Repository"
@@ -52,6 +52,9 @@ ignore = []
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/setup_repo"]
 
 [tool.mypy]
 python_version = "3.9"
