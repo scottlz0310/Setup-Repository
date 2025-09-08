@@ -20,9 +20,7 @@ winget install --id=astral-sh.uv
 
 1. **初期セットアップ**
    ```bash
-   python first-setup.py
-   # または
-   ./first-setup.py
+   python main.py setup
    ```
 
 2. **設定の編集**
@@ -33,9 +31,9 @@ winget install --id=astral-sh.uv
 
 3. **リポジトリ同期実行**
    ```bash
-   python repo-sync.py
-   # または
-   ./repo-sync.py
+   python main.py sync
+   # 実行内容確認
+   python main.py sync --dry-run
    ```
 
 ## ⚙️ 設定ファイル

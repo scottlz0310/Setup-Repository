@@ -1,37 +1,13 @@
-#!/usr/bin/env python3
-"""Initial setup script to create personal configuration"""
+"""初期セットアップ機能"""
 import json
 import os
 import subprocess
 from pathlib import Path
 
-def get_github_token():
-    """GitHubトークンの自動検出"""
-    token = os.getenv('GITHUB_TOKEN')
-    if token:
-        return token
-    
-    try:
-        result = subprocess.run(['gh', 'auth', 'token'], 
-                              capture_output=True, text=True, check=True)
-        return result.stdout.strip()
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return None
+from .config import get_github_token, get_github_user
 
-def get_github_user():
-    """GitHubユーザー名の自動検出"""
-    user = os.getenv('GITHUB_USER')
-    if user:
-        return user
-    
-    try:
-        result = subprocess.run(['git', 'config', '--global', 'user.name'], 
-                              capture_output=True, text=True, check=True)
-        return result.stdout.strip()
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return None
 
-def install_uv():
+def install_uv() -> bool:
     """モダンパッケージマネージャーでuvをインストールし、フォールバックでpipを使用"""
     system = os.name
     
@@ -81,7 +57,8 @@ def install_uv():
     
     return False
 
-def check_dependencies():
+
+def setup_dependencies() -> bool:
     """必要なツールのチェックとインストール案内"""
     missing = []
     
@@ -119,7 +96,7 @@ def check_dependencies():
         print("❌ 必須ツールが不足しています:")
         for tool in missing:
             print(f"   - {tool}")
-        print("\n続行する前に不足しているツールをインストールしてください。")
+        print("\\n続行する前に不足しているツールをインストールしてください。")
         return False
     
     if uv_found:
@@ -149,7 +126,7 @@ def check_dependencies():
         print("   フォールバック: pip install uv")
         
         # ユーザーにインストールを試みるか確認
-        response = input("\nuvを自動インストールしますか? (y/N): ").strip().lower()
+        response = input("\\nuvを自動インストールしますか? (y/N): ").strip().lower()
         if response in ['y', 'yes', 'はい']:
             if not install_uv():
                 print("❌ uvのインストールに失敗しました。手動でインストールしてから再実行してください。")
@@ -164,12 +141,9 @@ def check_dependencies():
     
     return True
 
-def setup():
+
+def create_personal_config() -> None:
     """自動検出した値で個人設定を作成"""
-    print("🔧 依存関係をチェック中...")
-    if not check_dependencies():
-        return
-    
     config_path = Path("config.local.json")
     
     if config_path.exists():
@@ -200,11 +174,3 @@ def setup():
     
     if config['owner'] == "YOUR_GITHUB_USERNAME" or config['github_token'] == "YOUR_GITHUB_TOKEN":
         print(f"📝 プレースホルダー値を更新するために {config_path} を編集してください")
-    
-    print("\n✅ セットアップ完了! 次の手順:")
-    print("   1. 必要に応じて config.local.json を確認/編集")
-    print("   2. 実行: python repo-sync.py --dry-run")
-    print("   3. 実行: python repo-sync.py")
-
-if __name__ == "__main__":
-    setup()
