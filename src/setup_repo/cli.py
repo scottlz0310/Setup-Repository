@@ -6,25 +6,13 @@ from pathlib import Path
 from typing import Dict, Optional
 
 from .config import load_config, auto_detect_config
-from .setup import setup_dependencies, create_personal_config
+from .setup import run_interactive_setup
 from .sync import sync_repositories
 
 
 def setup_cli(args) -> None:
     """初期セットアップコマンド"""
-    print("🔧 初期セットアップを開始します...")
-    
-    # 依存関係チェック
-    if not setup_dependencies():
-        return
-    
-    # 個人設定作成
-    create_personal_config()
-    
-    print("\\n✅ セットアップ完了! 次の手順:")
-    print("   1. 必要に応じて config.local.json を確認/編集")
-    print("   2. 実行: python main.py sync --dry-run")
-    print("   3. 実行: python main.py sync")
+    run_interactive_setup()
 
 
 def sync_cli(args) -> None:

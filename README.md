@@ -20,7 +20,7 @@ winget install --id=astral-sh.uv
 
 1. **初期セットアップ**
    ```bash
-   python main.py setup
+   uv run main.py setup
    ```
 
 2. **設定の編集**
@@ -31,15 +31,20 @@ winget install --id=astral-sh.uv
 
 3. **リポジトリ同期実行**
    ```bash
-   python main.py sync
+   uv run main.py sync
    # 実行内容確認
-   python main.py sync --dry-run
+   uv run main.py sync --dry-run
    ```
 
 ## ⚙️ 設定ファイル
 
 - `config.json.template` - 設定テンプレート（リポジトリで管理）
 - `config.local.json` - 個人設定（gitで除外）
+
+## 📚 ドキュメント
+
+- [🚀 詳細セットアップガイド](docs/setup-guide.md)
+- [🔧 トラブルシューティング](docs/setup-guide.md#🔍-トラブルシューティング)
 
 ## ✨ メリット
 
