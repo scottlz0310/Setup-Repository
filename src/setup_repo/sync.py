@@ -10,6 +10,7 @@ from .python_env import setup_python_environment
 from .vscode_setup import apply_vscode_template
 from .utils import ProcessLock, TeeLogger, detect_platform
 from .uv_installer import ensure_uv
+from .gitignore_manager import GitignoreManager
 
 
 def sync_repositories(config: Dict) -> None:
@@ -97,6 +98,10 @@ def sync_repositories(config: Dict) -> None:
         # Git同期
         if sync_repository_with_retries(repo, dest_dir, config):
             success_count += 1
+            
+            # .gitignore管理
+            gitignore_manager = GitignoreManager(repo_path)
+            gitignore_manager.setup_gitignore(dry_run)
             
             # VS Code設定適用
             apply_vscode_template(repo_path, platform, dry_run)
