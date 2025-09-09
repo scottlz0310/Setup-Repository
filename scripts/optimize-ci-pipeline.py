@@ -12,7 +12,7 @@ import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 
 @dataclass
@@ -32,7 +32,7 @@ class CIPipelineOptimizer:
     """CI/CDパイプライン最適化クラス"""
 
     def __init__(self):
-        self.metrics: List[PipelineMetrics] = []
+        self.metrics: list[PipelineMetrics] = []
         self.cache_strategies = {
             "dependencies": ["~/.cache/uv", ".venv"],
             "test_cache": [".pytest_cache", ".mypy_cache", ".ruff_cache"],
@@ -40,7 +40,7 @@ class CIPipelineOptimizer:
         }
 
     def measure_stage(
-        self, stage_name: str, command: List[str], parallel_workers: int = 1
+        self, stage_name: str, command: list[str], parallel_workers: int = 1
     ) -> PipelineMetrics:
         """ステージの実行時間を測定"""
         print(f"🔧 実行中: {stage_name}")
@@ -86,7 +86,7 @@ class CIPipelineOptimizer:
 
         return metrics
 
-    def check_cache_effectiveness(self) -> Dict[str, Any]:
+    def check_cache_effectiveness(self) -> dict[str, Any]:
         """キャッシュの効果を分析"""
         cache_analysis = {}
 
@@ -113,7 +113,7 @@ class CIPipelineOptimizer:
 
         return cache_analysis
 
-    def analyze_parallel_efficiency(self) -> Dict[str, Any]:
+    def analyze_parallel_efficiency(self) -> dict[str, Any]:
         """並列処理の効率を分析"""
         parallel_stages = [m for m in self.metrics if m.parallel_workers > 1]
 
@@ -141,7 +141,7 @@ class CIPipelineOptimizer:
 
         return analysis
 
-    def generate_optimization_report(self) -> Dict[str, Any]:
+    def generate_optimization_report(self) -> dict[str, Any]:
         """最適化レポートを生成"""
         total_duration = sum(m.duration for m in self.metrics)
         successful_stages = [m for m in self.metrics if m.success]
@@ -177,7 +177,7 @@ class CIPipelineOptimizer:
 
         return report
 
-    def _generate_recommendations(self) -> List[str]:
+    def _generate_recommendations(self) -> list[str]:
         """最適化推奨事項を生成"""
         recommendations = []
 
@@ -192,7 +192,8 @@ class CIPipelineOptimizer:
         failed_stages = [m for m in self.metrics if not m.success]
         if failed_stages:
             recommendations.append(
-                f"失敗ステージ ({len(failed_stages)}個) のエラーハンドリングを改善してください"
+                f"失敗ステージ ({len(failed_stages)}個) の"
+                "エラーハンドリングを改善してください"
             )
 
         # キャッシュの推奨事項
@@ -202,7 +203,8 @@ class CIPipelineOptimizer:
                 recommendations.append(f"{cache_type} キャッシュが設定されていません")
             elif info["total_size_mb"] > 1000:  # 1GB以上
                 recommendations.append(
-                    f"{cache_type} キャッシュサイズが大きすぎます ({info['total_size_mb']:.1f}MB)"
+                    f"{cache_type} キャッシュサイズが大きすぎます "
+                    f"({info['total_size_mb']:.1f}MB)"
                 )
 
         return recommendations
@@ -294,7 +296,8 @@ def run_optimized_pipeline():
     print("\n最も時間のかかるステージ:")
     for stage in report["slowest_stages"]:
         print(
-            f"  - {stage['name']}: {stage['duration']:.2f}秒 (ワーカー数: {stage['workers']})"
+            f"  - {stage['name']}: {stage['duration']:.2f}秒 "
+            f"(ワーカー数: {stage['workers']})"
         )
 
     # 失敗があった場合は終了コード1を返す

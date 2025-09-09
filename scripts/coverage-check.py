@@ -13,7 +13,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Optional
 
 
 class CoverageChecker:
@@ -57,7 +57,7 @@ class CoverageChecker:
             print(f"❌ テスト実行エラー: {e}")
             return False
 
-    def get_coverage_data(self) -> Optional[Dict]:
+    def get_coverage_data(self) -> Optional[dict]:
         """カバレッジデータを取得"""
         try:
             if not self.coverage_file.exists():
@@ -70,7 +70,7 @@ class CoverageChecker:
             print(f"❌ カバレッジデータ読み込みエラー: {e}")
             return None
 
-    def analyze_coverage(self) -> Tuple[bool, Dict]:
+    def analyze_coverage(self) -> tuple[bool, dict]:
         """カバレッジを分析"""
         coverage_data = self.get_coverage_data()
         if not coverage_data:
@@ -100,7 +100,7 @@ class CoverageChecker:
 
         return True, analysis
 
-    def generate_report(self, analysis: Dict) -> str:
+    def generate_report(self, analysis: dict) -> str:
         """カバレッジレポートを生成"""
         report = []
         report.append("=" * 60)
@@ -159,7 +159,7 @@ class CoverageChecker:
         else:
             return "📊 トレンド: 変化なし"
 
-    def suggest_improvements(self, analysis: Dict) -> List[str]:
+    def suggest_improvements(self, analysis: dict) -> list[str]:
         """改善提案を生成"""
         suggestions = []
 

@@ -5,10 +5,51 @@ import shutil
 import subprocess
 import time
 from pathlib import Path
-from typing import Dict
 
 
-def choose_clone_url(repo: Dict, use_https: bool = False) -> str:
+class GitOperations:
+    """Git操作を管理するクラス"""
+
+    def __init__(self, config: dict | None = None) -> None:
+        """初期化"""
+        self.config = config or {}
+
+    def is_git_repository(self, path: Path | str) -> bool:
+        """指定されたパスがGitリポジトリかどうかを確認"""
+        repo_path = Path(path)
+        return (repo_path / ".git").exists()
+
+    def clone_repository(self, repo_url: str, destination: Path | str) -> bool:
+        """リポジトリをクローン"""
+        dest_path = Path(destination)
+        try:
+            subprocess.run(
+                ["git", "clone", repo_url, str(dest_path)],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            return True
+        except subprocess.CalledProcessError:
+            return False
+
+    def pull_repository(self, repo_path: Path | str) -> bool:
+        """既存リポジトリをpull"""
+        path = Path(repo_path)
+        try:
+            subprocess.run(
+                ["git", "pull", "--rebase"],
+                cwd=path,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            return True
+        except subprocess.CalledProcessError:
+            return False
+
+
+def choose_clone_url(repo: dict, use_https: bool = False) -> str:
     """SSH/HTTPSを選択してクローンURLを決定"""
     if use_https:
         return repo["clone_url"]
@@ -39,13 +80,13 @@ def choose_clone_url(repo: Dict, use_https: bool = False) -> str:
     return repo["clone_url"]  # HTTPSにフォールバック
 
 
-def sync_repository(repo: Dict, dest_dir: Path, dry_run: bool = False) -> bool:
+def sync_repository(repo: dict, dest_dir: Path, dry_run: bool = False) -> bool:
     """リポジトリを同期（clone または pull）- 後方互換性のため"""
     config = {"dry_run": dry_run}
     return _sync_repository_once(repo, dest_dir, config)
 
 
-def sync_repository_with_retries(repo: Dict, dest_dir: Path, config: Dict) -> bool:
+def sync_repository_with_retries(repo: dict, dest_dir: Path, config: dict) -> bool:
     """リトライ機能付きでリポジトリを同期"""
     repo_name = repo["name"]
     repo_path = dest_dir / repo_name
@@ -67,7 +108,7 @@ def sync_repository_with_retries(repo: Dict, dest_dir: Path, config: Dict) -> bo
     return False
 
 
-def _sync_repository_once(repo: Dict, dest_dir: Path, config: Dict) -> bool:
+def _sync_repository_once(repo: dict, dest_dir: Path, config: dict) -> bool:
     """リポジトリを一度同期"""
     repo_name = repo["name"]
     clone_url = choose_clone_url(repo, config.get("use_https", False))
@@ -83,7 +124,7 @@ def _sync_repository_once(repo: Dict, dest_dir: Path, config: Dict) -> bool:
         return _clone_repository(repo_name, clone_url, repo_path, dry_run)
 
 
-def _update_repository(repo_name: str, repo_path: Path, config: Dict) -> bool:
+def _update_repository(repo_name: str, repo_path: Path, config: dict) -> bool:
     """既存リポジトリを更新"""
     print(f"   🔄 {repo_name}: 更新中...")
     dry_run = config.get("dry_run", False)
@@ -188,3 +229,9 @@ def _auto_pop_stash(repo_path: Path) -> bool:
         return True
     except subprocess.CalledProcessError:
         return False
+
+
+# 後方互換性のためのインスタンス作成関数
+def create_git_operations(config: dict | None = None) -> GitOperations:
+    """GitOperationsインスタンスを作成"""
+    return GitOperations(config)

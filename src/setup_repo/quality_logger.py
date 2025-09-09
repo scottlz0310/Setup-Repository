@@ -12,7 +12,7 @@ import traceback
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 
 
 class LogLevel(Enum):
@@ -32,7 +32,7 @@ class QualityCheckError(Exception):
         self,
         message: str,
         error_code: Optional[str] = None,
-        details: Optional[Dict[str, Any]] = None,
+        details: Optional[dict[str, Any]] = None,
     ):
         super().__init__(message)
         self.message = message
@@ -44,14 +44,14 @@ class QualityCheckError(Exception):
 class RuffError(QualityCheckError):
     """Ruffリンティングエラー"""
 
-    def __init__(self, message: str, issues: Optional[List[Dict[str, Any]]] = None):
+    def __init__(self, message: str, issues: Optional[list[dict[str, Any]]] = None):
         super().__init__(message, "RUFF_ERROR", {"issues": issues or []})
 
 
 class MyPyError(QualityCheckError):
     """MyPy型チェックエラー"""
 
-    def __init__(self, message: str, errors: Optional[List[str]] = None):
+    def __init__(self, message: str, errors: Optional[list[str]] = None):
         super().__init__(message, "MYPY_ERROR", {"errors": errors or []})
 
 
@@ -61,7 +61,7 @@ class TestFailureError(QualityCheckError):
     def __init__(
         self,
         message: str,
-        failed_tests: Optional[List[str]] = None,
+        failed_tests: Optional[list[str]] = None,
         coverage: Optional[float] = None,
     ):
         super().__init__(
@@ -89,7 +89,7 @@ class SecurityScanError(QualityCheckError):
     """セキュリティスキャンエラー"""
 
     def __init__(
-        self, message: str, vulnerabilities: Optional[List[Dict[str, Any]]] = None
+        self, message: str, vulnerabilities: Optional[list[dict[str, Any]]] = None
     ):
         super().__init__(
             message, "SECURITY_ERROR", {"vulnerabilities": vulnerabilities or []}
@@ -103,7 +103,7 @@ class CIError(Exception):
         self,
         message: str,
         error_code: Optional[str] = None,
-        details: Optional[Dict[str, Any]] = None,
+        details: Optional[dict[str, Any]] = None,
     ):
         super().__init__(message)
         self.message = message
@@ -240,7 +240,7 @@ class QualityLogger:
         self.logger.critical(message, extra=kwargs)
 
     def log_quality_check_start(
-        self, check_type: str, details: Optional[Dict[str, Any]] = None
+        self, check_type: str, details: Optional[dict[str, Any]] = None
     ) -> None:
         """品質チェック開始をログ"""
         message = f"品質チェック開始: {check_type}"
@@ -249,7 +249,7 @@ class QualityLogger:
         self.info(message)
 
     def log_quality_check_success(
-        self, check_type: str, metrics: Optional[Dict[str, Any]] = None
+        self, check_type: str, metrics: Optional[dict[str, Any]] = None
     ) -> None:
         """品質チェック成功をログ"""
         message = f"品質チェック成功: {check_type}"
@@ -261,7 +261,7 @@ class QualityLogger:
         self,
         check_type: str,
         error: Union[Exception, str],
-        details: Optional[Dict[str, Any]] = None,
+        details: Optional[dict[str, Any]] = None,
     ) -> None:
         """品質チェック失敗をログ"""
         if isinstance(error, Exception):
@@ -280,7 +280,7 @@ class QualityLogger:
         if isinstance(error, Exception):
             self.debug(f"スタックトレース: {traceback.format_exc()}")
 
-    def log_quality_check_result(self, check_type: str, result: Dict[str, Any]) -> None:
+    def log_quality_check_result(self, check_type: str, result: dict[str, Any]) -> None:
         """品質チェック結果をログ"""
         if result.get("success", False):
             self.log_quality_check_success(check_type, result.get("metrics"))
@@ -291,7 +291,7 @@ class QualityLogger:
                 check_type, error_message, result.get("details")
             )
 
-    def log_metrics_summary(self, metrics: Union[Dict[str, Any], Any]) -> None:
+    def log_metrics_summary(self, metrics: Union[dict[str, Any], Any]) -> None:
         """メトリクス概要をログ"""
         self.info("=== 品質メトリクス概要 ===")
 
@@ -320,7 +320,7 @@ class QualityLogger:
                 self.info(f"{key}: {value}")
 
     def log_ci_stage_start(
-        self, stage: str, details: Optional[Dict[str, Any]] = None
+        self, stage: str, details: Optional[dict[str, Any]] = None
     ) -> None:
         """CI/CDステージ開始をログ"""
         message = f"CI/CDステージ開始: {stage}"
@@ -354,7 +354,7 @@ class QualityLogger:
     def log_error_with_context(
         self,
         error: Exception,
-        context: Optional[Dict[str, Any]] = None,
+        context: Optional[dict[str, Any]] = None,
         include_traceback: bool = True,
     ) -> None:
         """コンテキスト付きエラーログ"""
@@ -381,8 +381,8 @@ class QualityLogger:
             self.debug(f"スタックトレース: {traceback.format_exc()}")
 
     def create_error_report(
-        self, errors: List[Exception], context: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        self, errors: list[Exception], context: Optional[dict[str, Any]] = None
+    ) -> dict[str, Any]:
         """詳細なエラーレポートを作成"""
         report = {
             "timestamp": datetime.now().isoformat(),
@@ -410,9 +410,9 @@ class QualityLogger:
 
     def save_error_report(
         self,
-        errors: List[Exception],
+        errors: list[Exception],
         output_file: Path,
-        context: Optional[Dict[str, Any]] = None,
+        context: Optional[dict[str, Any]] = None,
     ) -> None:
         """エラーレポートをファイルに保存"""
         report = self.create_error_report(errors, context)

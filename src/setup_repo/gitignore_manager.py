@@ -1,7 +1,6 @@
 """.gitignore管理機能"""
 
 from pathlib import Path
-from typing import List, Set
 
 
 class GitignoreManager:
@@ -90,7 +89,7 @@ uv.lock
             print(f"   ❌ .gitignore作成に失敗: {e}")
             return False
 
-    def get_current_entries(self) -> Set[str]:
+    def get_current_entries(self) -> set[str]:
         """現在の.gitignoreエントリを取得"""
         if not self.gitignore_path.exists():
             return set()
@@ -106,7 +105,7 @@ uv.lock
         except OSError:
             return set()
 
-    def add_entries(self, new_entries: List[str], dry_run: bool = False) -> bool:
+    def add_entries(self, new_entries: list[str], dry_run: bool = False) -> bool:
         """新しいエントリを.gitignoreに追加"""
         if not new_entries:
             return True

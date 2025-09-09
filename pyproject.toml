@@ -26,7 +26,9 @@ classifiers = [
     "Topic :: Software Development :: Version Control :: Git",
 ]
 requires-python = ">=3.9"
-dependencies = []
+dependencies = [
+    "rg>=0.0.75",
+]
 
 [project.optional-dependencies]
 dev = [
@@ -203,13 +205,14 @@ dev = [
     "pytest>=8.4.2",
     "pytest-cov>=6.3.0",
     "pytest-xdist>=3.8.0",
-    "pytest-json-report>=1.5.0",  # パフォーマンステスト用JSONレポート
-    "pytest-benchmark>=4.0.0",  # ベンチマークテスト用
+    "pytest-json-report>=1.5.0", # パフォーマンステスト用JSONレポート
+    "pytest-benchmark>=4.0.0", # ベンチマークテスト用
     "ruff>=0.8.0",
     "mypy>=1.13.0",
     "coverage>=7.6.0",
-    "tomli-w>=1.0.0",  # バージョン管理スクリプト用
-    "psutil>=5.9.0",  # パフォーマンス監視用
+    "tomli-w>=1.0.0", # バージョン管理スクリプト用
+    "psutil>=5.9.0", # パフォーマンス監視用
+    "black>=25.1.0",
 ]
 security = [
     "safety>=3.0.0",

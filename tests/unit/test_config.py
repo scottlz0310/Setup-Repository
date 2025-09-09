@@ -35,57 +35,70 @@ class TestGetGithubToken:
 
     def test_get_token_from_gh_cli(self) -> None:
         """gh CLIからGitHubトークンを取得するテスト"""
-        with patch.dict(os.environ, {}, clear=True):
-            with patch("subprocess.run") as mock_run:
-                mock_run.return_value.stdout = "gh_cli_token_456\n"
-                mock_run.return_value.returncode = 0
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            patch("subprocess.run") as mock_run,
+        ):
+            mock_run.return_value.stdout = "gh_cli_token_456\n"
+            mock_run.return_value.returncode = 0
 
-                token = get_github_token()
-                assert token == "gh_cli_token_456"
+            token = get_github_token()
+            assert token == "gh_cli_token_456"
 
-                # gh CLIが正しく呼び出されることを確認
-                mock_run.assert_called_once_with(
-                    ["gh", "auth", "token"], capture_output=True, text=True, check=True
-                )
+            # gh CLIが正しく呼び出されることを確認
+            mock_run.assert_called_once_with(
+                ["gh", "auth", "token"],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
 
     def test_get_token_environment_variable_priority(self) -> None:
         """環境変数がgh CLIより優先されることをテスト"""
-        with patch.dict(os.environ, {"GITHUB_TOKEN": "env_priority_token"}):
-            with patch("subprocess.run") as mock_run:
-                mock_run.return_value.stdout = "gh_cli_token"
+        with (
+            patch.dict(os.environ, {"GITHUB_TOKEN": "env_priority_token"}),
+            patch("subprocess.run") as mock_run,
+        ):
+            mock_run.return_value.stdout = "gh_cli_token"
 
-                token = get_github_token()
-                assert token == "env_priority_token"
+            token = get_github_token()
+            assert token == "env_priority_token"
 
-                # gh CLIが呼び出されないことを確認
-                mock_run.assert_not_called()
+            # gh CLIが呼び出されないことを確認
+            mock_run.assert_not_called()
 
     def test_get_token_gh_cli_failure(self) -> None:
         """gh CLIが失敗した場合のテスト"""
-        with patch.dict(os.environ, {}, clear=True):
-            with patch("subprocess.run") as mock_run:
-                mock_run.side_effect = subprocess.CalledProcessError(1, "gh")
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            patch("subprocess.run") as mock_run,
+        ):
+            mock_run.side_effect = subprocess.CalledProcessError(1, "gh")
 
-                token = get_github_token()
-                assert token is None
+            token = get_github_token()
+            assert token is None
 
     def test_get_token_gh_cli_not_found(self) -> None:
         """gh CLIが見つからない場合のテスト"""
-        with patch.dict(os.environ, {}, clear=True):
-            with patch("subprocess.run") as mock_run:
-                mock_run.side_effect = FileNotFoundError()
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            patch("subprocess.run") as mock_run,
+        ):
+            mock_run.side_effect = FileNotFoundError()
 
-                token = get_github_token()
-                assert token is None
+            token = get_github_token()
+            assert token is None
 
     def test_get_token_no_sources_available(self) -> None:
         """トークンソースが利用できない場合のテスト"""
-        with patch.dict(os.environ, {}, clear=True):
-            with patch("subprocess.run") as mock_run:
-                mock_run.side_effect = FileNotFoundError()
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            patch("subprocess.run") as mock_run,
+        ):
+            mock_run.side_effect = FileNotFoundError()
 
-                token = get_github_token()
-                assert token is None
+            token = get_github_token()
+            assert token is None
 
 
 @pytest.mark.unit
@@ -100,51 +113,59 @@ class TestGetGithubUser:
 
     def test_get_user_from_git_config(self) -> None:
         """git configからユーザー名を取得するテスト"""
-        with patch.dict(os.environ, {}, clear=True):
-            with patch("subprocess.run") as mock_run:
-                mock_run.return_value.stdout = "git_config_user\n"
-                mock_run.return_value.returncode = 0
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            patch("subprocess.run") as mock_run,
+        ):
+            mock_run.return_value.stdout = "git_config_user\n"
+            mock_run.return_value.returncode = 0
 
-                user = get_github_user()
-                assert user == "git_config_user"
+            user = get_github_user()
+            assert user == "git_config_user"
 
-                # git configが正しく呼び出されることを確認
-                mock_run.assert_called_once_with(
-                    ["git", "config", "--global", "user.name"],
-                    capture_output=True,
-                    text=True,
-                    check=True,
-                )
+            # git configが正しく呼び出されることを確認
+            mock_run.assert_called_once_with(
+                ["git", "config", "--global", "user.name"],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
 
     def test_get_user_environment_variable_priority(self) -> None:
         """環境変数がgit configより優先されることをテスト"""
-        with patch.dict(os.environ, {"GITHUB_USER": "env_priority_user"}):
-            with patch("subprocess.run") as mock_run:
-                mock_run.return_value.stdout = "git_config_user"
+        with (
+            patch.dict(os.environ, {"GITHUB_USER": "env_priority_user"}),
+            patch("subprocess.run") as mock_run,
+        ):
+            mock_run.return_value.stdout = "git_config_user"
 
-                user = get_github_user()
-                assert user == "env_priority_user"
+            user = get_github_user()
+            assert user == "env_priority_user"
 
-                # git configが呼び出されないことを確認
-                mock_run.assert_not_called()
+            # git configが呼び出されないことを確認
+            mock_run.assert_not_called()
 
     def test_get_user_git_config_failure(self) -> None:
         """git configが失敗した場合のテスト"""
-        with patch.dict(os.environ, {}, clear=True):
-            with patch("subprocess.run") as mock_run:
-                mock_run.side_effect = subprocess.CalledProcessError(1, "git")
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            patch("subprocess.run") as mock_run,
+        ):
+            mock_run.side_effect = subprocess.CalledProcessError(1, "git")
 
-                user = get_github_user()
-                assert user is None
+            user = get_github_user()
+            assert user is None
 
     def test_get_user_git_not_found(self) -> None:
         """gitが見つからない場合のテスト"""
-        with patch.dict(os.environ, {}, clear=True):
-            with patch("subprocess.run") as mock_run:
-                mock_run.side_effect = FileNotFoundError()
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            patch("subprocess.run") as mock_run,
+        ):
+            mock_run.side_effect = FileNotFoundError()
 
-                user = get_github_user()
-                assert user is None
+            user = get_github_user()
+            assert user is None
 
 
 @pytest.mark.unit
@@ -153,53 +174,61 @@ class TestAutoDetectConfig:
 
     def test_auto_detect_config_with_all_values(self) -> None:
         """すべての値が検出される場合のテスト"""
-        with patch("src.setup_repo.config.get_github_user") as mock_user:
-            with patch("src.setup_repo.config.get_github_token") as mock_token:
-                mock_user.return_value = "detected_user"
-                mock_token.return_value = "detected_token"
+        with (
+            patch("src.setup_repo.config.get_github_user") as mock_user,
+            patch("src.setup_repo.config.get_github_token") as mock_token,
+        ):
+            mock_user.return_value = "detected_user"
+            mock_token.return_value = "detected_token"
 
-                config = auto_detect_config()
+            config = auto_detect_config()
 
-                assert config["owner"] == "detected_user"
-                assert config["github_token"] == "detected_token"
-                assert config["dest"] == str(Path.home() / "workspace")
-                assert config["use_https"] is False
-                assert config["max_retries"] == 2
-                assert config["skip_uv_install"] is False
-                assert config["auto_stash"] is False
-                assert config["sync_only"] is False
-                assert config["log_file"] == str(Path.home() / "logs" / "repo-sync.log")
+            assert config["owner"] == "detected_user"
+            assert config["github_token"] == "detected_token"
+            assert config["dest"] == str(Path.home() / "workspace")
+            assert config["use_https"] is False
+            assert config["max_retries"] == 2
+            assert config["skip_uv_install"] is False
+            assert config["auto_stash"] is False
+            assert config["sync_only"] is False
+            assert config["log_file"] == str(
+                Path.home() / "logs" / "repo-sync.log"
+            )
 
     def test_auto_detect_config_with_missing_values(self) -> None:
         """一部の値が検出されない場合のテスト"""
-        with patch("src.setup_repo.config.get_github_user") as mock_user:
-            with patch("src.setup_repo.config.get_github_token") as mock_token:
-                mock_user.return_value = None
-                mock_token.return_value = None
+        with (
+            patch("src.setup_repo.config.get_github_user") as mock_user,
+            patch("src.setup_repo.config.get_github_token") as mock_token,
+        ):
+            mock_user.return_value = None
+            mock_token.return_value = None
 
-                config = auto_detect_config()
+            config = auto_detect_config()
 
-                assert config["owner"] == ""
-                assert config["github_token"] is None
-                # その他のデフォルト値は変わらない
-                assert config["dest"] == str(Path.home() / "workspace")
-                assert config["use_https"] is False
+            assert config["owner"] == ""
+            assert config["github_token"] is None
+            # その他のデフォルト値は変わらない
+            assert config["dest"] == str(Path.home() / "workspace")
+            assert config["use_https"] is False
 
     def test_auto_detect_config_default_paths(self) -> None:
         """デフォルトパスが正しく設定されることをテスト"""
-        with patch("src.setup_repo.config.get_github_user") as mock_user:
-            with patch("src.setup_repo.config.get_github_token") as mock_token:
-                mock_user.return_value = "test_user"
-                mock_token.return_value = "test_token"
+        with (
+            patch("src.setup_repo.config.get_github_user") as mock_user,
+            patch("src.setup_repo.config.get_github_token") as mock_token,
+        ):
+            mock_user.return_value = "test_user"
+            mock_token.return_value = "test_token"
 
-                config = auto_detect_config()
+            config = auto_detect_config()
 
-                # パスがPath.home()を基準に設定されることを確認
-                expected_dest = str(Path.home() / "workspace")
-                expected_log = str(Path.home() / "logs" / "repo-sync.log")
+            # パスがPath.home()を基準に設定されることを確認
+            expected_dest = str(Path.home() / "workspace")
+            expected_log = str(Path.home() / "logs" / "repo-sync.log")
 
-                assert config["dest"] == expected_dest
-                assert config["log_file"] == expected_log
+            assert config["dest"] == expected_dest
+            assert config["log_file"] == expected_log
 
 
 @pytest.mark.unit

@@ -2,7 +2,7 @@
 
 import json
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from .config import load_config
 from .github_api import GitHubAPI
@@ -37,7 +37,7 @@ def run_interactive_setup() -> bool:
 
 def setup_repository_environment(
     config_path: Optional[str] = None, dry_run: bool = False
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """リポジトリ環境のセットアップ"""
     # 設定を読み込み
     if config_path:

@@ -105,76 +105,83 @@ class TestDetectPlatform:
 
     def test_detect_windows_platform_by_os_name(self) -> None:
         """os.nameによるWindows検出のテスト"""
-        with patch("platform.system") as mock_system:
-            with patch("os.name", "nt"):
-                mock_system.return_value = "Linux"  # 他のシステムを返す
+        with patch("platform.system") as mock_system, patch("os.name", "nt"):
+            mock_system.return_value = "Linux"  # 他のシステムを返す
 
-                platform_info = detect_platform()
+            platform_info = detect_platform()
 
-                assert platform_info.name == "windows"
-                assert platform_info.display_name == "Windows"
+            assert platform_info.name == "windows"
+            assert platform_info.display_name == "Windows"
 
     def test_detect_wsl_platform(self) -> None:
         """WSLプラットフォーム検出のテスト"""
-        with patch("platform.system") as mock_system:
-            with patch("platform.release") as mock_release:
-                mock_system.return_value = "Linux"
-                mock_release.return_value = "5.4.0-microsoft-standard-WSL2"
+        with (
+            patch("platform.system") as mock_system,
+            patch("platform.release") as mock_release,
+        ):
+            mock_system.return_value = "Linux"
+            mock_release.return_value = "5.4.0-microsoft-standard-WSL2"
 
-                platform_info = detect_platform()
+            platform_info = detect_platform()
 
-                assert platform_info.name == "wsl"
-                assert platform_info.display_name == "WSL (Windows Subsystem for Linux)"
-                assert "apt" in platform_info.package_managers
-                assert "snap" in platform_info.package_managers
-                assert "curl" in platform_info.package_managers
-                assert platform_info.shell == "bash"
-                assert platform_info.python_cmd == "python3"
+            assert platform_info.name == "wsl"
+            assert platform_info.display_name == "WSL (Windows Subsystem for Linux)"
+            assert "apt" in platform_info.package_managers
+            assert "snap" in platform_info.package_managers
+            assert "curl" in platform_info.package_managers
+            assert platform_info.shell == "bash"
+            assert platform_info.python_cmd == "python3"
 
     def test_detect_macos_platform(self) -> None:
         """macOSプラットフォーム検出のテスト"""
-        with patch("platform.system") as mock_system:
-            with patch("platform.release") as mock_release:
-                mock_system.return_value = "Darwin"
-                mock_release.return_value = "21.0.0"  # macOS release
+        with (
+            patch("platform.system") as mock_system,
+            patch("platform.release") as mock_release,
+        ):
+            mock_system.return_value = "Darwin"
+            mock_release.return_value = "21.0.0"  # macOS release
 
-                platform_info = detect_platform()
+            platform_info = detect_platform()
 
-                assert platform_info.name == "macos"
-                assert platform_info.display_name == "macOS"
-                assert "brew" in platform_info.package_managers
-                assert "curl" in platform_info.package_managers
-                assert platform_info.shell == "zsh"
+            assert platform_info.name == "macos"
+            assert platform_info.display_name == "macOS"
+            assert "brew" in platform_info.package_managers
+            assert "curl" in platform_info.package_managers
+            assert platform_info.shell == "zsh"
             assert platform_info.python_cmd == "python3"
 
     def test_detect_linux_platform(self) -> None:
         """Linuxプラットフォーム検出のテスト"""
-        with patch("platform.system") as mock_system:
-            with patch("platform.release") as mock_release:
-                mock_system.return_value = "Linux"
-                mock_release.return_value = "5.4.0-generic"  # WSLではない
+        with (
+            patch("platform.system") as mock_system,
+            patch("platform.release") as mock_release,
+        ):
+            mock_system.return_value = "Linux"
+            mock_release.return_value = "5.4.0-generic"  # WSLではない
 
-                platform_info = detect_platform()
+            platform_info = detect_platform()
 
-                assert platform_info.name == "linux"
-                assert platform_info.display_name == "Linux"
-                assert "apt" in platform_info.package_managers
-                assert "snap" in platform_info.package_managers
-                assert "curl" in platform_info.package_managers
-                assert platform_info.shell == "bash"
-                assert platform_info.python_cmd == "python3"
+            assert platform_info.name == "linux"
+            assert platform_info.display_name == "Linux"
+            assert "apt" in platform_info.package_managers
+            assert "snap" in platform_info.package_managers
+            assert "curl" in platform_info.package_managers
+            assert platform_info.shell == "bash"
+            assert platform_info.python_cmd == "python3"
 
     def test_detect_unknown_platform_defaults_to_linux(self) -> None:
         """未知のプラットフォームがLinuxにデフォルトされることをテスト"""
-        with patch("platform.system") as mock_system:
-            with patch("platform.release") as mock_release:
-                mock_system.return_value = "FreeBSD"
-                mock_release.return_value = "13.0-RELEASE"
+        with (
+            patch("platform.system") as mock_system,
+            patch("platform.release") as mock_release,
+        ):
+            mock_system.return_value = "FreeBSD"
+            mock_release.return_value = "13.0-RELEASE"
 
-                platform_info = detect_platform()
+            platform_info = detect_platform()
 
-                assert platform_info.name == "linux"
-                assert platform_info.display_name == "Linux"
+            assert platform_info.name == "linux"
+            assert platform_info.display_name == "Linux"
 
     def test_detect_platform_case_insensitive(self) -> None:
         """大文字小文字を区別しない検出のテスト"""
@@ -187,14 +194,16 @@ class TestDetectPlatform:
 
     def test_detect_wsl_case_insensitive(self) -> None:
         """WSL検出の大文字小文字を区別しないテスト"""
-        with patch("platform.system") as mock_system:
-            with patch("platform.release") as mock_release:
-                mock_system.return_value = "Linux"
-                mock_release.return_value = "5.4.0-MICROSOFT-standard-WSL2"  # 大文字
+        with (
+            patch("platform.system") as mock_system,
+            patch("platform.release") as mock_release,
+        ):
+            mock_system.return_value = "Linux"
+            mock_release.return_value = "5.4.0-MICROSOFT-standard-WSL2"  # 大文字
 
-                platform_info = detect_platform()
+            platform_info = detect_platform()
 
-                assert platform_info.name == "wsl"
+            assert platform_info.name == "wsl"
 
 
 @pytest.mark.unit
@@ -490,31 +499,33 @@ class TestPlatformDetectorIntegration:
 
     def test_full_platform_detection_workflow_linux(self) -> None:
         """Linux環境での完全なワークフローテスト"""
-        with patch("platform.system") as mock_system:
-            with patch("platform.release") as mock_release:
-                mock_system.return_value = "Linux"
-                mock_release.return_value = "5.4.0-generic"
+        with (
+            patch("platform.system") as mock_system,
+            patch("platform.release") as mock_release,
+        ):
+            mock_system.return_value = "Linux"
+            mock_release.return_value = "5.4.0-generic"
 
-                # プラットフォーム検出
-                platform_info = detect_platform()
+            # プラットフォーム検出
+            platform_info = detect_platform()
 
-                # インストールコマンド取得
-                commands = get_install_commands(platform_info)
+            # インストールコマンド取得
+            commands = get_install_commands(platform_info)
 
-                # パッケージマネージャーチェック（一部利用可能）
-                def mock_check_side_effect(manager: str) -> bool:
-                    return manager in ["apt", "curl"]
+            # パッケージマネージャーチェック（一部利用可能）
+            def mock_check_side_effect(manager: str) -> bool:
+                return manager in ["apt", "curl"]
 
-                with patch(
-                    "src.setup_repo.platform_detector.check_package_manager"
-                ) as mock_check:
-                    mock_check.side_effect = mock_check_side_effect
-                    available = get_available_package_managers(platform_info)
+            with patch(
+                "src.setup_repo.platform_detector.check_package_manager"
+            ) as mock_check:
+                mock_check.side_effect = mock_check_side_effect
+                available = get_available_package_managers(platform_info)
 
-                # 結果の検証
-                assert platform_info.name == "linux"
-                assert len(commands) > 0
-                assert available == ["apt", "curl"]
+            # 結果の検証
+            assert platform_info.name == "linux"
+            assert len(commands) > 0
+            assert available == ["apt", "curl"]
 
     def test_platform_detection_consistency(self) -> None:
         """プラットフォーム検出の一貫性テスト"""

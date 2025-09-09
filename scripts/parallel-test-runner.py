@@ -12,7 +12,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 
 def get_cpu_count() -> int:
@@ -36,7 +36,7 @@ def calculate_optimal_workers(test_count: int, cpu_count: int) -> int:
     return min(optimal_workers, test_count)
 
 
-def count_tests(test_paths: List[str]) -> int:
+def count_tests(test_paths: list[str]) -> int:
     """テスト数をカウント"""
     try:
         result = subprocess.run(
@@ -53,7 +53,7 @@ def count_tests(test_paths: List[str]) -> int:
                 if "test" in line and ("collected" in line or "selected" in line):
                     # "X tests collected" のような行を探す
                     words = line.split()
-                    for i, word in enumerate(words):
+                    for _i, word in enumerate(words):
                         if word.isdigit():
                             return int(word)
 
@@ -73,7 +73,7 @@ def count_tests(test_paths: List[str]) -> int:
 
 
 def run_parallel_tests(
-    test_paths: List[str],
+    test_paths: list[str],
     workers: Optional[int] = None,
     coverage: bool = True,
     markers: Optional[str] = None,
@@ -91,7 +91,10 @@ def run_parallel_tests(
 
         if verbose:
             print(
-                f"🔧 自動設定: CPUコア数={cpu_count}, テスト数≈{test_count}, ワーカー数={workers}"
+                "🔧 自動設定: "
+                f"CPUコア数={cpu_count}, "
+                f"テスト数≈{test_count}, "
+                f"ワーカー数={workers}"
             )
 
     # pytest コマンドを構築

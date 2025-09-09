@@ -2,6 +2,7 @@
 """ユーティリティモジュール（ロック、ログ機能）"""
 
 import atexit
+import contextlib
 import fcntl
 import os
 import sys
@@ -37,15 +38,11 @@ class ProcessLock:
     def release(self):
         """ロックを解放"""
         if self.lock_fd:
-            try:
+            with contextlib.suppress(OSError):
                 fcntl.flock(self.lock_fd, fcntl.LOCK_UN)
-            except OSError:
-                pass
 
-            try:
+            with contextlib.suppress(OSError):
                 os.close(self.lock_fd)
-            except OSError:
-                pass
 
             self.lock_fd = None
 
@@ -63,6 +60,9 @@ class TeeLogger:
         self.log_file = Path(log_file) if log_file else None
         self.original_stdout = sys.stdout
         self.original_stderr = sys.stderr
+        self.file_handle = None
+        self.tee_stdout = None
+        self.tee_stderr = None
 
         if self.log_file:
             self._setup_tee()
@@ -71,7 +71,8 @@ class TeeLogger:
         """tee機能をセットアップ"""
         try:
             self.log_file.parent.mkdir(parents=True, exist_ok=True)
-            self.file_handle = open(self.log_file, "a", encoding="utf-8")
+            # ファイルハンドルを直接保持（TeeLoggerの特性上必要）
+            self.file_handle = open(self.log_file, "a", encoding="utf-8")  # noqa: SIM115
 
             class TeeWriter:
                 def __init__(self, console, file_handle):
@@ -80,25 +81,35 @@ class TeeLogger:
 
                 def write(self, text):
                     self.console.write(text)
-                    self.file.write(text)
-                    self.file.flush()
+                    if self.file and not self.file.closed:
+                        self.file.write(text)
+                        self.file.flush()
 
                 def flush(self):
                     self.console.flush()
-                    self.file.flush()
+                    if self.file and not self.file.closed:
+                        self.file.flush()
 
-            sys.stdout = TeeWriter(self.original_stdout, self.file_handle)
-            sys.stderr = TeeWriter(self.original_stderr, self.file_handle)
+            self.tee_stdout = TeeWriter(self.original_stdout, self.file_handle)
+            self.tee_stderr = TeeWriter(self.original_stderr, self.file_handle)
+
+            sys.stdout = self.tee_stdout
+            sys.stderr = self.tee_stderr
 
         except Exception as e:
             print(f"⚠️  ログファイルセットアップ失敗: {e}")
+            if hasattr(self, 'file_handle') and self.file_handle:
+                self.file_handle.close()
+            self.file_handle = None
 
     def close(self):
-        """ログファイルを閉じる"""
-        if hasattr(self, "file_handle"):
-            sys.stdout = self.original_stdout
-            sys.stderr = self.original_stderr
+        """ログファイルを閉じて元のストリームを復元"""
+        sys.stdout = self.original_stdout
+        sys.stderr = self.original_stderr
+
+        if self.file_handle and not self.file_handle.closed:
             self.file_handle.close()
+            self.file_handle = None
 
 
 def detect_platform() -> str:

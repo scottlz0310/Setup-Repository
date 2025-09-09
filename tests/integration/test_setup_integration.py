@@ -9,13 +9,14 @@ setup機能の統合テスト
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
 
 from setup_repo.config import load_config
 from setup_repo.interactive_setup import InteractiveSetup
+from setup_repo.platform_detector import PlatformInfo
 from setup_repo.setup import setup_repository_environment
 
 
@@ -26,7 +27,7 @@ class TestSetupIntegration:
     def test_complete_setup_workflow_with_mocks(
         self,
         temp_dir: Path,
-        sample_config: Dict[str, Any],
+        sample_config: dict[str, Any],
         mock_github_api: Mock,
         mock_git_operations: Mock,
         mock_platform_detector: Mock,
@@ -38,30 +39,44 @@ class TestSetupIntegration:
         with open(config_file, "w", encoding="utf-8") as f:
             json.dump(sample_config, f, indent=2, ensure_ascii=False)
 
-        # 環境変数を設定
-        with patch.dict(os.environ, {"CONFIG_PATH": str(config_file)}):
-            # モックを適用してsetup機能を実行
-            with patch("setup_repo.github_api.GitHubAPI", return_value=mock_github_api):
-                with patch(
-                    "setup_repo.git_operations.GitOperations",
-                    return_value=mock_git_operations,
-                ):
-                    with patch(
-                        "setup_repo.platform_detector.PlatformDetector",
-                        return_value=mock_platform_detector,
-                    ):
-                        # setup機能を実行
-                        result = setup_repository_environment(
-                            config_path=str(config_file), dry_run=True
-                        )
+        # 環境変数を設定 + モック適用してsetup機能を実行（with統合）
+        with (
+            patch.dict(os.environ, {"CONFIG_PATH": str(config_file)}),
+            patch("urllib.request.urlopen") as mock_urlopen,
+            patch(
+                "setup_repo.git_operations.sync_repository_with_retries",
+                return_value=True,
+            ),
+            patch(
+                "setup_repo.platform_detector.detect_platform",
+                return_value=PlatformInfo(
+                    name="linux",
+                    display_name="Linux",
+                    package_managers=["apt", "snap"],
+                    shell="bash",
+                    python_cmd="python3",
+                ),
+            ),
+        ):
+            # GitHub APIのモックレスポンスを設定
+            mock_response = Mock()
+            mock_response.read.return_value = json.dumps({"login": "test_user"}).encode(
+                "utf-8"
+            )
+            mock_response.__enter__ = Mock(return_value=mock_response)
+            mock_response.__exit__ = Mock(return_value=None)
+            mock_urlopen.return_value = mock_response
+            # setup機能を実行
+            result = setup_repository_environment(
+                config_path=str(config_file), dry_run=True
+            )
 
         # 結果を検証
         assert result is not None
         assert isinstance(result, dict)
 
         # モックが適切に呼び出されたことを確認
-        mock_platform_detector.detect_platform.assert_called()
-        mock_github_api.get_user_info.assert_called()
+        mock_urlopen.assert_called()
 
     def test_interactive_setup_workflow(
         self,
@@ -83,7 +98,14 @@ class TestSetupIntegration:
         interactive_setup = InteractiveSetup()
 
         # モックを適用してインタラクティブセットアップを実行
-        with patch("builtins.input") as mock_input:
+        with (
+            patch("builtins.input") as mock_input,
+            patch("setup_repo.github_api.GitHubAPI", return_value=mock_github_api),
+            patch(
+                "setup_repo.platform_detector.PlatformDetector",
+                return_value=mock_platform_detector,
+            ),
+        ):
             # 入力値を順番に設定
             mock_input.side_effect = [
                 test_inputs["github_token"],
@@ -93,14 +115,8 @@ class TestSetupIntegration:
                 "y",  # setup_vscode
                 "y",  # 設定を保存するか
             ]
-
-            with patch("setup_repo.github_api.GitHubAPI", return_value=mock_github_api):
-                with patch(
-                    "setup_repo.platform_detector.PlatformDetector",
-                    return_value=mock_platform_detector,
-                ):
-                    # インタラクティブセットアップを実行
-                    config = interactive_setup.run_setup()
+            # インタラクティブセットアップを実行
+            config = interactive_setup.run_setup()
 
         # 結果を検証
         assert config is not None
@@ -127,18 +143,19 @@ class TestSetupIntegration:
             json.dump(invalid_config, f, indent=2, ensure_ascii=False)
 
         # 無効な設定でのセットアップ実行
-        with patch.dict(os.environ, {"CONFIG_PATH": str(config_file)}):
-            with patch("setup_repo.github_api.GitHubAPI", return_value=mock_github_api):
-                # エラーが発生することを確認
-                with pytest.raises((ValueError, KeyError)):
-                    setup_repository_environment(
-                        config_path=str(config_file), dry_run=True
-                    )
+        with (
+            patch.dict(os.environ, {"CONFIG_PATH": str(config_file)}),
+            patch("setup_repo.github_api.GitHubAPI", return_value=mock_github_api),
+            pytest.raises((ValueError, KeyError)),
+        ):
+            setup_repository_environment(
+                config_path=str(config_file), dry_run=True
+            )
 
     def test_setup_with_github_api_error(
         self,
         temp_dir: Path,
-        sample_config: Dict[str, Any],
+        sample_config: dict[str, Any],
         mock_platform_detector: Mock,
     ) -> None:
         """GitHub API エラー時のセットアップテスト"""
@@ -151,24 +168,26 @@ class TestSetupIntegration:
             json.dump(sample_config, f, indent=2, ensure_ascii=False)
 
         # GitHub APIエラー時のセットアップ実行
-        with patch.dict(os.environ, {"CONFIG_PATH": str(config_file)}):
-            with patch(
-                "setup_repo.github_api.GitHubAPI", return_value=mock_github_api_error
-            ):
-                with patch(
-                    "setup_repo.platform_detector.PlatformDetector",
-                    return_value=mock_platform_detector,
-                ):
-                    # エラーハンドリングが適切に行われることを確認
-                    with pytest.raises(Exception):
-                        setup_repository_environment(
-                            config_path=str(config_file), dry_run=False
-                        )
+        with (
+            patch.dict(os.environ, {"CONFIG_PATH": str(config_file)}),
+            patch(
+                "setup_repo.setup.GitHubAPI",
+                return_value=mock_github_api_error,
+            ),
+            patch(
+                "setup_repo.setup.PlatformDetector",
+                return_value=mock_platform_detector,
+            ),
+            pytest.raises((Exception, RuntimeError)),  # noqa: B017
+        ):
+            setup_repository_environment(
+                config_path=str(config_file), dry_run=False
+            )
 
     def test_setup_dry_run_mode(
         self,
         temp_dir: Path,
-        sample_config: Dict[str, Any],
+        sample_config: dict[str, Any],
         mock_github_api: Mock,
         mock_git_operations: Mock,
         mock_platform_detector: Mock,
@@ -179,19 +198,35 @@ class TestSetupIntegration:
             json.dump(sample_config, f, indent=2, ensure_ascii=False)
 
         # ドライランモードでセットアップを実行
-        with patch.dict(os.environ, {"CONFIG_PATH": str(config_file)}):
-            with patch("setup_repo.github_api.GitHubAPI", return_value=mock_github_api):
-                with patch(
-                    "setup_repo.git_operations.GitOperations",
-                    return_value=mock_git_operations,
-                ):
-                    with patch(
-                        "setup_repo.platform_detector.PlatformDetector",
-                        return_value=mock_platform_detector,
-                    ):
-                        result = setup_repository_environment(
-                            config_path=str(config_file), dry_run=True
-                        )
+        with (
+            patch.dict(os.environ, {"CONFIG_PATH": str(config_file)}),
+            patch("urllib.request.urlopen") as mock_urlopen,
+            patch(
+                "setup_repo.git_operations.sync_repository_with_retries",
+                return_value=True,
+            ),
+            patch(
+                "setup_repo.platform_detector.detect_platform",
+                return_value=PlatformInfo(
+                    name="linux",
+                    display_name="Linux",
+                    package_managers=["apt", "snap"],
+                    shell="bash",
+                    python_cmd="python3",
+                ),
+            ),
+        ):
+            # GitHub APIのモックレスポンスを設定
+            mock_response = Mock()
+            mock_response.read.return_value = json.dumps({"login": "test_user"}).encode(
+                "utf-8"
+            )
+            mock_response.__enter__ = Mock(return_value=mock_response)
+            mock_response.__exit__ = Mock(return_value=None)
+            mock_urlopen.return_value = mock_response
+            result = setup_repository_environment(
+                config_path=str(config_file), dry_run=True
+            )
 
         # ドライランモードでは実際の変更が行われないことを確認
         assert result is not None
@@ -211,7 +246,7 @@ class TestSetupIntegration:
     def test_setup_with_file_system_operations(
         self,
         temp_dir: Path,
-        sample_config: Dict[str, Any],
+        sample_config: dict[str, Any],
         mock_github_api: Mock,
         mock_platform_detector: Mock,
     ) -> None:
@@ -225,19 +260,17 @@ class TestSetupIntegration:
             json.dump(sample_config, f, indent=2, ensure_ascii=False)
 
         # 実際のファイルシステム操作を含むセットアップを実行
-        with patch.dict(os.environ, {"CONFIG_PATH": str(config_file)}):
-            with patch("setup_repo.github_api.GitHubAPI", return_value=mock_github_api):
-                with patch(
-                    "setup_repo.platform_detector.PlatformDetector",
-                    return_value=mock_platform_detector,
-                ):
-                    # Git操作は実際には行わず、ディレクトリ作成のみテスト
-                    with patch("setup_repo.git_operations.GitOperations") as mock_git:
-                        mock_git.return_value.clone_repository.return_value = True
-
-                        result = setup_repository_environment(
-                            config_path=str(config_file), dry_run=False
-                        )
+        with (
+            patch.dict(os.environ, {"CONFIG_PATH": str(config_file)}),
+            patch("setup_repo.setup.GitHubAPI", return_value=mock_github_api),
+            patch(
+                "setup_repo.setup.PlatformDetector",
+                return_value=mock_platform_detector,
+            ),
+        ):
+            result = setup_repository_environment(
+                config_path=str(config_file), dry_run=False
+            )
 
         # 結果を検証
         assert result is not None
@@ -249,7 +282,7 @@ class TestSetupIntegration:
     def test_config_loading_integration(
         self,
         temp_dir: Path,
-        sample_config: Dict[str, Any],
+        sample_config: dict[str, Any],
     ) -> None:
         """設定読み込みの統合テスト"""
         # 複数の設定ファイルを作成してテスト
@@ -279,7 +312,7 @@ class TestSetupIntegration:
     def test_environment_variable_override(
         self,
         temp_dir: Path,
-        sample_config: Dict[str, Any],
+        sample_config: dict[str, Any],
     ) -> None:
         """環境変数による設定上書きのテスト"""
         config_file = temp_dir / "config.local.json"

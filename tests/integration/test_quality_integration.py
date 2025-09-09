@@ -209,7 +209,6 @@ class TestQualityIntegration:
             trend_manager = QualityTrendManager(project_root / "trend-data.json")
 
             # 品質低下のシナリオを作成
-            metrics_data = []
 
             # 最初は良好な状態
             good_metrics = QualityMetrics(

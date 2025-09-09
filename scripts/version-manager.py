@@ -85,10 +85,11 @@ class VersionManager:
 
             updated_content = re.sub(pattern, replacement, content)
 
-            if updated_content == content:
-                # パターンが見つからない場合は追加
-                if "__version__" not in content:
-                    updated_content = f'"""セットアップリポジトリパッケージ"""\n\n__version__ = "{version}"\n'
+            if updated_content == content and "__version__" not in content:
+                updated_content = (
+                    f'"""セットアップリポジトリパッケージ"""\n\n'
+                    f'__version__ = "{version}"\n'
+                )
 
             init_path.write_text(updated_content, encoding="utf-8")
             print(f"✅ __init__.py: {version}")
@@ -102,7 +103,8 @@ class VersionManager:
         if not self.validate_version(new_version):
             print(f"❌ 無効なバージョン形式: {new_version}")
             print(
-                "セマンティックバージョン形式を使用してください (例: 1.0.0, 1.2.3-beta.1)"
+                "セマンティックバージョン形式を使用してください "
+                "(例: 1.0.0, 1.2.3-beta.1)"
             )
             return False
 
@@ -113,7 +115,7 @@ class VersionManager:
             print(f"🆕 新しいバージョンを設定: {new_version}")
 
         success = True
-        for file_path, update_func in self.version_files.items():
+        for _file_path, update_func in self.version_files.items():
             if not update_func(new_version):
                 success = False
 
@@ -306,9 +308,8 @@ def main():
         if not manager.update_version(new_version):
             return 1
 
-        if args.tag:
-            if not manager.create_git_tag(new_version, args.push):
-                return 1
+        if args.tag and not manager.create_git_tag(new_version, args.push):
+            return 1
 
     return 0
 

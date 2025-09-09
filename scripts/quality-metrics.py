@@ -14,6 +14,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root / "src"))
 
+# ruff: noqa: E402
 from setup_repo.quality_metrics import QualityLogger, QualityMetricsCollector
 
 
@@ -92,7 +93,9 @@ def main():
                             "test_coverage": metrics.test_coverage,
                             "ruff_issues": metrics.ruff_issues,
                             "mypy_errors": metrics.mypy_errors,
-                            "security_vulnerabilities": metrics.security_vulnerabilities,
+                            "security_vulnerabilities": (
+                                metrics.security_vulnerabilities
+                            ),
                             "test_passed": metrics.test_passed,
                             "test_failed": metrics.test_failed,
                         },
@@ -110,10 +113,12 @@ def main():
             print(f"::set-output name=ruff_issues::{metrics.ruff_issues}")
             print(f"::set-output name=mypy_errors::{metrics.mypy_errors}")
             print(
-                f"::set-output name=security_vulnerabilities::{metrics.security_vulnerabilities}"
+                "::set-output name=security_vulnerabilities::"
+                f"{metrics.security_vulnerabilities}"
             )
             print(
-                f"::set-output name=passing::{'true' if metrics.is_passing(args.min_coverage) else 'false'}"
+                "::set-output name=passing::"
+                f"{'true' if metrics.is_passing(args.min_coverage) else 'false'}"
             )
 
         else:  # text format
@@ -145,7 +150,10 @@ def main():
                     issues.append(f"MyPyエラー: {metrics.mypy_errors}件")
                 if metrics.test_coverage < args.min_coverage:
                     issues.append(
-                        f"カバレッジ不足: {metrics.test_coverage:.1f}% < {args.min_coverage}%"
+
+                            "カバレッジ不足: "
+                            f"{metrics.test_coverage:.1f}% < {args.min_coverage}%"
+
                     )
                 if metrics.test_failed > 0:
                     issues.append(f"テスト失敗: {metrics.test_failed}件")

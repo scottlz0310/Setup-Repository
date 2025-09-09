@@ -14,7 +14,7 @@ from dataclasses import asdict, dataclass
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 
 from .quality_logger import (
     CoverageError,
@@ -102,7 +102,7 @@ class QualityMetrics:
         """辞書のようにitemsメソッドを提供"""
         return asdict(self).items()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """辞書形式に変換"""
         return asdict(self)
 
@@ -113,11 +113,11 @@ class BuildResult:
 
     status: QualityCheckStatus
     metrics: QualityMetrics
-    errors: List[str]
-    warnings: List[str]
+    errors: list[str]
+    warnings: list[str]
     duration_seconds: float = 0.0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """辞書形式に変換"""
         return {
             "status": self.status.value,
@@ -142,7 +142,7 @@ class QualityMetricsCollector:
         self.project_root = project_root or Path.cwd()
         self.logger = logger or get_quality_logger()
 
-    def collect_ruff_metrics(self) -> Dict[str, Any]:
+    def collect_ruff_metrics(self) -> dict[str, Any]:
         """Ruffリンティングメトリクスを収集"""
         self.logger.log_quality_check_start("Ruff")
 
@@ -169,9 +169,11 @@ class QualityMetricsCollector:
                 "success": success,
                 "issue_count": issue_count,
                 "issues": issues,
-                "errors": []
-                if success
-                else [f"Ruffチェックで{issue_count}件の問題が見つかりました"],
+                "errors": (
+                    []
+                    if success
+                    else [f"Ruffチェックで{issue_count}件の問題が見つかりました"]
+                ),
             }
 
             if success:
@@ -195,7 +197,7 @@ class QualityMetricsCollector:
             self.logger.log_quality_check_failure("Ruff", error)
             return {"success": False, "issue_count": 0, "errors": [str(e)]}
 
-    def collect_mypy_metrics(self) -> Dict[str, Any]:
+    def collect_mypy_metrics(self) -> dict[str, Any]:
         """MyPy型チェックメトリクスを収集"""
         self.logger.log_quality_check_start("MyPy")
 
@@ -223,9 +225,11 @@ class QualityMetricsCollector:
                 "success": success,
                 "error_count": error_count,
                 "error_details": error_lines[:10],  # 最初の10個のエラーを保存
-                "errors": []
-                if success
-                else [f"MyPyで{error_count}件のエラーが見つかりました"],
+                "errors": (
+                    []
+                    if success
+                    else [f"MyPyで{error_count}件のエラーが見つかりました"]
+                ),
             }
 
             if success:
@@ -248,7 +252,7 @@ class QualityMetricsCollector:
 
     def collect_test_metrics(
         self, parallel_workers: Union[str, int] = "auto"
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """テストメトリクスを収集（並列実行対応）"""
         self.logger.log_quality_check_start("Tests")
 
@@ -339,24 +343,28 @@ class QualityMetricsCollector:
             else:
                 # カバレッジ不足の場合は専用エラー
                 if coverage_percent < 80.0:
-                    error = CoverageError(
-                        f"カバレッジが不足しています: {coverage_percent:.1f}% (必要: 80.0%)",
-                        coverage_percent,
-                        80.0,
+                    self.logger.log_quality_check_failure(
+                        "Tests",
+                        CoverageError(
+                            f"カバレッジが不足しています: "
+                            f"{coverage_percent:.1f}% (必要: 80.0%)",
+                            coverage_percent,
+                            80.0,
+                        ),
                     )
                 else:
-                    error = TestFailureError(
+                    test_error = TestFailureError(
                         f"テストで{failed}件の失敗がありました",
                         failed_tests,
                         coverage_percent,
                     )
-                self.logger.log_quality_check_failure("Tests", error)
+                    self.logger.log_quality_check_failure("Tests", test_error)
 
             return metrics_result
 
         except (subprocess.CalledProcessError, FileNotFoundError) as e:
-            error = TestFailureError(f"テストメトリクス収集エラー: {str(e)}")
-            self.logger.log_quality_check_failure("Tests", error)
+            test_error = TestFailureError(f"テストメトリクス収集エラー: {str(e)}")
+            self.logger.log_quality_check_failure("Tests", test_error)
             return {
                 "success": False,
                 "coverage_percent": 0.0,
@@ -365,7 +373,7 @@ class QualityMetricsCollector:
                 "errors": [str(e)],
             }
 
-    def collect_security_metrics(self) -> Dict[str, Any]:
+    def collect_security_metrics(self) -> dict[str, Any]:
         """セキュリティメトリクスを収集"""
         self.logger.log_quality_check_start("Security")
 

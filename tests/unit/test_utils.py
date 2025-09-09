@@ -121,16 +121,18 @@ class TestProcessLock:
         lock_file = temp_dir / "test.lock"
         lock = ProcessLock(str(lock_file))
 
-        with patch("os.open") as mock_open:
-            with patch("fcntl.flock") as mock_flock:
-                with patch("os.close") as mock_close:
-                    mock_open.return_value = 123
-                    mock_flock.side_effect = OSError("Resource temporarily unavailable")
+        with (
+            patch("os.open") as mock_open,
+            patch("fcntl.flock") as mock_flock,
+            patch("os.close") as mock_close,
+        ):
+            mock_open.return_value = 123
+            mock_flock.side_effect = OSError("Resource temporarily unavailable")
 
-                    result = lock.acquire()
-                    assert result is False
-                    assert lock.lock_fd is None
-                    mock_close.assert_called_once_with(123)
+            result = lock.acquire()
+            assert result is False
+            assert lock.lock_fd is None
+            mock_close.assert_called_once_with(123)
 
     def test_release_lock_error_handling(self, temp_dir: Path) -> None:
         """ロック解放時のエラーハンドリングテスト"""
@@ -141,14 +143,16 @@ class TestProcessLock:
         assert lock.acquire() is True
         original_fd = lock.lock_fd
 
-        with patch("fcntl.flock") as mock_flock:
-            with patch("os.close") as mock_close:
-                mock_flock.side_effect = OSError("Bad file descriptor")
+        with (
+            patch("fcntl.flock") as mock_flock,
+            patch("os.close") as mock_close,
+        ):
+            mock_flock.side_effect = OSError("Bad file descriptor")
 
-                # エラーが発生してもクラッシュしないことを確認
-                lock.release()
-                assert lock.lock_fd is None
-                mock_close.assert_called_once_with(original_fd)
+            # エラーが発生してもクラッシュしないことを確認
+            lock.release()
+            assert lock.lock_fd is None
+            mock_close.assert_called_once_with(original_fd)
 
 
 @pytest.mark.unit
@@ -293,7 +297,7 @@ class TestTeeLogger:
         logger = TeeLogger(str(log_file))
 
         # ログファイルが設定されていないことを確認
-        assert not hasattr(logger, "file_handle")
+        assert logger.file_handle is None
 
         # クリーンアップ
         readonly_dir.chmod(0o755)  # 権限を戻す
@@ -302,7 +306,7 @@ class TestTeeLogger:
         """TeeWriterのflushメソッドテスト"""
         log_file = temp_dir / "test.log"
 
-        with patch("builtins.open", mock_open()) as mock_file:
+        with patch("builtins.open", mock_open()):
             logger = TeeLogger(str(log_file))
 
             # flushメソッドが呼び出せることを確認
@@ -326,52 +330,59 @@ class TestDetectPlatform:
 
     def test_detect_windows_platform_by_os_name(self) -> None:
         """os.nameによるWindows検出のテスト"""
-        with patch("platform.system") as mock_system:
-            with patch("os.name", "nt"):
-                mock_system.return_value = "Linux"  # 他のシステムを返す
+        with patch("platform.system") as mock_system, patch("os.name", "nt"):
+            mock_system.return_value = "Linux"  # 他のシステムを返す
 
-                platform = detect_platform()
-                assert platform == "windows"
+            platform = detect_platform()
+            assert platform == "windows"
 
     def test_detect_wsl_platform(self) -> None:
         """WSLプラットフォーム検出のテスト"""
-        with patch("platform.system") as mock_system:
-            with patch("platform.release") as mock_release:
-                mock_system.return_value = "Linux"
-                mock_release.return_value = "5.4.0-microsoft-standard-WSL2"
+        with (
+            patch("platform.system") as mock_system,
+            patch("platform.release") as mock_release,
+        ):
+            mock_system.return_value = "Linux"
+            mock_release.return_value = "5.4.0-microsoft-standard-WSL2"
 
-                platform = detect_platform()
-                assert platform == "wsl"
+            platform = detect_platform()
+            assert platform == "wsl"
 
     def test_detect_linux_platform(self) -> None:
         """Linuxプラットフォーム検出のテスト"""
-        with patch("platform.system") as mock_system:
-            with patch("platform.release") as mock_release:
-                mock_system.return_value = "Linux"
-                mock_release.return_value = "5.4.0-generic"
+        with (
+            patch("platform.system") as mock_system,
+            patch("platform.release") as mock_release,
+        ):
+            mock_system.return_value = "Linux"
+            mock_release.return_value = "5.4.0-generic"
 
-                platform = detect_platform()
-                assert platform == "linux"
+            platform = detect_platform()
+            assert platform == "linux"
 
     def test_detect_macos_platform(self) -> None:
         """macOSプラットフォーム検出のテスト（将来の拡張用）"""
-        with patch("platform.system") as mock_system:
-            with patch("platform.release") as mock_release:
-                mock_system.return_value = "Darwin"
-                mock_release.return_value = "21.0.0"  # macOS release
+        with (
+            patch("platform.system") as mock_system,
+            patch("platform.release") as mock_release,
+        ):
+            mock_system.return_value = "Darwin"
+            mock_release.return_value = "21.0.0"  # macOS release
 
-                platform = detect_platform()
-                assert platform == "macos"  # 正しい実装ではmacosを返す
+            platform = detect_platform()
+            assert platform == "macos"  # 正しい実装ではmacosを返す
 
     def test_detect_unknown_platform(self) -> None:
         """未知のプラットフォーム検出のテスト"""
-        with patch("platform.system") as mock_system:
-            with patch("platform.release") as mock_release:
-                mock_system.return_value = "FreeBSD"
-                mock_release.return_value = "13.0-RELEASE"
+        with (
+            patch("platform.system") as mock_system,
+            patch("platform.release") as mock_release,
+        ):
+            mock_system.return_value = "FreeBSD"
+            mock_release.return_value = "13.0-RELEASE"
 
-                platform = detect_platform()
-                assert platform == "linux"  # デフォルトでlinuxを返す
+            platform = detect_platform()
+            assert platform == "linux"  # デフォルトでlinuxを返す
 
     def test_detect_platform_case_insensitive(self) -> None:
         """大文字小文字を区別しない検出のテスト"""
@@ -383,13 +394,15 @@ class TestDetectPlatform:
 
     def test_detect_platform_wsl_case_insensitive(self) -> None:
         """WSL検出の大文字小文字を区別しないテスト"""
-        with patch("platform.system") as mock_system:
-            with patch("platform.release") as mock_release:
-                mock_system.return_value = "Linux"
-                mock_release.return_value = "5.4.0-MICROSOFT-standard-WSL2"  # 大文字
+        with (
+            patch("platform.system") as mock_system,
+            patch("platform.release") as mock_release,
+        ):
+            mock_system.return_value = "Linux"
+            mock_release.return_value = "5.4.0-MICROSOFT-standard-WSL2"  # 大文字
 
-                platform = detect_platform()
-                assert platform == "wsl"
+            platform = detect_platform()
+            assert platform == "wsl"
 
 
 @pytest.mark.unit

@@ -248,7 +248,10 @@ class TestQualityMetricsCollector:
         """MyPyメトリクス収集でエラーがある場合のテスト"""
         # subprocess.runのモック設定
         mock_run.return_value.returncode = 1
-        mock_run.return_value.stdout = "file.py:10: error: Missing type annotation\nfile.py:20: error: Invalid type"
+        mock_run.return_value.stdout = (
+            "file.py:10: error: Missing type annotation\n"
+            "file.py:20: error: Invalid type"
+        )
 
         collector = QualityMetricsCollector()
         result = collector.collect_mypy_metrics()

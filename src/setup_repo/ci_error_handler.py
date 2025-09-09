@@ -11,7 +11,7 @@ import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from .quality_logger import (
     LogLevel,
@@ -24,7 +24,7 @@ class CIEnvironmentInfo:
     """CI環境情報を収集するクラス"""
 
     @staticmethod
-    def get_github_actions_info() -> Dict[str, Any]:
+    def get_github_actions_info() -> dict[str, Any]:
         """GitHub Actions環境情報を取得"""
         return {
             "runner_os": os.getenv("RUNNER_OS"),
@@ -42,10 +42,14 @@ class CIEnvironmentInfo:
         }
 
     @staticmethod
-    def get_system_info() -> Dict[str, Any]:
+    def get_system_info() -> dict[str, Any]:
         """システム情報を取得"""
         try:
-            python_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+            python_version = (
+                f"{sys.version_info.major}."
+                f"{sys.version_info.minor}."
+                f"{sys.version_info.micro}"
+            )
 
             # Git情報を取得
             git_info = {}
@@ -68,9 +72,9 @@ class CIEnvironmentInfo:
             return {
                 "python_version": python_version,
                 "platform": sys.platform,
-                "architecture": os.uname().machine
-                if hasattr(os, "uname")
-                else "unknown",
+                "architecture": (
+                    os.uname().machine if hasattr(os, "uname") else "unknown"
+                ),
                 "working_directory": os.getcwd(),
                 "git_info": git_info,
                 "environment_variables": {
@@ -83,7 +87,7 @@ class CIEnvironmentInfo:
             return {"error": f"システム情報取得エラー: {str(e)}"}
 
     @staticmethod
-    def get_dependency_info() -> Dict[str, Any]:
+    def get_dependency_info() -> dict[str, Any]:
         """依存関係情報を取得"""
         try:
             # uv環境情報
@@ -141,7 +145,7 @@ class CIErrorHandler:
         self.logger = logger or get_quality_logger()
         self.enable_github_annotations = enable_github_annotations
         self.error_report_dir = error_report_dir or Path("ci-error-reports")
-        self.errors: List[Exception] = []
+        self.errors: list[Exception] = []
 
         # CI環境情報を収集
         self.ci_info = CIEnvironmentInfo.get_github_actions_info()
@@ -153,7 +157,7 @@ class CIErrorHandler:
         stage: str,
         error: Exception,
         duration: Optional[float] = None,
-        context: Optional[Dict[str, Any]] = None,
+        context: Optional[dict[str, Any]] = None,
     ) -> None:
         """CI/CDステージエラーを処理"""
         self.errors.append(error)
@@ -182,7 +186,7 @@ class CIErrorHandler:
         self,
         check_type: str,
         error: Exception,
-        metrics: Optional[Dict[str, Any]] = None,
+        metrics: Optional[dict[str, Any]] = None,
     ) -> None:
         """品質チェックエラーを処理"""
         self.errors.append(error)
@@ -201,7 +205,7 @@ class CIErrorHandler:
             self._handle_quality_check_details(check_type, error.details)
 
     def _handle_quality_check_details(
-        self, check_type: str, details: Dict[str, Any]
+        self, check_type: str, details: dict[str, Any]
     ) -> None:
         """品質チェックの詳細情報を処理"""
         if check_type.lower() == "ruff" and "issues" in details:
@@ -214,15 +218,20 @@ class CIErrorHandler:
 
         elif check_type.lower() == "mypy" and "errors" in details:
             for error_msg in details["errors"][:5]:  # 最初の5つのみ表示
-                if self.enable_github_annotations and self._is_github_actions():
-                    self._output_github_annotation("warning", f"MyPy: {error_msg}")
+                if (
+                    self.enable_github_annotations
+                    and self._is_github_actions()
+                ):
+                    self._output_github_annotation(
+                        "warning", f"MyPy: {error_msg}"
+                    )
 
         elif check_type.lower() == "tests" and "failed_tests" in details:
             for test in details["failed_tests"][:5]:  # 最初の5つのみ表示
                 if self.enable_github_annotations and self._is_github_actions():
                     self._output_github_annotation("error", f"Test failed: {test}")
 
-    def create_comprehensive_error_report(self) -> Dict[str, Any]:
+    def create_comprehensive_error_report(self) -> dict[str, Any]:
         """包括的なエラーレポートを作成"""
         report = {
             "timestamp": datetime.now().isoformat(),
@@ -284,8 +293,10 @@ class CIErrorHandler:
             "",
             f"**実行時刻:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
             f"**リポジトリ:** {self.ci_info.get('github_repository', 'unknown')}",
-            f"**ブランチ:** {self.system_info.get('git_info', {}).get('branch', 'unknown')}",
-            f"**コミット:** {self.system_info.get('git_info', {}).get('commit', 'unknown')[:8]}",
+            f"**ブランチ:** "
+            f"{self.system_info.get('git_info', {}).get('branch', 'unknown')}",
+            f"**コミット:** "
+            f"{self.system_info.get('git_info', {}).get('commit', 'unknown')[:8]}",
             "",
             "### エラー詳細:",
             "",

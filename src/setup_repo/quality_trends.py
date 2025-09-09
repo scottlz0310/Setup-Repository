@@ -8,7 +8,7 @@ import json
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 from .quality_logger import QualityLogger, get_quality_logger
 from .quality_metrics import QualityMetrics
@@ -56,8 +56,8 @@ class TrendAnalysis:
     average_coverage: float
     best_quality_score: float
     worst_quality_score: float
-    recent_issues: List[str]
-    recommendations: List[str]
+    recent_issues: list[str]
+    recommendations: list[str]
 
 
 class QualityTrendManager:
@@ -69,7 +69,7 @@ class QualityTrendManager:
         self.trend_file = trend_file or Path("quality-trends/trend-data.json")
         self.logger = logger or get_quality_logger("setup_repo.quality_trends")
 
-    def load_trend_data(self) -> List[TrendDataPoint]:
+    def load_trend_data(self) -> list[TrendDataPoint]:
         """トレンドデータを読み込み"""
         if not self.trend_file.exists():
             return []
@@ -83,7 +83,7 @@ class QualityTrendManager:
             self.logger.error(f"トレンドデータ読み込みエラー: {e}")
             return []
 
-    def save_trend_data(self, data_points: List[TrendDataPoint]) -> None:
+    def save_trend_data(self, data_points: list[TrendDataPoint]) -> None:
         """トレンドデータを保存"""
         self.trend_file.parent.mkdir(parents=True, exist_ok=True)
 
@@ -189,7 +189,7 @@ class QualityTrendManager:
             recommendations=recommendations,
         )
 
-    def _analyze_trend_direction(self, values: List[float]) -> str:
+    def _analyze_trend_direction(self, values: list[float]) -> str:
         """値の傾向を分析"""
         if len(values) < 3:
             return "stable"
@@ -212,9 +212,9 @@ class QualityTrendManager:
         else:
             return "stable"
 
-    def _identify_recent_issues(self, data_points: List[TrendDataPoint]) -> List[str]:
+    def _identify_recent_issues(self, data_points: list[TrendDataPoint]) -> list[str]:
         """最近の問題を特定"""
-        issues = []
+        issues: list[str] = []
 
         if not data_points:
             return issues
@@ -244,10 +244,10 @@ class QualityTrendManager:
         return issues
 
     def _generate_recommendations(
-        self, data_points: List[TrendDataPoint], avg_quality: float, avg_coverage: float
-    ) -> List[str]:
+        self, data_points: list[TrendDataPoint], avg_quality: float, avg_coverage: float
+    ) -> list[str]:
         """推奨事項を生成"""
-        recommendations = []
+        recommendations: list[str] = []
 
         if not data_points:
             return recommendations
@@ -305,7 +305,7 @@ class QualityTrendManager:
         return output_file
 
     def _generate_html_content(
-        self, data_points: List[TrendDataPoint], analysis: TrendAnalysis
+        self, data_points: list[TrendDataPoint], analysis: TrendAnalysis
     ) -> str:
         """HTML内容を生成"""
         # データをJavaScript用に変換
@@ -406,14 +406,22 @@ class QualityTrendManager:
                 <div class="metric-value">{analysis.average_quality_score:.1f}%</div>
                 <div class="metric-label">平均品質スコア</div>
                 <div class="trend-indicator trend-{analysis.quality_score_trend}">
-                    {{'向上中' if analysis.quality_score_trend == 'improving' else '低下中' if analysis.quality_score_trend == 'declining' else '安定'}}
+                    {{
+                        '向上中' if analysis.quality_score_trend == 'improving'
+                        else '低下中' if analysis.quality_score_trend == 'declining'
+                        else '安定'
+                    }}
                 </div>
             </div>
             <div class="metric-card">
                 <div class="metric-value">{analysis.average_coverage:.1f}%</div>
                 <div class="metric-label">平均カバレッジ</div>
                 <div class="trend-indicator trend-{analysis.coverage_trend}">
-                    {{'向上中' if analysis.coverage_trend == 'improving' else '低下中' if analysis.coverage_trend == 'declining' else '安定'}}
+                    {{
+                        '向上中' if analysis.coverage_trend == 'improving'
+                        else '低下中' if analysis.coverage_trend == 'declining'
+                        else '安定'
+                    }}
                 </div>
             </div>
             <div class="metric-card">
@@ -442,7 +450,14 @@ class QualityTrendManager:
             f'''
         <div class="issues-section">
             <h3>🚨 最近の問題</h3>
-            {"".join(f'<div class="issue-item">{issue}</div>' for issue in analysis.recent_issues) if analysis.recent_issues else "<p>問題は検出されていません。</p>"}
+            {
+                "".join(
+                    f'<div class="issue-item">{issue}</div>'
+                    for issue in analysis.recent_issues
+                )
+                if analysis.recent_issues
+                else "<p>問題は検出されていません。</p>"
+            }
         </div>
         '''
             if analysis.recent_issues

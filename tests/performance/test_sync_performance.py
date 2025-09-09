@@ -7,7 +7,7 @@
 
 import time
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -38,7 +38,7 @@ class PerformanceMetrics:
         if self.execution_time > 0:
             self.operations_per_second = repo_count / self.execution_time
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """測定結果を辞書形式で返す"""
         return {
             "execution_time": self.execution_time,
@@ -48,7 +48,7 @@ class PerformanceMetrics:
         }
 
 
-def generate_mock_repositories(count: int) -> List[Dict[str, Any]]:
+def generate_mock_repositories(count: int) -> list[dict[str, Any]]:
     """テスト用のモックリポジトリデータを生成"""
     repositories = []
     for i in range(count):
@@ -68,7 +68,7 @@ def generate_mock_repositories(count: int) -> List[Dict[str, Any]]:
 
 
 @pytest.fixture
-def performance_config(temp_dir: Path) -> Dict[str, Any]:
+def performance_config(temp_dir: Path) -> dict[str, Any]:
     """パフォーマンステスト用の設定"""
     return {
         "github_token": "test_token_performance",
@@ -91,7 +91,7 @@ class TestSyncPerformance:
     """同期処理のパフォーマンステスト"""
 
     def test_small_repository_set_performance(
-        self, performance_config: Dict[str, Any]
+        self, performance_config: dict[str, Any]
     ) -> None:
         """小規模リポジトリセット（10個）のパフォーマンステスト"""
         # 10個のリポジトリを生成
@@ -113,17 +113,20 @@ class TestSyncPerformance:
 
         # パフォーマンス要件の検証
         assert result.success, f"同期処理が失敗しました: {result.errors}"
-        assert metrics.execution_time < 5.0, (
-            f"実行時間が要件を超過: {metrics.execution_time:.2f}秒 > 5.0秒"
-        )
-        assert metrics.operations_per_second > 2.0, (
-            f"処理速度が要件未満: {metrics.operations_per_second:.2f} ops/sec < 2.0 ops/sec"
+        assert (
+            metrics.execution_time < 5.0
+        ), f"実行時間が要件を超過: {metrics.execution_time:.2f}秒 > 5.0秒"
+        assert (
+            metrics.operations_per_second > 2.0
+        ), (
+            f"処理速度が要件未満: "
+            f"{metrics.operations_per_second:.2f} ops/sec < 2.0 ops/sec"
         )
 
         print(f"小規模セット パフォーマンス結果: {metrics.to_dict()}")
 
     def test_medium_repository_set_performance(
-        self, performance_config: Dict[str, Any]
+        self, performance_config: dict[str, Any]
     ) -> None:
         """中規模リポジトリセット（50個）のパフォーマンステスト"""
         # 50個のリポジトリを生成
@@ -145,11 +148,14 @@ class TestSyncPerformance:
 
         # パフォーマンス要件の検証
         assert result.success, f"同期処理が失敗しました: {result.errors}"
-        assert metrics.execution_time < 20.0, (
-            f"実行時間が要件を超過: {metrics.execution_time:.2f}秒 > 20.0秒"
-        )
-        assert metrics.operations_per_second > 2.5, (
-            f"処理速度が要件未満: {metrics.operations_per_second:.2f} ops/sec < 2.5 ops/sec"
+        assert (
+            metrics.execution_time < 20.0
+        ), f"実行時間が要件を超過: {metrics.execution_time:.2f}秒 > 20.0秒"
+        assert (
+            metrics.operations_per_second > 2.5
+        ), (
+            f"処理速度が要件未満: "
+            f"{metrics.operations_per_second:.2f} ops/sec < 2.5 ops/sec"
         )
 
         print(f"中規模セット パフォーマンス結果: {metrics.to_dict()}")
@@ -170,18 +176,24 @@ class TestGitOperationsPerformance:
 
         # Git操作をシミュレート
         for repo in repositories:
-            repo_path = temp_dir / "repos" / repo["name"]
+            temp_dir / "repos" / repo["name"]
             # Git操作のシミュレーション（実際の処理時間をシミュレート）
             time.sleep(0.01)  # 10ms の処理時間をシミュレート
 
         metrics.end_measurement(len(repositories))
 
         # パフォーマンス要件の検証
-        assert metrics.execution_time < 10.0, (
-            f"Git操作シミュレーション時間が要件を超過: {metrics.execution_time:.2f}秒 > 10.0秒"
+        assert (
+            metrics.execution_time < 10.0
+        ), (
+            f"Git操作シミュレーション時間が要件を超過: "
+            f"{metrics.execution_time:.2f}秒 > 10.0秒"
         )
-        assert metrics.operations_per_second > 3.0, (
-            f"Git操作速度が要件未満: {metrics.operations_per_second:.2f} ops/sec < 3.0 ops/sec"
+        assert (
+            metrics.operations_per_second > 3.0
+        ), (
+            f"Git操作速度が要件未満: "
+            f"{metrics.operations_per_second:.2f} ops/sec < 3.0 ops/sec"
         )
 
         print(f"Git操作パフォーマンス結果: {metrics.to_dict()}")

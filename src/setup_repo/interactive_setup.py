@@ -103,7 +103,8 @@ class SetupWizard:
         python_version = sys.version_info
         if python_version < (3, 9):
             self.errors.append(
-                f"Python 3.9以上が必要です (現在: {python_version[0]}.{python_version[1]})"
+                f"Python 3.9以上が必要です "
+                f"(現在: {python_version[0]}.{python_version[1]})"
             )
         else:
             print(
@@ -206,9 +207,8 @@ class SetupWizard:
 
         # uv チェック
         uv_installed = self._check_tool("uv")
-        if not uv_installed:
-            if not self._install_uv():
-                return False
+        if not uv_installed and not self._install_uv():
+            return False
 
         # GitHub CLI チェック（オプション）
         gh_installed = self._check_tool("gh")
@@ -230,9 +230,9 @@ class SetupWizard:
             result = subprocess.run(
                 [tool, "--version"], capture_output=True, text=True, check=True
             )
-            print(
-                f"✅ {tool}: {result.stdout.strip().split()[0]} {result.stdout.strip().split()[1] if len(result.stdout.strip().split()) > 1 else ''}"
-            )
+            parts = result.stdout.strip().split()
+            version = f"{parts[0]} {parts[1] if len(parts) > 1 else ''}"
+            print(f"✅ {tool}: {version}")
             return True
         except (subprocess.CalledProcessError, FileNotFoundError):
             return False
@@ -393,9 +393,11 @@ class SetupWizard:
             print("\\n📋 設定内容:")
             print(f"   👤 GitHubユーザー: {full_config['owner']}")
             print(f"   📁 ワークスペース: {full_config['dest']}")
-            print(
-                f"   🔑 トークン: {'設定済み' if full_config['github_token'] != 'YOUR_GITHUB_TOKEN' else '未設定'}"
+            token_status = (
+                '設定済み' if full_config['github_token'] != 'YOUR_GITHUB_TOKEN'
+                else '未設定'
             )
+            print(f"   🔑 トークン: {token_status}")
 
         except OSError as e:
             print(f"❌ 設定ファイルの保存に失敗: {e}")

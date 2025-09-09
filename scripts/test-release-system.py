@@ -9,7 +9,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 
 class ReleaseSystemTester:
@@ -17,9 +17,9 @@ class ReleaseSystemTester:
 
     def __init__(self):
         self.root_path = Path.cwd()
-        self.test_results: List[Dict[str, Any]] = []
+        self.test_results: list[dict[str, Any]] = []
 
-    def run_command(self, command: List[str], cwd: Path = None) -> Dict[str, Any]:
+    def run_command(self, command: list[str], cwd: Path = None) -> dict[str, Any]:
         """コマンドを実行して結果を返す"""
         try:
             result = subprocess.run(
@@ -97,7 +97,8 @@ class ReleaseSystemTester:
 
             if new_version != original_version:
                 print(
-                    f"✅ バージョン自動インクリメント: 成功 ({original_version} → {new_version})"
+                        "✅ バージョン自動インクリメント: 成功 ("
+                        f"{original_version} → {new_version})"
                 )
 
                 # 元のバージョンに戻す
@@ -114,7 +115,8 @@ class ReleaseSystemTester:
 
                 if restore_result["success"]:
                     print(
-                        f"🔄 バージョンを元に戻しました: {new_version} → {original_version}"
+                        "🔄 バージョンを元に戻しました: "
+                        f"{new_version} → {original_version}"
                     )
                 else:
                     print(f"⚠️ バージョンの復元に失敗: {restore_result['stderr']}")
@@ -169,10 +171,8 @@ def test_changelog_update():
 ## [{test_version}] (テスト版) - {today}
 
 ### ✨ 追加
-- テスト用の機能追加
 
 ### 🐛 修正
-- テスト用のバグ修正
 
 """
 
@@ -180,7 +180,12 @@ def test_changelog_update():
         content = changelog_path.read_text(encoding="utf-8")
 
         # 既存のテストエントリを削除
-        content = re.sub(r'\\n## \\[1\\.0\\.0-test\\].*?(?=\\n## \\[|$)', '', content, flags=re.DOTALL)
+                content = re.sub(
+                    r'\\n## \\[1\\.0\\.0-test\\].*?(?=\\n## \\[|$)',
+                    '',
+                    content,
+                    flags=re.DOTALL,
+                )
 
         # 新しいエントリを挿入
         lines = content.split('\\n')
@@ -364,10 +369,8 @@ if __name__ == "__main__":
         total_tests = len(self.test_results)
         passed_tests = sum(1 for result in self.test_results if result["success"])
 
-        print(f"実行テスト数: {total_tests}")
         print(f"成功: {passed_tests}")
         print(f"失敗: {total_tests - passed_tests}")
-        print(f"成功率: {passed_tests / total_tests * 100:.1f}%")
 
         print("\n📋 詳細結果:")
         for result in self.test_results:

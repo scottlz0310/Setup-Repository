@@ -6,7 +6,7 @@
 
 import json
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import pytest
 
@@ -26,7 +26,7 @@ def test_temp_dir_fixture(temp_dir: Path) -> None:
 
 
 @pytest.mark.unit
-def test_sample_config_fixture(sample_config: Dict[str, Any]) -> None:
+def test_sample_config_fixture(sample_config: dict[str, Any]) -> None:
     """sample_configフィクスチャの動作確認"""
     assert isinstance(sample_config, dict)
     assert "github_token" in sample_config
@@ -40,7 +40,7 @@ def test_sample_config_fixture(sample_config: Dict[str, Any]) -> None:
 
 
 @pytest.mark.unit
-def test_config_file_fixture(config_file: Path, sample_config: Dict[str, Any]) -> None:
+def test_config_file_fixture(config_file: Path, sample_config: dict[str, Any]) -> None:
     """config_fileフィクスチャの動作確認"""
     assert config_file.exists()
     assert config_file.is_file()
@@ -119,7 +119,7 @@ def test_fixture_files_exist() -> None:
 
 
 @pytest.mark.unit
-def test_custom_assertions(temp_dir: Path, sample_config: Dict[str, Any]) -> None:
+def test_custom_assertions(temp_dir: Path, sample_config: dict[str, Any]) -> None:
     """カスタムアサーション関数のテスト"""
     from tests.conftest import (
         assert_config_valid,
@@ -146,7 +146,7 @@ def test_custom_assertions(temp_dir: Path, sample_config: Dict[str, Any]) -> Non
 
 @pytest.mark.integration
 def test_test_environment_integration(
-    temp_dir: Path, sample_config: Dict[str, Any], mock_github_api, mock_git_operations
+    temp_dir: Path, sample_config: dict[str, Any], mock_github_api, mock_git_operations
 ) -> None:
     """複数のフィクスチャを組み合わせた統合テスト"""
     # 設定ファイルを作成

@@ -3,10 +3,9 @@
 
 import subprocess
 from pathlib import Path
-from typing import List, Tuple
 
 
-def check_unpushed_changes(repo_path: Path) -> Tuple[bool, List[str]]:
+def check_unpushed_changes(repo_path: Path) -> tuple[bool, list[str]]:
     """未pushの変更をチェック"""
     if not (repo_path / ".git").exists():
         return False, []
@@ -52,7 +51,7 @@ def check_unpushed_changes(repo_path: Path) -> Tuple[bool, List[str]]:
     return len(issues) > 0, issues
 
 
-def prompt_user_action(repo_name: str, issues: List[str]) -> str:
+def prompt_user_action(repo_name: str, issues: list[str]) -> str:
     """ユーザーに対処法を選択させる"""
     print(f"\n⚠️  {repo_name} に未保存の変更があります:")
     for issue in issues:

@@ -9,10 +9,10 @@ Pre-commit自動インストールスクリプト
 import subprocess
 import sys
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 
-def run_command(cmd: List[str], cwd: Optional[Path] = None) -> bool:
+def run_command(cmd: list[str], cwd: Optional[Path] = None) -> bool:
     """
     コマンドを実行し、成功/失敗を返す
 

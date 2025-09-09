@@ -36,9 +36,9 @@ def test_package_structure() -> None:
     try:
         import src.setup_repo
 
-        assert hasattr(src.setup_repo, "__path__"), (
-            "setup_repoパッケージが正しく構成されていません"
-        )
+        assert hasattr(
+            src.setup_repo, "__path__"
+        ), "setup_repoパッケージが正しく構成されていません"
     except ImportError as e:
         pytest.fail(f"setup_repoパッケージのインポートに失敗しました: {e}")
 

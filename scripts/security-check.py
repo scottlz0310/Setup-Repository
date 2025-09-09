@@ -14,7 +14,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 
 class SecurityChecker:
@@ -25,7 +25,7 @@ class SecurityChecker:
         self.output_dir.mkdir(exist_ok=True)
         self.results = {}
 
-    def run_safety_check(self) -> Dict[str, Any]:
+    def run_safety_check(self) -> dict[str, Any]:
         """Safetyによる脆弱性チェック"""
         print("🔍 Safety による既知の脆弱性チェックを実行中...")
 
@@ -87,21 +87,23 @@ class SecurityChecker:
                 return {
                     "status": "warning" if vuln_count > 0 else "success",
                     "vulnerabilities": vuln_count,
-                    "message": f"{vuln_count}件の脆弱性が検出されました"
-                    if vuln_count > 0
-                    else "脆弱性は検出されませんでした",
+                    "message": (
+                        f"{vuln_count}件の脆弱性が検出されました"
+                        if vuln_count > 0
+                        else "脆弱性は検出されませんでした"
+                    ),
                 }
 
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
-    def run_bandit_check(self) -> Dict[str, Any]:
+    def run_bandit_check(self) -> dict[str, Any]:
         """Banditによるセキュリティ分析"""
         print("🔍 Bandit によるセキュリティ分析を実行中...")
 
         try:
             # JSON形式でレポート生成
-            result = subprocess.run(
+            subprocess.run(
                 [
                     "uv",
                     "run",
@@ -150,11 +152,11 @@ class SecurityChecker:
                     ]
 
                     return {
-                        "status": "error"
-                        if high_issues
-                        else "warning"
-                        if medium_issues
-                        else "success",
+                        "status": (
+                            "error"
+                            if high_issues
+                            else "warning" if medium_issues else "success"
+                        ),
                         "high_issues": len(high_issues),
                         "medium_issues": len(medium_issues),
                         "total_issues": len(results),
@@ -166,7 +168,7 @@ class SecurityChecker:
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
-    def run_semgrep_check(self) -> Dict[str, Any]:
+    def run_semgrep_check(self) -> dict[str, Any]:
         """Semgrepによるセキュリティ分析（オプション）"""
         print("🔍 Semgrep によるセキュリティ分析を実行中...")
 
@@ -185,11 +187,14 @@ class SecurityChecker:
                     "errors": 0,
                     "warnings": 0,
                     "total_issues": 0,
-                    "message": "Semgrepがインストールされていません（LGPLライセンスのため除外）",
+                    "message": (
+                        "Semgrepがインストールされていません"
+                        "（LGPLライセンスのため除外）"
+                    ),
                 }
 
             # JSON形式でレポート生成
-            result = subprocess.run(
+            subprocess.run(
                 [
                     "uv",
                     "run",
@@ -228,11 +233,9 @@ class SecurityChecker:
                     ]
 
                     return {
-                        "status": "error"
-                        if errors
-                        else "warning"
-                        if warnings
-                        else "success",
+                        "status": (
+                            "error" if errors else "warning" if warnings else "success"
+                        ),
                         "errors": len(errors),
                         "warnings": len(warnings),
                         "total_issues": len(results),
@@ -244,13 +247,13 @@ class SecurityChecker:
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
-    def run_license_check(self) -> Dict[str, Any]:
+    def run_license_check(self) -> dict[str, Any]:
         """ライセンス監査"""
         print("🔍 ライセンス監査を実行中...")
 
         try:
             # JSON形式でレポート生成
-            result = subprocess.run(
+            subprocess.run(
                 [
                     "uv",
                     "run",
@@ -297,9 +300,7 @@ class SecurityChecker:
                     status = (
                         "error"
                         if forbidden_packages
-                        else "warning"
-                        if unknown_packages
-                        else "success"
+                        else "warning" if unknown_packages else "success"
                     )
 
                     return {
@@ -360,7 +361,9 @@ class SecurityChecker:
                 unknown = result.get("unknown_packages", 0)
                 total = result.get("total_packages", 0)
                 print(
-                    f"   総パッケージ: {total}件, 禁止ライセンス: {forbidden}件, 不明: {unknown}件"
+                    "   総パッケージ: "
+                    f"{total}件, 禁止ライセンス: {forbidden}件, "
+                    f"不明: {unknown}件"
                 )
 
         print("\n" + "=" * 60)

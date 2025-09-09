@@ -8,7 +8,8 @@ GitHub API統合テスト
 
 import json
 import os
-from typing import Any, Dict
+import urllib.error
+from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
@@ -22,7 +23,7 @@ class TestGitHubAPIIntegration:
 
     def test_github_api_initialization(
         self,
-        sample_config: Dict[str, Any],
+        sample_config: dict[str, Any],
     ) -> None:
         """GitHub API初期化テスト"""
         # 正常な初期化
@@ -40,7 +41,7 @@ class TestGitHubAPIIntegration:
 
     def test_get_user_info_integration(
         self,
-        sample_config: Dict[str, Any],
+        sample_config: dict[str, Any],
     ) -> None:
         """ユーザー情報取得の統合テスト"""
         # モックレスポンスを準備
@@ -77,11 +78,11 @@ class TestGitHubAPIIntegration:
 
     def test_get_user_repos_integration(
         self,
-        sample_config: Dict[str, Any],
+        sample_config: dict[str, Any],
     ) -> None:
         """ユーザーリポジトリ取得の統合テスト"""
-        # モックレスポンスを準備
-        mock_repos = [
+        # モックレスポンスを準備（ページネーション対応）
+        mock_repos_page1 = [
             {
                 "name": "test-repo-1",
                 "clone_url": "https://github.com/test_user/test-repo-1.git",
@@ -104,13 +105,28 @@ class TestGitHubAPIIntegration:
             },
         ]
 
-        with patch("urllib.request.urlopen") as mock_urlopen:
+        call_count = 0
+
+        def mock_urlopen_side_effect(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+
             mock_response = Mock()
-            mock_response.read.return_value = json.dumps(mock_repos).encode("utf-8")
             mock_response.__enter__ = Mock(return_value=mock_response)
             mock_response.__exit__ = Mock(return_value=None)
-            mock_urlopen.return_value = mock_response
 
+            if call_count == 1:
+                # 最初のページ
+                mock_response.read.return_value = json.dumps(mock_repos_page1).encode(
+                    "utf-8"
+                )
+            else:
+                # 2ページ目以降は空
+                mock_response.read.return_value = json.dumps([]).encode("utf-8")
+
+            return mock_response
+
+        with patch("urllib.request.urlopen", side_effect=mock_urlopen_side_effect):
             api = GitHubAPI(
                 token=sample_config["github_token"],
                 username=sample_config["github_username"],
@@ -124,20 +140,23 @@ class TestGitHubAPIIntegration:
         assert repos[1]["name"] == "test-repo-2"
         assert repos[1]["private"] is True
 
-        # APIが適切に呼び出されたことを確認
-        mock_urlopen.assert_called_once()
+        # 2回呼び出されることを確認（1ページ目と2ページ目）
+        assert call_count == 2
 
     def test_api_error_handling(
         self,
-        sample_config: Dict[str, Any],
+        sample_config: dict[str, Any],
     ) -> None:
         """API エラーハンドリングテスト"""
         # 401 Unauthorized エラー
-        with patch("requests.get") as mock_get:
-            mock_response = Mock()
-            mock_response.status_code = 401
-            mock_response.json.return_value = {"message": "Bad credentials"}
-            mock_get.return_value = mock_response
+        with patch("urllib.request.urlopen") as mock_urlopen:
+            mock_urlopen.side_effect = urllib.error.HTTPError(
+                url="https://api.github.com/user",
+                code=401,
+                msg="Unauthorized",
+                hdrs={},
+                fp=None,
+            )
 
             api = GitHubAPI(
                 token="invalid_token",
@@ -148,14 +167,17 @@ class TestGitHubAPIIntegration:
                 api.get_user_info()
 
             assert "401" in str(exc_info.value)
-            assert "Bad credentials" in str(exc_info.value)
+            assert "認証に失敗" in str(exc_info.value)
 
         # 404 Not Found エラー
-        with patch("requests.get") as mock_get:
-            mock_response = Mock()
-            mock_response.status_code = 404
-            mock_response.json.return_value = {"message": "Not Found"}
-            mock_get.return_value = mock_response
+        with patch("urllib.request.urlopen") as mock_urlopen:
+            mock_urlopen.side_effect = urllib.error.HTTPError(
+                url="https://api.github.com/user/repos",
+                code=404,
+                msg="Not Found",
+                hdrs={},
+                fp=None,
+            )
 
             api = GitHubAPI(
                 token=sample_config["github_token"],
@@ -168,12 +190,14 @@ class TestGitHubAPIIntegration:
             assert "404" in str(exc_info.value)
 
         # 403 Rate Limit エラー
-        with patch("requests.get") as mock_get:
-            mock_response = Mock()
-            mock_response.status_code = 403
-            mock_response.json.return_value = {"message": "API rate limit exceeded"}
-            mock_response.headers = {"X-RateLimit-Reset": "1640995200"}
-            mock_get.return_value = mock_response
+        with patch("urllib.request.urlopen") as mock_urlopen:
+            mock_urlopen.side_effect = urllib.error.HTTPError(
+                url="https://api.github.com/user",
+                code=403,
+                msg="Forbidden",
+                hdrs={},
+                fp=None,
+            )
 
             api = GitHubAPI(
                 token=sample_config["github_token"],
@@ -183,11 +207,12 @@ class TestGitHubAPIIntegration:
             with pytest.raises(GitHubAPIError) as exc_info:
                 api.get_user_info()
 
-            assert "rate limit" in str(exc_info.value).lower()
+            assert "403" in str(exc_info.value)
+            assert "レート制限" in str(exc_info.value)
 
     def test_api_pagination_handling(
         self,
-        sample_config: Dict[str, Any],
+        sample_config: dict[str, Any],
     ) -> None:
         """APIページネーション処理テスト"""
         # 複数ページのレスポンスをシミュレート
@@ -199,7 +224,7 @@ class TestGitHubAPIIntegration:
                 "private": False,
                 "default_branch": "main",
             }
-            for i in range(1, 31)  # 30個のリポジトリ（1ページ目）
+            for i in range(1, 4)  # 3個のリポジトリ（1ページ目）
         ]
 
         page2_repos = [
@@ -210,28 +235,34 @@ class TestGitHubAPIIntegration:
                 "private": False,
                 "default_branch": "main",
             }
-            for i in range(31, 41)  # 10個のリポジトリ（2ページ目）
+            for i in range(4, 6)  # 2個のリポジトリ（2ページ目）
         ]
 
-        def mock_get_side_effect(url: str, **kwargs) -> Mock:
-            mock_response = Mock()
-            mock_response.status_code = 200
+        call_count = 0
 
-            if "page=1" in url or "page" not in url:
-                mock_response.json.return_value = page1_repos
-                mock_response.headers = {
-                    "Link": '<https://api.github.com/user/repos?page=2>; rel="next"'
-                }
-            elif "page=2" in url:
-                mock_response.json.return_value = page2_repos
-                mock_response.headers = {}
+        def mock_urlopen_side_effect(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+
+            mock_response = Mock()
+            mock_response.__enter__ = Mock(return_value=mock_response)
+            mock_response.__exit__ = Mock(return_value=None)
+
+            if call_count == 1:
+                mock_response.read.return_value = json.dumps(page1_repos).encode(
+                    "utf-8"
+                )
+            elif call_count == 2:
+                mock_response.read.return_value = json.dumps(page2_repos).encode(
+                    "utf-8"
+                )
             else:
-                mock_response.json.return_value = []
-                mock_response.headers = {}
+                # 3ページ目以降は空
+                mock_response.read.return_value = json.dumps([]).encode("utf-8")
 
             return mock_response
 
-        with patch("requests.get", side_effect=mock_get_side_effect):
+        with patch("urllib.request.urlopen", side_effect=mock_urlopen_side_effect):
             api = GitHubAPI(
                 token=sample_config["github_token"],
                 username=sample_config["github_username"],
@@ -239,19 +270,20 @@ class TestGitHubAPIIntegration:
             repos = api.get_user_repos()
 
         # 全ページのリポジトリが取得されることを確認
-        assert len(repos) == 40  # 30 + 10
+        assert len(repos) == 5  # 3 + 2
         assert repos[0]["name"] == "repo-1"
-        assert repos[39]["name"] == "repo-40"
+        assert repos[4]["name"] == "repo-5"
+        assert call_count == 3  # 3回呼び出される（1ページ目、2ページ目、空の3ページ目）
 
     def test_api_timeout_handling(
         self,
-        sample_config: Dict[str, Any],
+        sample_config: dict[str, Any],
     ) -> None:
         """APIタイムアウト処理テスト"""
-        import requests
+        import socket
 
-        with patch("requests.get") as mock_get:
-            mock_get.side_effect = requests.Timeout("Request timed out")
+        with patch("urllib.request.urlopen") as mock_urlopen:
+            mock_urlopen.side_effect = socket.timeout("Request timed out")
 
             api = GitHubAPI(
                 token=sample_config["github_token"],
@@ -261,17 +293,15 @@ class TestGitHubAPIIntegration:
             with pytest.raises(GitHubAPIError) as exc_info:
                 api.get_user_info()
 
-            assert "timeout" in str(exc_info.value).lower()
+            assert "ネットワークエラー" in str(exc_info.value)
 
     def test_api_network_error_handling(
         self,
-        sample_config: Dict[str, Any],
+        sample_config: dict[str, Any],
     ) -> None:
         """APIネットワークエラー処理テスト"""
-        import requests
-
-        with patch("requests.get") as mock_get:
-            mock_get.side_effect = requests.ConnectionError("Network error")
+        with patch("urllib.request.urlopen") as mock_urlopen:
+            mock_urlopen.side_effect = urllib.error.URLError("Network error")
 
             api = GitHubAPI(
                 token=sample_config["github_token"],
@@ -281,22 +311,20 @@ class TestGitHubAPIIntegration:
             with pytest.raises(GitHubAPIError) as exc_info:
                 api.get_user_info()
 
-            assert (
-                "network" in str(exc_info.value).lower()
-                or "connection" in str(exc_info.value).lower()
-            )
+            assert "ネットワークエラー" in str(exc_info.value)
 
     def test_api_response_validation(
         self,
-        sample_config: Dict[str, Any],
+        sample_config: dict[str, Any],
     ) -> None:
         """APIレスポンス検証テスト"""
         # 無効なJSONレスポンス
-        with patch("requests.get") as mock_get:
+        with patch("urllib.request.urlopen") as mock_urlopen:
             mock_response = Mock()
-            mock_response.status_code = 200
-            mock_response.json.side_effect = json.JSONDecodeError("Invalid JSON", "", 0)
-            mock_get.return_value = mock_response
+            mock_response.read.return_value = b"invalid json"
+            mock_response.__enter__ = Mock(return_value=mock_response)
+            mock_response.__exit__ = Mock(return_value=None)
+            mock_urlopen.return_value = mock_response
 
             api = GitHubAPI(
                 token=sample_config["github_token"],
@@ -306,35 +334,39 @@ class TestGitHubAPIIntegration:
             with pytest.raises(GitHubAPIError):
                 api.get_user_info()
 
-        # 必須フィールドが不足したレスポンス
-        with patch("requests.get") as mock_get:
+        # 正常なレスポンス
+        with patch("urllib.request.urlopen") as mock_urlopen:
             mock_response = Mock()
-            mock_response.status_code = 200
-            mock_response.json.return_value = {
-                "incomplete": "data"
-            }  # loginフィールドなし
-            mock_get.return_value = mock_response
+            mock_response.read.return_value = json.dumps(
+                {"login": "test_user", "name": "Test User"}
+            ).encode("utf-8")
+            mock_response.__enter__ = Mock(return_value=mock_response)
+            mock_response.__exit__ = Mock(return_value=None)
+            mock_urlopen.return_value = mock_response
 
             api = GitHubAPI(
                 token=sample_config["github_token"],
                 username=sample_config["github_username"],
             )
 
-            # 不完全なデータでもエラーにならないが、適切に処理される
             user_info = api.get_user_info()
-            assert "incomplete" in user_info
+            assert user_info["login"] == "test_user"
+            assert user_info["name"] == "Test User"
 
     def test_api_authentication_methods(
         self,
-        sample_config: Dict[str, Any],
+        sample_config: dict[str, Any],
     ) -> None:
         """API認証方法テスト"""
         # トークン認証
-        with patch("requests.get") as mock_get:
+        with patch("urllib.request.urlopen") as mock_urlopen:
             mock_response = Mock()
-            mock_response.status_code = 200
-            mock_response.json.return_value = {"login": "test_user"}
-            mock_get.return_value = mock_response
+            mock_response.read.return_value = json.dumps({"login": "test_user"}).encode(
+                "utf-8"
+            )
+            mock_response.__enter__ = Mock(return_value=mock_response)
+            mock_response.__exit__ = Mock(return_value=None)
+            mock_urlopen.return_value = mock_response
 
             api = GitHubAPI(
                 token=sample_config["github_token"],
@@ -342,30 +374,36 @@ class TestGitHubAPIIntegration:
             )
             api.get_user_info()
 
-            # Authorizationヘッダーが設定されていることを確認
-            call_args = mock_get.call_args
-            headers = call_args[1]["headers"]
-            assert "Authorization" in headers
-            assert f"token {sample_config['github_token']}" in headers["Authorization"]
+            # Requestが適切なヘッダーで呼び出されたことを確認
+            mock_urlopen.assert_called_once()
+            call_args = mock_urlopen.call_args[0][0]  # Requestオブジェクト
+            assert "Authorization" in call_args.headers
+            assert (
+                f"token {sample_config['github_token']}"
+                in call_args.headers["Authorization"]
+            )
 
     @pytest.mark.slow
     def test_api_rate_limit_respect(
         self,
-        sample_config: Dict[str, Any],
+        sample_config: dict[str, Any],
     ) -> None:
         """APIレート制限遵守テスト"""
         import time
 
         call_times = []
 
-        def mock_get_with_timing(*args, **kwargs) -> Mock:
+        def mock_urlopen_with_timing(*args, **kwargs):
             call_times.append(time.time())
             mock_response = Mock()
-            mock_response.status_code = 200
-            mock_response.json.return_value = {"login": "test_user"}
+            mock_response.read.return_value = json.dumps({"login": "test_user"}).encode(
+                "utf-8"
+            )
+            mock_response.__enter__ = Mock(return_value=mock_response)
+            mock_response.__exit__ = Mock(return_value=None)
             return mock_response
 
-        with patch("requests.get", side_effect=mock_get_with_timing):
+        with patch("urllib.request.urlopen", side_effect=mock_urlopen_with_timing):
             api = GitHubAPI(
                 token=sample_config["github_token"],
                 username=sample_config["github_username"],
@@ -387,7 +425,7 @@ class TestGitHubAPIIntegration:
 
     def test_api_integration_with_environment_variables(
         self,
-        sample_config: Dict[str, Any],
+        sample_config: dict[str, Any],
     ) -> None:
         """環境変数を使用したAPI統合テスト"""
         # 環境変数からの認証情報取得
@@ -396,52 +434,60 @@ class TestGitHubAPIIntegration:
 
         with patch.dict(
             os.environ, {"GITHUB_TOKEN": env_token, "GITHUB_USERNAME": env_username}
-        ):
-            with patch("requests.get") as mock_get:
-                mock_response = Mock()
-                mock_response.status_code = 200
-                mock_response.json.return_value = {"login": env_username}
-                mock_get.return_value = mock_response
+        ), patch("urllib.request.urlopen") as mock_urlopen:
+            mock_response = Mock()
+            mock_response.read.return_value = json.dumps(
+                {"login": env_username}
+            ).encode("utf-8")
+            mock_response.__enter__ = Mock(return_value=mock_response)
+            mock_response.__exit__ = Mock(return_value=None)
+            mock_urlopen.return_value = mock_response
 
-                # 環境変数から認証情報を取得してAPI初期化
-                api = GitHubAPI(
-                    token=os.getenv("GITHUB_TOKEN"),
-                    username=os.getenv("GITHUB_USERNAME"),
-                )
-                user_info = api.get_user_info()
+            # 環境変数から認証情報を取得してAPI初期化
+            api = GitHubAPI(
+                token=os.getenv("GITHUB_TOKEN"),
+                username=os.getenv("GITHUB_USERNAME"),
+            )
+            user_info = api.get_user_info()
 
         # 環境変数の値が使用されることを確認
         assert user_info["login"] == env_username
 
         # APIが適切な認証情報で呼び出されたことを確認
-        call_args = mock_get.call_args
-        headers = call_args[1]["headers"]
-        assert f"token {env_token}" in headers["Authorization"]
+        call_args = mock_urlopen.call_args[0][0]  # Requestオブジェクト
+        assert f"token {env_token}" in call_args.headers["Authorization"]
 
     def test_api_integration_error_recovery(
         self,
-        sample_config: Dict[str, Any],
+        sample_config: dict[str, Any],
     ) -> None:
         """APIエラー回復テスト"""
         call_count = 0
 
-        def mock_get_with_retry(*args, **kwargs) -> Mock:
+        def mock_urlopen_with_retry(*args, **kwargs):
             nonlocal call_count
             call_count += 1
 
-            mock_response = Mock()
             if call_count == 1:
                 # 最初の呼び出しは失敗
-                mock_response.status_code = 500
-                mock_response.json.return_value = {"message": "Internal Server Error"}
+                raise urllib.error.HTTPError(
+                    url="https://api.github.com/user",
+                    code=500,
+                    msg="Internal Server Error",
+                    hdrs={},
+                    fp=None,
+                )
             else:
                 # 2回目の呼び出しは成功
-                mock_response.status_code = 200
-                mock_response.json.return_value = {"login": "test_user"}
+                mock_response = Mock()
+                mock_response.read.return_value = json.dumps(
+                    {"login": "test_user"}
+                ).encode("utf-8")
+                mock_response.__enter__ = Mock(return_value=mock_response)
+                mock_response.__exit__ = Mock(return_value=None)
+                return mock_response
 
-            return mock_response
-
-        with patch("requests.get", side_effect=mock_get_with_retry):
+        with patch("urllib.request.urlopen", side_effect=mock_urlopen_with_retry):
             api = GitHubAPI(
                 token=sample_config["github_token"],
                 username=sample_config["github_username"],

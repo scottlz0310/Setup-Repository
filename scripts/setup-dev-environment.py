@@ -14,10 +14,9 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import List
 
 
-def run_command(cmd: List[str], check: bool = True) -> subprocess.CompletedProcess:
+def run_command(cmd: list[str], check: bool = True) -> subprocess.CompletedProcess:
     """コマンドを実行する"""
     print(f"実行中: {' '.join(cmd)}")
     try:
@@ -75,7 +74,8 @@ def setup_precommit() -> bool:
             print("✅ Pre-commitフックのセットアップが完了しました")
         else:
             print(
-                "⚠️ Pre-commitフックはセットアップされましたが、一部のチェックで問題が見つかりました"
+                "⚠️ Pre-commitフックはセットアップされましたが、"
+                "一部のチェックで問題が見つかりました"
             )
             print("これは正常です。コードを修正してから再度コミットしてください。")
 
@@ -96,10 +96,7 @@ def setup_vscode_settings() -> bool:
             # WSLかどうかチェック
             try:
                 with open("/proc/version") as f:
-                    if "microsoft" in f.read().lower():
-                        template_dir = "wsl"
-                    else:
-                        template_dir = "linux"
+                    template_dir = "wsl" if "microsoft" in f.read().lower() else "linux"
             except FileNotFoundError:
                 template_dir = "linux"
         elif system == "windows":

@@ -10,7 +10,7 @@ import os
 import tempfile
 from collections.abc import Generator
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
@@ -32,7 +32,7 @@ def temp_config_dir(temp_dir: Path) -> Path:
 
 
 @pytest.fixture
-def sample_config() -> Dict[str, Any]:
+def sample_config() -> dict[str, Any]:
     """サンプル設定データを提供するフィクスチャ"""
     return {
         "github_token": "test_token_12345",
@@ -47,7 +47,7 @@ def sample_config() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def config_file(temp_config_dir: Path, sample_config: Dict[str, Any]) -> Path:
+def config_file(temp_config_dir: Path, sample_config: dict[str, Any]) -> Path:
     """一時的な設定ファイルを作成するフィクスチャ"""
     config_file = temp_config_dir / "config.local.json"
     with open(config_file, "w", encoding="utf-8") as f:
@@ -64,14 +64,18 @@ def mock_github_api() -> Mock:
     mock.get_user_repos.return_value = [
         {
             "name": "test-repo-1",
+            "full_name": "test_user/test-repo-1",
             "clone_url": "https://github.com/test_user/test-repo-1.git",
+            "ssh_url": "git@github.com:test_user/test-repo-1.git",
             "description": "テストリポジトリ1",
             "private": False,
             "default_branch": "main",
         },
         {
             "name": "test-repo-2",
+            "full_name": "test_user/test-repo-2",
             "clone_url": "https://github.com/test_user/test-repo-2.git",
+            "ssh_url": "git@github.com:test_user/test-repo-2.git",
             "description": "テストリポジトリ2",
             "private": True,
             "default_branch": "master",
@@ -193,7 +197,7 @@ def setup_test_environment() -> Generator[None, None, None]:
 
 
 # カスタムアサーション関数
-def assert_config_valid(config: Dict[str, Any]) -> None:
+def assert_config_valid(config: dict[str, Any]) -> None:
     """設定データの妥当性をチェックするアサーション関数"""
     required_keys = ["github_token", "github_username", "clone_destination"]
 
@@ -211,13 +215,13 @@ def assert_file_exists_with_content(
 
     if expected_content is not None:
         actual_content = file_path.read_text(encoding="utf-8")
-        assert expected_content in actual_content, (
-            "期待する内容がファイルに含まれていません"
-        )
+        assert (
+            expected_content in actual_content
+        ), "期待する内容がファイルに含まれていません"
 
 
 def assert_directory_structure(
-    base_dir: Path, expected_structure: Dict[str, Any]
+    base_dir: Path, expected_structure: dict[str, Any]
 ) -> None:
     """ディレクトリ構造をチェックするアサーション関数"""
     for name, content in expected_structure.items():

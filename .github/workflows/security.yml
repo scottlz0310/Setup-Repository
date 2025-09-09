@@ -35,6 +35,10 @@ jobs:
   security-scan:
     name: Security Vulnerability Scan
     runs-on: ubuntu-latest
+    # Safetyの有償/拡張DBを利用する場合はGitHub Secretsに SAFETY_API_KEY を登録し、ここで渡す
+    # Settings > Secrets and variables > Actions > New repository secret で作成
+    env:
+      SAFETY_API_KEY: ${{ secrets.SAFETY_API_KEY }}
 
     steps:
     - name: Checkout code
@@ -62,6 +66,11 @@ jobs:
     - name: Run Safety check for known vulnerabilities
       run: |
         echo "=== Safety Check ==="
+        if [ -n "${SAFETY_API_KEY}" ]; then
+          echo "Safety API Key detected (値はマスクされます)"
+        else
+          echo "Safety API Key not set (無料/公開DBモード)"
+        fi
         uv run safety scan --output json --save-as safety-report.json || true
         uv run safety scan --output screen || true
 

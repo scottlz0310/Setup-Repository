@@ -4,7 +4,6 @@ import os
 import platform
 import subprocess
 from dataclasses import dataclass
-from typing import Dict, List
 
 
 @dataclass
@@ -13,7 +12,7 @@ class PlatformInfo:
 
     name: str
     display_name: str
-    package_managers: List[str]
+    package_managers: list[str]
     shell: str
     python_cmd: str
 
@@ -65,7 +64,7 @@ def check_package_manager(manager: str) -> bool:
         return False
 
 
-def get_available_package_managers(platform_info: PlatformInfo) -> List[str]:
+def get_available_package_managers(platform_info: PlatformInfo) -> list[str]:
     """利用可能なパッケージマネージャーを取得"""
     available = []
     for manager in platform_info.package_managers:
@@ -74,7 +73,7 @@ def get_available_package_managers(platform_info: PlatformInfo) -> List[str]:
     return available
 
 
-def get_install_commands(platform_info: PlatformInfo) -> Dict[str, List[str]]:
+def get_install_commands(platform_info: PlatformInfo) -> dict[str, list[str]]:
     """プラットフォーム別のインストールコマンドを取得"""
     commands = {
         "windows": {

@@ -4,7 +4,7 @@ import sys
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Optional
 
 from .git_operations import choose_clone_url, sync_repository_with_retries
 from .github_api import get_repositories
@@ -25,8 +25,8 @@ class SyncResult:
     """同期結果を管理するデータクラス"""
 
     success: bool
-    synced_repos: List[str]
-    errors: List[Exception]
+    synced_repos: list[str]
+    errors: list[Exception]
     timestamp: Optional[datetime] = None
 
     def __post_init__(self):
@@ -34,10 +34,10 @@ class SyncResult:
             self.timestamp = datetime.now()
 
 
-def sync_repositories(config: Dict, dry_run: bool = False) -> SyncResult:
+def sync_repositories(config: dict, dry_run: bool = False) -> SyncResult:
     """リポジトリ同期のメイン処理"""
     synced_repos = []
-    errors = []
+    errors: list[Exception] = []
     owner = config.get("owner") or config.get("github_username")
     dest = config.get("dest") or config.get("clone_destination")
     dry_run = dry_run or config.get("dry_run", False)
@@ -50,9 +50,10 @@ def sync_repositories(config: Dict, dry_run: bool = False) -> SyncResult:
     print(f"   📱 プラットフォーム: {platform}")
     print(f"   👤 オーナー: {owner or '❌ 検出されませんでした'}")
     print(f"   📁 保存先: {dest}")
-    print(
-        f"   🔑 GitHubトークン: {'✅ 検出されました' if config.get('github_token') else '❌ 見つかりません'}"
+    token_status = (
+        "✅ 検出されました" if config.get("github_token") else "❌ 見つかりません"
     )
+    print(f"   🔑 GitHubトークン: {token_status}")
 
     if not owner:
         error_msg = "GitHubオーナーが検出されませんでした"

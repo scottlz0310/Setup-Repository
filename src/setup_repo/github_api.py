@@ -4,7 +4,7 @@
 import json
 import urllib.error
 import urllib.request
-from typing import Dict, List, Optional
+from typing import Optional
 
 
 class GitHubAPIError(Exception):
@@ -31,7 +31,7 @@ class GitHubAPI:
             "Accept": "application/vnd.github.v3+json",
         }
 
-    def get_user_info(self) -> Dict:
+    def get_user_info(self) -> dict:
         """認証されたユーザーの情報を取得"""
         try:
             req = urllib.request.Request(
@@ -51,7 +51,7 @@ class GitHubAPI:
         except Exception as e:
             raise GitHubAPIError(f"ネットワークエラー: {e}") from e
 
-    def get_user_repos(self) -> List[Dict]:
+    def get_user_repos(self) -> list[dict]:
         """ユーザーのリポジトリ一覧を取得"""
         repos = []
         page = 1
@@ -83,13 +83,14 @@ class GitHubAPI:
         return repos
 
 
-def get_repositories(owner: str, token: Optional[str] = None) -> List[Dict]:
+def get_repositories(owner: str, token: Optional[str] = None) -> list[dict]:
     """GitHub APIからリポジトリ一覧を取得（プライベートリポジトリ対応）"""
     headers = {"User-Agent": "repo-sync/1.0"}
 
     if not token:
         print(
-            "⚠️  GitHubトークンが設定されていません。プライベートリポジトリは取得できません。"
+            "⚠️  GitHubトークンが設定されていません。"
+            "プライベートリポジトリは取得できません。"
         )
         url = f"https://api.github.com/users/{owner}/repos?per_page=100"
         print(f"🌍 '{owner}' のパブリックリポジトリのみ取得中...")
@@ -109,7 +110,8 @@ def get_repositories(owner: str, token: Optional[str] = None) -> List[Dict]:
             url = f"https://api.github.com/users/{owner}/repos?per_page=100"
             if auth_user:
                 print(
-                    f"🔍 認証ユーザー '{auth_user}' で '{owner}' のパブリックリポジトリを取得中..."
+                    f"🔍 認証ユーザー '{auth_user}' で '{owner}' の"
+                    "パブリックリポジトリを取得中..."
                 )
 
     repos = []

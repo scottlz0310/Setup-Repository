@@ -9,7 +9,7 @@
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -24,7 +24,7 @@ class TestIntegrationSimplified:
 
     def test_github_api_basic_functionality(
         self,
-        sample_config: Dict[str, Any],
+        sample_config: dict[str, Any],
     ) -> None:
         """GitHub API基本機能テスト"""
         # GitHubAPIクラスの初期化テスト
@@ -84,7 +84,7 @@ class TestIntegrationSimplified:
 
     def test_sync_dry_run_mode(
         self,
-        sample_config: Dict[str, Any],
+        sample_config: dict[str, Any],
     ) -> None:
         """ドライランモードでの同期テスト"""
         # GitHub APIをモック
@@ -108,7 +108,7 @@ class TestIntegrationSimplified:
     def test_config_validation(
         self,
         temp_dir: Path,
-        sample_config: Dict[str, Any],
+        sample_config: dict[str, Any],
     ) -> None:
         """設定検証テスト"""
         # 有効な設定ファイルの作成
@@ -162,7 +162,7 @@ class TestIntegrationSimplified:
 
     def test_json_serialization(
         self,
-        sample_config: Dict[str, Any],
+        sample_config: dict[str, Any],
     ) -> None:
         """JSON シリアライゼーションテスト"""
         # 設定のシリアライゼーション
@@ -208,7 +208,7 @@ class TestIntegrationSimplified:
     @pytest.mark.slow
     def test_performance_basic(
         self,
-        sample_config: Dict[str, Any],
+        sample_config: dict[str, Any],
     ) -> None:
         """基本的なパフォーマンステスト"""
         import time
@@ -239,7 +239,7 @@ class TestIntegrationSimplified:
     def test_integration_workflow_basic(
         self,
         temp_dir: Path,
-        sample_config: Dict[str, Any],
+        sample_config: dict[str, Any],
     ) -> None:
         """基本的な統合ワークフローテスト"""
         # 1. 設定ファイルの作成

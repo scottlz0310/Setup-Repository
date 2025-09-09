@@ -7,7 +7,7 @@
 
 import os
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Optional
 
 from .quality_logger import LogLevel, QualityLogger, configure_quality_logging
 
@@ -90,16 +90,16 @@ class LoggingConfig:
         )
 
     @classmethod
-    def get_debug_context(cls) -> Dict[str, str]:
+    def get_debug_context(cls) -> dict[str, str]:
         """デバッグ用の環境情報を取得"""
         return {
             "log_level": cls.get_log_level_from_env().value,
             "debug_mode": str(cls.is_debug_mode()),
             "ci_environment": str(cls.is_ci_environment()),
             "json_format": str(cls.should_use_json_format()),
-            "log_file": str(cls.get_log_file_path())
-            if cls.get_log_file_path()
-            else "None",
+            "log_file": (
+                str(cls.get_log_file_path()) if cls.get_log_file_path() else "None"
+            ),
             "environment_variables": {
                 key: value
                 for key, value in os.environ.items()
@@ -117,9 +117,9 @@ def setup_ci_logging() -> QualityLogger:
     """CI環境専用のロギングを設定"""
     # CI環境では常にINFOレベル以上、JSON形式を使用
     return configure_quality_logging(
-        log_level=LogLevel.INFO
-        if not LoggingConfig.is_debug_mode()
-        else LogLevel.DEBUG,
+        log_level=(
+            LogLevel.INFO if not LoggingConfig.is_debug_mode() else LogLevel.DEBUG
+        ),
         log_file=None,  # CI環境ではファイルログは使用しない
         enable_console=True,
         enable_json_format=True,

@@ -17,7 +17,10 @@ from setup_repo.cli import quality_cli, setup_cli, sync_cli, trend_cli
 def main():
     """メインエントリーポイント"""
     parser = argparse.ArgumentParser(
-        description="🚀 セットアップリポジトリ - GitHubリポジトリセットアップ・同期ツール",
+        description=(
+            "🚀 セットアップリポジトリ - "
+            "GitHubリポジトリセットアップ・同期ツール"
+        ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 使用例:
