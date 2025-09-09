@@ -14,7 +14,7 @@ graph TB
         A[開発者] --> B[Pre-commit Hooks]
         B --> C[Ruff + MyPy + Tests]
     end
-    
+
     subgraph "CI/CDパイプライン"
         D[GitHub Actions] --> E[品質チェック]
         E --> F[セキュリティスキャン]
@@ -22,19 +22,19 @@ graph TB
         G --> H[カバレッジ測定]
         H --> I[リリース自動化]
     end
-    
+
     subgraph "依存関係管理"
         J[Dependabot] --> K[自動PR作成]
         K --> L[セキュリティ更新]
         L --> M[互換性テスト]
     end
-    
+
     subgraph "品質保証"
         N[Ruff Linting] --> O[MyPy型チェック]
         O --> P[Pytest テスト]
         P --> Q[Coverage報告]
     end
-    
+
     C --> D
     I --> R[GitHub Releases]
     M --> D
@@ -206,7 +206,7 @@ class QualityMetrics:
     test_passed: int
     test_failed: int
     security_vulnerabilities: int
-    
+
     def is_passing(self, min_coverage: float = 80.0) -> bool:
         """品質基準を満たしているかチェック"""
         return (
@@ -240,7 +240,7 @@ class DependencyUpdate:
     update_type: str  # "major", "minor", "patch", "security"
     security_advisory: Optional[str]
     compatibility_risk: str  # "low", "medium", "high"
-    
+
 @dataclass
 class SecurityVulnerability:
     """セキュリティ脆弱性情報を管理するデータモデル"""
@@ -302,14 +302,14 @@ from typing import Dict, Any
 
 class QualityLogger:
     """品質チェック専用ロガー"""
-    
+
     def __init__(self):
         self.logger = logging.getLogger("setup_repo.quality")
-        
+
     def log_quality_check_start(self, check_type: str) -> None:
         """品質チェック開始をログ"""
         self.logger.info(f"品質チェック開始: {check_type}")
-        
+
     def log_quality_check_result(self, check_type: str, result: Dict[str, Any]) -> None:
         """品質チェック結果をログ"""
         if result.get("success", False):
@@ -412,12 +412,12 @@ from setup_repo.sync import sync_repositories
 def test_sync_performance(sample_config):
     """同期処理のパフォーマンステスト"""
     start_time = time.time()
-    
+
     # 同期処理実行
     result = sync_repositories(sample_config, dry_run=True)
-    
+
     execution_time = time.time() - start_time
-    
+
     # パフォーマンス要件: 10リポジトリの同期が30秒以内
     assert execution_time < 30.0
     assert result.success

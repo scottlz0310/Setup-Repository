@@ -1,0 +1,113 @@
+# Pre-commit設定ファイル
+# 詳細: https://pre-commit.com/
+
+repos:
+  # Ruff - 高速なPythonリンター・フォーマッター
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.12.12
+    hooks:
+      # リンティング（自動修正付き）
+      - id: ruff
+        args: [--fix]
+        name: "Ruff リンティング"
+        description: "Ruffによるコード品質チェックと自動修正"
+      # フォーマッティング
+      - id: ruff-format
+        name: "Ruff フォーマッティング"
+        description: "Ruffによるコードフォーマット"
+
+  # MyPy - 静的型チェック
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.17.1
+    hooks:
+      - id: mypy
+        name: "MyPy 型チェック"
+        description: "MyPyによる静的型チェック"
+        additional_dependencies:
+          - types-requests
+          - types-setuptools
+        args: [--config-file=pyproject.toml]
+        files: ^src/
+
+  # 基本的なファイルチェック
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      # ファイル末尾の空行チェック
+      - id: end-of-file-fixer
+        name: "ファイル末尾修正"
+        description: "ファイル末尾に改行を追加"
+      # 行末空白文字の削除
+      - id: trailing-whitespace
+        name: "行末空白削除"
+        description: "行末の不要な空白文字を削除"
+      # YAML構文チェック
+      - id: check-yaml
+        name: "YAML構文チェック"
+        description: "YAMLファイルの構文チェック"
+      # JSON構文チェック
+      - id: check-json
+        name: "JSON構文チェック"
+        description: "JSONファイルの構文チェック"
+      # 大きなファイルの検出
+      - id: check-added-large-files
+        name: "大きなファイルチェック"
+        description: "大きなファイル（500KB以上）の検出"
+        args: ['--maxkb=500']
+      # マージコンフリクトマーカーの検出
+      - id: check-merge-conflict
+        name: "マージコンフリクトチェック"
+        description: "マージコンフリクトマーカーの検出"
+
+  # セキュリティチェック - Bandit
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.10
+    hooks:
+      - id: bandit
+        name: "Bandit セキュリティチェック"
+        description: "Banditによるセキュリティ脆弱性チェック"
+        args: ['-c', 'pyproject.toml']
+        files: ^src/
+
+  # ローカルフック - Pytest実行
+  - repo: local
+    hooks:
+      - id: pytest-check
+        name: "Pytest テスト実行"
+        description: "Pytestによる単体テスト実行"
+        entry: uv run pytest tests/unit/ -x --tb=short
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      - id: coverage-check
+        name: "カバレッジ品質ゲート"
+        description: "カバレッジ80%品質ゲートチェック"
+        entry: uv run python scripts/coverage-check.py --min-coverage 80
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
+
+      - id: safety-check
+        name: "Safety 脆弱性チェック"
+        description: "Safetyによる既知の脆弱性チェック"
+        entry: bash -c 'uv run safety scan --output screen'
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+# CI設定
+ci:
+  autofix_commit_msg: |
+    [pre-commit.ci] 自動修正
+
+    [skip ci]
+  autofix_prs: true
+  autoupdate_branch: ''
+  autoupdate_commit_msg: '[pre-commit.ci] pre-commit自動更新'
+  autoupdate_schedule: weekly
+  skip: []
+  submodules: false

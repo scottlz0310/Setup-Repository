@@ -1,0 +1,480 @@
+name: Dependabot Auto-merge
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  pull_request_review:
+    types: [submitted]
+  check_suite:
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: read
+  security-events: read
+
+jobs:
+  dependabot-auto-merge:
+    name: Dependabot Auto-merge
+    runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0
+
+    - name: Get Dependabot metadata
+      id: metadata
+      uses: dependabot/fetch-metadata@v2
+      with:
+        github-token: "${{ secrets.GITHUB_TOKEN }}"
+
+    - name: Analyze update type and security impact
+      id: security-check
+      run: |
+        echo "=== Dependabot更新分析 ==="
+        echo "依存関係: ${{ steps.metadata.outputs.dependency-names }}"
+        echo "更新タイプ: ${{ steps.metadata.outputs.update-type }}"
+        echo "現在のバージョン: ${{ steps.metadata.outputs.previous-version }}"
+        echo "新しいバージョン: ${{ steps.metadata.outputs.new-version }}"
+        echo "アラート状態: ${{ steps.metadata.outputs.alert-state }}"
+        echo "CVSSスコア: ${{ steps.metadata.outputs.cvss }}"
+
+        # セキュリティ更新の判定
+        is_security_update=false
+        auto_merge_eligible=false
+        priority_level="normal"
+
+        # セキュリティアドバイザリがある場合
+        if [[ "${{ steps.metadata.outputs.alert-state }}" == "OPEN" ]] || \
+           [[ "${{ steps.metadata.outputs.alert-state }}" == "FIXED" ]]; then
+          is_security_update=true
+          priority_level="high"
+          echo "🚨 セキュリティ更新が検出されました"
+        fi
+
+        # 更新タイプによる自動マージ判定
+        case "${{ steps.metadata.outputs.update-type }}" in
+          "version-update:semver-patch")
+            auto_merge_eligible=true
+            echo "✅ パッチ更新: 自動マージ対象"
+            ;;
+          "version-update:semver-minor")
+            auto_merge_eligible=true
+            echo "✅ マイナー更新: 自動マージ対象"
+            ;;
+          "version-update:semver-major")
+            auto_merge_eligible=false
+            echo "⚠️ メジャー更新: 手動レビュー必要"
+            ;;
+          *)
+            auto_merge_eligible=false
+            echo "❓ 不明な更新タイプ: 手動レビュー必要"
+            ;;
+        esac
+
+        # セキュリティ更新は優先的に自動マージ
+        if [[ "$is_security_update" == "true" ]]; then
+          auto_merge_eligible=true
+          echo "🔒 セキュリティ更新のため自動マージを有効化"
+        fi
+
+        echo "is-security=$is_security_update" >> $GITHUB_OUTPUT
+        echo "auto-merge=$auto_merge_eligible" >> $GITHUB_OUTPUT
+        echo "priority=$priority_level" >> $GITHUB_OUTPUT
+
+    - name: Setup UV environment for testing
+      if: steps.security-check.outputs.auto-merge == 'true'
+      uses: ./.github/actions/setup-uv-env
+      with:
+        python-version: '3.11'
+
+    - name: Run dependency compatibility tests
+      if: steps.security-check.outputs.auto-merge == 'true'
+      id: compatibility-test
+      run: |
+        echo "=== 依存関係互換性テスト実行 ==="
+
+        # 基本的なインポートテスト
+        uv run python -c "
+        import sys
+        import importlib
+
+        # 主要モジュールのインポートテスト
+        try:
+            import setup_repo
+            print('✅ setup_repo モジュールのインポート成功')
+        except ImportError as e:
+            print(f'❌ setup_repo モジュールのインポート失敗: {e}')
+            sys.exit(1)
+
+        # 依存関係の基本チェック
+        try:
+            import requests
+            import click
+            print('✅ 主要依存関係のインポート成功')
+        except ImportError as e:
+            print(f'❌ 依存関係のインポート失敗: {e}')
+            sys.exit(1)
+        "
+
+        # 簡単な機能テスト
+        uv run python -c "
+        from src.setup_repo.config import load_config
+        from src.setup_repo.platform_detector import detect_platform
+
+        try:
+            config = load_config()
+            platform = detect_platform()
+            print(f'✅ 基本機能テスト成功: プラットフォーム={platform}')
+        except Exception as e:
+            print(f'❌ 基本機能テスト失敗: {e}')
+            import sys
+            sys.exit(1)
+        "
+
+        echo "compatibility-test=success" >> $GITHUB_OUTPUT
+
+    - name: Wait for all required checks
+      if: steps.security-check.outputs.auto-merge == 'true'
+      uses: lewagon/wait-on-check-action@v1.3.4
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+        check-name: 'Code Quality Checks'
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        wait-interval: 30
+        allowed-conclusions: success
+
+    - name: Wait for security scan completion
+      if: steps.security-check.outputs.auto-merge == 'true'
+      uses: lewagon/wait-on-check-action@v1.3.4
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+        check-name: 'Security Vulnerability Scan'
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        wait-interval: 30
+        allowed-conclusions: success,neutral
+
+    - name: Verify PR is ready for auto-merge
+      if: steps.security-check.outputs.auto-merge == 'true'
+      id: merge-readiness
+      run: |
+        echo "=== 自動マージ準備状況確認 ==="
+
+        # PRの状態確認
+        pr_state=$(gh pr view "${{ github.event.pull_request.number }}" --json state,mergeable,reviewDecision --jq '.state')
+        pr_mergeable=$(gh pr view "${{ github.event.pull_request.number }}" --json mergeable --jq '.mergeable')
+        review_decision=$(gh pr view "${{ github.event.pull_request.number }}" --json reviewDecision --jq '.reviewDecision')
+
+        echo "PR状態: $pr_state"
+        echo "マージ可能: $pr_mergeable"
+        echo "レビュー決定: $review_decision"
+
+        # マージ準備完了の判定
+        if [[ "$pr_state" == "OPEN" ]] && [[ "$pr_mergeable" == "MERGEABLE" ]]; then
+          echo "ready-for-merge=true" >> $GITHUB_OUTPUT
+          echo "✅ 自動マージ準備完了"
+        else
+          echo "ready-for-merge=false" >> $GITHUB_OUTPUT
+          echo "❌ 自動マージ準備未完了"
+        fi
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Auto-approve PR
+      if: |
+        steps.security-check.outputs.auto-merge == 'true' &&
+        steps.compatibility-test.outputs.compatibility-test == 'success' &&
+        steps.merge-readiness.outputs.ready-for-merge == 'true'
+      run: |
+        # セキュリティ更新かどうかで承認メッセージを変更
+        if [[ "${{ steps.security-check.outputs.is-security }}" == "true" ]]; then
+          approval_message="🔒 **セキュリティ更新の自動承認**
+
+          このPRはセキュリティ脆弱性の修正を含むため、自動承認されました。
+
+          **更新内容:**
+          - 依存関係: ${{ steps.metadata.outputs.dependency-names }}
+          - 更新タイプ: ${{ steps.metadata.outputs.update-type }}
+          - 優先度: ${{ steps.security-check.outputs.priority }}
+
+          **実行されたチェック:**
+          ✅ 依存関係互換性テスト
+          ✅ コード品質チェック
+          ✅ セキュリティスキャン
+
+          CIチェック通過後に自動マージされます。"
+        else
+          approval_message="✅ **パッチ/マイナー更新の自動承認**
+
+          このPRは安全な更新のため、自動承認されました。
+
+          **更新内容:**
+          - 依存関係: ${{ steps.metadata.outputs.dependency-names }}
+          - 更新タイプ: ${{ steps.metadata.outputs.update-type }}
+
+          **実行されたチェック:**
+          ✅ 依存関係互換性テスト
+          ✅ コード品質チェック
+          ✅ セキュリティスキャン
+
+          CIチェック通過後に自動マージされます。"
+        fi
+
+        gh pr review --approve "${{ github.event.pull_request.number }}" --body "$approval_message"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Enable auto-merge
+      if: |
+        steps.security-check.outputs.auto-merge == 'true' &&
+        steps.compatibility-test.outputs.compatibility-test == 'success' &&
+        steps.merge-readiness.outputs.ready-for-merge == 'true'
+      run: |
+        # 自動マージを有効化
+        gh pr merge --auto --squash "${{ github.event.pull_request.number }}" \
+          --subject "deps: ${{ steps.metadata.outputs.dependency-names }}" \
+          --body "Dependabotによる自動更新
+
+        **更新タイプ:** ${{ steps.metadata.outputs.update-type }}
+        **セキュリティ更新:** ${{ steps.security-check.outputs.is-security }}
+        **優先度:** ${{ steps.security-check.outputs.priority }}
+
+        このPRは自動テストとセキュリティチェックに合格したため、自動マージされました。"
+
+        echo "✅ 自動マージが有効化されました"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Handle manual review cases
+      if: steps.security-check.outputs.auto-merge == 'false'
+      run: |
+        # メジャーバージョン更新の場合の詳細分析
+        echo "=== 手動レビュー必要な更新の分析 ==="
+
+        # 破壊的変更の可能性を分析
+        breaking_change_risk="medium"
+        if [[ "${{ steps.metadata.outputs.update-type }}" == "version-update:semver-major" ]]; then
+          breaking_change_risk="high"
+        fi
+
+        # セキュリティ更新でもメジャーバージョンの場合は特別扱い
+        if [[ "${{ steps.security-check.outputs.is-security }}" == "true" ]]; then
+          comment_body="🚨 **セキュリティ更新（メジャーバージョン）**
+
+          この更新はセキュリティ脆弱性の修正を含みますが、メジャーバージョンアップのため手動レビューが必要です。
+
+          **⚠️ 緊急度: HIGH - セキュリティ脆弱性あり**
+
+          **更新内容:**
+          - 依存関係: ${{ steps.metadata.outputs.dependency-names }}
+          - 更新タイプ: ${{ steps.metadata.outputs.update-type }}
+          - 現在のバージョン: ${{ steps.metadata.outputs.previous-version }}
+          - 新しいバージョン: ${{ steps.metadata.outputs.new-version }}
+          - CVSSスコア: ${{ steps.metadata.outputs.cvss }}
+          - アラート状態: ${{ steps.metadata.outputs.alert-state }}
+
+          **🔍 必須確認事項:**
+          1. **セキュリティ**: 脆弱性が確実に修正されるか確認
+          2. **破壊的変更**: APIの変更や非互換性がないか確認
+          3. **テスト**: 全てのテストが通過することを確認
+          4. **依存関係**: 他の依存関係との競合がないか確認
+          5. **ドキュメント**: 必要に応じてドキュメント更新
+
+          **🚀 推奨アクション:**
+          セキュリティ脆弱性のため、可能な限り迅速にレビューしてマージしてください。"
+
+          # セキュリティ更新の場合は高優先度ラベルを追加
+          gh pr edit "${{ github.event.pull_request.number }}" \
+            --add-label "security,high-priority,breaking-change"
+        else
+          comment_body="⚠️ **メジャーバージョン更新検出**
+
+          この更新はメジャーバージョンアップのため、手動レビューが必要です。
+
+          **更新内容:**
+          - 依存関係: ${{ steps.metadata.outputs.dependency-names }}
+          - 更新タイプ: ${{ steps.metadata.outputs.update-type }}
+          - 現在のバージョン: ${{ steps.metadata.outputs.previous-version }}
+          - 新しいバージョン: ${{ steps.metadata.outputs.new-version }}
+          - 破壊的変更リスク: $breaking_change_risk
+
+          **🔍 確認事項:**
+          1. **破壊的変更**: APIの変更や非互換性がないか確認
+          2. **テスト**: 全てのテストが通過することを確認
+          3. **依存関係**: 他の依存関係との競合がないか確認
+          4. **ドキュメント**: 必要に応じてドキュメント更新
+          5. **CHANGELOG**: 変更ログの更新が必要か確認
+
+          **📚 参考リンク:**
+          - [依存関係のリリースノート](${{ steps.metadata.outputs.homepage }})
+          - [変更ログ](${{ steps.metadata.outputs.changelog }})
+
+          問題がなければ手動でマージしてください。"
+
+          # 通常のメジャー更新の場合のラベル
+          gh pr edit "${{ github.event.pull_request.number }}" \
+            --add-label "breaking-change,manual-review"
+        fi
+
+        gh pr comment "${{ github.event.pull_request.number }}" --body "$comment_body"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  security-notification:
+    name: Security Update Notification
+    runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]'
+    needs: dependabot-auto-merge
+
+    steps:
+    - name: Get Dependabot metadata
+      id: metadata
+      uses: dependabot/fetch-metadata@v2
+      with:
+        github-token: "${{ secrets.GITHUB_TOKEN }}"
+
+    - name: Analyze security impact
+      id: security-analysis
+      run: |
+        echo "=== セキュリティ影響分析 ==="
+
+        is_security_update=false
+        severity_level="unknown"
+        cvss_score="${{ steps.metadata.outputs.cvss }}"
+        alert_state="${{ steps.metadata.outputs.alert-state }}"
+
+        # セキュリティアドバイザリの確認
+        if [[ "$alert_state" == "OPEN" ]] || [[ "$alert_state" == "FIXED" ]]; then
+          is_security_update=true
+
+          # CVSSスコアに基づく重要度判定
+          if [[ -n "$cvss_score" ]]; then
+            cvss_numeric=$(echo "$cvss_score" | grep -oE '[0-9]+\.?[0-9]*' | head -1)
+            if (( $(echo "$cvss_numeric >= 9.0" | bc -l) )); then
+              severity_level="critical"
+            elif (( $(echo "$cvss_numeric >= 7.0" | bc -l) )); then
+              severity_level="high"
+            elif (( $(echo "$cvss_numeric >= 4.0" | bc -l) )); then
+              severity_level="medium"
+            else
+              severity_level="low"
+            fi
+          else
+            severity_level="medium"  # デフォルト
+          fi
+
+          echo "🚨 セキュリティ脆弱性検出"
+          echo "重要度: $severity_level"
+          echo "CVSSスコア: $cvss_score"
+        fi
+
+        echo "is-security=$is_security_update" >> $GITHUB_OUTPUT
+        echo "severity=$severity_level" >> $GITHUB_OUTPUT
+        echo "cvss-score=$cvss_score" >> $GITHUB_OUTPUT
+
+    - name: Create security tracking issue
+      if: steps.security-analysis.outputs.is-security == 'true'
+      run: |
+        severity="${{ steps.security-analysis.outputs.severity }}"
+        cvss_score="${{ steps.security-analysis.outputs.cvss-score }}"
+
+        # 重要度に応じたラベルとアサイニーの設定
+        case "$severity" in
+          "critical")
+            labels="security,critical,dependencies,immediate-action"
+            priority_emoji="🔴"
+            urgency="即座に対応が必要"
+            ;;
+          "high")
+            labels="security,high-priority,dependencies"
+            priority_emoji="🟠"
+            urgency="24時間以内に対応推奨"
+            ;;
+          "medium")
+            labels="security,medium-priority,dependencies"
+            priority_emoji="🟡"
+            urgency="1週間以内に対応推奨"
+            ;;
+          *)
+            labels="security,low-priority,dependencies"
+            priority_emoji="🟢"
+            urgency="次回メンテナンス時に対応"
+            ;;
+        esac
+
+        # セキュリティイシューの作成
+        issue_body="$priority_emoji **セキュリティ脆弱性検出レポート**
+
+        Dependabotがセキュリティ脆弱性を検出し、修正のためのプルリクエストを作成しました。
+
+        ## 📊 脆弱性情報
+        - **影響を受ける依存関係:** ${{ steps.metadata.outputs.dependency-names }}
+        - **現在のバージョン:** ${{ steps.metadata.outputs.previous-version }}
+        - **修正バージョン:** ${{ steps.metadata.outputs.new-version }}
+        - **重要度:** $severity
+        - **CVSSスコア:** $cvss_score
+        - **アラート状態:** ${{ steps.metadata.outputs.alert-state }}
+
+        ## 🔗 関連リンク
+        - **プルリクエスト:** #${{ github.event.pull_request.number }}
+        - **GitHub Advisory:** ${{ steps.metadata.outputs.advisory-ghsa-id }}
+
+        ## ⏰ 対応期限
+        **$urgency**
+
+        ## ✅ 対応チェックリスト
+        - [ ] プルリクエストのレビュー完了
+        - [ ] セキュリティテストの実行確認
+        - [ ] 依存関係の互換性確認
+        - [ ] 本番環境への影響評価
+        - [ ] マージ実行
+        - [ ] セキュリティ修正の動作確認
+
+        ## 📝 追加情報
+        このイシューは自動生成されました。セキュリティ更新が完了したら、このイシューをクローズしてください。"
+
+        gh issue create \
+          --title "$priority_emoji セキュリティ更新: ${{ steps.metadata.outputs.dependency-names }} ($severity)" \
+          --body "$issue_body" \
+          --label "$labels" \
+          --assignee "scottlz0310"
+
+        echo "✅ セキュリティ追跡イシューを作成しました"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Send security notification summary
+      if: steps.security-analysis.outputs.is-security == 'true'
+      run: |
+        echo "=== セキュリティ通知サマリー ==="
+        echo "🔒 セキュリティ更新が検出されました"
+        echo "📦 依存関係: ${{ steps.metadata.outputs.dependency-names }}"
+        echo "⚠️ 重要度: ${{ steps.security-analysis.outputs.severity }}"
+        echo "📊 CVSSスコア: ${{ steps.security-analysis.outputs.cvss-score }}"
+        echo "🔗 プルリクエスト: #${{ github.event.pull_request.number }}"
+        echo ""
+        echo "適切なレビューとテストを実施してください。"
+
+  dependency-update-summary:
+    name: Dependency Update Summary
+    runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]'
+    needs: [dependabot-auto-merge, security-notification]
+
+    steps:
+    - name: Generate update summary
+      run: |
+        echo "=== Dependabot更新サマリー ==="
+        echo "📦 **依存関係更新レポート**"
+        echo ""
+        echo "**更新された依存関係:** ${{ needs.dependabot-auto-merge.outputs.dependency-names || 'N/A' }}"
+        echo "**更新タイプ:** ${{ needs.dependabot-auto-merge.outputs.update-type || 'N/A' }}"
+        echo "**自動マージ:** ${{ needs.dependabot-auto-merge.outputs.auto-merge || 'false' }}"
+        echo "**セキュリティ更新:** ${{ needs.security-notification.outputs.is-security || 'false' }}"
+        echo ""
+        echo "詳細は関連するプルリクエストとイシューを確認してください。"

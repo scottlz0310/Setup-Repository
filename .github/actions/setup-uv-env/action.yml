@@ -1,0 +1,48 @@
+name: 'Setup UV Environment'
+description: 'Setup UV with caching and Python environment'
+inputs:
+  python-version:
+    description: 'Python version to use'
+    required: true
+    default: '3.11'
+  cache-key-suffix:
+    description: 'Additional suffix for cache key'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+
+    - name: Set up Python ${{ inputs.python-version }}
+      shell: bash
+      run: uv python install ${{ inputs.python-version }}
+
+    - name: Cache uv dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/uv
+          .venv
+        key: ${{ runner.os }}-uv-${{ inputs.python-version }}-${{ hashFiles('**/uv.lock', '**/pyproject.toml') }}${{ inputs.cache-key-suffix }}
+        restore-keys: |
+          ${{ runner.os }}-uv-${{ inputs.python-version }}-
+          ${{ runner.os }}-uv-
+
+    - name: Create virtual environment
+      shell: bash
+      run: uv venv --python ${{ inputs.python-version }}
+
+    - name: Install dependencies
+      shell: bash
+      run: uv sync --dev
+
+    - name: Verify environment
+      shell: bash
+      run: |
+        uv run python --version
+        uv run python -c "import sys; print(f'Python executable: {sys.executable}')"

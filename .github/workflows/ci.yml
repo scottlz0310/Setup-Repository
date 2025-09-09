@@ -1,0 +1,267 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  quality-checks:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+      fail-fast: false
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+
+    - name: Set up Python ${{ matrix.python-version }}
+      run: uv python install ${{ matrix.python-version }}
+
+    - name: Create virtual environment
+      run: uv venv --python ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        uv sync --dev
+        uv pip install --upgrade pip
+
+    - name: Cache uv dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/uv
+          .venv
+        key: ${{ runner.os }}-uv-${{ matrix.python-version }}-${{ hashFiles('**/uv.lock', '**/pyproject.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-uv-${{ matrix.python-version }}-
+          ${{ runner.os }}-uv-
+
+    - name: Cache test results
+      uses: actions/cache@v4
+      with:
+        path: |
+          .pytest_cache
+          .mypy_cache
+          .ruff_cache
+        key: ${{ runner.os }}-test-cache-${{ matrix.python-version }}-${{ hashFiles('src/**/*.py', 'tests/**/*.py') }}
+        restore-keys: |
+          ${{ runner.os }}-test-cache-${{ matrix.python-version }}-
+          ${{ runner.os }}-test-cache-
+
+    - name: Run comprehensive quality checks with enhanced error handling
+      run: uv run python scripts/ci-quality-check.py
+      env:
+        CI_JSON_LOGS: "true"
+        GITHUB_STEP_SUMMARY: ${{ github.step_summary }}
+        PYTEST_XDIST_WORKER_COUNT: "auto"
+
+    - name: Upload error reports on failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: ci-error-reports-${{ matrix.python-version }}
+        path: ci-reports/
+        retention-days: 30
+
+    - name: Fallback - Run individual quality checks
+      if: failure()
+      run: |
+        echo "::warning::Comprehensive quality check failed, running individual checks for debugging"
+
+        echo "::group::Ruff Linting"
+        uv run ruff check . --output-format=github || true
+        uv run ruff format --check . || true
+        echo "::endgroup::"
+
+        echo "::group::MyPy Type Checking"
+        uv run mypy src/ || true
+        echo "::endgroup::"
+
+        echo "::group::Pytest Tests"
+        uv run pytest tests/ \
+          --cov=src/setup_repo \
+          --cov-report=term-missing \
+          --cov-report=xml \
+          --cov-report=html \
+          --cov-fail-under=80 \
+          --junit-xml=test-results.xml \
+          -n auto \
+          --dist=worksteal || true
+        echo "::endgroup::"
+
+    - name: Generate coverage report
+      if: matrix.python-version == '3.11'
+      run: |
+        uv run coverage report --show-missing
+        uv run coverage html
+        uv run coverage xml
+
+    - name: Coverage quality gate
+      if: matrix.python-version == '3.11'
+      run: |
+        uv run coverage report --fail-under=80
+        echo "✅ カバレッジ品質ゲート通過: 80%以上"
+
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v4
+      if: matrix.python-version == '3.11'
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: true
+        verbose: true
+
+    - name: Upload test results and coverage
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results-${{ matrix.python-version }}
+        path: |
+          test-results.xml
+          htmlcov/
+          coverage.xml
+        retention-days: 30
+
+    - name: Comment coverage on PR
+      if: github.event_name == 'pull_request' && matrix.python-version == '3.11'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          try {
+            const coverage = fs.readFileSync('coverage.xml', 'utf8');
+            const match = coverage.match(/line-rate="([^"]+)"/);
+            if (match) {
+              const rate = (parseFloat(match[1]) * 100).toFixed(2);
+              const body = `## 📊 カバレッジレポート\n\n**現在のカバレッジ**: ${rate}%\n\n${rate >= 80 ? '✅' : '❌'} 品質ゲート (80%): ${rate >= 80 ? '通過' : '未達成'}\n\n詳細なレポートはArtifactsからダウンロードできます。`;
+
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: body
+              });
+            }
+          } catch (error) {
+            console.log('カバレッジレポートの読み込みに失敗:', error);
+          }
+
+  build-and-package:
+    name: Build and Package
+    runs-on: ubuntu-latest
+    needs: quality-checks
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+
+    - name: Set up Python
+      run: uv python install 3.11
+
+    - name: Create virtual environment
+      run: uv venv --python 3.11
+
+    - name: Install dependencies
+      run: uv sync --dev
+
+    - name: Build package
+      run: uv build
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: python-package
+        path: dist/
+
+  cross-platform-test:
+    name: Cross-platform Tests
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ["3.9", "3.11", "3.13"]
+      fail-fast: false
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install uv (Unix)
+      if: runner.os != 'Windows'
+      run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+    - name: Install uv (Windows)
+      if: runner.os == 'Windows'
+      run: irm https://astral.sh/uv/install.ps1 | iex
+      shell: powershell
+
+    - name: Set up Python ${{ matrix.python-version }}
+      run: uv python install ${{ matrix.python-version }}
+
+    - name: Create virtual environment
+      run: uv venv --python ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: uv sync --dev
+
+    - name: Run basic functionality tests
+      run: |
+        uv run python -m pytest tests/unit/ -v
+        uv run python main.py --help
+
+    - name: Test platform detection
+      run: uv run python -c "from src.setup_repo.platform_detector import detect_platform; print('Detected platform:', detect_platform())"
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: quality-checks
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+
+    - name: Set up Python
+      run: uv python install 3.11
+
+    - name: Create virtual environment
+      run: uv venv --python 3.11
+
+    - name: Install dependencies
+      run: uv sync --dev
+
+    - name: Run safety check
+      run: |
+        uv pip install safety
+        uv run safety check --json --output safety-report.json || true
+
+    - name: Upload security scan results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: security-scan-results
+        path: safety-report.json

@@ -1,0 +1,96 @@
+name: Test Report
+
+on:
+  workflow_run:
+    workflows: ["CI/CD Pipeline"]
+    types:
+      - completed
+
+jobs:
+  test-report:
+    name: Test Report
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion != 'skipped'
+
+    steps:
+    - name: Download test artifacts
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            run_id: ${{ github.event.workflow_run.id }},
+          });
+
+          for (const artifact of artifacts.data.artifacts) {
+            if (artifact.name.startsWith('test-results-')) {
+              const download = await github.rest.actions.downloadArtifact({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                artifact_id: artifact.id,
+                archive_format: 'zip',
+              });
+
+              const fs = require('fs');
+              fs.writeFileSync(`${artifact.name}.zip`, Buffer.from(download.data));
+            }
+          }
+
+    - name: Extract test results
+      run: |
+        for file in test-results-*.zip; do
+          if [ -f "$file" ]; then
+            unzip -o "$file"
+          fi
+        done
+
+    - name: Publish test results
+      uses: dorny/test-reporter@v1
+      if: always()
+      with:
+        name: Test Results
+        path: 'test-results.xml'
+        reporter: java-junit
+        fail-on-error: false
+
+    - name: Comment test results on PR
+      uses: actions/github-script@v7
+      if: github.event.workflow_run.event == 'pull_request'
+      with:
+        script: |
+          const fs = require('fs');
+
+          // テスト結果の要約を作成
+          let summary = '## 🧪 Test Results Summary\n\n';
+
+          try {
+            if (fs.existsSync('coverage.xml')) {
+              summary += '✅ Coverage report generated\n';
+            }
+
+            if (fs.existsSync('test-results.xml')) {
+              summary += '✅ Test results available\n';
+            }
+
+            summary += '\n📊 Detailed results are available in the workflow artifacts.';
+
+            // PRにコメントを投稿
+            const { data: pullRequests } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              head: `${context.repo.owner}:${github.event.workflow_run.head_branch}`
+            });
+
+            if (pullRequests.length > 0) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pullRequests[0].number,
+                body: summary
+              });
+            }
+          } catch (error) {
+            console.log('Error creating test summary:', error);
+          }

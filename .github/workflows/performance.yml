@@ -1,0 +1,261 @@
+name: Performance Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # 毎日午前2時（UTC）にパフォーマンステストを実行
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      test_scale:
+        description: 'テストスケール (small/medium/large/all)'
+        required: false
+        default: 'medium'
+        type: choice
+        options:
+        - small
+        - medium
+        - large
+        - all
+
+jobs:
+  performance-tests:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    strategy:
+      matrix:
+        python-version: ["3.11"]  # パフォーマンステストは代表バージョンのみ
+      fail-fast: false
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+
+    - name: Set up Python ${{ matrix.python-version }}
+      run: uv python install ${{ matrix.python-version }}
+
+    - name: Create virtual environment
+      run: uv venv --python ${{ matrix.python-version }}
+
+    - name: Cache dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/uv
+          .venv
+          .pytest_cache
+        key: ${{ runner.os }}-perf-${{ matrix.python-version }}-${{ hashFiles('**/uv.lock', '**/pyproject.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-perf-${{ matrix.python-version }}-
+          ${{ runner.os }}-perf-
+
+    - name: Install dependencies
+      run: |
+        uv sync --dev
+        uv pip install psutil  # メモリ使用量測定用
+
+    - name: Run small scale performance tests
+      if: github.event.inputs.test_scale == 'small' || github.event.inputs.test_scale == 'all' || github.event.inputs.test_scale == ''
+      run: |
+        uv run pytest tests/performance/ \
+          -m "performance and not slow" \
+          -v \
+          --tb=short \
+          --durations=10 \
+          --json-report \
+          --json-report-file=performance-small.json
+
+    - name: Run medium scale performance tests
+      if: github.event.inputs.test_scale == 'medium' || github.event.inputs.test_scale == 'all' || github.event.inputs.test_scale == ''
+      run: |
+        uv run pytest tests/performance/test_sync_performance.py::TestSyncPerformance::test_medium_repository_set_performance \
+          -v \
+          --tb=short \
+          --durations=10 \
+          --json-report \
+          --json-report-file=performance-medium.json
+
+    - name: Run large scale performance tests
+      if: github.event.inputs.test_scale == 'large' || github.event.inputs.test_scale == 'all'
+      run: |
+        uv run pytest tests/performance/test_sync_performance.py::TestSyncPerformance::test_large_repository_set_performance \
+          -v \
+          --tb=short \
+          --durations=10 \
+          --json-report \
+          --json-report-file=performance-large.json
+
+    - name: Run concurrent operations performance tests
+      run: |
+        uv run pytest tests/performance/test_sync_performance.py::TestSyncPerformance::test_concurrent_operations_performance \
+          -v \
+          --tb=short \
+          --durations=10 \
+          --json-report \
+          --json-report-file=performance-concurrent.json
+
+    - name: Generate performance report
+      if: always()
+      run: |
+        echo "# 📊 パフォーマンステスト結果" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+        if [ -f performance-small.json ]; then
+          echo "## 小規模テスト結果" >> $GITHUB_STEP_SUMMARY
+          uv run python -c "
+        import json
+        try:
+            with open('performance-small.json', 'r') as f:
+                data = json.load(f)
+            print(f'- テスト実行時間: {data.get(\"duration\", \"N/A\")}秒')
+            print(f'- 成功テスト数: {data.get(\"summary\", {}).get(\"passed\", 0)}')
+            print(f'- 失敗テスト数: {data.get(\"summary\", {}).get(\"failed\", 0)}')
+        except Exception as e:
+            print(f'レポート生成エラー: {e}')
+        " >> $GITHUB_STEP_SUMMARY
+        fi
+
+        if [ -f performance-medium.json ]; then
+          echo "## 中規模テスト結果" >> $GITHUB_STEP_SUMMARY
+          uv run python -c "
+        import json
+        try:
+            with open('performance-medium.json', 'r') as f:
+                data = json.load(f)
+            print(f'- テスト実行時間: {data.get(\"duration\", \"N/A\")}秒')
+            print(f'- 成功テスト数: {data.get(\"summary\", {}).get(\"passed\", 0)}')
+            print(f'- 失敗テスト数: {data.get(\"summary\", {}).get(\"failed\", 0)}')
+        except Exception as e:
+            print(f'レポート生成エラー: {e}')
+        " >> $GITHUB_STEP_SUMMARY
+        fi
+
+    - name: Upload performance test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: performance-test-results-${{ matrix.python-version }}
+        path: |
+          performance-*.json
+        retention-days: 30
+
+    - name: Performance regression check
+      if: github.event_name == 'pull_request'
+      run: |
+        echo "🔍 パフォーマンス回帰チェック実行中..."
+
+        # 基準値との比較（将来的にはベースラインファイルと比較）
+        uv run python -c "
+        import json
+        import sys
+
+        def check_performance_regression():
+            try:
+                # 中規模テストの結果をチェック
+                if not os.path.exists('performance-medium.json'):
+                    print('⚠️ 中規模パフォーマンステスト結果が見つかりません')
+                    return
+
+                with open('performance-medium.json', 'r') as f:
+                    data = json.load(f)
+
+                duration = data.get('duration', 0)
+                failed_tests = data.get('summary', {}).get('failed', 0)
+
+                # パフォーマンス基準値（秒）
+                MAX_DURATION = 25.0
+
+                if duration > MAX_DURATION:
+                    print(f'❌ パフォーマンス回帰検出: 実行時間 {duration}秒 > 基準値 {MAX_DURATION}秒')
+                    sys.exit(1)
+
+                if failed_tests > 0:
+                    print(f'❌ パフォーマンステスト失敗: {failed_tests}件')
+                    sys.exit(1)
+
+                print(f'✅ パフォーマンス基準クリア: 実行時間 {duration}秒 <= 基準値 {MAX_DURATION}秒')
+
+            except Exception as e:
+                print(f'⚠️ パフォーマンス回帰チェックエラー: {e}')
+                # エラーの場合は警告のみでビルドは継続
+
+        import os
+        check_performance_regression()
+        "
+
+  benchmark-comparison:
+    name: Benchmark Comparison
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    needs: performance-tests
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # 履歴全体を取得
+
+    - name: Download performance results
+      uses: actions/download-artifact@v4
+      with:
+        name: performance-test-results-3.11
+        path: ./current-results
+
+    - name: Compare with baseline
+      run: |
+        echo "# 📈 パフォーマンス比較レポート" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "現在のPRと main ブランチのパフォーマンスを比較します。" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+        # 将来的にはベースラインとの詳細比較を実装
+        echo "⚠️ ベースライン比較機能は開発中です。" >> $GITHUB_STEP_SUMMARY
+        echo "現在は絶対値での基準チェックのみ実行されています。" >> $GITHUB_STEP_SUMMARY
+
+    - name: Comment PR with performance results
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+
+          try {
+            let comment = '## 📊 パフォーマンステスト結果\n\n';
+
+            // パフォーマンステスト結果ファイルを読み込み
+            const files = ['performance-medium.json', 'performance-concurrent.json'];
+
+            for (const file of files) {
+              const filePath = `./current-results/${file}`;
+              if (fs.existsSync(filePath)) {
+                const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+                const testType = file.replace('performance-', '').replace('.json', '');
+
+                comment += `### ${testType} テスト\n`;
+                comment += `- 実行時間: ${data.duration || 'N/A'}秒\n`;
+                comment += `- 成功: ${data.summary?.passed || 0}件\n`;
+                comment += `- 失敗: ${data.summary?.failed || 0}件\n\n`;
+              }
+            }
+
+            comment += '詳細な結果は Artifacts からダウンロードできます。\n';
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+          } catch (error) {
+            console.log('パフォーマンス結果のコメント作成に失敗:', error);
+          }

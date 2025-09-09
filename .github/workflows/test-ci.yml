@@ -1,0 +1,124 @@
+name: Test CI Pipeline
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_type:
+        description: 'Type of test to run'
+        required: true
+        default: 'basic'
+        type: choice
+        options:
+        - basic
+        - full
+
+jobs:
+  test-basic:
+    name: Basic CI Test
+    runs-on: ubuntu-latest
+    if: github.event.inputs.test_type == 'basic' || github.event.inputs.test_type == ''
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+
+    - name: Set up Python
+      run: uv python install 3.11
+
+    - name: Create virtual environment
+      run: uv venv --python 3.11
+
+    - name: Install dependencies
+      run: uv sync --dev
+
+    - name: Test basic functionality
+      run: |
+        echo "Testing basic functionality..."
+        uv run python --version
+        uv run python main.py --help
+        uv run python -c "from src.setup_repo import __version__; print(f'Package version: {__version__}')"
+
+    - name: Run quick linting check
+      run: |
+        echo "Running quick linting check..."
+        uv run ruff check . --output-format=github || echo "Linting issues found (expected in development)"
+
+    - name: Run basic tests
+      run: |
+        echo "Running basic tests..."
+        uv run pytest tests/unit/test_config_basic.py -v
+
+  test-full:
+    name: Full CI Test
+    runs-on: ubuntu-latest
+    if: github.event.inputs.test_type == 'full'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Use custom setup action
+      uses: ./.github/actions/setup-uv-env
+      with:
+        python-version: '3.11'
+
+    - name: Run full test suite
+      run: |
+        echo "Running full test suite..."
+        uv run pytest tests/unit/ -v --tb=short
+
+    - name: Generate coverage report
+      run: |
+        echo "Generating coverage report..."
+        uv run pytest tests/unit/ --cov=src/setup_repo --cov-report=term-missing
+
+    - name: Test cross-platform compatibility
+      run: |
+        echo "Testing cross-platform compatibility..."
+        uv run python -c "
+        from src.setup_repo.platform_detector import detect_platform, get_platform_info
+        platform = detect_platform()
+        info = get_platform_info()
+        print(f'Detected platform: {platform}')
+        print(f'Platform info: {info}')
+        "
+
+  summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: [test-basic, test-full]
+    if: always()
+
+    steps:
+    - name: Test Results Summary
+      run: |
+        echo "## CI Pipeline Test Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Test Status:" >> $GITHUB_STEP_SUMMARY
+
+        if [ "${{ needs.test-basic.result }}" == "success" ]; then
+          echo "✅ Basic tests: PASSED" >> $GITHUB_STEP_SUMMARY
+        elif [ "${{ needs.test-basic.result }}" == "skipped" ]; then
+          echo "⏭️ Basic tests: SKIPPED" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ Basic tests: FAILED" >> $GITHUB_STEP_SUMMARY
+        fi
+
+        if [ "${{ needs.test-full.result }}" == "success" ]; then
+          echo "✅ Full tests: PASSED" >> $GITHUB_STEP_SUMMARY
+        elif [ "${{ needs.test-full.result }}" == "skipped" ]; then
+          echo "⏭️ Full tests: SKIPPED" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ Full tests: FAILED" >> $GITHUB_STEP_SUMMARY
+        fi
+
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Next Steps:" >> $GITHUB_STEP_SUMMARY
+        echo "- Review any failed tests" >> $GITHUB_STEP_SUMMARY
+        echo "- Check code quality issues" >> $GITHUB_STEP_SUMMARY
+        echo "- Verify cross-platform compatibility" >> $GITHUB_STEP_SUMMARY

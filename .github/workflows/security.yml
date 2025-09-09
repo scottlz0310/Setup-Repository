@@ -1,0 +1,342 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # 毎日午前2時（UTC）にセキュリティスキャンを実行
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Dependency Review
+      uses: actions/dependency-review-action@v4
+      with:
+        fail-on-severity: moderate
+        allow-licenses: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC
+        deny-licenses: GPL-2.0, GPL-3.0
+
+  security-scan:
+    name: Security Vulnerability Scan
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+
+    - name: Set up Python
+      run: uv python install 3.11
+
+    - name: Create virtual environment
+      run: uv venv --python 3.11
+
+    - name: Install dependencies
+      run: uv sync --dev
+
+    - name: Install security tools
+      run: |
+        uv pip install safety bandit
+        # Semgrepは除外（LGPLライセンスのため）
+
+    - name: Run Safety check for known vulnerabilities
+      run: |
+        echo "=== Safety Check ==="
+        uv run safety scan --output json --save-as safety-report.json || true
+        uv run safety scan --output screen || true
+
+    - name: Run Bandit security linter
+      run: |
+        echo "=== Bandit Security Linter ==="
+        uv run bandit -r src/ -f json -o bandit-report.json || true
+        uv run bandit -r src/ -f txt || true
+
+    - name: Run Semgrep security analysis (optional)
+      run: |
+        echo "=== Semgrep Security Analysis ==="
+        echo "Semgrepはスキップされました（LGPLライセンスのため）"
+        echo "代わりにCodeQLを使用してセキュリティ分析を実行します"
+
+    - name: Upload security scan results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: security-scan-results
+        path: |
+          safety-report.json
+          bandit-report.json
+          semgrep-report.json
+
+    - name: Check for critical vulnerabilities
+      run: |
+        echo "=== Critical Vulnerability Check ==="
+
+        # Safety結果をチェック
+        if [ -f safety-report.json ]; then
+          SAFETY_ISSUES=$(jq '.vulnerabilities | length' safety-report.json 2>/dev/null || echo "0")
+          echo "Safety found $SAFETY_ISSUES vulnerabilities"
+          if [ "$SAFETY_ISSUES" -gt 0 ]; then
+            echo "::warning::Safety found $SAFETY_ISSUES known vulnerabilities"
+            jq -r '.vulnerabilities[] | "- \(.package_name // "unknown") \(.installed_version // "unknown"): \(.vulnerability.advisory // .advisory // "No advisory")"' safety-report.json || true
+          fi
+        fi
+
+        # Bandit結果をチェック
+        if [ -f bandit-report.json ]; then
+          BANDIT_HIGH=$(jq '[.results[] | select(.issue_severity == "HIGH")] | length' bandit-report.json 2>/dev/null || echo "0")
+          BANDIT_MEDIUM=$(jq '[.results[] | select(.issue_severity == "MEDIUM")] | length' bandit-report.json 2>/dev/null || echo "0")
+          echo "Bandit found $BANDIT_HIGH high severity and $BANDIT_MEDIUM medium severity issues"
+          if [ "$BANDIT_HIGH" -gt 0 ]; then
+            echo "::error::Bandit found $BANDIT_HIGH high severity security issues"
+            exit 1
+          elif [ "$BANDIT_MEDIUM" -gt 3 ]; then
+            echo "::warning::Bandit found $BANDIT_MEDIUM medium severity security issues"
+          fi
+        fi
+
+        # Semgrep結果をチェック（スキップ）
+        echo "Semgrepチェックはスキップされました（LGPLライセンスのため）"
+
+  codeql-analysis:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'python' ]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: ${{ matrix.language }}
+        queries: security-extended,security-and-quality
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+
+    - name: Set up Python
+      run: uv python install 3.11
+
+    - name: Create virtual environment
+      run: uv venv --python 3.11
+
+    - name: Install dependencies
+      run: uv sync --dev
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:${{matrix.language}}"
+
+  secret-scan:
+    name: Secret Scanning
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Install TruffleHog
+      run: |
+        curl -sSfL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/scripts/install.sh | sh -s -- -b /usr/local/bin
+
+    - name: Run TruffleHog secret scan
+      run: |
+        echo "=== TruffleHog Secret Scan ==="
+        trufflehog git file://. --json --output trufflehog-report.json || true
+        trufflehog git file://. || true
+
+    - name: Upload secret scan results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: secret-scan-results
+        path: trufflehog-report.json
+
+    - name: Check for secrets
+      run: |
+        if [ -f trufflehog-report.json ]; then
+          SECRET_COUNT=$(jq '. | length' trufflehog-report.json 2>/dev/null || echo "0")
+          echo "TruffleHog found $SECRET_COUNT potential secrets"
+          if [ "$SECRET_COUNT" -gt 0 ]; then
+            echo "::error::TruffleHog found $SECRET_COUNT potential secrets in the repository"
+            jq -r '.[] | "- \(.DetectorName): \(.Raw[:50])..."' trufflehog-report.json || true
+            exit 1
+          fi
+        fi
+
+  license-check:
+    name: License Compliance Check
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+
+    - name: Set up Python
+      run: uv python install 3.11
+
+    - name: Create virtual environment
+      run: uv venv --python 3.11
+
+    - name: Install dependencies
+      run: uv sync --dev
+
+    - name: Install license checker
+      run: uv pip install pip-licenses
+
+    - name: Check licenses
+      run: |
+        echo "=== License Compliance Check ==="
+        uv run pip-licenses --format=json --output-file=licenses-report.json || true
+        uv run pip-licenses --format=plain || true
+
+    - name: Upload license report
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: license-report
+        path: licenses-report.json
+
+    - name: Validate license compliance
+      run: |
+        echo "=== License Validation ==="
+        # 許可されたライセンスのリスト
+        ALLOWED_LICENSES="MIT|Apache Software License|BSD License|ISC License|Mozilla Public License 2.0|Python Software Foundation License"
+
+        if [ -f licenses-report.json ]; then
+          # 禁止されたライセンスをチェック
+          FORBIDDEN_LICENSES=$(jq -r '.[] | select(.License | test("GPL|AGPL|LGPL"; "i")) | "\(.Name): \(.License)"' licenses-report.json || true)
+
+          if [ -n "$FORBIDDEN_LICENSES" ]; then
+            echo "::error::Found packages with forbidden licenses:"
+            echo "$FORBIDDEN_LICENSES"
+            exit 1
+          fi
+
+          # 不明なライセンスをチェック
+          UNKNOWN_LICENSES=$(jq -r '.[] | select(.License == "UNKNOWN" or .License == "") | "\(.Name): \(.License)"' licenses-report.json || true)
+
+          if [ -n "$UNKNOWN_LICENSES" ]; then
+            echo "::warning::Found packages with unknown licenses:"
+            echo "$UNKNOWN_LICENSES"
+          fi
+        fi
+
+  security-summary:
+    name: Security Summary
+    runs-on: ubuntu-latest
+    needs: [security-scan, codeql-analysis, secret-scan, license-check]
+    if: always()
+
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: security-reports
+
+    - name: Generate security summary
+      run: |
+        echo "# セキュリティスキャン結果サマリー" > security-summary.md
+        echo "" >> security-summary.md
+        echo "## 実行日時: $(date)" >> security-summary.md
+        echo "" >> security-summary.md
+
+        # 各レポートの結果をサマリーに追加
+        if [ -d "security-reports/security-scan-results" ]; then
+          echo "## 脆弱性スキャン結果" >> security-summary.md
+
+          if [ -f "security-reports/security-scan-results/safety-report.json" ]; then
+            SAFETY_COUNT=$(jq '.vulnerabilities | length' security-reports/security-scan-results/safety-report.json 2>/dev/null || echo "0")
+            echo "- Safety: $SAFETY_COUNT 件の既知の脆弱性" >> security-summary.md
+          fi
+
+          if [ -f "security-reports/security-scan-results/bandit-report.json" ]; then
+            BANDIT_HIGH=$(jq '[.results[] | select(.issue_severity == "HIGH")] | length' security-reports/security-scan-results/bandit-report.json 2>/dev/null || echo "0")
+            BANDIT_MEDIUM=$(jq '[.results[] | select(.issue_severity == "MEDIUM")] | length' security-reports/security-scan-results/bandit-report.json 2>/dev/null || echo "0")
+            echo "- Bandit: $BANDIT_HIGH 件の高リスク、$BANDIT_MEDIUM 件の中リスク" >> security-summary.md
+          fi
+
+          if [ -f "security-reports/security-scan-results/semgrep-report.json" ]; then
+            SEMGREP_ERRORS=$(jq '[.results[] | select(.extra.severity == "ERROR")] | length' security-reports/security-scan-results/semgrep-report.json 2>/dev/null || echo "0")
+            echo "- Semgrep: $SEMGREP_ERRORS 件のセキュリティエラー" >> security-summary.md
+          fi
+        fi
+
+        if [ -d "security-reports/secret-scan-results" ]; then
+          echo "" >> security-summary.md
+          echo "## シークレットスキャン結果" >> security-summary.md
+
+          if [ -f "security-reports/secret-scan-results/trufflehog-report.json" ]; then
+            SECRET_COUNT=$(jq '. | length' security-reports/secret-scan-results/trufflehog-report.json 2>/dev/null || echo "0")
+            echo "- TruffleHog: $SECRET_COUNT 件の潜在的なシークレット" >> security-summary.md
+          fi
+        fi
+
+        if [ -d "security-reports/license-report" ]; then
+          echo "" >> security-summary.md
+          echo "## ライセンスチェック結果" >> security-summary.md
+
+          if [ -f "security-reports/license-report/licenses-report.json" ]; then
+            TOTAL_PACKAGES=$(jq '. | length' security-reports/license-report/licenses-report.json 2>/dev/null || echo "0")
+            echo "- 総パッケージ数: $TOTAL_PACKAGES" >> security-summary.md
+          fi
+        fi
+
+        echo "" >> security-summary.md
+        echo "詳細な結果は各ジョブのアーティファクトを確認してください。" >> security-summary.md
+
+    - name: Upload security summary
+      uses: actions/upload-artifact@v4
+      with:
+        name: security-summary
+        path: security-summary.md
+
+    - name: Comment security summary on PR
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const summary = fs.readFileSync('security-summary.md', 'utf8');
+
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: summary
+          });

@@ -1,0 +1,225 @@
+name: Coverage Report
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  coverage-analysis:
+    name: Coverage Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # 履歴比較のため全履歴を取得
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+
+    - name: Set up Python
+      run: uv python install 3.11
+
+    - name: Create virtual environment
+      run: uv venv --python 3.11
+
+    - name: Install dependencies
+      run: uv sync --dev
+
+    - name: Run comprehensive coverage analysis
+      run: |
+        echo "🔍 包括的カバレッジ分析を実行中..."
+
+        # 詳細なカバレッジレポート生成
+        uv run pytest tests/ \
+          --cov=src/setup_repo \
+          --cov-report=term-missing \
+          --cov-report=html:htmlcov \
+          --cov-report=xml:coverage.xml \
+          --cov-report=json:coverage.json \
+          --cov-fail-under=80 \
+          --junit-xml=test-results.xml \
+          -v
+
+    - name: Generate coverage summary
+      run: |
+        echo "📊 カバレッジサマリー生成中..."
+
+        # カバレッジサマリーをMarkdown形式で生成
+        cat > coverage-summary.md << 'EOF'
+        # 📊 カバレッジレポート
+
+        ## 全体サマリー
+        EOF
+
+        uv run coverage report --format=markdown >> coverage-summary.md
+
+        echo "" >> coverage-summary.md
+        echo "## 詳細分析" >> coverage-summary.md
+        echo "" >> coverage-summary.md
+
+        # 未カバー行の詳細
+        echo "### 未カバー行" >> coverage-summary.md
+        uv run coverage report --show-missing >> coverage-summary.md
+
+        # カバレッジ品質チェック
+        echo "" >> coverage-summary.md
+        echo "## 品質ゲート" >> coverage-summary.md
+
+        COVERAGE=$(uv run coverage report --format=total)
+        if [ "$COVERAGE" -ge 80 ]; then
+          echo "✅ **品質ゲート通過**: ${COVERAGE}% (要求: 80%)" >> coverage-summary.md
+        else
+          echo "❌ **品質ゲート未達成**: ${COVERAGE}% (要求: 80%)" >> coverage-summary.md
+        fi
+
+    - name: Check coverage trend
+      if: github.event_name == 'pull_request'
+      run: |
+        echo "📈 カバレッジトレンド分析中..."
+
+        # ベースブランチのカバレッジと比較
+        git checkout ${{ github.event.pull_request.base.sha }}
+
+        # ベースブランチでテスト実行（エラーは無視）
+        uv run pytest tests/ --cov=src/setup_repo --cov-report=json:base-coverage.json || true
+
+        # 現在のブランチに戻る
+        git checkout ${{ github.event.pull_request.head.sha }}
+
+        # カバレッジ比較スクリプト実行
+        cat > compare_coverage.py << 'EOF'
+        import json
+        import sys
+
+        try:
+            with open('base-coverage.json', 'r') as f:
+                base_cov = json.load(f)
+            with open('coverage.json', 'r') as f:
+                current_cov = json.load(f)
+
+            base_percent = base_cov['totals']['percent_covered']
+            current_percent = current_cov['totals']['percent_covered']
+            diff = current_percent - base_percent
+
+            print(f"ベースブランチ: {base_percent:.2f}%")
+            print(f"現在のブランチ: {current_percent:.2f}%")
+            print(f"差分: {diff:+.2f}%")
+
+            if diff >= 0:
+                print("✅ カバレッジが向上または維持されています")
+            else:
+                print("⚠️ カバレッジが低下しています")
+                if abs(diff) > 5:
+                    print("❌ カバレッジが5%以上低下しています")
+                    sys.exit(1)
+        except Exception as e:
+            print(f"カバレッジ比較に失敗: {e}")
+        EOF
+
+        uv run python compare_coverage.py
+
+    - name: Upload coverage artifacts
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: coverage-report
+        path: |
+          htmlcov/
+          coverage.xml
+          coverage.json
+          coverage-summary.md
+          test-results.xml
+        retention-days: 30
+
+    - name: Publish coverage summary
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          try {
+            const summary = fs.readFileSync('coverage-summary.md', 'utf8');
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: summary
+            });
+          } catch (error) {
+            console.log('カバレッジサマリーの投稿に失敗:', error);
+          }
+
+  coverage-badge:
+    name: Update Coverage Badge
+    runs-on: ubuntu-latest
+    needs: coverage-analysis
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+
+    - name: Set up Python
+      run: uv python install 3.11
+
+    - name: Create virtual environment
+      run: uv venv --python 3.11
+
+    - name: Install dependencies
+      run: uv sync --dev
+
+    - name: Generate coverage
+      run: |
+        uv run pytest tests/ --cov=src/setup_repo --cov-report=json:coverage.json
+
+    - name: Create coverage badge
+      run: |
+        COVERAGE=$(uv run python -c "import json; print(f\"{json.load(open('coverage.json'))['totals']['percent_covered']:.0f}\")")
+
+        # カバレッジに応じて色を決定
+        if [ "$COVERAGE" -ge 90 ]; then
+          COLOR="brightgreen"
+        elif [ "$COVERAGE" -ge 80 ]; then
+          COLOR="green"
+        elif [ "$COVERAGE" -ge 70 ]; then
+          COLOR="yellow"
+        elif [ "$COVERAGE" -ge 60 ]; then
+          COLOR="orange"
+        else
+          COLOR="red"
+        fi
+
+        # バッジURL生成
+        BADGE_URL="https://img.shields.io/badge/coverage-${COVERAGE}%25-${COLOR}"
+        echo "Coverage badge URL: $BADGE_URL"
+
+        # READMEにバッジ情報を保存（必要に応じて）
+        echo "COVERAGE_BADGE_URL=$BADGE_URL" >> $GITHUB_ENV
+
+    - name: Comment coverage badge
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const badgeUrl = process.env.COVERAGE_BADGE_URL;
+          const body = `## 📊 カバレッジバッジ更新\n\n![Coverage](${badgeUrl})\n\nバッジURL: \`${badgeUrl}\``;
+
+          // 最新のコミットにコメント
+          github.rest.repos.createCommitComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            commit_sha: context.sha,
+            body: body
+          });

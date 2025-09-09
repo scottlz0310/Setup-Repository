@@ -1,0 +1,32 @@
+{
+    "recommendations": [
+        // Python開発必須拡張機能
+        "ms-python.python",
+        "charliermarsh.ruff",
+        "ms-python.mypy-type-checker",
+        // テスト関連
+        "ms-vscode.test-adapter-converter",
+        "littlefoxteam.vscode-python-test-adapter",
+        // Git関連
+        "eamodio.gitlens",
+        "github.vscode-pull-request-github",
+        // マークダウン
+        "yzhang.markdown-all-in-one",
+        "davidanson.vscode-markdownlint",
+        // YAML/JSON
+        "redhat.vscode-yaml",
+        "ms-vscode.vscode-json",
+        // その他の便利な拡張機能
+        "ms-vscode.vscode-todo-highlight",
+        "streetsidesoftware.code-spell-checker",
+        "ms-vscode-remote.remote-containers",
+        "ms-vscode-remote.remote-wsl"
+    ],
+    "unwantedRecommendations": [
+        // 競合する可能性のある拡張機能
+        "ms-python.flake8",
+        "ms-python.pylint",
+        "ms-python.black-formatter",
+        "ms-python.isort"
+    ]
+}

@@ -1,0 +1,99 @@
+name: Extended CI Matrix
+
+on:
+  schedule:
+    # 毎日午前2時（UTC）に実行
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      python_versions:
+        description: 'Python versions to test (comma-separated)'
+        required: false
+        default: '3.9,3.10,3.11,3.12,3.13'
+
+jobs:
+  extended-matrix-test:
+    name: Extended Matrix Test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-20.04, ubuntu-22.04, windows-2019, windows-2022, macos-12, macos-13]
+        python-version: ${{ fromJson(github.event.inputs.python_versions || '["3.9", "3.10", "3.11", "3.12", "3.13"]') }}
+      fail-fast: false
+      max-parallel: 6
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install uv (Unix)
+      if: runner.os != 'Windows'
+      run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+    - name: Install uv (Windows)
+      if: runner.os == 'Windows'
+      run: irm https://astral.sh/uv/install.ps1 | iex
+      shell: powershell
+
+    - name: Add uv to PATH (Windows)
+      if: runner.os == 'Windows'
+      run: echo "$env:USERPROFILE\.cargo\bin" >> $env:GITHUB_PATH
+      shell: powershell
+
+    - name: Set up Python ${{ matrix.python-version }}
+      run: uv python install ${{ matrix.python-version }}
+
+    - name: Create virtual environment
+      run: uv venv --python ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: uv sync --dev
+
+    - name: Verify installation
+      run: |
+        uv run python --version
+        uv run python -c "import sys; print(f'Python {sys.version}')"
+        uv run python -c "from src.setup_repo import __version__; print(f'Package version: {__version__}')"
+
+    - name: Run comprehensive tests
+      run: |
+        uv run pytest tests/ -v --tb=short
+        uv run python main.py --help
+
+    - name: Test platform-specific functionality
+      run: |
+        uv run python -c "
+        from src.setup_repo.platform_detector import detect_platform, get_platform_info
+        platform = detect_platform()
+        info = get_platform_info()
+        print(f'Platform: {platform}')
+        print(f'Platform info: {info}')
+        "
+
+  performance-test:
+    name: Performance Test
+    runs-on: ubuntu-latest
+    needs: extended-matrix-test
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+
+    - name: Set up Python
+      run: uv python install 3.11
+
+    - name: Install dependencies
+      run: uv sync --dev
+
+    - name: Run performance tests
+      run: |
+        uv run pytest tests/ -m "slow" -v --tb=short || echo "No slow tests found"
+
+    - name: Benchmark startup time
+      run: |
+        echo "Measuring startup time..."
+        time uv run python main.py --help > /dev/null
+        time uv run python -c "from src.setup_repo.cli import main; main(['--help'])" > /dev/null

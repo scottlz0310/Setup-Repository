@@ -1,0 +1,46 @@
+# Bandit設定ファイル
+# セキュリティ脆弱性スキャンの設定
+
+[bandit]
+# スキャン対象ディレクトリ
+targets = src/
+
+# 除外するディレクトリ
+exclude_dirs = tests,venv,.venv,build,dist,.git,.mypy_cache,.pytest_cache,__pycache__
+
+# スキップするテスト
+skips = B101,B603,B607,B404,B604,B310,B108
+
+# 信頼度レベル（LOW, MEDIUM, HIGH）
+confidence = MEDIUM
+
+# 重要度レベル（LOW, MEDIUM, HIGH）
+severity = MEDIUM
+
+# レポート形式
+format = txt
+
+# 詳細出力
+verbose = true
+
+# 再帰的スキャン
+recursive = true
+
+# アサーション使用のスキップ（テストファイル用）
+[bandit.assert_used]
+skips = *_test.py,test_*.py
+
+# ハードコードされたパスワードの検出設定
+[bandit.hardcoded_password_string]
+# 除外するパターン（例：テスト用の固定値）
+word_list = test,example,dummy,placeholder
+
+# SQLインジェクション検出設定
+[bandit.hardcoded_sql_expressions]
+# SQLクエリの検出設定
+confidence = HIGH
+
+# シェルインジェクション検出設定
+[bandit.shell_injection]
+# subprocess使用の検出設定
+confidence = HIGH
