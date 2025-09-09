@@ -394,8 +394,9 @@ class SetupWizard:
             print(f"   👤 GitHubユーザー: {full_config['owner']}")
             print(f"   📁 ワークスペース: {full_config['dest']}")
             token_status = (
-                '設定済み' if full_config['github_token'] != 'YOUR_GITHUB_TOKEN'
-                else '未設定'
+                "設定済み"
+                if full_config["github_token"] != "YOUR_GITHUB_TOKEN"
+                else "未設定"
             )
             print(f"   🔑 トークン: {token_status}")
 

@@ -98,7 +98,7 @@ class TeeLogger:
 
         except Exception as e:
             print(f"⚠️  ログファイルセットアップ失敗: {e}")
-            if hasattr(self, 'file_handle') and self.file_handle:
+            if hasattr(self, "file_handle") and self.file_handle:
                 self.file_handle.close()
             self.file_handle = None
 

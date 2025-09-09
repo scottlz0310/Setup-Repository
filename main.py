@@ -18,8 +18,7 @@ def main():
     """メインエントリーポイント"""
     parser = argparse.ArgumentParser(
         description=(
-            "🚀 セットアップリポジトリ - "
-            "GitHubリポジトリセットアップ・同期ツール"
+            "🚀 セットアップリポジトリ - GitHubリポジトリセットアップ・同期ツール"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""

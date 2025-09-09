@@ -432,9 +432,12 @@ class TestGitHubAPIIntegration:
         env_token = "env_github_token"
         env_username = "env_github_user"
 
-        with patch.dict(
-            os.environ, {"GITHUB_TOKEN": env_token, "GITHUB_USERNAME": env_username}
-        ), patch("urllib.request.urlopen") as mock_urlopen:
+        with (
+            patch.dict(
+                os.environ, {"GITHUB_TOKEN": env_token, "GITHUB_USERNAME": env_username}
+            ),
+            patch("urllib.request.urlopen") as mock_urlopen,
+        ):
             mock_response = Mock()
             mock_response.read.return_value = json.dumps(
                 {"login": env_username}

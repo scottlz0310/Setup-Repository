@@ -155,7 +155,9 @@ class SecurityChecker:
                         "status": (
                             "error"
                             if high_issues
-                            else "warning" if medium_issues else "success"
+                            else "warning"
+                            if medium_issues
+                            else "success"
                         ),
                         "high_issues": len(high_issues),
                         "medium_issues": len(medium_issues),
@@ -300,7 +302,9 @@ class SecurityChecker:
                     status = (
                         "error"
                         if forbidden_packages
-                        else "warning" if unknown_packages else "success"
+                        else "warning"
+                        if unknown_packages
+                        else "success"
                     )
 
                     return {

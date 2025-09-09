@@ -191,9 +191,7 @@ class TestAutoDetectConfig:
             assert config["skip_uv_install"] is False
             assert config["auto_stash"] is False
             assert config["sync_only"] is False
-            assert config["log_file"] == str(
-                Path.home() / "logs" / "repo-sync.log"
-            )
+            assert config["log_file"] == str(Path.home() / "logs" / "repo-sync.log")
 
     def test_auto_detect_config_with_missing_values(self) -> None:
         """一部の値が検出されない場合のテスト"""

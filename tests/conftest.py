@@ -215,9 +215,9 @@ def assert_file_exists_with_content(
 
     if expected_content is not None:
         actual_content = file_path.read_text(encoding="utf-8")
-        assert (
-            expected_content in actual_content
-        ), "期待する内容がファイルに含まれていません"
+        assert expected_content in actual_content, (
+            "期待する内容がファイルに含まれていません"
+        )
 
 
 def assert_directory_structure(

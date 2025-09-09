@@ -97,8 +97,8 @@ class ReleaseSystemTester:
 
             if new_version != original_version:
                 print(
-                        "✅ バージョン自動インクリメント: 成功 ("
-                        f"{original_version} → {new_version})"
+                    "✅ バージョン自動インクリメント: 成功 ("
+                    f"{original_version} → {new_version})"
                 )
 
                 # 元のバージョンに戻す

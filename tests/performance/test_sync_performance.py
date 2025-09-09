@@ -113,12 +113,10 @@ class TestSyncPerformance:
 
         # パフォーマンス要件の検証
         assert result.success, f"同期処理が失敗しました: {result.errors}"
-        assert (
-            metrics.execution_time < 5.0
-        ), f"実行時間が要件を超過: {metrics.execution_time:.2f}秒 > 5.0秒"
-        assert (
-            metrics.operations_per_second > 2.0
-        ), (
+        assert metrics.execution_time < 5.0, (
+            f"実行時間が要件を超過: {metrics.execution_time:.2f}秒 > 5.0秒"
+        )
+        assert metrics.operations_per_second > 2.0, (
             f"処理速度が要件未満: "
             f"{metrics.operations_per_second:.2f} ops/sec < 2.0 ops/sec"
         )
@@ -148,12 +146,10 @@ class TestSyncPerformance:
 
         # パフォーマンス要件の検証
         assert result.success, f"同期処理が失敗しました: {result.errors}"
-        assert (
-            metrics.execution_time < 20.0
-        ), f"実行時間が要件を超過: {metrics.execution_time:.2f}秒 > 20.0秒"
-        assert (
-            metrics.operations_per_second > 2.5
-        ), (
+        assert metrics.execution_time < 20.0, (
+            f"実行時間が要件を超過: {metrics.execution_time:.2f}秒 > 20.0秒"
+        )
+        assert metrics.operations_per_second > 2.5, (
             f"処理速度が要件未満: "
             f"{metrics.operations_per_second:.2f} ops/sec < 2.5 ops/sec"
         )
@@ -183,15 +179,11 @@ class TestGitOperationsPerformance:
         metrics.end_measurement(len(repositories))
 
         # パフォーマンス要件の検証
-        assert (
-            metrics.execution_time < 10.0
-        ), (
+        assert metrics.execution_time < 10.0, (
             f"Git操作シミュレーション時間が要件を超過: "
             f"{metrics.execution_time:.2f}秒 > 10.0秒"
         )
-        assert (
-            metrics.operations_per_second > 3.0
-        ), (
+        assert metrics.operations_per_second > 3.0, (
             f"Git操作速度が要件未満: "
             f"{metrics.operations_per_second:.2f} ops/sec < 3.0 ops/sec"
         )

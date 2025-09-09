@@ -148,9 +148,7 @@ class TestSetupIntegration:
             patch("setup_repo.github_api.GitHubAPI", return_value=mock_github_api),
             pytest.raises((ValueError, KeyError)),
         ):
-            setup_repository_environment(
-                config_path=str(config_file), dry_run=True
-            )
+            setup_repository_environment(config_path=str(config_file), dry_run=True)
 
     def test_setup_with_github_api_error(
         self,
@@ -180,9 +178,7 @@ class TestSetupIntegration:
             ),
             pytest.raises((Exception, RuntimeError)),  # noqa: B017
         ):
-            setup_repository_environment(
-                config_path=str(config_file), dry_run=False
-            )
+            setup_repository_environment(config_path=str(config_file), dry_run=False)
 
     def test_setup_dry_run_mode(
         self,

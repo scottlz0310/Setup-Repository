@@ -150,10 +150,8 @@ def main():
                     issues.append(f"MyPyエラー: {metrics.mypy_errors}件")
                 if metrics.test_coverage < args.min_coverage:
                     issues.append(
-
-                            "カバレッジ不足: "
-                            f"{metrics.test_coverage:.1f}% < {args.min_coverage}%"
-
+                        "カバレッジ不足: "
+                        f"{metrics.test_coverage:.1f}% < {args.min_coverage}%"
                     )
                 if metrics.test_failed > 0:
                     issues.append(f"テスト失敗: {metrics.test_failed}件")
