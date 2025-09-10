@@ -1,9 +1,8 @@
 """インタラクティブセットアップ機能のテスト"""
 
-import json
 import subprocess
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, mock_open, patch
+from unittest.mock import Mock, mock_open, patch
 
 import pytest
 
@@ -31,11 +30,11 @@ class TestInteractiveSetup:
         # Arrange
         mock_input.side_effect = [
             "test_token",  # GitHub token
-            "test_user",   # GitHub username
-            "./test_repos", # Clone destination
-            "y",           # Auto install
-            "y",           # Setup VS Code
-            "y",           # Save config
+            "test_user",  # GitHub username
+            "./test_repos",  # Clone destination
+            "y",  # Auto install
+            "y",  # Setup VS Code
+            "y",  # Save config
         ]
 
         setup = InteractiveSetup()
@@ -76,7 +75,7 @@ class TestInteractiveSetup:
         # Arrange
         mock_input.side_effect = [
             "test_token",  # GitHub token
-            "",            # Empty username
+            "",  # Empty username
         ]
 
         setup = InteractiveSetup()
@@ -91,11 +90,11 @@ class TestInteractiveSetup:
         # Arrange
         mock_input.side_effect = [
             "test_token",  # GitHub token
-            "test_user",   # GitHub username
-            "",            # Empty destination (use default)
-            "n",           # No auto install
-            "n",           # No VS Code setup
-            "n",           # Don't save config
+            "test_user",  # GitHub username
+            "",  # Empty destination (use default)
+            "n",  # No auto install
+            "n",  # No VS Code setup
+            "n",  # Don't save config
         ]
 
         setup = InteractiveSetup()
@@ -410,7 +409,7 @@ class TestSetupWizard:
         # Arrange
         mock_get_managers.return_value = ["scoop"]
         mock_get_commands.return_value = {"scoop": ["scoop install uv"]}
-        
+
         # 最初の試行は失敗、pipは成功
         mock_run.side_effect = [
             subprocess.CalledProcessError(1, "cmd"),  # scoop失敗
@@ -457,7 +456,9 @@ class TestSetupWizard:
         """GitHub CLIインストール成功のテスト"""
         # Arrange
         mock_get_managers.return_value = ["scoop"]
-        mock_get_commands.return_value = {"scoop": ["scoop install uv", "scoop install gh"]}
+        mock_get_commands.return_value = {
+            "scoop": ["scoop install uv", "scoop install gh"]
+        }
         mock_run.return_value = Mock()
 
         wizard = SetupWizard()
@@ -478,7 +479,9 @@ class TestSetupWizard:
         """GitHub CLIインストール失敗のテスト"""
         # Arrange
         mock_get_managers.return_value = ["scoop"]
-        mock_get_commands.return_value = {"scoop": ["scoop install uv", "scoop install gh"]}
+        mock_get_commands.return_value = {
+            "scoop": ["scoop install uv", "scoop install gh"]
+        }
         mock_run.side_effect = subprocess.CalledProcessError(1, "cmd")
 
         wizard = SetupWizard()
@@ -554,7 +557,10 @@ class TestSetupWizard:
             {"username": "existing_user", "token": None},  # 初回チェック
             {"username": "existing_user", "token": "new_token"},  # 再チェック
         ]
-        mock_validate_input.return_value = {"valid": True, "value": True}  # GitHub CLI認証を選択
+        mock_validate_input.return_value = {
+            "valid": True,
+            "value": True,
+        }  # GitHub CLI認証を選択
 
         wizard = SetupWizard()
 
@@ -656,7 +662,9 @@ class TestSetupWizard:
 
         # Assert
         assert result is True
-        mock_file.assert_called_once_with(Path("config.local.json"), "w", encoding="utf-8")
+        mock_file.assert_called_once_with(
+            Path("config.local.json"), "w", encoding="utf-8"
+        )
 
     @patch("builtins.open")
     @patch("builtins.print")
@@ -748,9 +756,7 @@ class TestSetupWizard:
     @patch.object(SetupWizard, "check_prerequisites")
     @patch.object(SetupWizard, "welcome_message")
     @patch("builtins.print")
-    def test_run_prerequisites_fail(
-        self, mock_print, mock_welcome, mock_check_prereq
-    ):
+    def test_run_prerequisites_fail(self, mock_print, mock_welcome, mock_check_prereq):
         """前提条件チェック失敗時のテスト"""
         # Arrange
         mock_check_prereq.return_value = False

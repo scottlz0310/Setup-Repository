@@ -5,21 +5,22 @@ import shutil
 import subprocess
 import time
 from pathlib import Path
+from typing import Union
 
 
 class GitOperations:
     """Git操作を管理するクラス"""
 
-    def __init__(self, config: dict | None = None) -> None:
+    def __init__(self, config: Union[dict, None] = None) -> None:
         """初期化"""
         self.config = config or {}
 
-    def is_git_repository(self, path: Path | str) -> bool:
+    def is_git_repository(self, path: Union[Path, str]) -> bool:
         """指定されたパスがGitリポジトリかどうかを確認"""
         repo_path = Path(path)
         return (repo_path / ".git").exists()
 
-    def clone_repository(self, repo_url: str, destination: Path | str) -> bool:
+    def clone_repository(self, repo_url: str, destination: Union[Path, str]) -> bool:
         """リポジトリをクローン"""
         dest_path = Path(destination)
         try:
@@ -33,7 +34,7 @@ class GitOperations:
         except subprocess.CalledProcessError:
             return False
 
-    def pull_repository(self, repo_path: Path | str) -> bool:
+    def pull_repository(self, repo_path: Union[Path, str]) -> bool:
         """既存リポジトリをpull"""
         path = Path(repo_path)
         try:
@@ -73,11 +74,16 @@ def choose_clone_url(repo: dict, use_https: bool = False) -> str:
                 timeout=5,
             )
             if result.returncode in [0, 1]:  # 0=成功, 1=認証成功だが接続拒否
-                return repo.get("ssh_url", f"git@github.com:{repo['full_name']}.git")
+                full_name = repo.get("full_name")
+                if full_name and isinstance(full_name, str):
+                    return repo.get("ssh_url", f"git@github.com:{full_name}.git")
+                else:
+                    # full_nameが無効な場合はHTTPSにフォールバック
+                    return repo.get("clone_url", "")
         except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
             pass
 
-    return repo["clone_url"]  # HTTPSにフォールバック
+    return repo.get("clone_url", "")  # HTTPSにフォールバック
 
 
 def sync_repository(repo: dict, dest_dir: Path, dry_run: bool = False) -> bool:
@@ -232,6 +238,6 @@ def _auto_pop_stash(repo_path: Path) -> bool:
 
 
 # 後方互換性のためのインスタンス作成関数
-def create_git_operations(config: dict | None = None) -> GitOperations:
+def create_git_operations(config: Union[dict, None] = None) -> GitOperations:
     """GitOperationsインスタンスを作成"""
     return GitOperations(config)

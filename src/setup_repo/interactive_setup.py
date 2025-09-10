@@ -2,20 +2,18 @@
 
 import json
 import subprocess
-import sys
 from pathlib import Path
 
-from .config import get_github_token, get_github_user
 from .platform_detector import (
     PlatformDetector,
     get_available_package_managers,
     get_install_commands,
 )
 from .setup_validators import (
-    validate_github_credentials,
-    validate_directory_path,
-    validate_setup_prerequisites,
     check_system_requirements,
+    validate_directory_path,
+    validate_github_credentials,
+    validate_setup_prerequisites,
     validate_user_input,
 )
 
@@ -109,24 +107,24 @@ class SetupWizard:
         print("\\n🔍 前提条件をチェック中...")
 
         prereq_result = validate_setup_prerequisites()
-        
+
         # 成功した項目を表示
         if prereq_result["python"]["valid"]:
             print(f"✅ Python {prereq_result['python']['version']}")
-        
+
         if prereq_result["git"]["available"]:
             print(f"✅ {prereq_result['git']['version']}")
-        
+
         if prereq_result["uv"]["available"]:
             print(f"✅ {prereq_result['uv']['version']}")
-        
+
         if prereq_result["gh"]["available"]:
             print(f"✅ {prereq_result['gh']['version']}")
-        
+
         # 警告を表示
         for warning in prereq_result["warnings"]:
             print(f"⚠️  {warning}")
-        
+
         # エラーがある場合
         if not prereq_result["valid"]:
             print("\\n❌ 前提条件が満たされていません:")
@@ -309,17 +307,15 @@ class SetupWizard:
 
         # 既存の認証情報をチェック
         credentials = validate_github_credentials()
-        
+
         # ユーザー名の設定
         username = credentials["username"]
         if not username:
             print("\\n👤 GitHubユーザー名が検出されませんでした")
             username_input = validate_user_input(
-                "GitHubユーザー名を入力してください: ",
-                "string",
-                required=True
+                "GitHubユーザー名を入力してください: ", "string", required=True
             )
-            
+
             if username_input["valid"]:
                 username = username_input["value"]
                 # git config に設定
@@ -348,9 +344,9 @@ class SetupWizard:
                 "\\n今すぐ GitHub CLI で認証しますか? (Y/n): ",
                 "boolean",
                 required=False,
-                default="y"
+                default="y",
             )
-            
+
             if choice_input["valid"] and choice_input["value"]:
                 try:
                     subprocess.run(["gh", "auth", "login"], check=True)
@@ -377,20 +373,24 @@ class SetupWizard:
             "別のパスを使用しますか? (空白でデフォルト): ",
             "string",
             required=False,
-            default=default_workspace
+            default=default_workspace,
         )
-        
+
         if path_input["valid"]:
             workspace_path = path_input["value"] or default_workspace
-            
+
             # ディレクトリの検証と作成
             path_validation = validate_directory_path(workspace_path)
-            
+
             if path_validation["valid"]:
                 if path_validation.get("created"):
-                    print(f"✅ ワークスペースディレクトリを作成しました: {workspace_path}")
+                    print(
+                        f"✅ ワークスペースディレクトリを作成しました: {workspace_path}"
+                    )
                 else:
-                    print(f"✅ ワークスペースディレクトリを確認しました: {workspace_path}")
+                    print(
+                        f"✅ ワークスペースディレクトリを確認しました: {workspace_path}"
+                    )
                 self.config["dest"] = str(path_validation["path"])
             else:
                 print(f"❌ {path_validation['error']}")
@@ -493,8 +493,11 @@ class SetupWizard:
 
 # 後方互換性のためのエイリアス
 __all__ = [
-    'InteractiveSetup', 'SetupWizard',
+    "InteractiveSetup",
+    "SetupWizard",
     # バリデーター（後方互換性）
-    'validate_github_credentials', 'validate_directory_path', 
-    'validate_setup_prerequisites', 'check_system_requirements'
+    "validate_github_credentials",
+    "validate_directory_path",
+    "validate_setup_prerequisites",
+    "check_system_requirements",
 ]

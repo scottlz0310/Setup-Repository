@@ -60,7 +60,7 @@ class CIEnvironmentInfo:
     def get_ci_metadata() -> dict[str, Any]:
         """CI環境のメタデータを取得"""
         ci_type = CIEnvironmentInfo.detect_ci_environment()
-        
+
         if ci_type == "github_actions":
             return CIEnvironmentInfo.get_github_actions_info()
         elif ci_type == "gitlab_ci":
@@ -80,12 +80,12 @@ class CIEnvironmentInfo:
         """CI関連の環境変数を収集"""
         ci_prefixes = ["GITHUB_", "CI_", "RUNNER_", "GITLAB_", "JENKINS_"]
         ci_vars = ["TRAVIS", "CIRCLECI"]  # 単体の環境変数名
-        
+
         result = {}
         for key, value in os.environ.items():
             if any(key.startswith(prefix) for prefix in ci_prefixes) or key in ci_vars:
                 result[key] = value
-        
+
         return result
 
     @staticmethod

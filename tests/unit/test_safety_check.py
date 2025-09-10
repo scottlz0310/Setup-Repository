@@ -1,12 +1,8 @@
 """安全性検証のテスト"""
 
-import shutil
 import subprocess
-import time
 from pathlib import Path
 from unittest.mock import Mock, patch
-
-import pytest
 
 from src.setup_repo.safety_check import (
     check_unpushed_changes,
@@ -237,7 +233,9 @@ class TestPromptUserAction:
         assert mock_input.call_count == 3
         print_calls = [call[0][0] for call in mock_print.call_args_list]
         # 無効な入力に対するメッセージが表示されることを確認
-        assert any("s, c, q のいずれかを入力してください" in call for call in print_calls)
+        assert any(
+            "s, c, q のいずれかを入力してください" in call for call in print_calls
+        )
 
     @patch("builtins.input")
     @patch("builtins.print")
@@ -276,7 +274,9 @@ class TestCreateEmergencyBackup:
     @patch("shutil.copytree")
     @patch("builtins.print")
     @patch("time.time")
-    def test_create_emergency_backup_success(self, mock_time, mock_print, mock_copytree):
+    def test_create_emergency_backup_success(
+        self, mock_time, mock_print, mock_copytree
+    ):
         """バックアップ作成成功のテスト"""
         # Arrange
         repo_path = Path("/test/repo")
@@ -291,12 +291,17 @@ class TestCreateEmergencyBackup:
         expected_backup_path = Path("/test/repo.backup.1234567890")
         mock_copytree.assert_called_once_with(repo_path, expected_backup_path)
         print_calls = [call[0][0] for call in mock_print.call_args_list]
-        assert any("緊急バックアップ作成: repo.backup.1234567890" in call for call in print_calls)
+        assert any(
+            "緊急バックアップ作成: repo.backup.1234567890" in call
+            for call in print_calls
+        )
 
     @patch("shutil.copytree")
     @patch("builtins.print")
     @patch("time.time")
-    def test_create_emergency_backup_failure(self, mock_time, mock_print, mock_copytree):
+    def test_create_emergency_backup_failure(
+        self, mock_time, mock_print, mock_copytree
+    ):
         """バックアップ作成失敗のテスト"""
         # Arrange
         repo_path = Path("/test/repo")
@@ -309,12 +314,16 @@ class TestCreateEmergencyBackup:
         # Assert
         assert result is False
         print_calls = [call[0][0] for call in mock_print.call_args_list]
-        assert any("バックアップ失敗: Permission denied" in call for call in print_calls)
+        assert any(
+            "バックアップ失敗: Permission denied" in call for call in print_calls
+        )
 
     @patch("shutil.copytree")
     @patch("builtins.print")
     @patch("time.time")
-    def test_create_emergency_backup_different_repo_names(self, mock_time, mock_print, mock_copytree):
+    def test_create_emergency_backup_different_repo_names(
+        self, mock_time, mock_print, mock_copytree
+    ):
         """異なるリポジトリ名でのバックアップのテスト"""
         # Arrange
         repo_paths = [
@@ -338,7 +347,9 @@ class TestCreateEmergencyBackup:
     @patch("shutil.copytree")
     @patch("builtins.print")
     @patch("time.time")
-    def test_create_emergency_backup_exception_handling(self, mock_time, mock_print, mock_copytree):
+    def test_create_emergency_backup_exception_handling(
+        self, mock_time, mock_print, mock_copytree
+    ):
         """例外処理のテスト"""
         # Arrange
         repo_path = Path("/test/repo")
@@ -398,7 +409,9 @@ class TestSafetyCheckEdgeCases:
 
     @patch("shutil.copytree")
     @patch("builtins.print")
-    def test_create_emergency_backup_time_import_in_function(self, mock_print, mock_copytree):
+    def test_create_emergency_backup_time_import_in_function(
+        self, mock_print, mock_copytree
+    ):
         """関数内でのtime.timeインポートのテスト"""
         # Arrange
         repo_path = Path("/test/repo")

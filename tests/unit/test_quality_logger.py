@@ -7,11 +7,6 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-from setup_repo.quality_logger import (
-    LogLevel,
-    QualityLogger,
-    get_quality_logger,
-)
 from setup_repo.quality_errors import (
     CoverageError,
     MyPyError,
@@ -19,6 +14,11 @@ from setup_repo.quality_errors import (
     RuffError,
     SecurityScanError,
     TestFailureError,
+)
+from setup_repo.quality_logger import (
+    LogLevel,
+    QualityLogger,
+    get_quality_logger,
 )
 
 

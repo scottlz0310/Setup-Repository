@@ -1,0 +1,328 @@
+name: Monthly Quality Review
+
+on:
+  schedule:
+    # 毎月1日の午前9時（UTC）に実行
+    - cron: "0 9 1 * *"
+  workflow_dispatch:
+    inputs:
+      force_review:
+        description: "強制的にレビューを実行"
+        required: false
+        default: "false"
+
+jobs:
+  monthly-review:
+    name: Monthly Quality Review
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # 全履歴を取得
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Create virtual environment
+        run: uv venv --python 3.11
+
+      - name: Install dependencies
+        run: uv sync --dev
+
+      - name: Generate comprehensive quality report
+        run: |
+          echo "📊 月次品質レビューレポート生成中..."
+
+          # 品質メトリクス収集
+          uv run python scripts/quality-monitor.py --collect-metrics
+
+          # トレンドレポート生成
+          uv run python scripts/quality-monitor.py --generate-trend-report
+
+          # 責任分離分析
+          uv run python scripts/quality-monitor.py --analyze-responsibility > responsibility-analysis.txt
+
+          # カバレッジトレンド分析
+          uv run python scripts/coverage-monitor.py --analyze-trends > coverage-trends.txt
+
+          # 包括的なレポートを生成
+          cat > monthly-quality-report.md << 'EOF'
+          # 📊 月次品質レビューレポート
+
+          **生成日時**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          **レビュー期間**: 過去30日間
+
+          ## 🎯 品質目標の達成状況
+
+          EOF
+
+          # 現在の品質メトリクスを取得
+          if [ -f "quality-history/latest-metrics.json" ]; then
+            uv run python -c "
+          import json
+
+          with open('quality-history/latest-metrics.json', 'r') as f:
+              metrics = json.load(f)
+
+          coverage = metrics['test_coverage']
+          quality_score = metrics['quality_score']
+          ruff_issues = metrics['ruff_issues']
+          mypy_errors = metrics['mypy_errors']
+
+          print(f'**現在のテストカバレッジ**: {coverage:.2f}% (目標: 80%)')
+          print(f'**品質スコア**: {quality_score:.1f}/100 (目標: 80)')
+          print(f'**Ruff問題**: {ruff_issues}件 (目標: ≤10件)')
+          print(f'**MyPyエラー**: {mypy_errors}件 (目標: ≤5件)')
+          print()
+
+          # 目標達成状況
+          goals_met = 0
+          total_goals = 4
+
+          if coverage >= 80:
+              print('✅ カバレッジ目標達成')
+              goals_met += 1
+          else:
+              print('❌ カバレッジ目標未達成')
+              
+          if quality_score >= 80:
+              print('✅ 品質スコア目標達成')
+              goals_met += 1
+          else:
+              print('❌ 品質スコア目標未達成')
+              
+          if ruff_issues <= 10:
+              print('✅ Ruff問題目標達成')
+              goals_met += 1
+          else:
+              print('❌ Ruff問題目標未達成')
+              
+          if mypy_errors <= 5:
+              print('✅ MyPyエラー目標達成')
+              goals_met += 1
+          else:
+              print('❌ MyPyエラー目標未達成')
+              
+          print()
+          print(f'**目標達成率**: {goals_met}/{total_goals} ({goals_met/total_goals*100:.1f}%)')
+          " >> monthly-quality-report.md
+          fi
+
+          echo "" >> monthly-quality-report.md
+          echo "## 📈 トレンド分析" >> monthly-quality-report.md
+          echo "" >> monthly-quality-report.md
+          cat coverage-trends.txt >> monthly-quality-report.md
+
+          echo "" >> monthly-quality-report.md
+          echo "## 🏗️ 責任分離分析" >> monthly-quality-report.md
+          echo "" >> monthly-quality-report.md
+          cat responsibility-analysis.txt >> monthly-quality-report.md
+
+          # 最新のトレンドレポートを追加
+          LATEST_TREND_REPORT=$(ls -t quality-reports/quality_trend_report_*.json 2>/dev/null | head -n1)
+          if [ -f "$LATEST_TREND_REPORT" ]; then
+            echo "" >> monthly-quality-report.md
+            echo "## 💡 改善提案" >> monthly-quality-report.md
+            echo "" >> monthly-quality-report.md
+            
+            uv run python -c "
+          import json
+
+          with open('$LATEST_TREND_REPORT', 'r') as f:
+              report = json.load(f)
+
+          suggestions = report.get('improvement_suggestions', [])
+          if suggestions:
+              for i, suggestion in enumerate(suggestions, 1):
+                  print(f'{i}. {suggestion}')
+          else:
+              print('現在、特別な改善提案はありません。品質基準を維持してください。')
+          " >> monthly-quality-report.md
+          fi
+
+          echo "" >> monthly-quality-report.md
+          echo "## 📋 次月のアクションプラン" >> monthly-quality-report.md
+          echo "" >> monthly-quality-report.md
+
+          # アクションプランを生成
+          uv run python -c "
+          import json
+
+          actions = []
+
+          # 品質メトリクスに基づいてアクションを提案
+          try:
+              with open('quality-history/latest-metrics.json', 'r') as f:
+                  metrics = json.load(f)
+              
+              if metrics['test_coverage'] < 80:
+                  actions.append('🎯 テストカバレッジを80%以上に向上させる')
+                  actions.append('📝 低カバレッジモジュールの特定とテスト追加')
+              
+              if metrics['quality_score'] < 80:
+                  actions.append('🔧 品質スコア向上のための包括的リファクタリング')
+              
+              if metrics['ruff_issues'] > 10:
+                  actions.append('🧹 Ruffリンティング問題の解決')
+                  actions.append('📏 コードスタイルガイドラインの徹底')
+              
+              if metrics['mypy_errors'] > 5:
+                  actions.append('🔍 型ヒントの追加とMyPyエラーの解決')
+                  actions.append('📚 型安全性向上のためのドキュメント整備')
+              
+              # 責任分離に関するアクション
+              actions.append('🏗️ 大きなモジュールの分割検討')
+              actions.append('📊 月次品質メトリクス監視の継続')
+              actions.append('🔄 継続的改善プロセスの見直し')
+              
+              if not actions:
+                  actions.append('✅ 現在の品質レベルを維持')
+                  actions.append('🚀 新機能開発時の品質基準遵守')
+              
+              for i, action in enumerate(actions, 1):
+                  print(f'{i}. {action}')
+                  
+          except Exception as e:
+              print('1. 品質メトリクス収集システムの確認')
+              print('2. 基本的な品質ゲートの設定')
+              print('3. 継続的監視体制の構築')
+          " >> monthly-quality-report.md
+
+          echo "" >> monthly-quality-report.md
+          echo "---" >> monthly-quality-report.md
+          echo "*このレポートは自動生成されました。詳細な分析結果はアーティファクトをご確認ください。*" >> monthly-quality-report.md
+
+      - name: Generate quality dashboard data
+        run: |
+          echo "📊 品質ダッシュボードデータ生成中..."
+
+          # ダッシュボード用のJSONデータを生成
+          uv run python -c "
+          import json
+          import os
+          from datetime import datetime
+          from pathlib import Path
+
+          dashboard_data = {
+              'generated_at': datetime.now().isoformat(),
+              'month': datetime.now().strftime('%Y-%m'),
+              'summary': {},
+              'trends': {},
+              'alerts': []
+          }
+
+          # 最新メトリクスを読み込み
+          try:
+              with open('quality-history/latest-metrics.json', 'r') as f:
+                  latest_metrics = json.load(f)
+              
+              dashboard_data['summary'] = {
+                  'coverage': latest_metrics['test_coverage'],
+                  'quality_score': latest_metrics['quality_score'],
+                  'ruff_issues': latest_metrics['ruff_issues'],
+                  'mypy_errors': latest_metrics['mypy_errors'],
+                  'test_passed': latest_metrics['test_passed'],
+                  'test_failed': latest_metrics['test_failed']
+              }
+              
+              # アラートを生成
+              if latest_metrics['test_coverage'] < 80:
+                  dashboard_data['alerts'].append({
+                      'type': 'warning',
+                      'message': f\"カバレッジが目標を下回っています: {latest_metrics['test_coverage']:.2f}%\"
+                  })
+              
+              if latest_metrics['quality_score'] < 80:
+                  dashboard_data['alerts'].append({
+                      'type': 'error',
+                      'message': f\"品質スコアが目標を下回っています: {latest_metrics['quality_score']:.1f}\"
+                  })
+                  
+          except Exception as e:
+              dashboard_data['alerts'].append({
+                  'type': 'error',
+                  'message': f'メトリクスデータの読み込みに失敗: {e}'
+              })
+
+          # ダッシュボードデータを保存
+          with open('quality-dashboard.json', 'w') as f:
+              json.dump(dashboard_data, f, indent=2)
+
+          print('品質ダッシュボードデータを生成しました')
+          "
+
+      - name: Upload monthly review artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: monthly-quality-review
+          path: |
+            monthly-quality-report.md
+            quality-dashboard.json
+            quality-history/
+            quality-reports/
+            responsibility-analysis.txt
+            coverage-trends.txt
+          retention-days: 365 # 1年間保持
+
+      - name: Create GitHub Issue for review
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+
+            try {
+              const report = fs.readFileSync('monthly-quality-report.md', 'utf8');
+              const dashboardData = JSON.parse(fs.readFileSync('quality-dashboard.json', 'utf8'));
+              
+              const issueTitle = `月次品質レビュー - ${dashboardData.month}`;
+              const issueBody = `${report}
+
+            ## 📎 関連リンク
+            - [品質ダッシュボードデータ](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})
+            - [詳細なメトリクス履歴](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})
+
+            ## 👥 レビュー担当者
+            @${context.repo.owner} 
+
+            このIssueは自動生成されました。レビュー完了後にクローズしてください。`;
+
+              const issue = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: issueTitle,
+                body: issueBody,
+                labels: ['quality-review', 'monthly-review', 'automated']
+              });
+
+              console.log(`月次品質レビューIssueを作成しました: #${issue.data.number}`);
+            } catch (error) {
+              console.log('Issue作成に失敗:', error);
+            }
+
+      - name: Send quality alerts
+        if: always()
+        run: |
+          echo "🚨 品質アラートチェック中..."
+
+          # 品質ゲートをチェック
+          if ! uv run python scripts/quality-monitor.py --check-gates; then
+            echo "❌ 品質ゲートを通過できませんでした"
+            
+            # アラートファイルが存在する場合は内容を表示
+            if [ -f "quality_alert.txt" ]; then
+              echo "品質アラート内容:"
+              cat quality_alert.txt
+            fi
+            
+            # 重要な品質問題がある場合は失敗させる
+            exit 1
+          else
+            echo "✅ 品質ゲートを通過しました"
+          fi

@@ -9,7 +9,7 @@ class GitignoreManager:
     def __init__(self, repo_path: Path, templates_dir: Path = None):
         self.repo_path = Path(repo_path)
         self.gitignore_path = self.repo_path / ".gitignore"
-        
+
         # テンプレートディレクトリの設定
         if templates_dir:
             self.templates_dir = Path(templates_dir)
@@ -81,14 +81,12 @@ class GitignoreManager:
             print(f"   ❌ .gitignore更新に失敗: {e}")
             return False
 
-
-
     def load_template(self, template_name: str) -> str:
         """テンプレートファイルを読み込み"""
         template_file = self.templates_dir / f"{template_name}.gitignore"
         if not template_file.exists():
             return ""
-        
+
         try:
             return template_file.read_text(encoding="utf-8")
         except OSError:
@@ -98,13 +96,15 @@ class GitignoreManager:
         """利用可能なテンプレート一覧を取得"""
         if not self.templates_dir.exists():
             return []
-        
+
         templates = []
         for file in self.templates_dir.glob("*.gitignore"):
             templates.append(file.stem)
         return sorted(templates)
 
-    def setup_gitignore_from_templates(self, template_names: list[str], dry_run: bool = False, merge_mode: bool = True) -> bool:
+    def setup_gitignore_from_templates(
+        self, template_names: list[str], dry_run: bool = False, merge_mode: bool = True
+    ) -> bool:
         """テンプレートから.gitignoreを作成またはマージ"""
         if dry_run:
             print(f"   📝 テンプレート使用予定: {', '.join(template_names)}")
@@ -125,7 +125,7 @@ class GitignoreManager:
         """新規.gitignore作成"""
         content_parts = []
         used_templates = []
-        
+
         for template_name in template_names:
             template_content = self.load_template(template_name)
             if template_content:
@@ -152,7 +152,7 @@ class GitignoreManager:
         try:
             existing_content = self.gitignore_path.read_text(encoding="utf-8")
             existing_entries = self.get_current_entries()
-            
+
             # テンプレートから新しいエントリを収集（重複除去）
             new_entries = set()
             for template_name in template_names:
@@ -160,26 +160,30 @@ class GitignoreManager:
                 if template_content:
                     for line in template_content.splitlines():
                         line = line.strip()
-                        if line and not line.startswith("#") and line not in existing_entries:
+                        if (
+                            line
+                            and not line.startswith("#")
+                            and line not in existing_entries
+                        ):
                             new_entries.add(line)
-            
+
             if not new_entries:
-                print(f"   ℹ️  既存の.gitignoreに追加するエントリはありません")
+                print("   ℹ️  既存の.gitignoreに追加するエントリはありません")
                 return True
-            
+
             # 既存コンテンツに新しいエントリを追加
             if not existing_content.endswith("\n"):
                 existing_content += "\n"
-            
+
             existing_content += "\n# Auto-generated entries from templates\n"
             # ソートして一貫性を保つ
             for entry in sorted(new_entries):
                 existing_content += f"{entry}\n"
-            
+
             self.gitignore_path.write_text(existing_content, encoding="utf-8")
             print(f"   ✅ .gitignoreにエントリを追加しました: {len(new_entries)}件")
             return True
-            
+
         except OSError as e:
             print(f"   ❌ .gitignoreマージに失敗: {e}")
             return False
@@ -187,14 +191,18 @@ class GitignoreManager:
     def setup_gitignore(self, dry_run: bool = False, merge_mode: bool = True) -> bool:
         """プロジェクトタイプを自動検出して.gitignoreセットアップ"""
         from .project_detector import ProjectDetector
-        
+
         detector = ProjectDetector(self.repo_path)
         recommended_templates = detector.get_recommended_templates()
-        
+
         if not dry_run:
             analysis = detector.analyze_project()
-            print(f"   🔍 検出されたプロジェクトタイプ: {', '.join(analysis['project_types']) or 'なし'}")
+            print(
+                f"   🔍 検出されたプロジェクトタイプ: {', '.join(analysis['project_types']) or 'なし'}"
+            )
             print(f"   🛠️  検出されたツール: {', '.join(analysis['tools']) or 'なし'}")
             print(f"   📝 適用テンプレート: {', '.join(recommended_templates)}")
-        
-        return self.setup_gitignore_from_templates(recommended_templates, dry_run, merge_mode)
+
+        return self.setup_gitignore_from_templates(
+            recommended_templates, dry_run, merge_mode
+        )

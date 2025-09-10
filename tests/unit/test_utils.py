@@ -14,8 +14,8 @@ from unittest.mock import mock_open, patch
 
 import pytest
 
-from src.setup_repo.utils import ProcessLock, TeeLogger
 from src.setup_repo.platform_detector import PlatformDetector
+from src.setup_repo.utils import ProcessLock, TeeLogger
 
 
 @pytest.mark.unit

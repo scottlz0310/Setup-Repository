@@ -1,6 +1,7 @@
 """品質メトリクス収集機能のテスト"""
 
 import json
+import subprocess
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
@@ -344,3 +345,226 @@ class TestQualityMetricsCollector:
             assert report_data["metrics"]["test_coverage"] == 85.0
             assert "quality_score" in report_data
             assert "passing" in report_data
+
+    def test_save_metrics_report_custom_path(self):
+        """カスタムパスでのメトリクスレポート保存のテスト"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            project_root = Path(temp_dir)
+            collector = QualityMetricsCollector(project_root)
+            custom_path = project_root / "custom" / "report.json"
+
+            metrics = QualityMetrics(test_coverage=90.0)
+            report_file = collector.save_metrics_report(metrics, custom_path)
+
+            assert report_file == custom_path
+            assert report_file.exists()
+            assert report_file.parent.exists()  # ディレクトリが作成されている
+
+    @patch("subprocess.run")
+    def test_collect_security_metrics_with_vulnerabilities(self, mock_run):
+        """セキュリティ脆弱性が見つかった場合のテスト"""
+
+        def mock_subprocess_side_effect(*args, **kwargs):
+            mock_result = type("MockResult", (), {})()
+            mock_result.returncode = 1
+
+            command = args[0]
+            if "bandit" in command:
+                mock_result.stdout = '{"results": [{"issue_severity": "HIGH", "issue_text": "Test vulnerability"}]}'
+            elif "safety" in command:
+                mock_result.stdout = '[{"vulnerability": "Test safety issue"}]'
+            else:
+                mock_result.stdout = ""
+
+            return mock_result
+
+        mock_run.side_effect = mock_subprocess_side_effect
+
+        collector = QualityMetricsCollector()
+        result = collector.collect_security_metrics()
+
+        assert result["success"] is False
+        assert result["vulnerability_count"] == 2
+        assert len(result["vulnerabilities"]) == 2
+
+    @patch("subprocess.run")
+    def test_collect_security_metrics_json_decode_error(self, mock_run):
+        """JSONデコードエラーが発生した場合のテスト"""
+
+        def mock_subprocess_side_effect(*args, **kwargs):
+            mock_result = type("MockResult", (), {})()
+            mock_result.returncode = 0
+            mock_result.stdout = "invalid json"
+            return mock_result
+
+        mock_run.side_effect = mock_subprocess_side_effect
+
+        collector = QualityMetricsCollector()
+        result = collector.collect_security_metrics()
+
+        assert result["success"] is True
+        assert result["vulnerability_count"] == 0
+
+    @patch("subprocess.run")
+    def test_collect_security_metrics_file_not_found_error(self, mock_run):
+        """ファイルが見つからない場合のテスト"""
+        mock_run.side_effect = FileNotFoundError()
+
+        collector = QualityMetricsCollector()
+        result = collector.collect_security_metrics()
+
+        assert result["success"] is False
+        assert len(result["errors"]) == 2  # BanditとSafety両方でエラー
+
+    @patch("subprocess.run")
+    def test_collect_all_metrics_integration(self, mock_run):
+        """すべてのメトリクス収集の統合テスト"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            project_root = Path(temp_dir)
+
+            # カバレッジファイルのモック
+            coverage_file = project_root / "coverage.json"
+            coverage_data = {"totals": {"percent_covered": 88.5}}
+            with open(coverage_file, "w") as f:
+                json.dump(coverage_data, f)
+
+            # テストレポートファイルのモック
+            test_report_file = project_root / "test-report.json"
+            test_data = {"summary": {"passed": 25, "failed": 1}}
+            with open(test_report_file, "w") as f:
+                json.dump(test_data, f)
+
+            # subprocess.runのモック設定
+            def mock_subprocess_side_effect(*args, **kwargs):
+                mock_result = type("MockResult", (), {})()
+                command = args[0]
+
+                if "ruff" in command:
+                    mock_result.returncode = 1
+                    mock_result.stdout = '[{"code": "E501"}]'
+                elif "mypy" in command:
+                    mock_result.returncode = 1
+                    mock_result.stdout = "file.py:10: error: Missing type"
+                elif "pytest" in command:
+                    mock_result.returncode = 0
+                elif "bandit" in command:
+                    mock_result.returncode = 0
+                    mock_result.stdout = '{"results": []}'
+                elif "safety" in command:
+                    mock_result.returncode = 0
+                    mock_result.stdout = "[]"
+                else:
+                    mock_result.returncode = 0
+                    mock_result.stdout = ""
+
+                return mock_result
+
+            mock_run.side_effect = mock_subprocess_side_effect
+
+            collector = QualityMetricsCollector(project_root)
+            metrics = collector.collect_all_metrics()
+
+            assert metrics.ruff_issues == 1
+            assert metrics.mypy_errors == 1
+            assert metrics.test_coverage == 88.5
+            assert metrics.test_passed == 25
+            assert metrics.test_failed == 1
+            assert metrics.security_vulnerabilities == 0
+
+    def test_quality_metrics_edge_cases(self):
+        """QualityMetricsのエッジケーステスト"""
+        # 極端な値でのテスト
+        metrics = QualityMetrics(
+            ruff_issues=1000,  # 大量のエラー
+            mypy_errors=500,
+            test_coverage=0.0,  # 最低カバレッジ
+            test_passed=0,
+            test_failed=100,
+            security_vulnerabilities=50,
+        )
+
+        # 品質スコアが0以下にならないことを確認
+        score = metrics.get_quality_score()
+        assert score == 0.0
+
+        # 品質基準を満たさないことを確認
+        assert metrics.is_passing() is False
+
+    def test_quality_metrics_items_method(self):
+        """QualityMetricsのitemsメソッドテスト"""
+        metrics = QualityMetrics(ruff_issues=5, test_coverage=75.0)
+        items = dict(metrics.items())
+
+        assert "ruff_issues" in items
+        assert items["ruff_issues"] == 5
+        assert "test_coverage" in items
+        assert items["test_coverage"] == 75.0
+
+    def test_quality_metrics_to_dict_method(self):
+        """QualityMetricsのto_dictメソッドテスト"""
+        metrics = QualityMetrics(mypy_errors=3, test_passed=20)
+        result_dict = metrics.to_dict()
+
+        assert isinstance(result_dict, dict)
+        assert result_dict["mypy_errors"] == 3
+        assert result_dict["test_passed"] == 20
+
+    @patch("subprocess.run")
+    def test_get_current_commit_hash_error(self, mock_run):
+        """コミットハッシュ取得エラーのテスト"""
+        mock_run.side_effect = subprocess.CalledProcessError(1, "git")
+
+        metrics = QualityMetrics()
+        assert metrics.commit_hash == "unknown"
+
+    @patch("subprocess.run")
+    def test_get_current_commit_hash_file_not_found(self, mock_run):
+        """Gitコマンドが見つからない場合のテスト"""
+        mock_run.side_effect = FileNotFoundError()
+
+        metrics = QualityMetrics()
+        assert metrics.commit_hash == "unknown"
+
+    def test_quality_metrics_custom_min_coverage(self):
+        """カスタム最小カバレッジでのテスト"""
+        metrics = QualityMetrics(
+            ruff_issues=0,
+            mypy_errors=0,
+            test_coverage=70.0,
+            test_failed=0,
+            security_vulnerabilities=0,
+        )
+
+        # デフォルト80%では失敗
+        assert metrics.is_passing(80.0) is False
+
+        # 60%では成功
+        assert metrics.is_passing(60.0) is True
+
+    @patch("subprocess.run")
+    def test_collect_test_metrics_with_parallel_workers(self, mock_run):
+        """並列ワーカー指定でのテストメトリクス収集テスト"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            project_root = Path(temp_dir)
+
+            # カバレッジファイルのモック
+            coverage_file = project_root / "coverage.json"
+            coverage_data = {"totals": {"percent_covered": 92.0}}
+            with open(coverage_file, "w") as f:
+                json.dump(coverage_data, f)
+
+            # テストレポートファイルのモック
+            test_report_file = project_root / "test-report.json"
+            test_data = {"summary": {"passed": 30, "failed": 0}}
+            with open(test_report_file, "w") as f:
+                json.dump(test_data, f)
+
+            mock_run.return_value.returncode = 0
+
+            collector = QualityMetricsCollector(project_root)
+            result = collector.collect_test_metrics(parallel_workers=4)
+
+            assert result["success"] is True
+            assert result["coverage_percent"] == 92.0
+            assert result["tests_passed"] == 30
+            assert result["tests_failed"] == 0

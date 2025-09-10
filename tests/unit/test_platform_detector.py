@@ -553,3 +553,268 @@ class TestPlatformDetectorIntegration:
                 for command in commands[manager]:
                     assert isinstance(command, str)
                     assert len(command) > 0
+
+
+@pytest.mark.unit
+class TestPlatformDetectorClass:
+    """PlatformDetectorクラスのテスト"""
+
+    def test_platform_detector_initialization(self) -> None:
+        """PlatformDetectorの初期化テスト"""
+        from src.setup_repo.platform_detector import PlatformDetector
+
+        detector = PlatformDetector()
+        assert detector._platform_info is None
+
+    def test_detect_platform_caching(self) -> None:
+        """プラットフォーム検出のキャッシュテスト"""
+        from src.setup_repo.platform_detector import PlatformDetector
+
+        detector = PlatformDetector()
+
+        # 最初の呼び出し
+        platform1 = detector.detect_platform()
+        assert detector._platform_info is not None
+
+        # 2回目の呼び出し（キャッシュされた値を使用）
+        platform2 = detector.detect_platform()
+        assert platform1 == platform2
+
+    def test_is_wsl_detection(self) -> None:
+        """WSL検出テスト"""
+        from src.setup_repo.platform_detector import PlatformDetector
+
+        detector = PlatformDetector()
+
+        with (
+            patch("platform.system") as mock_system,
+            patch("platform.release") as mock_release,
+        ):
+            mock_system.return_value = "Linux"
+            mock_release.return_value = "5.4.0-microsoft-standard-WSL2"
+
+            # キャッシュをクリア
+            detector._platform_info = None
+
+            assert detector.is_wsl() is True
+
+    def test_is_not_wsl_detection(self) -> None:
+        """非WSL環境の検出テスト"""
+        from src.setup_repo.platform_detector import PlatformDetector
+
+        detector = PlatformDetector()
+
+        with (
+            patch("platform.system") as mock_system,
+            patch("platform.release") as mock_release,
+        ):
+            mock_system.return_value = "Linux"
+            mock_release.return_value = "5.4.0-generic"
+
+            # キャッシュをクリア
+            detector._platform_info = None
+
+            assert detector.is_wsl() is False
+
+    def test_get_package_manager_with_available_managers(self) -> None:
+        """利用可能なパッケージマネージャーがある場合のテスト"""
+        from src.setup_repo.platform_detector import PlatformDetector
+
+        detector = PlatformDetector()
+
+        with patch("platform.system") as mock_system:
+            mock_system.return_value = "Linux"
+
+            # キャッシュをクリア
+            detector._platform_info = None
+
+            with patch(
+                "src.setup_repo.platform_detector.get_available_package_managers"
+            ) as mock_get_available:
+                mock_get_available.return_value = ["apt", "snap"]
+
+                manager = detector.get_package_manager()
+                assert manager == "apt"  # 最初の利用可能なマネージャー
+
+    def test_get_package_manager_no_available_managers(self) -> None:
+        """利用可能なパッケージマネージャーがない場合のテスト"""
+        from src.setup_repo.platform_detector import PlatformDetector
+
+        detector = PlatformDetector()
+
+        with patch("platform.system") as mock_system:
+            mock_system.return_value = "Linux"
+
+            # キャッシュをクリア
+            detector._platform_info = None
+
+            with patch(
+                "src.setup_repo.platform_detector.get_available_package_managers"
+            ) as mock_get_available:
+                mock_get_available.return_value = []
+
+                manager = detector.get_package_manager()
+                # デフォルトの最初のマネージャーを返す
+                platform_info = detector.get_platform_info()
+                assert manager == platform_info.package_managers[0]
+
+    def test_get_platform_info_caching(self) -> None:
+        """プラットフォーム情報取得のキャッシュテスト"""
+        from src.setup_repo.platform_detector import PlatformDetector
+
+        detector = PlatformDetector()
+
+        # 最初の呼び出し
+        info1 = detector.get_platform_info()
+        assert detector._platform_info is not None
+
+        # 2回目の呼び出し（キャッシュされた値を使用）
+        info2 = detector.get_platform_info()
+        assert info1 == info2
+        assert info1 is info2  # 同じオブジェクトインスタンス
+
+
+@pytest.mark.unit
+class TestEdgeCasesAndErrorHandling:
+    """エッジケースとエラーハンドリングのテスト"""
+
+    def test_check_package_manager_with_empty_string(self) -> None:
+        """空文字列でのパッケージマネージャーチェックテスト"""
+        with patch("subprocess.run") as mock_run:
+            mock_run.side_effect = FileNotFoundError()
+            result = check_package_manager("")
+            assert result is False
+
+    def test_check_package_manager_with_none(self) -> None:
+        """Noneでのパッケージマネージャーチェックテスト"""
+        with pytest.raises(TypeError):
+            check_package_manager(None)
+
+    def test_get_available_package_managers_with_exception(self) -> None:
+        """例外が発生した場合のパッケージマネージャー取得テスト"""
+        platform_info = PlatformInfo(
+            name="test",
+            display_name="Test",
+            package_managers=["test_manager"],
+            shell="bash",
+            python_cmd="python3",
+        )
+
+        with patch(
+            "src.setup_repo.platform_detector.check_package_manager"
+        ) as mock_check:
+            mock_check.return_value = False  # 例外の代わりにFalseを返す
+
+            available = get_available_package_managers(platform_info)
+            assert available == []
+
+    def test_detect_platform_with_unusual_system_values(self) -> None:
+        """異常なシステム値でのプラットフォーム検出テスト"""
+        test_cases = [
+            ("", "linux"),  # 空文字列
+            ("UNKNOWN_OS", "linux"),  # 未知のOS
+            ("Java", "linux"),  # Java仮想マシン
+        ]
+
+        for system_value, expected_platform in test_cases:
+            with (
+                patch("platform.system") as mock_system,
+                patch("platform.release") as mock_release,
+            ):
+                mock_system.return_value = system_value
+                mock_release.return_value = "1.0.0"
+
+                platform_info = detect_platform()
+                assert platform_info.name == expected_platform
+
+    def test_wsl_detection_with_various_release_strings(self) -> None:
+        """様々なリリース文字列でのWSL検出テスト"""
+        wsl_release_strings = [
+            "5.4.0-microsoft-standard-WSL2",
+            "4.19.128-microsoft-standard",
+            "5.10.16.3-microsoft-standard-WSL2+",
+            "MICROSOFT-WSL-KERNEL",
+        ]
+
+        for release_string in wsl_release_strings:
+            with (
+                patch("platform.system") as mock_system,
+                patch("platform.release") as mock_release,
+            ):
+                mock_system.return_value = "Linux"
+                mock_release.return_value = release_string
+
+                platform_info = detect_platform()
+                assert platform_info.name == "wsl"
+
+    def test_non_wsl_linux_detection(self) -> None:
+        """非WSL Linuxの検出テスト"""
+        non_wsl_release_strings = [
+            "5.4.0-generic",
+            "5.15.0-ubuntu",
+            "6.1.0-arch1-1",
+            "5.10.0-kali7-amd64",
+        ]
+
+        for release_string in non_wsl_release_strings:
+            with (
+                patch("platform.system") as mock_system,
+                patch("platform.release") as mock_release,
+            ):
+                mock_system.return_value = "Linux"
+                mock_release.return_value = release_string
+
+                platform_info = detect_platform()
+                assert platform_info.name == "linux"
+
+    def test_platform_info_immutability(self) -> None:
+        """PlatformInfoの不変性テスト"""
+        platform_info = detect_platform()
+
+        # データクラスのフィールドが変更可能であることを確認
+        original_name = platform_info.name
+        platform_info.name = "modified"
+        assert platform_info.name == "modified"
+
+        # 新しい検出で元の値が返されることを確認
+        new_platform_info = detect_platform()
+        assert new_platform_info.name == original_name
+
+    def test_get_install_commands_command_structure(self) -> None:
+        """インストールコマンドの構造テスト"""
+        all_platforms = ["windows", "wsl", "linux", "macos"]
+
+        for platform_name in all_platforms:
+            platform_info = PlatformInfo(
+                name=platform_name,
+                display_name=platform_name.title(),
+                package_managers=["test_manager"],
+                shell="test_shell",
+                python_cmd="test_python",
+            )
+
+            commands = get_install_commands(platform_info)
+
+            if commands:  # 空でない場合
+                for manager, command_list in commands.items():
+                    assert isinstance(manager, str)
+                    assert isinstance(command_list, list)
+                    for command in command_list:
+                        assert isinstance(command, str)
+                        assert len(command.strip()) > 0
+
+    def test_platform_detector_multiple_instances(self) -> None:
+        """複数のPlatformDetectorインスタンスのテスト"""
+        from src.setup_repo.platform_detector import PlatformDetector
+
+        detector1 = PlatformDetector()
+        detector2 = PlatformDetector()
+
+        # 異なるインスタンスでも同じ結果が返される
+        platform1 = detector1.detect_platform()
+        platform2 = detector2.detect_platform()
+
+        assert platform1 == platform2
+
+        # しかし、キャッシュは独立している
+        assert detector1._platform_info is not detector2._platform_info

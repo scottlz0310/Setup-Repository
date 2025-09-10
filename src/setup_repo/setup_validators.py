@@ -8,7 +8,7 @@
 import subprocess
 import sys
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, Optional
 
 from .config import get_github_token, get_github_user
 from .platform_detector import PlatformDetector
@@ -20,9 +20,9 @@ class SetupValidator:
     def __init__(self):
         self.platform_detector = PlatformDetector()
         self.platform_info = self.platform_detector.get_platform_info()
-        self.errors: List[str] = []
+        self.errors: list[str] = []
 
-    def get_errors(self) -> List[str]:
+    def get_errors(self) -> list[str]:
         """検証エラーのリストを取得"""
         return self.errors.copy()
 
@@ -31,11 +31,11 @@ class SetupValidator:
         self.errors.clear()
 
 
-def validate_github_credentials() -> dict[str, Optional[str]]:
+def validate_github_credentials() -> dict[str, Any]:
     """GitHub認証情報を検証"""
     username = get_github_user()
     token = get_github_token()
-    
+
     return {
         "username": username,
         "token": token,
@@ -44,7 +44,7 @@ def validate_github_credentials() -> dict[str, Optional[str]]:
     }
 
 
-def validate_directory_path(path: str) -> dict[str, any]:
+def validate_directory_path(path: str) -> dict[str, Any]:
     """ディレクトリパスを検証"""
     if not path:
         return {
@@ -52,10 +52,10 @@ def validate_directory_path(path: str) -> dict[str, any]:
             "error": "パスが空です",
             "path": None,
         }
-    
+
     try:
         directory = Path(path).expanduser().resolve()
-        
+
         # 親ディレクトリが存在するかチェック
         if not directory.parent.exists():
             return {
@@ -63,7 +63,7 @@ def validate_directory_path(path: str) -> dict[str, any]:
                 "error": f"親ディレクトリが存在しません: {directory.parent}",
                 "path": directory,
             }
-        
+
         # ディレクトリが作成可能かチェック
         if not directory.exists():
             try:
@@ -77,7 +77,7 @@ def validate_directory_path(path: str) -> dict[str, any]:
                 }
         else:
             created = False
-        
+
         # 書き込み権限をチェック
         if not directory.is_dir():
             return {
@@ -85,7 +85,7 @@ def validate_directory_path(path: str) -> dict[str, any]:
                 "error": "指定されたパスはディレクトリではありません",
                 "path": directory,
             }
-        
+
         # 簡単な書き込みテスト
         test_file = directory / ".write_test"
         try:
@@ -97,14 +97,14 @@ def validate_directory_path(path: str) -> dict[str, any]:
                 "error": "ディレクトリに書き込み権限がありません",
                 "path": directory,
             }
-        
+
         return {
             "valid": True,
             "error": None,
             "path": directory,
             "created": created,
         }
-    
+
     except Exception as e:
         return {
             "valid": False,
@@ -113,19 +113,18 @@ def validate_directory_path(path: str) -> dict[str, any]:
         }
 
 
-def validate_setup_prerequisites() -> dict[str, any]:
+def validate_setup_prerequisites() -> dict[str, Any]:
     """セットアップの前提条件を検証"""
     errors = []
     warnings = []
-    
+
     # Python バージョンチェック
     python_version = sys.version_info
     if python_version < (3, 9):
         errors.append(
-            f"Python 3.9以上が必要です "
-            f"(現在: {python_version[0]}.{python_version[1]})"
+            f"Python 3.9以上が必要です (現在: {python_version[0]}.{python_version[1]})"
         )
-    
+
     # Git チェック
     git_available = False
     git_version = None
@@ -137,7 +136,7 @@ def validate_setup_prerequisites() -> dict[str, any]:
         git_version = result.stdout.strip()
     except (subprocess.CalledProcessError, FileNotFoundError):
         errors.append("Git がインストールされていません")
-    
+
     # uv チェック（警告のみ）
     uv_available = False
     uv_version = None
@@ -149,7 +148,7 @@ def validate_setup_prerequisites() -> dict[str, any]:
         uv_version = result.stdout.strip()
     except (subprocess.CalledProcessError, FileNotFoundError):
         warnings.append("uv がインストールされていません（後でインストールされます）")
-    
+
     # GitHub CLI チェック（警告のみ）
     gh_available = False
     gh_version = None
@@ -158,10 +157,10 @@ def validate_setup_prerequisites() -> dict[str, any]:
             ["gh", "--version"], capture_output=True, text=True, check=True
         )
         gh_available = True
-        gh_version = result.stdout.strip().split('\n')[0]  # 最初の行のみ
+        gh_version = result.stdout.strip().split("\n")[0]  # 最初の行のみ
     except (subprocess.CalledProcessError, FileNotFoundError):
         warnings.append("GitHub CLI がインストールされていません（オプション）")
-    
+
     return {
         "valid": len(errors) == 0,
         "errors": errors,
@@ -185,21 +184,22 @@ def validate_setup_prerequisites() -> dict[str, any]:
     }
 
 
-def check_system_requirements() -> dict[str, any]:
+def check_system_requirements() -> dict[str, Any]:
     """システム要件をチェック"""
     platform_detector = PlatformDetector()
     platform_info = platform_detector.get_platform_info()
-    
+
     # 基本的なシステム情報
     system_info = {
         "platform": platform_info.name,
         "display_name": platform_info.display_name,
         "supported": True,  # 現在すべてのプラットフォームをサポート
     }
-    
+
     # ディスク容量チェック（簡易）
     try:
         import shutil
+
         free_space = shutil.disk_usage(Path.home()).free
         # 最低1GB必要
         min_space = 1024 * 1024 * 1024  # 1GB
@@ -214,10 +214,11 @@ def check_system_requirements() -> dict[str, any]:
             "free_gb": None,
             "sufficient": True,  # チェックできない場合は通す
         }
-    
+
     # メモリ情報（可能な場合）
     try:
         import psutil
+
         memory = psutil.virtual_memory()
         system_info["memory"] = {
             "total_bytes": memory.total,
@@ -227,15 +228,20 @@ def check_system_requirements() -> dict[str, any]:
         }
     except ImportError:
         system_info["memory"] = None
-    
+
     return system_info
 
 
-def validate_user_input(prompt: str, input_type: str = "string", required: bool = True, default: Optional[str] = None) -> dict[str, any]:
+def validate_user_input(
+    prompt: str,
+    input_type: str = "string",
+    required: bool = True,
+    default: Optional[str] = None,
+) -> dict[str, Any]:
     """ユーザー入力を検証"""
     try:
         user_input = input(prompt).strip()
-        
+
         # 空入力の処理
         if not user_input:
             if default is not None:
@@ -252,12 +258,12 @@ def validate_user_input(prompt: str, input_type: str = "string", required: bool 
                     "value": None,
                     "error": None,
                 }
-        
+
         # 型別検証
         if input_type == "boolean":
             valid_yes = ["y", "yes", "はい", "true", "1"]
             valid_no = ["n", "no", "いいえ", "false", "0"]
-            
+
             if user_input.lower() in valid_yes:
                 return {"valid": True, "value": True, "error": None}
             elif user_input.lower() in valid_no:
@@ -268,24 +274,24 @@ def validate_user_input(prompt: str, input_type: str = "string", required: bool 
                     "value": None,
                     "error": "y/n で回答してください",
                 }
-        
+
         elif input_type == "path":
             return validate_directory_path(user_input)
-        
+
         elif input_type == "string":
             return {
                 "valid": True,
                 "value": user_input,
                 "error": None,
             }
-        
+
         else:
             return {
                 "valid": False,
                 "value": None,
                 "error": f"不明な入力タイプ: {input_type}",
             }
-    
+
     except KeyboardInterrupt:
         return {
             "valid": False,

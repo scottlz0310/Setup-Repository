@@ -28,6 +28,7 @@ classifiers = [
 requires-python = ">=3.9"
 dependencies = [
     "rg>=0.0.75",
+    "requests>=2.25.0",
 ]
 
 [project.optional-dependencies]
@@ -129,6 +130,7 @@ markers = [
     "integration: marks tests as integration tests",
     "unit: marks tests as unit tests",
     "performance: marks tests as performance tests",
+    "stress: marks tests as stress tests",
 ]
 filterwarnings = [
     "error",
@@ -213,6 +215,7 @@ dev = [
     "tomli-w>=1.0.0", # バージョン管理スクリプト用
     "psutil>=5.9.0", # パフォーマンス監視用
     "black>=25.1.0",
+    "types-psutil>=7.0.0.20250822",
 ]
 security = [
     "safety>=3.0.0",

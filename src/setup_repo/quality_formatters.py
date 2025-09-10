@@ -17,22 +17,22 @@ class ColoredFormatter(logging.Formatter):
 
     # ANSI色コード
     COLORS = {
-        'DEBUG': '\033[36m',    # シアン
-        'INFO': '\033[32m',     # 緑
-        'WARNING': '\033[33m',  # 黄
-        'ERROR': '\033[31m',    # 赤
-        'CRITICAL': '\033[35m', # マゼンタ
-        'RESET': '\033[0m'      # リセット
+        "DEBUG": "\033[36m",  # シアン
+        "INFO": "\033[32m",  # 緑
+        "WARNING": "\033[33m",  # 黄
+        "ERROR": "\033[31m",  # 赤
+        "CRITICAL": "\033[35m",  # マゼンタ
+        "RESET": "\033[0m",  # リセット
     }
 
     def format(self, record):
         # 基本フォーマット
         formatted = super().format(record)
-        
+
         # 色を追加
-        color = self.COLORS.get(record.levelname, '')
-        reset = self.COLORS['RESET']
-        
+        color = self.COLORS.get(record.levelname, "")
+        reset = self.COLORS["RESET"]
+
         return f"{color}{formatted}{reset}"
 
 
@@ -57,52 +57,52 @@ class JSONFormatter(logging.Formatter):
 
 
 def format_log_message(
-    message: str, 
-    level: str = "INFO", 
+    message: str,
+    level: str = "INFO",
     timestamp: Optional[datetime] = None,
-    context: Optional[dict[str, Any]] = None
+    context: Optional[dict[str, Any]] = None,
 ) -> str:
     """ログメッセージをフォーマット"""
     if timestamp is None:
         timestamp = datetime.now()
-    
+
     formatted_time = timestamp.strftime("%Y-%m-%d %H:%M:%S")
     formatted_message = f"{formatted_time} - {level} - {message}"
-    
+
     if context:
         context_str = json.dumps(context, ensure_ascii=False)
         formatted_message += f" - コンテキスト: {context_str}"
-    
+
     return formatted_message
 
 
 def add_color_codes(text: str, level: str = "INFO") -> str:
     """テキストに色コードを追加"""
     colors = {
-        'DEBUG': '\033[36m',    # シアン
-        'INFO': '\033[32m',     # 緑
-        'WARNING': '\033[33m',  # 黄
-        'ERROR': '\033[31m',    # 赤
-        'CRITICAL': '\033[35m', # マゼンタ
+        "DEBUG": "\033[36m",  # シアン
+        "INFO": "\033[32m",  # 緑
+        "WARNING": "\033[33m",  # 黄
+        "ERROR": "\033[31m",  # 赤
+        "CRITICAL": "\033[35m",  # マゼンタ
     }
-    
-    color = colors.get(level.upper(), '')
-    reset = '\033[0m'
-    
+
+    color = colors.get(level.upper(), "")
+    reset = "\033[0m"
+
     return f"{color}{text}{reset}"
 
 
 def strip_color_codes(text: str) -> str:
     """テキストから色コードを除去"""
     # ANSI色コードのパターン
-    ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
-    return ansi_escape.sub('', text)
+    ansi_escape = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
+    return ansi_escape.sub("", text)
 
 
 def format_metrics_summary(metrics: dict[str, Any]) -> str:
     """メトリクス概要をフォーマット"""
     lines = ["=== 品質メトリクス概要 ==="]
-    
+
     for key, value in metrics.items():
         if isinstance(value, bool):  # boolを先にチェック（intのサブクラスのため）
             status = "✅" if value else "❌"
@@ -111,7 +111,7 @@ def format_metrics_summary(metrics: dict[str, Any]) -> str:
             lines.append(f"{key}: {value}")
         else:
             lines.append(f"{key}: {value}")
-    
+
     return "\n".join(lines)
 
 

@@ -115,13 +115,13 @@ class TestErrorReporter:
         """レポートパス取得のテスト"""
         reporter = ErrorReporter()
         path = reporter.get_report_path("test_report.json")
-        
+
         assert path == Path("error-reports") / "test_report.json"
 
     def test_create_error_report(self):
         """エラーレポート作成のテスト"""
         reporter = ErrorReporter()
-        
+
         errors = [
             QualityCheckError("エラー1", "ERROR_1"),
             RuffError("エラー2", [{"file": "test.py"}]),
@@ -142,35 +142,37 @@ class TestErrorReporter:
         """レポート保存のテスト"""
         with tempfile.TemporaryDirectory() as temp_dir:
             reporter = ErrorReporter(Path(temp_dir))
-            
+
             error_data = {
                 "timestamp": "2024-01-01T00:00:00",
                 "total_errors": 1,
-                "errors": [{"type": "TestError", "message": "テストエラー"}]
+                "errors": [{"type": "TestError", "message": "テストエラー"}],
             }
-            
+
             saved_path = reporter.save_report(error_data, "test")
-            
+
             assert saved_path.exists()
             assert saved_path.parent == Path(temp_dir)
             assert "test_error_report_" in saved_path.name
-            
+
             with open(saved_path, encoding="utf-8") as f:
                 loaded_data = json.load(f)
-            
+
             assert loaded_data == error_data
 
     def test_format_error_message(self):
         """エラーメッセージフォーマットのテスト"""
         reporter = ErrorReporter()
-        
+
         # QualityCheckErrorの場合
-        quality_error = QualityCheckError("品質エラー", "QUALITY_001", {"detail": "詳細"})
+        quality_error = QualityCheckError(
+            "品質エラー", "QUALITY_001", {"detail": "詳細"}
+        )
         formatted = reporter.format_error_message(quality_error)
         assert "[QUALITY_001]" in formatted
         assert "品質エラー" in formatted
         assert "詳細" in formatted
-        
+
         # 通常のExceptionの場合
         normal_error = Exception("通常エラー")
         formatted_normal = reporter.format_error_message(normal_error)
@@ -179,15 +181,15 @@ class TestErrorReporter:
     def test_log_exception(self):
         """例外ログフォーマットのテスト"""
         reporter = ErrorReporter()
-        
+
         error = QualityCheckError("テストエラー", "TEST_001", {"key": "value"})
         formatted = reporter.log_exception(error, include_traceback=False)
-        
+
         assert "QualityCheckError" in formatted
         assert "テストエラー" in formatted
         assert "TEST_001" in formatted
         assert "key" in formatted
-        
+
         # トレースバック付きのテスト
         formatted_with_trace = reporter.log_exception(error, include_traceback=True)
         assert "スタックトレース" in formatted_with_trace

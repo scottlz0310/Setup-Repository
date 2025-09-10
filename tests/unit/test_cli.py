@@ -1,9 +1,7 @@
 """CLI コマンドハンドラーのテスト"""
 
-import json
-import sys
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -199,7 +197,9 @@ class TestQualityCli:
     @patch("src.setup_repo.cli.QualityTrendManager")
     @patch("src.setup_repo.cli.QualityMetricsCollector")
     @patch("builtins.print")
-    def test_quality_cli_basic(self, mock_print, mock_collector_class, mock_trend_class):
+    def test_quality_cli_basic(
+        self, mock_print, mock_collector_class, mock_trend_class
+    ):
         """基本的な品質メトリクス収集のテスト"""
         # Arrange
         mock_metrics = QualityMetrics(
@@ -409,7 +409,9 @@ class TestTrendCli:
 
         # Assert
         print_calls = [call[0][0] for call in mock_print.call_args_list]
-        assert any("--keep-daysオプションを指定してください" in call for call in print_calls)
+        assert any(
+            "--keep-daysオプションを指定してください" in call for call in print_calls
+        )
 
     @patch("src.setup_repo.cli.QualityTrendManager")
     def test_trend_cli_exception(self, mock_trend_class):
@@ -467,7 +469,9 @@ class TestCliEdgeCases:
         args.save_trend = False
 
         # Act
-        with patch("src.setup_repo.cli.QualityMetricsCollector") as mock_collector_class:
+        with patch(
+            "src.setup_repo.cli.QualityMetricsCollector"
+        ) as mock_collector_class:
             mock_metrics = Mock()
             mock_metrics.get_quality_score.return_value = 90.0
             mock_metrics.is_passing.return_value = True

@@ -3,8 +3,6 @@
 import subprocess
 from unittest.mock import Mock, patch
 
-import pytest
-
 from src.setup_repo.uv_installer import ensure_uv
 
 
@@ -30,7 +28,9 @@ class TestEnsureUv:
     @patch("subprocess.run")
     @patch("shutil.which")
     @patch("builtins.print")
-    def test_ensure_uv_install_with_pipx_success(self, mock_print, mock_which, mock_run):
+    def test_ensure_uv_install_with_pipx_success(
+        self, mock_print, mock_which, mock_run
+    ):
         """pipxでのuvインストール成功のテスト"""
         # Arrange
         mock_which.side_effect = lambda cmd: {
@@ -85,8 +85,12 @@ class TestEnsureUv:
             capture_output=True,
         )
         print_calls = [call[0][0] for call in mock_print.call_args_list]
-        assert any("pipx インストール失敗、pip を試します" in call for call in print_calls)
-        assert any("pip --user で uv をインストールしました" in call for call in print_calls)
+        assert any(
+            "pipx インストール失敗、pip を試します" in call for call in print_calls
+        )
+        assert any(
+            "pip --user で uv をインストールしました" in call for call in print_calls
+        )
 
     @patch("subprocess.run")
     @patch("shutil.which")
@@ -115,7 +119,9 @@ class TestEnsureUv:
             capture_output=True,
         )
         print_calls = [call[0][0] for call in mock_print.call_args_list]
-        assert any("pip --user で uv をインストールしました" in call for call in print_calls)
+        assert any(
+            "pip --user で uv をインストールしました" in call for call in print_calls
+        )
 
     @patch("subprocess.run")
     @patch("shutil.which")
@@ -141,7 +147,9 @@ class TestEnsureUv:
             capture_output=True,
         )
         print_calls = [call[0][0] for call in mock_print.call_args_list]
-        assert any("pip --user で uv をインストールしました" in call for call in print_calls)
+        assert any(
+            "pip --user で uv をインストールしました" in call for call in print_calls
+        )
 
     @patch("subprocess.run")
     @patch("shutil.which")
@@ -166,7 +174,9 @@ class TestEnsureUv:
         assert result is False
         assert mock_run.call_count == 2
         print_calls = [call[0][0] for call in mock_print.call_args_list]
-        assert any("uv の自動インストールに失敗しました" in call for call in print_calls)
+        assert any(
+            "uv の自動インストールに失敗しました" in call for call in print_calls
+        )
 
     @patch("shutil.which")
     @patch("builtins.print")
@@ -186,7 +196,9 @@ class TestEnsureUv:
         # Assert
         assert result is False
         print_calls = [call[0][0] for call in mock_print.call_args_list]
-        assert any("uv の自動インストールに失敗しました" in call for call in print_calls)
+        assert any(
+            "uv の自動インストールに失敗しました" in call for call in print_calls
+        )
 
     @patch("subprocess.run")
     @patch("shutil.which")
@@ -212,7 +224,9 @@ class TestEnsureUv:
             capture_output=True,
         )
         print_calls = [call[0][0] for call in mock_print.call_args_list]
-        assert any("uv の自動インストールに失敗しました" in call for call in print_calls)
+        assert any(
+            "uv の自動インストールに失敗しました" in call for call in print_calls
+        )
 
 
 class TestEnsureUvEdgeCases:
@@ -243,8 +257,12 @@ class TestEnsureUvEdgeCases:
             ["pipx", "install", "uv"], check=True, capture_output=True
         )
         print_calls = [call[0][0] for call in mock_print.call_args_list]
-        assert any("pipx インストール失敗、pip を試します" in call for call in print_calls)
-        assert any("uv の自動インストールに失敗しました" in call for call in print_calls)
+        assert any(
+            "pipx インストール失敗、pip を試します" in call for call in print_calls
+        )
+        assert any(
+            "uv の自動インストールに失敗しました" in call for call in print_calls
+        )
 
     @patch("subprocess.run")
     @patch("shutil.which")
@@ -286,17 +304,17 @@ class TestEnsureUvEdgeCases:
         # Assert
         assert result is True
         print_calls = [call[0][0] for call in mock_print.call_args_list]
-        
+
         # メッセージの順序を確認
         install_msg_index = None
         success_msg_index = None
-        
+
         for i, call in enumerate(print_calls):
             if "uv をインストール中" in call:
                 install_msg_index = i
             elif "pipx で uv をインストールしました" in call:
                 success_msg_index = i
-        
+
         assert install_msg_index is not None
         assert success_msg_index is not None
         assert install_msg_index < success_msg_index  # インストール中メッセージが先

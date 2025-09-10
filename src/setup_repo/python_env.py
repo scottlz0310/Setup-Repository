@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Python環境セットアップモジュール"""
 
-import shutil
 import subprocess
 from pathlib import Path
 
@@ -19,9 +18,6 @@ def has_python_project(repo_path: Path) -> bool:
         "poetry.lock",
     ]
     return any((repo_path / f).exists() for f in python_files)
-
-
-
 
 
 def setup_python_environment(repo_path: Path, dry_run: bool = False) -> bool:

@@ -12,19 +12,20 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
+from .ci_environment import CIEnvironmentInfo
+from .quality_errors import ErrorReporter
 from .quality_logger import (
     LogLevel,
     QualityLogger,
     get_quality_logger,
 )
-from .quality_errors import ErrorReporter
-from .ci_environment import CIEnvironmentInfo
 
 # 後方互換性のためのエイリアス
 __all__ = [
-    'CIErrorHandler', 'create_ci_error_handler',
+    "CIErrorHandler",
+    "create_ci_error_handler",
     # CI環境情報（後方互換性）
-    'CIEnvironmentInfo'
+    "CIEnvironmentInfo",
 ]
 
 
@@ -49,7 +50,7 @@ class CIErrorHandler:
         self.enable_github_annotations = enable_github_annotations
         self.error_report_dir = error_report_dir or Path("ci-error-reports")
         self.errors: list[Exception] = []
-        
+
         # 統一されたエラーレポーターを初期化
         self.error_reporter = ErrorReporter(self.error_report_dir)
 
@@ -134,7 +135,7 @@ class CIErrorHandler:
 
     def create_comprehensive_error_report(self) -> dict[str, Any]:
         """包括的なエラーレポートを作成"""
-        report = {
+        report: dict[str, Any] = {
             "timestamp": datetime.now().isoformat(),
             "ci_environment": self.ci_info,
             "system_info": self.system_info,
@@ -163,14 +164,14 @@ class CIErrorHandler:
     def save_error_report(self, filename: Optional[str] = None) -> Path:
         """エラーレポートをファイルに保存"""
         report = self.create_comprehensive_error_report()
-        
+
         if filename:
             output_file = self.error_reporter.get_report_path(filename)
             output_file.parent.mkdir(parents=True, exist_ok=True)
-            
+
             with open(output_file, "w", encoding="utf-8") as f:
                 json.dump(report, f, indent=2, ensure_ascii=False)
-            
+
             self.logger.info(f"CI/CDエラーレポートを保存しました: {output_file}")
         else:
             output_file = self.error_reporter.save_report(report, "ci")

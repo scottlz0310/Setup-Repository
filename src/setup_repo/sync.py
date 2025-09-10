@@ -9,6 +9,7 @@ from typing import Optional
 from .git_operations import choose_clone_url, sync_repository_with_retries
 from .github_api import get_repositories
 from .gitignore_manager import GitignoreManager
+from .platform_detector import PlatformDetector
 from .python_env import setup_python_environment
 from .safety_check import (
     check_unpushed_changes,
@@ -16,7 +17,6 @@ from .safety_check import (
     prompt_user_action,
 )
 from .utils import ProcessLock, TeeLogger
-from .platform_detector import PlatformDetector
 from .uv_installer import ensure_uv
 from .vscode_setup import apply_vscode_template
 
@@ -105,7 +105,10 @@ def sync_repositories(config: dict, dry_run: bool = False) -> SyncResult:
 
     # 実際の接続方式を表示
     sample_url = choose_clone_url(repos[0], config.get("use_https", False))
-    connection_type = "SSH" if sample_url.startswith("git@") else "HTTPS"
+    if isinstance(sample_url, str):
+        connection_type = "SSH" if sample_url.startswith("git@") else "HTTPS"
+    else:
+        connection_type = "UNKNOWN"
     print(f"🔗 実際の接続方式: {connection_type}")
 
     # 保存先ディレクトリ作成
@@ -118,7 +121,11 @@ def sync_repositories(config: dict, dry_run: bool = False) -> SyncResult:
     success_count = 0
 
     for repo in repos:
-        repo_name = repo["name"]
+        repo_name = repo.get("name")
+        if not isinstance(repo_name, str):
+            # 不正なリポジトリ名の場合はスキップ
+            print(f"   ⚠️  不正なリポジトリ名をスキップ: {repo_name}")
+            continue
         repo_path = dest_dir / repo_name
 
         # 安全性チェック

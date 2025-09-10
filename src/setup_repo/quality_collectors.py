@@ -10,14 +10,13 @@ import subprocess
 from pathlib import Path
 from typing import Any, Optional, Union
 
-from .quality_logger import QualityLogger, get_quality_logger
 from .quality_errors import (
     CoverageError,
     MyPyError,
     RuffError,
-    SecurityScanError,
     TestFailureError,
 )
+from .quality_logger import QualityLogger, get_quality_logger
 
 
 class QualityToolCollector:
@@ -39,7 +38,7 @@ def collect_ruff_metrics(
     """Ruffリンティングメトリクスを収集"""
     project_root = project_root or Path.cwd()
     logger = logger or get_quality_logger()
-    
+
     logger.log_quality_check_start("Ruff")
 
     try:
@@ -73,9 +72,7 @@ def collect_ruff_metrics(
         }
 
         if success:
-            logger.log_quality_check_success(
-                "Ruff", {"issue_count": issue_count}
-            )
+            logger.log_quality_check_success("Ruff", {"issue_count": issue_count})
         else:
             error = RuffError(
                 f"Ruffリンティングで{issue_count}件の問題が見つかりました", issues
@@ -101,7 +98,7 @@ def collect_mypy_metrics(
     """MyPy型チェックメトリクスを収集"""
     project_root = project_root or Path.cwd()
     logger = logger or get_quality_logger()
-    
+
     logger.log_quality_check_start("MyPy")
 
     try:
@@ -129,16 +126,12 @@ def collect_mypy_metrics(
             "error_count": error_count,
             "error_details": error_lines[:10],  # 最初の10個のエラーを保存
             "errors": (
-                []
-                if success
-                else [f"MyPyで{error_count}件のエラーが見つかりました"]
+                [] if success else [f"MyPyで{error_count}件のエラーが見つかりました"]
             ),
         }
 
         if success:
-            logger.log_quality_check_success(
-                "MyPy", {"error_count": error_count}
-            )
+            logger.log_quality_check_success("MyPy", {"error_count": error_count})
         else:
             error = MyPyError(
                 f"MyPy型チェックで{error_count}件のエラーが見つかりました",
@@ -162,7 +155,7 @@ def collect_pytest_metrics(
     """テストメトリクスを収集（並列実行対応）"""
     project_root = project_root or Path.cwd()
     logger = logger or get_quality_logger()
-    
+
     logger.log_quality_check_start("Tests")
 
     try:
@@ -290,35 +283,35 @@ def collect_coverage_metrics(
     """カバレッジメトリクスを収集"""
     project_root = project_root or Path.cwd()
     logger = logger or get_quality_logger()
-    
+
     coverage_file = project_root / "coverage.json"
-    
+
     if not coverage_file.exists():
         return {
             "success": False,
             "coverage_percent": 0.0,
-            "errors": ["カバレッジファイルが見つかりません"]
+            "errors": ["カバレッジファイルが見つかりません"],
         }
-    
+
     try:
         with open(coverage_file, encoding="utf-8") as f:
             coverage_data = json.load(f)
             coverage_percent = coverage_data.get("totals", {}).get(
                 "percent_covered", 0.0
             )
-        
+
         return {
             "success": True,
             "coverage_percent": coverage_percent,
             "coverage_data": coverage_data,
-            "errors": []
+            "errors": [],
         }
-    
+
     except (json.JSONDecodeError, KeyError) as e:
         return {
             "success": False,
             "coverage_percent": 0.0,
-            "errors": [f"カバレッジデータ解析エラー: {str(e)}"]
+            "errors": [f"カバレッジデータ解析エラー: {str(e)}"],
         }
 
 
@@ -333,10 +326,10 @@ def parse_tool_output(
             return json.loads(output)
         except json.JSONDecodeError:
             return {"error": f"{tool_name}のJSON出力解析に失敗しました"}
-    
+
     # テキスト形式の場合は行ごとに分割
     lines = [line.strip() for line in output.split("\n") if line.strip()]
-    
+
     if tool_name.lower() == "ruff":
         # Ruffのテキスト出力を解析
         issues = []
@@ -345,12 +338,12 @@ def parse_tool_output(
             if ":" in line and any(code in line for code in ["E", "F", "W", "C", "N"]):
                 issues.append(line)
         return {"issues": issues, "issue_count": len(issues)}
-    
+
     elif tool_name.lower() == "mypy":
         # MyPyのテキスト出力を解析
         errors = [line for line in lines if "error:" in line]
         return {"errors": errors, "error_count": len(errors)}
-    
+
     else:
         # 汎用的な解析
         return {"output_lines": lines, "line_count": len(lines)}

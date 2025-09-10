@@ -110,6 +110,3 @@ class TeeLogger:
         if self.file_handle and not self.file_handle.closed:
             self.file_handle.close()
             self.file_handle = None
-
-
-

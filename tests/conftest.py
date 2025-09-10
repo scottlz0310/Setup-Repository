@@ -131,6 +131,15 @@ def mock_subprocess() -> Generator[Mock, None, None]:
 
 
 @pytest.fixture
+def mock_process_lock() -> Mock:
+    """ProcessLockのモックを提供するフィクスチャ"""
+    mock = Mock()
+    mock.acquire.return_value = True
+    mock.release.return_value = None
+    return mock
+
+
+@pytest.fixture
 def mock_file_system(temp_dir: Path) -> Generator[Path, None, None]:
     """ファイルシステム操作用の一時ディレクトリを提供するフィクスチャ"""
     # テスト用のディレクトリ構造を作成
@@ -189,11 +198,20 @@ def setup_test_environment() -> Generator[None, None, None]:
     # テスト開始前の処理
     original_cwd = os.getcwd()
 
+    # ロックファイルをクリーンアップ
+    lock_file = Path(tempfile.gettempdir()) / "repo-sync.lock"
+    if lock_file.exists():
+        lock_file.unlink()
+
     try:
         yield
     finally:
         # テスト終了後のクリーンアップ
         os.chdir(original_cwd)
+
+        # ロックファイルをクリーンアップ
+        if lock_file.exists():
+            lock_file.unlink()
 
 
 # カスタムアサーション関数

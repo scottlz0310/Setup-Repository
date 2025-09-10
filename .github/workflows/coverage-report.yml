@@ -2,9 +2,9 @@ name: Coverage Report
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
   workflow_dispatch:
 
 jobs:
@@ -13,149 +13,180 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0  # 履歴比較のため全履歴を取得
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # 履歴比較のため全履歴を取得
 
-    - name: Install uv
-      uses: astral-sh/setup-uv@v3
-      with:
-        version: "latest"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
 
-    - name: Set up Python
-      run: uv python install 3.11
+      - name: Set up Python
+        run: uv python install 3.11
 
-    - name: Create virtual environment
-      run: uv venv --python 3.11
+      - name: Create virtual environment
+        run: uv venv --python 3.11
 
-    - name: Install dependencies
-      run: uv sync --dev
+      - name: Install dependencies
+        run: uv sync --dev
 
-    - name: Run comprehensive coverage analysis
-      run: |
-        echo "🔍 包括的カバレッジ分析を実行中..."
+      - name: Run comprehensive coverage analysis
+        run: |
+          echo "🔍 包括的カバレッジ分析を実行中..."
 
-        # 詳細なカバレッジレポート生成
-        uv run pytest tests/ \
-          --cov=src/setup_repo \
-          --cov-report=term-missing \
-          --cov-report=html:htmlcov \
-          --cov-report=xml:coverage.xml \
-          --cov-report=json:coverage.json \
-          --cov-fail-under=80 \
-          --junit-xml=test-results.xml \
-          -v
+          # カバレッジ監視システムを使用してレポート生成
+          uv run python scripts/coverage-monitor.py --generate-report
 
-    - name: Generate coverage summary
-      run: |
-        echo "📊 カバレッジサマリー生成中..."
+          # 追加のJUnitレポート生成
+          uv run pytest tests/ --junit-xml=test-results.xml -v
 
-        # カバレッジサマリーをMarkdown形式で生成
-        cat > coverage-summary.md << 'EOF'
-        # 📊 カバレッジレポート
+      - name: Generate coverage summary
+        run: |
+          echo "📊 カバレッジサマリー生成中..."
 
-        ## 全体サマリー
-        EOF
+          # カバレッジ監視システムから詳細レポートを生成
+          uv run python scripts/coverage-monitor.py --analyze-trends > trends.txt || echo "トレンド分析データが不足しています" > trends.txt
 
-        uv run coverage report --format=markdown >> coverage-summary.md
+          # 最新のカバレッジレポートを取得
+          LATEST_REPORT=$(ls -t coverage-reports/coverage_report_*.json 2>/dev/null | head -n1)
 
-        echo "" >> coverage-summary.md
-        echo "## 詳細分析" >> coverage-summary.md
-        echo "" >> coverage-summary.md
+          if [ -f "$LATEST_REPORT" ]; then
+            # JSONレポートからMarkdownサマリーを生成
+            cat > coverage-summary.md << 'EOF'
+          # 📊 カバレッジレポート
 
-        # 未カバー行の詳細
-        echo "### 未カバー行" >> coverage-summary.md
-        uv run coverage report --show-missing >> coverage-summary.md
+          ## 全体サマリー
+          EOF
 
-        # カバレッジ品質チェック
-        echo "" >> coverage-summary.md
-        echo "## 品質ゲート" >> coverage-summary.md
+            # カバレッジデータを抽出してMarkdownに変換
+            uv run python -c "
+          import json
+          import sys
 
-        COVERAGE=$(uv run coverage report --format=total)
-        if [ "$COVERAGE" -ge 80 ]; then
-          echo "✅ **品質ゲート通過**: ${COVERAGE}% (要求: 80%)" >> coverage-summary.md
-        else
-          echo "❌ **品質ゲート未達成**: ${COVERAGE}% (要求: 80%)" >> coverage-summary.md
-        fi
+          try:
+              with open('$LATEST_REPORT', 'r', encoding='utf-8') as f:
+                  data = json.load(f)
+              
+              coverage = data['coverage']
+              req_check = data['requirements_check']
+              summary = data['summary']
+              
+              print(f\"**全体カバレッジ**: {coverage['total_coverage']:.2f}%\")
+              print(f\"**モジュール数**: {summary['total_modules']}\")
+              print(f\"**目標達成モジュール**: {summary['modules_above_target']}/{summary['total_modules']}\")
+              print(f\"**重要モジュール目標達成**: {summary['critical_modules_above_target']}\")
+              print()
+              
+              if req_check['passed']:
+                  print('✅ **品質ゲート**: 通過')
+              else:
+                  print('❌ **品質ゲート**: 未達成')
+                  print()
+                  print('**警告:**')
+                  for warning in req_check['warnings']:
+                      print(f'- {warning}')
+              
+              print()
+              print('## モジュール別カバレッジ')
+              print()
+              for module, cov in sorted(coverage['module_coverage'].items()):
+                  status = '✅' if cov >= 80 else '⚠️' if cov >= 60 else '❌'
+                  print(f'{status} **{module}**: {cov:.2f}%')
+                  
+          except Exception as e:
+              print(f'レポート解析エラー: {e}')
+              sys.exit(1)
+          " >> coverage-summary.md
 
-    - name: Check coverage trend
-      if: github.event_name == 'pull_request'
-      run: |
-        echo "📈 カバレッジトレンド分析中..."
+            echo "" >> coverage-summary.md
+            echo "## トレンド分析" >> coverage-summary.md
+            cat trends.txt >> coverage-summary.md
+          else
+            echo "カバレッジレポートが見つかりません" > coverage-summary.md
+          fi
 
-        # ベースブランチのカバレッジと比較
-        git checkout ${{ github.event.pull_request.base.sha }}
+      - name: Check coverage trend
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "📈 カバレッジトレンド分析中..."
 
-        # ベースブランチでテスト実行（エラーは無視）
-        uv run pytest tests/ --cov=src/setup_repo --cov-report=json:base-coverage.json || true
+          # ベースブランチのカバレッジと比較
+          git checkout ${{ github.event.pull_request.base.sha }}
 
-        # 現在のブランチに戻る
-        git checkout ${{ github.event.pull_request.head.sha }}
+          # ベースブランチでテスト実行（エラーは無視）
+          uv run pytest tests/ --cov=src/setup_repo --cov-report=json:base-coverage.json || true
 
-        # カバレッジ比較スクリプト実行
-        cat > compare_coverage.py << 'EOF'
-        import json
-        import sys
+          # 現在のブランチに戻る
+          git checkout ${{ github.event.pull_request.head.sha }}
 
-        try:
-            with open('base-coverage.json', 'r') as f:
-                base_cov = json.load(f)
-            with open('coverage.json', 'r') as f:
-                current_cov = json.load(f)
+          # カバレッジ比較スクリプト実行
+          cat > compare_coverage.py << 'EOF'
+          import json
+          import sys
 
-            base_percent = base_cov['totals']['percent_covered']
-            current_percent = current_cov['totals']['percent_covered']
-            diff = current_percent - base_percent
+          try:
+              with open('base-coverage.json', 'r') as f:
+                  base_cov = json.load(f)
+              with open('coverage.json', 'r') as f:
+                  current_cov = json.load(f)
 
-            print(f"ベースブランチ: {base_percent:.2f}%")
-            print(f"現在のブランチ: {current_percent:.2f}%")
-            print(f"差分: {diff:+.2f}%")
+              base_percent = base_cov['totals']['percent_covered']
+              current_percent = current_cov['totals']['percent_covered']
+              diff = current_percent - base_percent
 
-            if diff >= 0:
-                print("✅ カバレッジが向上または維持されています")
-            else:
-                print("⚠️ カバレッジが低下しています")
-                if abs(diff) > 5:
-                    print("❌ カバレッジが5%以上低下しています")
-                    sys.exit(1)
-        except Exception as e:
-            print(f"カバレッジ比較に失敗: {e}")
-        EOF
+              print(f"ベースブランチ: {base_percent:.2f}%")
+              print(f"現在のブランチ: {current_percent:.2f}%")
+              print(f"差分: {diff:+.2f}%")
 
-        uv run python compare_coverage.py
+              if diff >= 0:
+                  print("✅ カバレッジが向上または維持されています")
+              else:
+                  print("⚠️ カバレッジが低下しています")
+                  if abs(diff) > 5:
+                      print("❌ カバレッジが5%以上低下しています")
+                      sys.exit(1)
+          except Exception as e:
+              print(f"カバレッジ比較に失敗: {e}")
+          EOF
 
-    - name: Upload coverage artifacts
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: coverage-report
-        path: |
-          htmlcov/
-          coverage.xml
-          coverage.json
-          coverage-summary.md
-          test-results.xml
-        retention-days: 30
+          uv run python compare_coverage.py
 
-    - name: Publish coverage summary
-      if: github.event_name == 'pull_request'
-      uses: actions/github-script@v7
-      with:
-        script: |
-          const fs = require('fs');
-          try {
-            const summary = fs.readFileSync('coverage-summary.md', 'utf8');
+      - name: Upload coverage artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: |
+            htmlcov/
+            coverage.xml
+            coverage.json
+            coverage-summary.md
+            test-results.xml
+            coverage-reports/
+            coverage_badge.json
+            coverage_alert.txt
+          retention-days: 30
 
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: summary
-            });
-          } catch (error) {
-            console.log('カバレッジサマリーの投稿に失敗:', error);
-          }
+      - name: Publish coverage summary
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            try {
+              const summary = fs.readFileSync('coverage-summary.md', 'utf8');
+
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: summary
+              });
+            } catch (error) {
+              console.log('カバレッジサマリーの投稿に失敗:', error);
+            }
 
   coverage-badge:
     name: Update Coverage Badge
@@ -164,62 +195,53 @@ jobs:
     if: github.ref == 'refs/heads/main'
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Install uv
-      uses: astral-sh/setup-uv@v3
-      with:
-        version: "latest"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
 
-    - name: Set up Python
-      run: uv python install 3.11
+      - name: Set up Python
+        run: uv python install 3.11
 
-    - name: Create virtual environment
-      run: uv venv --python 3.11
+      - name: Create virtual environment
+        run: uv venv --python 3.11
 
-    - name: Install dependencies
-      run: uv sync --dev
+      - name: Install dependencies
+        run: uv sync --dev
 
-    - name: Generate coverage
-      run: |
-        uv run pytest tests/ --cov=src/setup_repo --cov-report=json:coverage.json
+      - name: Generate coverage and badge
+        run: |
+          # カバレッジ監視システムを使用してレポート生成
+          uv run python scripts/coverage-monitor.py --generate-report
 
-    - name: Create coverage badge
-      run: |
-        COVERAGE=$(uv run python -c "import json; print(f\"{json.load(open('coverage.json'))['totals']['percent_covered']:.0f}\")")
+          # バッジ情報を取得
+          if [ -f "coverage_badge.json" ]; then
+            COVERAGE=$(uv run python -c "import json; data=json.load(open('coverage_badge.json')); print(data['message'].replace('%', ''))")
+            COLOR=$(uv run python -c "import json; data=json.load(open('coverage_badge.json')); print(data['color'])")
+            
+            # バッジURL生成
+            BADGE_URL="https://img.shields.io/badge/coverage-${COVERAGE}%25-${COLOR}"
+            echo "Coverage badge URL: $BADGE_URL"
+            echo "COVERAGE_BADGE_URL=$BADGE_URL" >> $GITHUB_ENV
+          else
+            echo "バッジ情報ファイルが見つかりません"
+            exit 1
+          fi
 
-        # カバレッジに応じて色を決定
-        if [ "$COVERAGE" -ge 90 ]; then
-          COLOR="brightgreen"
-        elif [ "$COVERAGE" -ge 80 ]; then
-          COLOR="green"
-        elif [ "$COVERAGE" -ge 70 ]; then
-          COLOR="yellow"
-        elif [ "$COVERAGE" -ge 60 ]; then
-          COLOR="orange"
-        else
-          COLOR="red"
-        fi
+      - name: Comment coverage badge
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const badgeUrl = process.env.COVERAGE_BADGE_URL;
+            const body = `## 📊 カバレッジバッジ更新\n\n![Coverage](${badgeUrl})\n\nバッジURL: \`${badgeUrl}\``;
 
-        # バッジURL生成
-        BADGE_URL="https://img.shields.io/badge/coverage-${COVERAGE}%25-${COLOR}"
-        echo "Coverage badge URL: $BADGE_URL"
-
-        # READMEにバッジ情報を保存（必要に応じて）
-        echo "COVERAGE_BADGE_URL=$BADGE_URL" >> $GITHUB_ENV
-
-    - name: Comment coverage badge
-      uses: actions/github-script@v7
-      with:
-        script: |
-          const badgeUrl = process.env.COVERAGE_BADGE_URL;
-          const body = `## 📊 カバレッジバッジ更新\n\n![Coverage](${badgeUrl})\n\nバッジURL: \`${badgeUrl}\``;
-
-          // 最新のコミットにコメント
-          github.rest.repos.createCommitComment({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            commit_sha: context.sha,
-            body: body
-          });
+            // 最新のコミットにコメント
+            github.rest.repos.createCommitComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: context.sha,
+              body: body
+            });

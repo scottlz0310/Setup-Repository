@@ -51,7 +51,7 @@ class RotatingFileHandler(logging.handlers.RotatingFileHandler):
     ):
         # ディレクトリを作成
         filename.parent.mkdir(parents=True, exist_ok=True)
-        
+
         super().__init__(
             filename=str(filename),
             maxBytes=max_bytes,
@@ -65,10 +65,12 @@ class ColoredConsoleHandler(logging.StreamHandler):
 
     def __init__(self, stream: Optional[TextIO] = None):
         super().__init__(stream or sys.stdout)
-        self.setFormatter(ColoredFormatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S"
-        ))
+        self.setFormatter(
+            ColoredFormatter(
+                "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+                datefmt="%Y-%m-%d %H:%M:%S",
+            )
+        )
 
 
 def create_file_handler(
@@ -85,7 +87,7 @@ def create_file_handler(
     )
 
     if enable_json_format:
-        formatter = JSONFormatter()
+        formatter: logging.Formatter = JSONFormatter()
     else:
         formatter = logging.Formatter(
             "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -105,7 +107,7 @@ def create_console_handler(
     handler = logging.StreamHandler(stream or sys.stdout)
 
     if enable_json_format:
-        formatter = JSONFormatter()
+        formatter: logging.Formatter = JSONFormatter()
     elif enable_colors:
         formatter = ColoredFormatter(
             "%(asctime)s - %(name)s - %(levelname)s - %(message)s",

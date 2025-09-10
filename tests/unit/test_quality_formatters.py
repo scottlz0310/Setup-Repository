@@ -28,7 +28,7 @@ class TestColoredFormatter:
     def test_colored_formatter_format(self):
         """色付きフォーマットのテスト"""
         formatter = ColoredFormatter("%(levelname)s - %(message)s")
-        
+
         # ログレコードを作成
         record = logging.LogRecord(
             name="test",
@@ -37,28 +37,28 @@ class TestColoredFormatter:
             lineno=0,
             msg="テストメッセージ",
             args=(),
-            exc_info=None
+            exc_info=None,
         )
-        
+
         formatted = formatter.format(record)
-        
+
         # 色コードが含まれていることを確認
         assert "\033[32m" in formatted  # 緑色（INFO）
-        assert "\033[0m" in formatted   # リセット
+        assert "\033[0m" in formatted  # リセット
         assert "テストメッセージ" in formatted
 
     def test_different_log_levels_colors(self):
         """異なるログレベルの色付けをテスト"""
         formatter = ColoredFormatter("%(levelname)s - %(message)s")
-        
+
         levels_and_colors = [
-            (logging.DEBUG, "\033[36m"),    # シアン
-            (logging.INFO, "\033[32m"),     # 緑
+            (logging.DEBUG, "\033[36m"),  # シアン
+            (logging.INFO, "\033[32m"),  # 緑
             (logging.WARNING, "\033[33m"),  # 黄
-            (logging.ERROR, "\033[31m"),    # 赤
-            (logging.CRITICAL, "\033[35m"), # マゼンタ
+            (logging.ERROR, "\033[31m"),  # 赤
+            (logging.CRITICAL, "\033[35m"),  # マゼンタ
         ]
-        
+
         for level, expected_color in levels_and_colors:
             record = logging.LogRecord(
                 name="test",
@@ -67,9 +67,9 @@ class TestColoredFormatter:
                 lineno=0,
                 msg="テストメッセージ",
                 args=(),
-                exc_info=None
+                exc_info=None,
             )
-            
+
             formatted = formatter.format(record)
             assert expected_color in formatted
 
@@ -85,7 +85,7 @@ class TestJSONFormatter:
     def test_json_formatter_format(self):
         """JSON形式フォーマットのテスト"""
         formatter = JSONFormatter()
-        
+
         record = logging.LogRecord(
             name="test_logger",
             level=logging.INFO,
@@ -93,16 +93,16 @@ class TestJSONFormatter:
             lineno=42,
             msg="テストメッセージ",
             args=(),
-            exc_info=None
+            exc_info=None,
         )
         record.module = "test_module"
         record.funcName = "test_function"
-        
+
         formatted = formatter.format(record)
-        
+
         # JSON形式であることを確認
         log_entry = json.loads(formatted)
-        
+
         assert log_entry["level"] == "INFO"
         assert log_entry["logger"] == "test_logger"
         assert log_entry["message"] == "テストメッセージ"
@@ -114,13 +114,14 @@ class TestJSONFormatter:
     def test_json_formatter_with_exception(self):
         """例外情報付きJSON形式フォーマットのテスト"""
         formatter = JSONFormatter()
-        
+
         try:
             raise ValueError("テスト例外")
         except ValueError:
             import sys
+
             exc_info = sys.exc_info()
-            
+
             record = logging.LogRecord(
                 name="test_logger",
                 level=logging.ERROR,
@@ -128,12 +129,12 @@ class TestJSONFormatter:
                 lineno=0,
                 msg="エラーメッセージ",
                 args=(),
-                exc_info=exc_info
+                exc_info=exc_info,
             )
-            
+
             formatted = formatter.format(record)
             log_entry = json.loads(formatted)
-            
+
             assert "exception" in log_entry
             assert "ValueError" in log_entry["exception"]
 
@@ -144,13 +145,13 @@ class TestFormatFunctions:
     def test_format_log_message(self):
         """ログメッセージフォーマットのテスト"""
         timestamp = datetime(2024, 1, 1, 12, 0, 0)
-        
+
         # 基本的なフォーマット
         formatted = format_log_message("テストメッセージ", "INFO", timestamp)
         assert "2024-01-01 12:00:00" in formatted
         assert "INFO" in formatted
         assert "テストメッセージ" in formatted
-        
+
         # コンテキスト付きフォーマット
         context = {"key": "value", "number": 42}
         formatted_with_context = format_log_message(
@@ -163,22 +164,22 @@ class TestFormatFunctions:
     def test_add_color_codes(self):
         """色コード追加のテスト"""
         text = "テストテキスト"
-        
+
         # 各レベルの色コードテスト
         levels_and_colors = [
-            ("DEBUG", "\033[36m"),    # シアン
-            ("INFO", "\033[32m"),     # 緑
+            ("DEBUG", "\033[36m"),  # シアン
+            ("INFO", "\033[32m"),  # 緑
             ("WARNING", "\033[33m"),  # 黄
-            ("ERROR", "\033[31m"),    # 赤
-            ("CRITICAL", "\033[35m"), # マゼンタ
+            ("ERROR", "\033[31m"),  # 赤
+            ("CRITICAL", "\033[35m"),  # マゼンタ
         ]
-        
+
         for level, expected_color in levels_and_colors:
             colored = add_color_codes(text, level)
             assert colored.startswith(expected_color)
             assert colored.endswith("\033[0m")  # リセット
             assert text in colored
-        
+
         # 不明なレベルの場合
         unknown_colored = add_color_codes(text, "UNKNOWN")
         assert unknown_colored == f"{text}\033[0m"
@@ -189,12 +190,12 @@ class TestFormatFunctions:
         colored_text = "\033[32mテストテキスト\033[0m"
         stripped = strip_color_codes(colored_text)
         assert stripped == "テストテキスト"
-        
+
         # 複数の色コードを含むテキスト
         multi_colored = "\033[31mエラー:\033[0m \033[33m警告メッセージ\033[0m"
         stripped_multi = strip_color_codes(multi_colored)
         assert stripped_multi == "エラー: 警告メッセージ"
-        
+
         # 色コードがないテキスト
         plain_text = "普通のテキスト"
         stripped_plain = strip_color_codes(plain_text)
@@ -207,11 +208,11 @@ class TestFormatFunctions:
             "errors": 2,
             "passed": True,
             "failed": False,
-            "name": "テストメトリクス"
+            "name": "テストメトリクス",
         }
-        
+
         formatted = format_metrics_summary(metrics)
-        
+
         assert "=== 品質メトリクス概要 ===" in formatted
         assert "score: 85.5" in formatted
         assert "errors: 2" in formatted
@@ -221,13 +222,10 @@ class TestFormatFunctions:
 
     def test_format_quality_check_result_success(self):
         """品質チェック結果フォーマット（成功）のテスト"""
-        result = {
-            "success": True,
-            "metrics": {"coverage": 85.0, "issues": 0}
-        }
-        
+        result = {"success": True, "metrics": {"coverage": 85.0, "issues": 0}}
+
         formatted = format_quality_check_result("TestCheck", result)
-        
+
         assert "品質チェック成功: TestCheck" in formatted
         assert "メトリクス" in formatted
         assert "coverage" in formatted
@@ -237,11 +235,11 @@ class TestFormatFunctions:
         result = {
             "success": False,
             "errors": ["エラー1", "エラー2"],
-            "details": {"stage": "lint", "tool": "ruff"}
+            "details": {"stage": "lint", "tool": "ruff"},
         }
-        
+
         formatted = format_quality_check_result("TestCheck", result)
-        
+
         assert "品質チェック失敗: TestCheck" in formatted
         assert "エラー1; エラー2" in formatted
         assert "詳細" in formatted
@@ -250,8 +248,8 @@ class TestFormatFunctions:
     def test_format_quality_check_result_no_errors(self):
         """品質チェック結果フォーマット（エラー情報なし）のテスト"""
         result = {"success": False}
-        
+
         formatted = format_quality_check_result("TestCheck", result)
-        
+
         assert "品質チェック失敗: TestCheck" in formatted
         assert "不明なエラー" in formatted

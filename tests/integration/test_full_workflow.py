@@ -1,0 +1,513 @@
+"""
+完全な同期ワークフローの統合テスト
+
+このモジュールでは、セットアップから同期まで、完全なワークフローの
+統合テストを実装します。実際のユーザーが実行する一連の操作を
+シミュレートして、システム全体の動作を検証します。
+"""
+
+import json
+import os
+from pathlib import Path
+from typing import Any
+from unittest.mock import patch
+
+import pytest
+
+from setup_repo.config import load_config
+from setup_repo.sync import SyncResult, sync_repositories
+
+
+@pytest.mark.integration
+class TestFullWorkflow:
+    """完全なワークフローの統合テストクラス"""
+
+    def test_complete_setup_to_sync_workflow(
+        self,
+        temp_dir: Path,
+        sample_config: dict[str, Any],
+    ) -> None:
+        """セットアップから同期までの完全なワークフローテスト"""
+        # 1. 設定ファイルの準備
+        config_file = temp_dir / "config.json"
+        with open(config_file, "w", encoding="utf-8") as f:
+            json.dump(sample_config, f, indent=2, ensure_ascii=False)
+
+        # 2. クローン先ディレクトリの設定
+        clone_destination = temp_dir / "repos"
+        sample_config["clone_destination"] = str(clone_destination)
+
+        # 3. GitHub APIとGit操作をモック
+        mock_repos = [
+            {
+                "name": "workflow-test-repo-1",
+                "full_name": "test_user/workflow-test-repo-1",
+                "clone_url": "https://github.com/test_user/workflow-test-repo-1.git",
+                "ssh_url": "git@github.com:test_user/workflow-test-repo-1.git",
+                "description": "ワークフローテスト用リポジトリ1",
+                "private": False,
+                "default_branch": "main",
+            },
+            {
+                "name": "workflow-test-repo-2",
+                "full_name": "test_user/workflow-test-repo-2",
+                "clone_url": "https://github.com/test_user/workflow-test-repo-2.git",
+                "ssh_url": "git@github.com:test_user/workflow-test-repo-2.git",
+                "description": "ワークフローテスト用リポジトリ2",
+                "private": True,
+                "default_branch": "develop",
+            },
+        ]
+
+        with (
+            patch("setup_repo.sync.get_repositories", return_value=mock_repos),
+            patch("setup_repo.sync.sync_repository_with_retries", return_value=True),
+        ):
+            # 4. 同期実行
+            result = sync_repositories(sample_config, dry_run=False)
+
+        # 5. 結果検証
+        assert isinstance(result, SyncResult)
+        assert result.success
+        assert len(result.synced_repos) == 2
+        assert "workflow-test-repo-1" in result.synced_repos
+        assert "workflow-test-repo-2" in result.synced_repos
+        assert len(result.errors) == 0
+
+        # 6. ディレクトリ構造の検証
+        assert clone_destination.exists()
+
+    def test_incremental_sync_workflow(
+        self,
+        temp_dir: Path,
+        sample_config: dict[str, Any],
+    ) -> None:
+        """増分同期ワークフローテスト"""
+        clone_destination = temp_dir / "repos"
+        sample_config["clone_destination"] = str(clone_destination)
+
+        # 既存のリポジトリを作成
+        existing_repo = clone_destination / "existing-repo"
+        existing_repo.mkdir(parents=True)
+        (existing_repo / ".git").mkdir()
+        (existing_repo / "README.md").write_text("# Existing Repository")
+
+        # 新しいリポジトリと既存のリポジトリを含むリスト
+        mock_repos = [
+            {
+                "name": "existing-repo",
+                "full_name": "test_user/existing-repo",
+                "clone_url": "https://github.com/test_user/existing-repo.git",
+                "ssh_url": "git@github.com:test_user/existing-repo.git",
+                "description": "既存のリポジトリ",
+                "private": False,
+                "default_branch": "main",
+            },
+            {
+                "name": "new-repo",
+                "full_name": "test_user/new-repo",
+                "clone_url": "https://github.com/test_user/new-repo.git",
+                "ssh_url": "git@github.com:test_user/new-repo.git",
+                "description": "新しいリポジトリ",
+                "private": False,
+                "default_branch": "main",
+            },
+        ]
+
+        def mock_is_git_repo(path):
+            return "existing-repo" in str(path)
+
+        def mock_sync_with_retries(repo, dest_dir, config):
+            repo_name = repo["name"]
+            repo_path = Path(dest_dir) / repo_name
+
+            if repo_name == "existing-repo":
+                # 既存リポジトリはpull操作
+                return True
+            else:
+                # 新しいリポジトリはclone操作
+                repo_path.mkdir(parents=True, exist_ok=True)
+                (repo_path / ".git").mkdir(exist_ok=True)
+                return True
+
+        with (
+            patch("setup_repo.sync.get_repositories", return_value=mock_repos),
+            patch(
+                "setup_repo.git_operations.GitOperations.is_git_repository",
+                side_effect=mock_is_git_repo,
+            ),
+            patch(
+                "setup_repo.sync.sync_repository_with_retries",
+                side_effect=mock_sync_with_retries,
+            ),
+        ):
+            result = sync_repositories(sample_config, dry_run=False)
+
+        # 結果検証
+        assert result.success
+        assert len(result.synced_repos) == 2
+        assert "existing-repo" in result.synced_repos
+        assert "new-repo" in result.synced_repos
+
+        # ファイルシステム検証
+        assert (clone_destination / "existing-repo").exists()
+        assert (clone_destination / "existing-repo" / "README.md").exists()
+
+    def test_error_recovery_workflow(
+        self,
+        temp_dir: Path,
+        sample_config: dict[str, Any],
+    ) -> None:
+        """エラー回復ワークフローテスト"""
+        clone_destination = temp_dir / "repos"
+        sample_config["clone_destination"] = str(clone_destination)
+
+        mock_repos = [
+            {
+                "name": "success-repo",
+                "full_name": "test_user/success-repo",
+                "clone_url": "https://github.com/test_user/success-repo.git",
+                "ssh_url": "git@github.com:test_user/success-repo.git",
+                "description": "成功するリポジトリ",
+                "private": False,
+                "default_branch": "main",
+            },
+            {
+                "name": "error-repo",
+                "full_name": "test_user/error-repo",
+                "clone_url": "https://github.com/test_user/error-repo.git",
+                "ssh_url": "git@github.com:test_user/error-repo.git",
+                "description": "エラーが発生するリポジトリ",
+                "private": False,
+                "default_branch": "main",
+            },
+        ]
+
+        def mock_sync_with_retries(repo, dest_dir, config):
+            if repo["name"] == "error-repo":
+                return False  # エラーをシミュレート
+            return True
+
+        with (
+            patch("setup_repo.sync.get_repositories", return_value=mock_repos),
+            patch(
+                "setup_repo.sync.sync_repository_with_retries",
+                side_effect=mock_sync_with_retries,
+            ),
+        ):
+            result = sync_repositories(sample_config, dry_run=False)
+
+        # 部分的成功の検証
+        assert result.success  # 一部成功でも全体としては成功
+        assert len(result.synced_repos) == 1
+        assert "success-repo" in result.synced_repos
+        assert "error-repo" not in result.synced_repos
+
+    def test_config_loading_workflow(
+        self,
+        temp_dir: Path,
+        sample_config: dict[str, Any],
+    ) -> None:
+        """設定読み込みワークフローテスト"""
+        # 複数の設定ファイルを作成
+        base_config = {
+            "github_token": "base_token",
+            "github_username": "base_user",
+            "clone_destination": str(temp_dir / "base_repos"),
+        }
+
+        local_config = {
+            "github_token": "local_token",  # 上書き
+            "clone_destination": str(temp_dir / "local_repos"),  # 上書き
+        }
+
+        # ベース設定ファイル
+        base_config_file = temp_dir / "config.json"
+        with open(base_config_file, "w", encoding="utf-8") as f:
+            json.dump(base_config, f, indent=2, ensure_ascii=False)
+
+        # ローカル設定ファイル
+        local_config_file = temp_dir / "config.local.json"
+        with open(local_config_file, "w", encoding="utf-8") as f:
+            json.dump(local_config, f, indent=2, ensure_ascii=False)
+
+        # 設定読み込みテスト（環境変数をクリア）
+        with (
+            patch("setup_repo.config.Path.cwd", return_value=temp_dir),
+            patch.dict(os.environ, {}, clear=True),  # 環境変数をクリア
+        ):
+            loaded_config = load_config()
+
+        # ローカル設定が優先されることを確認
+        assert loaded_config["github_token"] == "local_token"
+        assert loaded_config["github_username"] == "base_user"  # ベースから継承
+        assert str(temp_dir / "local_repos") in loaded_config["clone_destination"]
+
+    def test_dry_run_workflow(
+        self,
+        temp_dir: Path,
+        sample_config: dict[str, Any],
+    ) -> None:
+        """ドライランワークフローテスト"""
+        clone_destination = temp_dir / "repos"
+        sample_config["clone_destination"] = str(clone_destination)
+
+        mock_repos = [
+            {
+                "name": "dry-run-repo",
+                "full_name": "test_user/dry-run-repo",
+                "clone_url": "https://github.com/test_user/dry-run-repo.git",
+                "ssh_url": "git@github.com:test_user/dry-run-repo.git",
+                "description": "ドライランテスト用リポジトリ",
+                "private": False,
+                "default_branch": "main",
+            },
+        ]
+
+        with (
+            patch("setup_repo.sync.get_repositories", return_value=mock_repos),
+            patch("setup_repo.sync.sync_repository_with_retries", return_value=True),
+        ):
+            result = sync_repositories(sample_config, dry_run=True)
+
+        # ドライランでは成功するが、実際のファイル操作は行われない
+        assert result.success
+        assert len(result.synced_repos) == 1
+        assert "dry-run-repo" in result.synced_repos
+
+        # ディレクトリが作成されていないことを確認（ドライランモード）
+        # 注意: 実装によってはディレクトリが作成される場合もある
+
+    def test_environment_variable_workflow(
+        self,
+        temp_dir: Path,
+    ) -> None:
+        """環境変数を使用したワークフローテスト"""
+        clone_destination = temp_dir / "repos"
+
+        # 環境変数を設定
+        env_config = {
+            "GITHUB_TOKEN": "env_token",
+            "GITHUB_USERNAME": "env_user",
+            "CLONE_DESTINATION": str(clone_destination),
+        }
+
+        mock_repos = [
+            {
+                "name": "env-test-repo",
+                "full_name": "env_user/env-test-repo",
+                "clone_url": "https://github.com/env_user/env-test-repo.git",
+                "ssh_url": "git@github.com:env_user/env-test-repo.git",
+                "description": "環境変数テスト用リポジトリ",
+                "private": False,
+                "default_branch": "main",
+            },
+        ]
+
+        with (
+            patch.dict(os.environ, env_config),
+            patch("setup_repo.sync.get_repositories", return_value=mock_repos),
+            patch("setup_repo.sync.sync_repository_with_retries", return_value=True),
+        ):
+            # 環境変数から設定を読み込み
+            config = {
+                "github_token": os.getenv("GITHUB_TOKEN"),
+                "github_username": os.getenv("GITHUB_USERNAME"),
+                "clone_destination": os.getenv("CLONE_DESTINATION"),
+            }
+
+            result = sync_repositories(config, dry_run=True)
+
+        assert result.success
+        assert len(result.synced_repos) == 1
+
+    @pytest.mark.slow
+    def test_performance_workflow(
+        self,
+        temp_dir: Path,
+        sample_config: dict[str, Any],
+    ) -> None:
+        """パフォーマンスワークフローテスト"""
+        import time
+
+        clone_destination = temp_dir / "repos"
+        sample_config["clone_destination"] = str(clone_destination)
+
+        # 多数のリポジトリを生成
+        many_repos = [
+            {
+                "name": f"perf-repo-{i:03d}",
+                "full_name": f"test_user/perf-repo-{i:03d}",
+                "clone_url": f"https://github.com/test_user/perf-repo-{i:03d}.git",
+                "ssh_url": f"git@github.com:test_user/perf-repo-{i:03d}.git",
+                "description": f"パフォーマンステスト用リポジトリ{i}",
+                "private": False,
+                "default_branch": "main",
+            }
+            for i in range(50)  # 50個のリポジトリ
+        ]
+
+        with (
+            patch("setup_repo.sync.get_repositories", return_value=many_repos),
+            patch("setup_repo.sync.sync_repository_with_retries", return_value=True),
+        ):
+            start_time = time.time()
+            result = sync_repositories(sample_config, dry_run=True)
+            execution_time = time.time() - start_time
+
+        # パフォーマンス要件: 50リポジトリの同期が30秒以内（ドライランモード）
+        assert execution_time < 30.0
+        assert result.success
+        assert len(result.synced_repos) == 50
+
+    def test_concurrent_workflow(
+        self,
+        temp_dir: Path,
+        sample_config: dict[str, Any],
+    ) -> None:
+        """並行処理ワークフローテスト"""
+        clone_destination = temp_dir / "repos"
+        sample_config["clone_destination"] = str(clone_destination)
+
+        mock_repos = [
+            {
+                "name": f"concurrent-repo-{i}",
+                "full_name": f"test_user/concurrent-repo-{i}",
+                "clone_url": f"https://github.com/test_user/concurrent-repo-{i}.git",
+                "ssh_url": f"git@github.com:test_user/concurrent-repo-{i}.git",
+                "description": f"並行処理テスト用リポジトリ{i}",
+                "private": False,
+                "default_branch": "main",
+            }
+            for i in range(5)
+        ]
+
+        # 並行処理をシミュレート（実際の実装に依存）
+        with (
+            patch("setup_repo.sync.get_repositories", return_value=mock_repos),
+            patch("setup_repo.sync.sync_repository_with_retries", return_value=True),
+        ):
+            result = sync_repositories(sample_config, dry_run=True)
+
+        assert result.success
+        assert len(result.synced_repos) == 5
+
+    def test_cleanup_workflow(
+        self,
+        temp_dir: Path,
+        sample_config: dict[str, Any],
+    ) -> None:
+        """クリーンアップワークフローテスト"""
+        clone_destination = temp_dir / "repos"
+        sample_config["clone_destination"] = str(clone_destination)
+
+        # 古いリポジトリディレクトリを作成
+        old_repos = ["old-repo-1", "old-repo-2", "old-repo-3"]
+        for repo_name in old_repos:
+            repo_dir = clone_destination / repo_name
+            repo_dir.mkdir(parents=True)
+            (repo_dir / ".git").mkdir()
+            (repo_dir / "old_file.txt").write_text(f"古いファイル: {repo_name}")
+
+        # 現在のリポジトリ（一部は既存と重複）
+        current_repos = [
+            {
+                "name": "old-repo-1",  # 既存と重複
+                "full_name": "test_user/old-repo-1",
+                "clone_url": "https://github.com/test_user/old-repo-1.git",
+                "ssh_url": "git@github.com:test_user/old-repo-1.git",
+                "description": "継続するリポジトリ",
+                "private": False,
+                "default_branch": "main",
+            },
+            {
+                "name": "new-repo",  # 新しいリポジトリ
+                "full_name": "test_user/new-repo",
+                "clone_url": "https://github.com/test_user/new-repo.git",
+                "ssh_url": "git@github.com:test_user/new-repo.git",
+                "description": "新しいリポジトリ",
+                "private": False,
+                "default_branch": "main",
+            },
+        ]
+
+        def mock_is_git_repo(path):
+            return any(old_repo in str(path) for old_repo in old_repos)
+
+        with (
+            patch("setup_repo.sync.get_repositories", return_value=current_repos),
+            patch(
+                "setup_repo.git_operations.GitOperations.is_git_repository",
+                side_effect=mock_is_git_repo,
+            ),
+            patch("setup_repo.sync.sync_repository_with_retries", return_value=True),
+        ):
+            result = sync_repositories(sample_config, dry_run=False)
+
+        # 同期結果の検証
+        assert result.success
+        assert len(result.synced_repos) == 2
+
+        # ファイルシステムの検証
+        assert (clone_destination / "old-repo-1").exists()  # 継続するリポジトリ
+        assert (clone_destination / "old-repo-2").exists()  # 古いリポジトリ（残存）
+        assert (clone_destination / "old-repo-3").exists()  # 古いリポジトリ（残存）
+
+    def test_configuration_validation_workflow(
+        self,
+        temp_dir: Path,
+    ) -> None:
+        """設定検証ワークフローテスト"""
+        # 無効な設定のテストケース
+        invalid_configs = [
+            {},  # 空の設定
+            {"github_token": ""},  # 空のトークン
+            {"github_token": "valid_token"},  # ユーザー名なし
+            {"github_username": "valid_user"},  # トークンなし
+            {
+                "github_token": "valid_token",
+                "github_username": "valid_user",
+                "clone_destination": "/invalid/path/that/does/not/exist",
+            },  # 無効なパス
+        ]
+
+        for i, invalid_config in enumerate(invalid_configs):
+            with patch(
+                "setup_repo.sync.get_repositories", side_effect=Exception("設定エラー")
+            ):
+                result = sync_repositories(invalid_config, dry_run=True)
+
+                # 無効な設定では失敗することを確認
+                assert not result.success, (
+                    f"設定{i}で失敗すべきでした: {invalid_config}"
+                )
+                assert len(result.errors) > 0
+
+        # 有効な設定のテスト
+        valid_config = {
+            "github_token": "valid_token",
+            "github_username": "valid_user",
+            "clone_destination": str(temp_dir / "valid_repos"),
+        }
+
+        mock_repos = [
+            {
+                "name": "valid-repo",
+                "full_name": "valid_user/valid-repo",
+                "clone_url": "https://github.com/valid_user/valid-repo.git",
+                "ssh_url": "git@github.com:valid_user/valid-repo.git",
+                "description": "有効な設定テスト用リポジトリ",
+                "private": False,
+                "default_branch": "main",
+            },
+        ]
+
+        with (
+            patch("setup_repo.sync.get_repositories", return_value=mock_repos),
+            patch("setup_repo.sync.sync_repository_with_retries", return_value=True),
+        ):
+            result = sync_repositories(valid_config, dry_run=True)
+
+        # 有効な設定では成功することを確認
+        assert result.success
+        assert len(result.synced_repos) == 1

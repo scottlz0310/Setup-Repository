@@ -4,7 +4,7 @@ CI環境検出モジュールのテスト
 
 import os
 import subprocess
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from setup_repo.ci_environment import CIEnvironmentInfo
 
@@ -24,7 +24,9 @@ class TestCIEnvironmentInfo:
 
     def test_detect_ci_environment_jenkins(self):
         """Jenkins環境検出のテスト"""
-        with patch.dict(os.environ, {"JENKINS_URL": "http://jenkins.example.com"}, clear=True):
+        with patch.dict(
+            os.environ, {"JENKINS_URL": "http://jenkins.example.com"}, clear=True
+        ):
             assert CIEnvironmentInfo.detect_ci_environment() == "jenkins"
 
     def test_detect_ci_environment_circleci(self):
@@ -76,7 +78,7 @@ class TestCIEnvironmentInfo:
 
         with patch.dict(os.environ, github_env):
             info = CIEnvironmentInfo.get_github_actions_info()
-            
+
             assert info["runner_os"] == "Linux"
             assert info["runner_arch"] == "X64"
             assert info["github_workflow"] == "CI"
@@ -84,7 +86,9 @@ class TestCIEnvironmentInfo:
 
     def test_get_ci_metadata_github_actions(self):
         """GitHub ActionsのCI メタデータ取得のテスト"""
-        with patch.dict(os.environ, {"GITHUB_ACTIONS": "true", "GITHUB_REPOSITORY": "test/repo"}):
+        with patch.dict(
+            os.environ, {"GITHUB_ACTIONS": "true", "GITHUB_REPOSITORY": "test/repo"}
+        ):
             metadata = CIEnvironmentInfo.get_ci_metadata()
             assert "github_repository" in metadata
             assert metadata["github_repository"] == "test/repo"
@@ -102,7 +106,7 @@ class TestCIEnvironmentInfo:
 
         with patch.dict(os.environ, gitlab_env, clear=True):
             metadata = CIEnvironmentInfo.get_ci_metadata()
-            
+
             assert metadata["gitlab_ci"] == "true"
             assert metadata["ci_job_id"] == "123"
             assert metadata["ci_commit_sha"] == "abc123"
@@ -127,7 +131,7 @@ class TestCIEnvironmentInfo:
 
         with patch.dict(os.environ, test_env, clear=True):
             env_vars = CIEnvironmentInfo.collect_environment_vars()
-            
+
             assert "GITHUB_ACTIONS" in env_vars
             assert "CI_JOB_ID" in env_vars
             assert "RUNNER_OS" in env_vars
@@ -136,18 +140,18 @@ class TestCIEnvironmentInfo:
             assert "TRAVIS" in env_vars
             assert "NORMAL_VAR" not in env_vars
 
-    @patch('subprocess.check_output')
+    @patch("subprocess.check_output")
     def test_get_system_info_success(self, mock_subprocess):
         """システム情報取得成功のテスト"""
         # Git コマンドの戻り値をモック
         mock_subprocess.side_effect = [
             "abc123def456\n",  # git rev-parse HEAD
-            "main\n"           # git rev-parse --abbrev-ref HEAD
+            "main\n",  # git rev-parse --abbrev-ref HEAD
         ]
 
         with patch.dict(os.environ, {"GITHUB_ACTIONS": "true"}):
             info = CIEnvironmentInfo.get_system_info()
-            
+
             assert "python_version" in info
             assert "platform" in info
             assert "working_directory" in info
@@ -155,68 +159,68 @@ class TestCIEnvironmentInfo:
             assert info["git_info"]["branch"] == "main"
             assert info["ci_type"] == "github_actions"
 
-    @patch('subprocess.check_output')
+    @patch("subprocess.check_output")
     def test_get_system_info_git_error(self, mock_subprocess):
         """Git情報取得エラーのテスト"""
         mock_subprocess.side_effect = subprocess.CalledProcessError(1, "git")
 
         info = CIEnvironmentInfo.get_system_info()
-        
+
         assert info["git_info"]["commit"] == "unknown"
         assert info["git_info"]["branch"] == "unknown"
 
     def test_get_system_info_exception(self):
         """システム情報取得例外のテスト"""
         # より確実に例外を発生させるため、os.getcwdをモック
-        with patch('os.getcwd', side_effect=Exception("Test error")):
+        with patch("os.getcwd", side_effect=Exception("Test error")):
             info = CIEnvironmentInfo.get_system_info()
             assert "error" in info
             assert "システム情報取得エラー" in info["error"]
 
-    @patch('subprocess.check_output')
+    @patch("subprocess.check_output")
     def test_get_dependency_info_success(self, mock_subprocess):
         """依存関係情報取得成功のテスト"""
         mock_subprocess.side_effect = [
             "uv 0.1.0\n",  # uv --version
-            '[{"name": "pytest", "version": "7.0.0"}, {"name": "ruff", "version": "0.1.0"}]'  # pip list
+            '[{"name": "pytest", "version": "7.0.0"}, {"name": "ruff", "version": "0.1.0"}]',  # pip list
         ]
 
         with patch.dict(os.environ, {"VIRTUAL_ENV": "/path/to/venv"}):
             info = CIEnvironmentInfo.get_dependency_info()
-            
+
             assert info["uv_info"]["version"] == "uv 0.1.0"
             assert info["uv_info"]["virtual_env"] == "/path/to/venv"
             assert info["packages"]["pytest"] == "7.0.0"
             assert info["packages"]["ruff"] == "0.1.0"
 
-    @patch('subprocess.check_output')
+    @patch("subprocess.check_output")
     def test_get_dependency_info_uv_not_found(self, mock_subprocess):
         """uv未インストール時のテスト"""
         mock_subprocess.side_effect = [
             FileNotFoundError(),  # uv --version
-            '[]'  # pip list
+            "[]",  # pip list
         ]
 
         info = CIEnvironmentInfo.get_dependency_info()
-        
+
         assert info["uv_info"]["error"] == "uv not found"
         assert info["packages"] == {}
 
-    @patch('subprocess.check_output')
+    @patch("subprocess.check_output")
     def test_get_dependency_info_pip_error(self, mock_subprocess):
         """pip list エラーのテスト"""
         mock_subprocess.side_effect = [
             "uv 0.1.0\n",  # uv --version
-            subprocess.CalledProcessError(1, "pip")  # pip list
+            subprocess.CalledProcessError(1, "pip"),  # pip list
         ]
 
         info = CIEnvironmentInfo.get_dependency_info()
-        
+
         assert info["packages"]["error"] == "パッケージ情報取得エラー"
 
     def test_get_dependency_info_exception(self):
         """依存関係情報取得例外のテスト"""
-        with patch('subprocess.check_output', side_effect=Exception("Test error")):
+        with patch("subprocess.check_output", side_effect=Exception("Test error")):
             info = CIEnvironmentInfo.get_dependency_info()
             assert "error" in info
             assert "依存関係情報取得エラー" in info["error"]

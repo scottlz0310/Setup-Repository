@@ -1,12 +1,8 @@
 """Git操作モジュールのテスト"""
 
-import shutil
 import subprocess
-import time
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
-
-import pytest
+from unittest.mock import Mock, patch
 
 from src.setup_repo.git_operations import (
     GitOperations,
@@ -97,7 +93,9 @@ class TestGitOperations:
         mock_run.return_value = Mock()
 
         # Act
-        result = git_ops.clone_repository("https://github.com/user/repo.git", "/test/dest")
+        result = git_ops.clone_repository(
+            "https://github.com/user/repo.git", "/test/dest"
+        )
 
         # Assert
         assert result is True
@@ -116,7 +114,9 @@ class TestGitOperations:
         mock_run.side_effect = subprocess.CalledProcessError(1, "git")
 
         # Act
-        result = git_ops.clone_repository("https://github.com/user/repo.git", "/test/dest")
+        result = git_ops.clone_repository(
+            "https://github.com/user/repo.git", "/test/dest"
+        )
 
         # Assert
         assert result is False
@@ -382,7 +382,9 @@ class TestSyncRepositoryWithRetries:
 
     @patch("src.setup_repo.git_operations._sync_repository_once")
     @patch("builtins.print")
-    def test_sync_repository_with_retries_success_first_try(self, mock_print, mock_sync_once):
+    def test_sync_repository_with_retries_success_first_try(
+        self, mock_print, mock_sync_once
+    ):
         """初回試行で成功のテスト"""
         # Arrange
         repo = {"name": "test_repo"}
@@ -447,7 +449,9 @@ class TestSyncRepositoryWithRetries:
 
     @patch("src.setup_repo.git_operations._sync_repository_once")
     @patch("builtins.print")
-    def test_sync_repository_with_retries_default_max_retries(self, mock_print, mock_sync_once):
+    def test_sync_repository_with_retries_default_max_retries(
+        self, mock_print, mock_sync_once
+    ):
         """デフォルトのmax_retriesのテスト"""
         # Arrange
         repo = {"name": "test_repo"}
@@ -516,14 +520,20 @@ class TestSyncRepositoryOnce:
     def test_sync_repository_once_new_repo(self, mock_exists, mock_clone):
         """新規リポジトリの場合のテスト"""
         # Arrange
-        repo = {"name": "test_repo", "clone_url": "https://github.com/user/test_repo.git"}
+        repo = {
+            "name": "test_repo",
+            "clone_url": "https://github.com/user/test_repo.git",
+        }
         dest_dir = Path("/test/dest")
         config = {}
         mock_exists.return_value = False
         mock_clone.return_value = True
 
         # Act
-        with patch("src.setup_repo.git_operations.choose_clone_url", return_value="https://github.com/user/test_repo.git"):
+        with patch(
+            "src.setup_repo.git_operations.choose_clone_url",
+            return_value="https://github.com/user/test_repo.git",
+        ):
             result = _sync_repository_once(repo, dest_dir, config)
 
         # Assert
@@ -632,7 +642,9 @@ class TestUpdateRepository:
         repo_path = Path("/test/repo")
         config = {"auto_stash": True}
         mock_stash_changes.return_value = True
-        mock_run.side_effect = subprocess.CalledProcessError(1, "git", stderr="error message")
+        mock_run.side_effect = subprocess.CalledProcessError(
+            1, "git", stderr="error message"
+        )
 
         # Act
         result = _update_repository(repo_name, repo_path, config)
@@ -650,7 +662,9 @@ class TestUpdateRepository:
         repo_name = "test_repo"
         repo_path = Path("/test/repo")
         config = {}
-        mock_run.side_effect = subprocess.CalledProcessError(1, "git", stderr="error message")
+        mock_run.side_effect = subprocess.CalledProcessError(
+            1, "git", stderr="error message"
+        )
 
         # Act
         result = _update_repository(repo_name, repo_path, config)
@@ -710,7 +724,9 @@ class TestCloneRepository:
         repo_name = "test_repo"
         repo_url = "https://github.com/user/test_repo.git"
         repo_path = Path("/test/repo")
-        mock_run.side_effect = subprocess.CalledProcessError(1, "git", stderr="error message")
+        mock_run.side_effect = subprocess.CalledProcessError(
+            1, "git", stderr="error message"
+        )
 
         # Act
         result = _clone_repository(repo_name, repo_url, repo_path, dry_run=False)

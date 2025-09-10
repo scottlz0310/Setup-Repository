@@ -7,12 +7,14 @@
 
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
-from .quality_logger import LogLevel, QualityLogger, configure_quality_logging
 from .logging_handlers import (
-    create_ci_handler, create_development_handler, create_testing_handler
+    create_ci_handler,
+    create_development_handler,
+    create_testing_handler,
 )
+from .quality_logger import LogLevel, QualityLogger, configure_quality_logging
 
 
 class LoggingConfig:
@@ -93,7 +95,7 @@ class LoggingConfig:
         )
 
     @classmethod
-    def get_debug_context(cls) -> dict[str, str]:
+    def get_debug_context(cls) -> dict[str, Any]:
         """デバッグ用の環境情報を取得"""
         return {
             "log_level": cls.get_log_level_from_env().value,
@@ -104,7 +106,7 @@ class LoggingConfig:
                 str(cls.get_log_file_path()) if cls.get_log_file_path() else "None"
             ),
             "environment_variables": {
-                key: value
+                key: str(value)
                 for key, value in os.environ.items()
                 if key.startswith(("LOG_", "DEBUG", "CI", "GITHUB_"))
             },
@@ -153,8 +155,13 @@ def setup_testing_logging() -> QualityLogger:
 
 # 後方互換性のためのエイリアス
 __all__ = [
-    'LoggingConfig', 'setup_project_logging', 'setup_ci_logging', 
-    'setup_development_logging', 'setup_testing_logging',
+    "LoggingConfig",
+    "setup_project_logging",
+    "setup_ci_logging",
+    "setup_development_logging",
+    "setup_testing_logging",
     # ハンドラー（後方互換性）
-    'create_ci_handler', 'create_development_handler', 'create_testing_handler'
+    "create_ci_handler",
+    "create_development_handler",
+    "create_testing_handler",
 ]

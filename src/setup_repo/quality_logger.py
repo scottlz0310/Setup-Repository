@@ -8,19 +8,26 @@
 import logging
 import sys
 import traceback
-from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any, Optional, Union
 
 # 分割されたモジュールからインポート
 from .quality_errors import (
-    QualityCheckError, RuffError, MyPyError, TestFailureError, 
-    CoverageError, SecurityScanError, CIError, ReleaseError, ErrorReporter
+    CIError,
+    CoverageError,
+    ErrorReporter,
+    MyPyError,
+    QualityCheckError,
+    ReleaseError,
+    RuffError,
+    SecurityScanError,
+    TestFailureError,
 )
 from .quality_formatters import (
-    ColoredFormatter, JSONFormatter, format_log_message, 
-    add_color_codes, strip_color_codes, format_metrics_summary
+    ColoredFormatter,
+    JSONFormatter,
+    format_metrics_summary,
 )
 
 
@@ -198,8 +205,13 @@ class QualityLogger:
         else:
             # dataclassの場合
             try:
-                from dataclasses import asdict
-                metrics_dict = asdict(metrics)
+                from dataclasses import asdict, is_dataclass
+
+                if is_dataclass(metrics) and not isinstance(metrics, type):
+                    metrics_dict = asdict(metrics)
+                else:
+                    self.warning(f"メトリクスの形式が不正です: {type(metrics)}")
+                    return
             except (ImportError, TypeError):
                 self.warning(f"メトリクスの形式が不正です: {type(metrics)}")
                 return
@@ -248,10 +260,10 @@ class QualityLogger:
         """コンテキスト付きエラーログ"""
         error_reporter = ErrorReporter()
         formatted_error = error_reporter.log_exception(error, include_traceback)
-        
+
         if context:
             formatted_error += f"\nコンテキスト: {context}"
-        
+
         self.error(f"エラー発生: {formatted_error}")
 
     def create_error_report(
@@ -270,14 +282,15 @@ class QualityLogger:
         """エラーレポートをファイルに保存"""
         error_reporter = ErrorReporter()
         report = error_reporter.create_error_report(errors, context)
-        
+
         if output_file:
             output_file.parent.mkdir(parents=True, exist_ok=True)
-            
+
             with open(output_file, "w", encoding="utf-8") as f:
                 import json
+
                 json.dump(report, f, indent=2, ensure_ascii=False)
-            
+
             self.info(f"エラーレポートを保存しました: {output_file}")
             return output_file
         else:
@@ -335,10 +348,21 @@ def configure_quality_logging(
 # 後方互換性のためのエイリアス
 # 既存のインポートパスを維持するため、分割されたモジュールの機能をここで再エクスポート
 __all__ = [
-    'LogLevel', 'QualityLogger', 'get_quality_logger', 'configure_quality_logging',
+    "LogLevel",
+    "QualityLogger",
+    "get_quality_logger",
+    "configure_quality_logging",
     # エラークラス（後方互換性）
-    'QualityCheckError', 'RuffError', 'MyPyError', 'TestFailureError', 
-    'CoverageError', 'SecurityScanError', 'CIError', 'ReleaseError', 'ErrorReporter',
+    "QualityCheckError",
+    "RuffError",
+    "MyPyError",
+    "TestFailureError",
+    "CoverageError",
+    "SecurityScanError",
+    "CIError",
+    "ReleaseError",
+    "ErrorReporter",
     # フォーマッター（後方互換性）
-    'ColoredFormatter', 'JSONFormatter'
+    "ColoredFormatter",
+    "JSONFormatter",
 ]

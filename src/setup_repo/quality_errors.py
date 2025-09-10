@@ -117,12 +117,12 @@ class ErrorReporter:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"{report_type}_error_report_{timestamp}.json"
         output_file = self.get_report_path(filename)
-        
+
         output_file.parent.mkdir(parents=True, exist_ok=True)
-        
+
         with open(output_file, "w", encoding="utf-8") as f:
             json.dump(error_data, f, indent=2, ensure_ascii=False)
-        
+
         return output_file
 
     def get_report_path(self, filename: str) -> Path:
@@ -133,7 +133,7 @@ class ErrorReporter:
         self, errors: list[Exception], context: Optional[dict[str, Any]] = None
     ) -> dict[str, Any]:
         """詳細なエラーレポートを作成"""
-        report = {
+        report: dict[str, Any] = {
             "timestamp": datetime.now().isoformat(),
             "total_errors": len(errors),
             "context": context or {},

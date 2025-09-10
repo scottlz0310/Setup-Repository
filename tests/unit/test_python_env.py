@@ -4,8 +4,6 @@ import subprocess
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-import pytest
-
 from src.setup_repo.python_env import (
     _setup_with_uv,
     _setup_with_venv,
@@ -22,7 +20,7 @@ class TestHasPythonProject:
         """pyproject.tomlがある場合のテスト"""
         # Arrange
         repo_path = Path("/test/repo")
-        mock_exists.side_effect = lambda path: str(path).endswith("pyproject.toml")
+        mock_exists.return_value = True
 
         # Act
         result = has_python_project(repo_path)
@@ -35,7 +33,7 @@ class TestHasPythonProject:
         """requirements.txtがある場合のテスト"""
         # Arrange
         repo_path = Path("/test/repo")
-        mock_exists.side_effect = lambda path: str(path).endswith("requirements.txt")
+        mock_exists.return_value = True
 
         # Act
         result = has_python_project(repo_path)
@@ -48,7 +46,7 @@ class TestHasPythonProject:
         """setup.pyがある場合のテスト"""
         # Arrange
         repo_path = Path("/test/repo")
-        mock_exists.side_effect = lambda path: str(path).endswith("setup.py")
+        mock_exists.return_value = True
 
         # Act
         result = has_python_project(repo_path)
@@ -61,7 +59,7 @@ class TestHasPythonProject:
         """Pipfileがある場合のテスト"""
         # Arrange
         repo_path = Path("/test/repo")
-        mock_exists.side_effect = lambda path: str(path).endswith("Pipfile")
+        mock_exists.return_value = True
 
         # Act
         result = has_python_project(repo_path)
@@ -74,7 +72,7 @@ class TestHasPythonProject:
         """setup.cfgがある場合のテスト"""
         # Arrange
         repo_path = Path("/test/repo")
-        mock_exists.side_effect = lambda path: str(path).endswith("setup.cfg")
+        mock_exists.return_value = True
 
         # Act
         result = has_python_project(repo_path)
@@ -87,7 +85,7 @@ class TestHasPythonProject:
         """poetry.lockがある場合のテスト"""
         # Arrange
         repo_path = Path("/test/repo")
-        mock_exists.side_effect = lambda path: str(path).endswith("poetry.lock")
+        mock_exists.return_value = True
 
         # Act
         result = has_python_project(repo_path)
@@ -113,7 +111,7 @@ class TestHasPythonProject:
         """複数のPythonファイルがある場合のテスト"""
         # Arrange
         repo_path = Path("/test/repo")
-        mock_exists.side_effect = lambda path: str(path).endswith(("pyproject.toml", "requirements.txt"))
+        mock_exists.return_value = True
 
         # Act
         result = has_python_project(repo_path)
@@ -206,11 +204,13 @@ class TestSetupWithUv:
     @patch("subprocess.run")
     @patch("pathlib.Path.exists")
     @patch("builtins.print")
-    def test_setup_with_uv_pyproject_toml_with_lock(self, mock_print, mock_exists, mock_run):
+    def test_setup_with_uv_pyproject_toml_with_lock(
+        self, mock_print, mock_exists, mock_run
+    ):
         """pyproject.tomlとuv.lockがある場合のテスト"""
         # Arrange
         repo_path = Path("/test/repo")
-        mock_exists.side_effect = lambda path: str(path).endswith(("pyproject.toml", "uv.lock"))
+        mock_exists.return_value = True
         mock_run.return_value = Mock()
 
         # Act
@@ -231,11 +231,22 @@ class TestSetupWithUv:
     @patch("subprocess.run")
     @patch("pathlib.Path.exists")
     @patch("builtins.print")
-    def test_setup_with_uv_pyproject_toml_without_lock(self, mock_print, mock_exists, mock_run):
+    def test_setup_with_uv_pyproject_toml_without_lock(
+        self, mock_print, mock_exists, mock_run
+    ):
         """pyproject.tomlがあるがuv.lockがない場合のテスト"""
         # Arrange
         repo_path = Path("/test/repo")
-        mock_exists.side_effect = lambda path: str(path).endswith("pyproject.toml") and not str(path).endswith("uv.lock")
+
+        def exists_side_effect():
+            # pyproject.tomlは存在するがuv.lockは存在しない
+            # 最初の呼び出し（pyproject.toml）はTrue、2回目（uv.lock）はFalse
+            if not hasattr(exists_side_effect, "call_count"):
+                exists_side_effect.call_count = 0
+            exists_side_effect.call_count += 1
+            return exists_side_effect.call_count == 1  # 最初の呼び出しのみTrue
+
+        mock_exists.side_effect = exists_side_effect
         mock_run.return_value = Mock()
 
         # Act
@@ -262,7 +273,7 @@ class TestSetupWithUv:
         """requirements.txtがある場合のテスト"""
         # Arrange
         repo_path = Path("/test/repo")
-        mock_exists.side_effect = lambda path: str(path).endswith("requirements.txt")
+        mock_exists.return_value = True
         mock_run.return_value = Mock()
 
         # Act
@@ -276,11 +287,13 @@ class TestSetupWithUv:
     @patch("src.setup_repo.python_env._setup_with_venv")
     @patch("subprocess.run")
     @patch("pathlib.Path.exists")
-    def test_setup_with_uv_failure_fallback_to_venv(self, mock_exists, mock_run, mock_setup_venv):
+    def test_setup_with_uv_failure_fallback_to_venv(
+        self, mock_exists, mock_run, mock_setup_venv
+    ):
         """uv失敗時のvenvフォールバックのテスト"""
         # Arrange
         repo_path = Path("/test/repo")
-        mock_exists.side_effect = lambda path: str(path).endswith("pyproject.toml")
+        mock_exists.return_value = True
         mock_run.side_effect = subprocess.CalledProcessError(1, "uv")
         mock_setup_venv.return_value = True
 
@@ -320,7 +333,7 @@ class TestSetupWithVenv:
         """venv成功（Unix系）のテスト"""
         # Arrange
         repo_path = Path("/test/repo")
-        mock_exists.side_effect = lambda path: str(path).endswith(("requirements.txt", "bin/pip"))
+        mock_exists.return_value = True
         mock_run.return_value = Mock()
 
         # Act
@@ -338,7 +351,7 @@ class TestSetupWithVenv:
         """venv成功（Windows）のテスト"""
         # Arrange
         repo_path = Path("/test/repo")
-        mock_exists.side_effect = lambda path: str(path).endswith(("requirements.txt", "Scripts/pip.exe")) and not str(path).endswith("bin/pip")
+        mock_exists.return_value = True
         mock_run.return_value = Mock()
 
         # Act
@@ -356,7 +369,12 @@ class TestSetupWithVenv:
         """requirements.txtがない場合のテスト"""
         # Arrange
         repo_path = Path("/test/repo")
-        mock_exists.side_effect = lambda path: str(path).endswith("bin/pip") and not str(path).endswith("requirements.txt")
+
+        def exists_side_effect():
+            # bin/pipは存在するがrequirements.txtは存在しない
+            return False
+
+        mock_exists.side_effect = exists_side_effect
         mock_run.return_value = Mock()
 
         # Act
@@ -394,7 +412,9 @@ class TestEdgeCases:
         """Pathオブジェクトでのhas_python_projectのテスト"""
         # Arrange
         repo_path = Path("/test/repo")
-        mock_exists.side_effect = lambda path: str(path).endswith("pyproject.toml")
+        mock_exists.side_effect = lambda: str(repo_path / "pyproject.toml").endswith(
+            "pyproject.toml"
+        )
 
         # Act
         result = has_python_project(repo_path)
