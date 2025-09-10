@@ -1,0 +1,8 @@
+# Docker
+.dockerignore
+docker-compose.override.yml
+.docker/
+
+# Docker volumes
+**/data/
+**/logs/

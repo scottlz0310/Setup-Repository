@@ -1,0 +1,9 @@
+# uv package manager
+uv.lock
+
+# Virtual environments
+.venv/
+venv/
+
+# Dependencies
+requirements.txt
