@@ -129,10 +129,11 @@ class TestEmptyAndNullValues:
         with patch("setup_repo.sync.get_repositories", return_value=empty_repos):
             result = sync_repositories(edge_case_config, dry_run=True)
 
-        # 空のリポジトリリストでも成功（何もしない）
-        assert result.success
+        # 空のリポジトリリストは適切にエラーとして処理される
+        assert not result.success
         assert len(result.synced_repos) == 0
-        assert len(result.errors) == 0
+        assert len(result.errors) == 1
+        assert "リポジトリが見つかりませんでした" in str(result.errors[0])
 
     def test_whitespace_only_inputs(
         self,

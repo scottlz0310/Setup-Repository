@@ -14,7 +14,7 @@ from unittest.mock import patch
 
 import pytest
 
-from setup_repo.platform_detector import detect_platform
+from setup_repo.platform_detector import detect_platform, PlatformInfo
 from setup_repo.sync import sync_repositories
 
 
@@ -46,8 +46,15 @@ class TestCrossPlatform:
     ) -> None:
         """Windowsパス処理テスト"""
         # Windowsプラットフォームをシミュレート
+        windows_platform = PlatformInfo(
+            name="windows",
+            display_name="Windows",
+            package_managers=["scoop", "winget", "chocolatey"],
+            shell="powershell",
+            python_cmd="python",
+        )
         with patch(
-            "setup_repo.platform_detector.detect_platform", return_value="windows"
+            "setup_repo.platform_detector.detect_platform", return_value=windows_platform
         ):
             # Windowsスタイルのパスを設定
             windows_path = temp_dir / "repos"
@@ -82,8 +89,15 @@ class TestCrossPlatform:
         sample_config: dict[str, Any],
     ) -> None:
         """Linuxパス処理テスト"""
+        linux_platform = PlatformInfo(
+            name="linux",
+            display_name="Linux",
+            package_managers=["apt", "snap", "curl"],
+            shell="bash",
+            python_cmd="python3",
+        )
         with patch(
-            "setup_repo.platform_detector.detect_platform", return_value="linux"
+            "setup_repo.platform_detector.detect_platform", return_value=linux_platform
         ):
             # Linuxスタイルのパスを設定
             linux_path = temp_dir / "repos"
@@ -118,8 +132,15 @@ class TestCrossPlatform:
         sample_config: dict[str, Any],
     ) -> None:
         """macOSパス処理テスト"""
+        macos_platform = PlatformInfo(
+            name="macos",
+            display_name="macOS",
+            package_managers=["brew", "curl"],
+            shell="zsh",
+            python_cmd="python3",
+        )
         with patch(
-            "setup_repo.platform_detector.detect_platform", return_value="macos"
+            "setup_repo.platform_detector.detect_platform", return_value=macos_platform
         ):
             # macOSスタイルのパスを設定
             macos_path = temp_dir / "repos"
@@ -163,7 +184,13 @@ class TestCrossPlatform:
         with (
             patch.dict(os.environ, wsl_env),
             patch("platform.system", return_value="Linux"),
-            patch("setup_repo.platform_detector.detect_platform", return_value="wsl"),
+            patch("setup_repo.platform_detector.detect_platform", return_value=PlatformInfo(
+                name="wsl",
+                display_name="WSL (Windows Subsystem for Linux)",
+                package_managers=["apt", "snap", "curl"],
+                shell="bash",
+                python_cmd="python3",
+            )),
         ):
             clone_destination = temp_dir / "repos"
             sample_config["clone_destination"] = str(clone_destination)
@@ -196,12 +223,34 @@ class TestCrossPlatform:
         temp_dir: Path,
     ) -> None:
         """クロスプラットフォーム環境変数処理テスト"""
-        platforms = ["windows", "linux", "macos"]
+        platforms = {
+            "windows": PlatformInfo(
+                name="windows",
+                display_name="Windows",
+                package_managers=["scoop", "winget", "chocolatey"],
+                shell="powershell",
+                python_cmd="python",
+            ),
+            "linux": PlatformInfo(
+                name="linux",
+                display_name="Linux",
+                package_managers=["apt", "snap", "curl"],
+                shell="bash",
+                python_cmd="python3",
+            ),
+            "macos": PlatformInfo(
+                name="macos",
+                display_name="macOS",
+                package_managers=["brew", "curl"],
+                shell="zsh",
+                python_cmd="python3",
+            ),
+        }
 
-        for platform_name in platforms:
+        for platform_name, platform_info in platforms.items():
             with patch(
                 "setup_repo.platform_detector.detect_platform",
-                return_value=platform_name,
+                return_value=platform_info,
             ):
                 # プラットフォーム固有の環境変数を設定
                 env_vars = {
@@ -389,8 +438,15 @@ class TestCrossPlatform:
         sample_config: dict[str, Any],
     ) -> None:
         """Windowsネットワークドライブパステスト"""
+        windows_platform = PlatformInfo(
+            name="windows",
+            display_name="Windows",
+            package_managers=["scoop", "winget", "chocolatey"],
+            shell="powershell",
+            python_cmd="python",
+        )
         with patch(
-            "setup_repo.platform_detector.detect_platform", return_value="windows"
+            "setup_repo.platform_detector.detect_platform", return_value=windows_platform
         ):
             # UNCパスをシミュレート
             network_path = "\\\\server\\share\\repos"
@@ -472,12 +528,34 @@ class TestCrossPlatform:
         sample_config["clone_destination"] = str(clone_destination)
 
         # プラットフォーム別の権限設定をシミュレート
-        platforms = ["windows", "linux", "macos"]
+        platforms = {
+            "windows": PlatformInfo(
+                name="windows",
+                display_name="Windows",
+                package_managers=["scoop", "winget", "chocolatey"],
+                shell="powershell",
+                python_cmd="python",
+            ),
+            "linux": PlatformInfo(
+                name="linux",
+                display_name="Linux",
+                package_managers=["apt", "snap", "curl"],
+                shell="bash",
+                python_cmd="python3",
+            ),
+            "macos": PlatformInfo(
+                name="macos",
+                display_name="macOS",
+                package_managers=["brew", "curl"],
+                shell="zsh",
+                python_cmd="python3",
+            ),
+        }
 
-        for platform_name in platforms:
+        for platform_name, platform_info in platforms.items():
             with patch(
                 "setup_repo.platform_detector.detect_platform",
-                return_value=platform_name,
+                return_value=platform_info,
             ):
                 mock_repos = [
                     {
@@ -513,16 +591,34 @@ class TestCrossPlatform:
         sample_config["clone_destination"] = str(clone_destination)
 
         # 異なる改行コードを含む設定ファイルをテスト
-        line_endings = {
-            "windows": "\r\n",
-            "linux": "\n",
-            "macos": "\r",  # 古いMac
+        platforms = {
+            "windows": (PlatformInfo(
+                name="windows",
+                display_name="Windows",
+                package_managers=["scoop", "winget", "chocolatey"],
+                shell="powershell",
+                python_cmd="python",
+            ), "\r\n"),
+            "linux": (PlatformInfo(
+                name="linux",
+                display_name="Linux",
+                package_managers=["apt", "snap", "curl"],
+                shell="bash",
+                python_cmd="python3",
+            ), "\n"),
+            "macos": (PlatformInfo(
+                name="macos",
+                display_name="macOS",
+                package_managers=["brew", "curl"],
+                shell="zsh",
+                python_cmd="python3",
+            ), "\r"),  # 古いMac
         }
 
-        for platform_name, _line_ending in line_endings.items():
+        for platform_name, (platform_info, _line_ending) in platforms.items():
             with patch(
                 "setup_repo.platform_detector.detect_platform",
-                return_value=platform_name,
+                return_value=platform_info,
             ):
                 mock_repos = [
                     {
@@ -561,12 +657,34 @@ class TestCrossPlatform:
         sample_config["clone_destination"] = str(clone_destination)
 
         # 各プラットフォームでのパフォーマンステスト
-        platforms = ["windows", "linux", "macos"]
+        platforms = {
+            "windows": PlatformInfo(
+                name="windows",
+                display_name="Windows",
+                package_managers=["scoop", "winget", "chocolatey"],
+                shell="powershell",
+                python_cmd="python",
+            ),
+            "linux": PlatformInfo(
+                name="linux",
+                display_name="Linux",
+                package_managers=["apt", "snap", "curl"],
+                shell="bash",
+                python_cmd="python3",
+            ),
+            "macos": PlatformInfo(
+                name="macos",
+                display_name="macOS",
+                package_managers=["brew", "curl"],
+                shell="zsh",
+                python_cmd="python3",
+            ),
+        }
 
-        for platform_name in platforms:
+        for platform_name, platform_info in platforms.items():
             with patch(
                 "setup_repo.platform_detector.detect_platform",
-                return_value=platform_name,
+                return_value=platform_info,
             ):
                 mock_repos = [
                     {
