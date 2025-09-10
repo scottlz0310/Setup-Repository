@@ -53,7 +53,7 @@ repos:
       - id: check-added-large-files
         name: "大きなファイルチェック"
         description: "大きなファイル（500KB以上）の検出"
-        args: ['--maxkb=500']
+        args: ["--maxkb=500"]
       # マージコンフリクトマーカーの検出
       - id: check-merge-conflict
         name: "マージコンフリクトチェック"
@@ -66,7 +66,7 @@ repos:
       - id: bandit
         name: "Bandit セキュリティチェック"
         description: "Banditによるセキュリティ脆弱性チェック"
-        args: ['-c', 'pyproject.toml']
+        args: ["-c", "pyproject.toml"]
         files: ^src/
 
   # ローカルフック - Pytest実行
@@ -109,8 +109,8 @@ ci:
 
     [skip ci]
   autofix_prs: true
-  autoupdate_branch: ''
-  autoupdate_commit_msg: '[pre-commit.ci] pre-commit自動更新'
+  autoupdate_branch: ""
+  autoupdate_commit_msg: "[pre-commit.ci] pre-commit自動更新"
   autoupdate_schedule: weekly
   skip: []
   submodules: false
