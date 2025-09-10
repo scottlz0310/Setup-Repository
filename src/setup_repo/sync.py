@@ -15,7 +15,8 @@ from .safety_check import (
     create_emergency_backup,
     prompt_user_action,
 )
-from .utils import ProcessLock, TeeLogger, detect_platform
+from .utils import ProcessLock, TeeLogger
+from .platform_detector import PlatformDetector
 from .uv_installer import ensure_uv
 from .vscode_setup import apply_vscode_template
 
@@ -43,7 +44,8 @@ def sync_repositories(config: dict, dry_run: bool = False) -> SyncResult:
     dry_run = dry_run or config.get("dry_run", False)
     force = config.get("force", False)
 
-    platform = detect_platform()
+    platform_detector = PlatformDetector()
+    platform = platform_detector.detect_platform()
 
     # 🔍 検出した設定を表示
     print("\\n🔍 設定情報:")

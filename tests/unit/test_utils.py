@@ -14,7 +14,8 @@ from unittest.mock import mock_open, patch
 
 import pytest
 
-from src.setup_repo.utils import ProcessLock, TeeLogger, detect_platform
+from src.setup_repo.utils import ProcessLock, TeeLogger
+from src.setup_repo.platform_detector import PlatformDetector
 
 
 @pytest.mark.unit
@@ -325,7 +326,8 @@ class TestDetectPlatform:
         with patch("platform.system") as mock_system:
             mock_system.return_value = "Windows"
 
-            platform = detect_platform()
+            detector = PlatformDetector()
+            platform = detector.detect_platform()
             assert platform == "windows"
 
     def test_detect_windows_platform_by_os_name(self) -> None:
@@ -333,7 +335,8 @@ class TestDetectPlatform:
         with patch("platform.system") as mock_system, patch("os.name", "nt"):
             mock_system.return_value = "Linux"  # 他のシステムを返す
 
-            platform = detect_platform()
+            detector = PlatformDetector()
+            platform = detector.detect_platform()
             assert platform == "windows"
 
     def test_detect_wsl_platform(self) -> None:
@@ -345,7 +348,8 @@ class TestDetectPlatform:
             mock_system.return_value = "Linux"
             mock_release.return_value = "5.4.0-microsoft-standard-WSL2"
 
-            platform = detect_platform()
+            detector = PlatformDetector()
+            platform = detector.detect_platform()
             assert platform == "wsl"
 
     def test_detect_linux_platform(self) -> None:
@@ -357,7 +361,8 @@ class TestDetectPlatform:
             mock_system.return_value = "Linux"
             mock_release.return_value = "5.4.0-generic"
 
-            platform = detect_platform()
+            detector = PlatformDetector()
+            platform = detector.detect_platform()
             assert platform == "linux"
 
     def test_detect_macos_platform(self) -> None:
@@ -369,7 +374,8 @@ class TestDetectPlatform:
             mock_system.return_value = "Darwin"
             mock_release.return_value = "21.0.0"  # macOS release
 
-            platform = detect_platform()
+            detector = PlatformDetector()
+            platform = detector.detect_platform()
             assert platform == "macos"  # 正しい実装ではmacosを返す
 
     def test_detect_unknown_platform(self) -> None:
@@ -381,7 +387,8 @@ class TestDetectPlatform:
             mock_system.return_value = "FreeBSD"
             mock_release.return_value = "13.0-RELEASE"
 
-            platform = detect_platform()
+            detector = PlatformDetector()
+            platform = detector.detect_platform()
             assert platform == "linux"  # デフォルトでlinuxを返す
 
     def test_detect_platform_case_insensitive(self) -> None:
@@ -389,7 +396,8 @@ class TestDetectPlatform:
         with patch("platform.system") as mock_system:
             mock_system.return_value = "WINDOWS"  # 大文字
 
-            platform = detect_platform()
+            detector = PlatformDetector()
+            platform = detector.detect_platform()
             assert platform == "windows"
 
     def test_detect_platform_wsl_case_insensitive(self) -> None:
@@ -401,7 +409,8 @@ class TestDetectPlatform:
             mock_system.return_value = "Linux"
             mock_release.return_value = "5.4.0-MICROSOFT-standard-WSL2"  # 大文字
 
-            platform = detect_platform()
+            detector = PlatformDetector()
+            platform = detector.detect_platform()
             assert platform == "wsl"
 
 
@@ -457,8 +466,9 @@ class TestUtilsIntegration:
     def test_platform_detection_consistency(self) -> None:
         """プラットフォーム検出の一貫性テスト"""
         # 複数回呼び出しても同じ結果が返ることを確認
-        platform1 = detect_platform()
-        platform2 = detect_platform()
+        detector = PlatformDetector()
+        platform1 = detector.detect_platform()
+        platform2 = detector.detect_platform()
 
         assert platform1 == platform2
         assert platform1 in ["windows", "wsl", "linux"]

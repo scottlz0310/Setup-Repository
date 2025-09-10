@@ -8,15 +8,17 @@ from pathlib import Path
 from unittest.mock import patch
 
 from setup_repo.quality_logger import (
-    CoverageError,
     LogLevel,
+    QualityLogger,
+    get_quality_logger,
+)
+from setup_repo.quality_errors import (
+    CoverageError,
     MyPyError,
     QualityCheckError,
-    QualityLogger,
     RuffError,
     SecurityScanError,
     TestFailureError,
-    get_quality_logger,
 )
 
 

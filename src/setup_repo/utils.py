@@ -112,15 +112,4 @@ class TeeLogger:
             self.file_handle = None
 
 
-def detect_platform() -> str:
-    """プラットフォーム検出"""
-    import platform
 
-    system = platform.system().lower()
-    if system == "windows" or os.name == "nt":
-        return "windows"
-    elif system == "darwin":
-        return "macos"
-    elif "microsoft" in platform.release().lower():
-        return "wsl"
-    return "linux"

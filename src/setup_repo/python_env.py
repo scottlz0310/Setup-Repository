@@ -5,6 +5,8 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from .uv_installer import ensure_uv
+
 
 def has_python_project(repo_path: Path) -> bool:
     """Pythonプロジェクトかどうかを判定"""
@@ -19,9 +21,7 @@ def has_python_project(repo_path: Path) -> bool:
     return any((repo_path / f).exists() for f in python_files)
 
 
-def ensure_uv() -> bool:
-    """uvが利用可能かチェック"""
-    return shutil.which("uv") is not None
+
 
 
 def setup_python_environment(repo_path: Path, dry_run: bool = False) -> bool:

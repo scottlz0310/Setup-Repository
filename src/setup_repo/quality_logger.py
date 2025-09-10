@@ -1,11 +1,10 @@
 """
-品質チェック専用のロガーとエラーハンドリングクラス
+品質チェック専用のロガー機能
 
 このモジュールは、品質チェック、CI/CD、テスト実行に関する
-包括的なロギングとエラーハンドリング機能を提供します。
+基本的なロギング機能を提供します。
 """
 
-import json
 import logging
 import sys
 import traceback
@@ -13,6 +12,16 @@ from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any, Optional, Union
+
+# 分割されたモジュールからインポート
+from .quality_errors import (
+    QualityCheckError, RuffError, MyPyError, TestFailureError, 
+    CoverageError, SecurityScanError, CIError, ReleaseError, ErrorReporter
+)
+from .quality_formatters import (
+    ColoredFormatter, JSONFormatter, format_log_message, 
+    add_color_codes, strip_color_codes, format_metrics_summary
+)
 
 
 class LogLevel(Enum):
@@ -23,100 +32,6 @@ class LogLevel(Enum):
     WARNING = "WARNING"
     ERROR = "ERROR"
     CRITICAL = "CRITICAL"
-
-
-class QualityCheckError(Exception):
-    """品質チェック関連のベースエラークラス"""
-
-    def __init__(
-        self,
-        message: str,
-        error_code: Optional[str] = None,
-        details: Optional[dict[str, Any]] = None,
-    ):
-        super().__init__(message)
-        self.message = message
-        self.error_code = error_code or "QUALITY_ERROR"
-        self.details = details or {}
-        self.timestamp = datetime.now().isoformat()
-
-
-class RuffError(QualityCheckError):
-    """Ruffリンティングエラー"""
-
-    def __init__(self, message: str, issues: Optional[list[dict[str, Any]]] = None):
-        super().__init__(message, "RUFF_ERROR", {"issues": issues or []})
-
-
-class MyPyError(QualityCheckError):
-    """MyPy型チェックエラー"""
-
-    def __init__(self, message: str, errors: Optional[list[str]] = None):
-        super().__init__(message, "MYPY_ERROR", {"errors": errors or []})
-
-
-class TestFailureError(QualityCheckError):
-    """テスト失敗エラー"""
-
-    def __init__(
-        self,
-        message: str,
-        failed_tests: Optional[list[str]] = None,
-        coverage: Optional[float] = None,
-    ):
-        super().__init__(
-            message,
-            "TEST_FAILURE",
-            {"failed_tests": failed_tests or [], "coverage": coverage},
-        )
-
-
-class CoverageError(QualityCheckError):
-    """カバレッジ不足エラー"""
-
-    def __init__(self, message: str, current_coverage: float, required_coverage: float):
-        super().__init__(
-            message,
-            "COVERAGE_ERROR",
-            {
-                "current_coverage": current_coverage,
-                "required_coverage": required_coverage,
-            },
-        )
-
-
-class SecurityScanError(QualityCheckError):
-    """セキュリティスキャンエラー"""
-
-    def __init__(
-        self, message: str, vulnerabilities: Optional[list[dict[str, Any]]] = None
-    ):
-        super().__init__(
-            message, "SECURITY_ERROR", {"vulnerabilities": vulnerabilities or []}
-        )
-
-
-class CIError(Exception):
-    """CI/CD関連のベースエラークラス"""
-
-    def __init__(
-        self,
-        message: str,
-        error_code: Optional[str] = None,
-        details: Optional[dict[str, Any]] = None,
-    ):
-        super().__init__(message)
-        self.message = message
-        self.error_code = error_code or "CI_ERROR"
-        self.details = details or {}
-        self.timestamp = datetime.now().isoformat()
-
-
-class ReleaseError(CIError):
-    """リリースプロセスエラー"""
-
-    def __init__(self, message: str, release_stage: Optional[str] = None):
-        super().__init__(message, "RELEASE_ERROR", {"release_stage": release_stage})
 
 
 class QualityLogger:
@@ -199,25 +114,7 @@ class QualityLogger:
 
     def _create_json_formatter(self) -> logging.Formatter:
         """JSON形式のフォーマッターを作成"""
-
-        class JsonFormatter(logging.Formatter):
-            def format(self, record):
-                log_entry = {
-                    "timestamp": datetime.fromtimestamp(record.created).isoformat(),
-                    "level": record.levelname,
-                    "logger": record.name,
-                    "message": record.getMessage(),
-                    "module": record.module,
-                    "function": record.funcName,
-                    "line": record.lineno,
-                }
-
-                if record.exc_info:
-                    log_entry["exception"] = self.formatException(record.exc_info)
-
-                return json.dumps(log_entry, ensure_ascii=False)
-
-        return JsonFormatter()
+        return JSONFormatter()
 
     def debug(self, message: str, **kwargs) -> None:
         """デバッグレベルのログ"""
@@ -293,8 +190,6 @@ class QualityLogger:
 
     def log_metrics_summary(self, metrics: Union[dict[str, Any], Any]) -> None:
         """メトリクス概要をログ"""
-        self.info("=== 品質メトリクス概要 ===")
-
         # QualityMetricsオブジェクトの場合は辞書に変換
         if hasattr(metrics, "__dict__"):
             metrics_dict = metrics.__dict__
@@ -304,20 +199,13 @@ class QualityLogger:
             # dataclassの場合
             try:
                 from dataclasses import asdict
-
                 metrics_dict = asdict(metrics)
             except (ImportError, TypeError):
                 self.warning(f"メトリクスの形式が不正です: {type(metrics)}")
                 return
 
-        for key, value in metrics_dict.items():
-            if isinstance(value, (int, float)):
-                self.info(f"{key}: {value}")
-            elif isinstance(value, bool):
-                status = "✅" if value else "❌"
-                self.info(f"{key}: {status}")
-            else:
-                self.info(f"{key}: {value}")
+        formatted_summary = format_metrics_summary(metrics_dict)
+        self.info(formatted_summary)
 
     def log_ci_stage_start(
         self, stage: str, details: Optional[dict[str, Any]] = None
@@ -358,71 +246,45 @@ class QualityLogger:
         include_traceback: bool = True,
     ) -> None:
         """コンテキスト付きエラーログ"""
-        error_info = {
-            "error_type": type(error).__name__,
-            "error_message": str(error),
-            "timestamp": datetime.now().isoformat(),
-        }
-
-        if hasattr(error, "error_code"):
-            error_info["error_code"] = error.error_code
-
-        if hasattr(error, "details"):
-            error_info["error_details"] = error.details
-
+        error_reporter = ErrorReporter()
+        formatted_error = error_reporter.log_exception(error, include_traceback)
+        
         if context:
-            error_info["context"] = context
-
-        self.error(
-            f"エラー発生: {json.dumps(error_info, ensure_ascii=False, indent=2)}"
-        )
-
-        if include_traceback:
-            self.debug(f"スタックトレース: {traceback.format_exc()}")
+            formatted_error += f"\nコンテキスト: {context}"
+        
+        self.error(f"エラー発生: {formatted_error}")
 
     def create_error_report(
         self, errors: list[Exception], context: Optional[dict[str, Any]] = None
     ) -> dict[str, Any]:
         """詳細なエラーレポートを作成"""
-        report = {
-            "timestamp": datetime.now().isoformat(),
-            "total_errors": len(errors),
-            "context": context or {},
-            "errors": [],
-        }
-
-        for error in errors:
-            error_entry = {
-                "type": type(error).__name__,
-                "message": str(error),
-                "timestamp": getattr(error, "timestamp", datetime.now().isoformat()),
-            }
-
-            if hasattr(error, "error_code"):
-                error_entry["code"] = error.error_code
-
-            if hasattr(error, "details"):
-                error_entry["details"] = error.details
-
-            report["errors"].append(error_entry)
-
-        return report
+        error_reporter = ErrorReporter()
+        return error_reporter.create_error_report(errors, context)
 
     def save_error_report(
         self,
         errors: list[Exception],
-        output_file: Path,
+        output_file: Optional[Path] = None,
         context: Optional[dict[str, Any]] = None,
-    ) -> None:
+    ) -> Path:
         """エラーレポートをファイルに保存"""
-        report = self.create_error_report(errors, context)
-
-        output_file.parent.mkdir(parents=True, exist_ok=True)
-
-        with open(output_file, "w", encoding="utf-8") as f:
-            json.dump(report, f, indent=2, ensure_ascii=False)
-
-        self.info(f"エラーレポートを保存しました: {output_file}")
+        error_reporter = ErrorReporter()
+        report = error_reporter.create_error_report(errors, context)
+        
+        if output_file:
+            output_file.parent.mkdir(parents=True, exist_ok=True)
+            
+            with open(output_file, "w", encoding="utf-8") as f:
+                import json
+                json.dump(report, f, indent=2, ensure_ascii=False)
+            
+            self.info(f"エラーレポートを保存しました: {output_file}")
+            return output_file
+        else:
+            # ErrorReporterを使用して統一されたレポート保存
+            saved_path = error_reporter.save_report(report, "quality")
+            self.info(f"エラーレポートを保存しました: {saved_path}")
+            return saved_path
 
 
 # グローバルロガーインスタンス
@@ -468,3 +330,15 @@ def configure_quality_logging(
     )
 
     return _default_logger
+
+
+# 後方互換性のためのエイリアス
+# 既存のインポートパスを維持するため、分割されたモジュールの機能をここで再エクスポート
+__all__ = [
+    'LogLevel', 'QualityLogger', 'get_quality_logger', 'configure_quality_logging',
+    # エラークラス（後方互換性）
+    'QualityCheckError', 'RuffError', 'MyPyError', 'TestFailureError', 
+    'CoverageError', 'SecurityScanError', 'CIError', 'ReleaseError', 'ErrorReporter',
+    # フォーマッター（後方互換性）
+    'ColoredFormatter', 'JSONFormatter'
+]

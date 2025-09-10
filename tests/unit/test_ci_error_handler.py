@@ -13,7 +13,9 @@ from setup_repo.ci_error_handler import (
     CIErrorHandler,
     create_ci_error_handler,
 )
-from setup_repo.quality_logger import LogLevel, QualityCheckError, RuffError
+from setup_repo.quality_logger import LogLevel
+from setup_repo.quality_errors import QualityCheckError, RuffError
+from setup_repo.ci_environment import CIEnvironmentInfo
 
 
 class TestCIEnvironmentInfo:
@@ -242,3 +244,303 @@ class TestCIErrorHandlerFactory:
         assert isinstance(handler, CIErrorHandler)
         # JSON形式ログが有効になっていることを確認
         assert handler.logger.enable_json_format is True
+
+
+class TestCIErrorHandlerAdvanced:
+    """CI/CDエラーハンドラーの高度なテスト"""
+
+    def test_handle_quality_check_details_ruff(self):
+        """Ruff品質チェック詳細処理のテスト"""
+        handler = CIErrorHandler(enable_github_annotations=False)
+        
+        # Ruffエラーの詳細を持つエラーオブジェクトを作成
+        error = QualityCheckError("Ruff check failed")
+        error.details = {
+            "issues": [
+                {
+                    "filename": "test.py",
+                    "location": {"row": 10},
+                    "message": "Line too long"
+                },
+                {
+                    "filename": "main.py", 
+                    "location": {"row": 5},
+                    "message": "Unused import"
+                }
+            ]
+        }
+        
+        handler.handle_quality_check_error("ruff", error)
+        
+        assert len(handler.errors) == 1
+        assert handler.errors[0] == error
+
+    def test_handle_quality_check_details_mypy(self):
+        """MyPy品質チェック詳細処理のテスト"""
+        handler = CIErrorHandler(enable_github_annotations=False)
+        
+        # MyPyエラーの詳細を持つエラーオブジェクトを作成
+        error = QualityCheckError("MyPy check failed")
+        error.details = {
+            "errors": [
+                "test.py:10: error: Incompatible types",
+                "main.py:5: error: Missing return statement"
+            ]
+        }
+        
+        handler.handle_quality_check_error("mypy", error)
+        
+        assert len(handler.errors) == 1
+        assert handler.errors[0] == error
+
+    def test_handle_quality_check_details_tests(self):
+        """テスト品質チェック詳細処理のテスト"""
+        handler = CIErrorHandler(enable_github_annotations=False)
+        
+        # テストエラーの詳細を持つエラーオブジェクトを作成
+        error = QualityCheckError("Test check failed")
+        error.details = {
+            "failed_tests": [
+                "test_example.py::test_function1",
+                "test_example.py::test_function2"
+            ]
+        }
+        
+        handler.handle_quality_check_error("tests", error)
+        
+        assert len(handler.errors) == 1
+        assert handler.errors[0] == error
+
+    @patch.dict(os.environ, {"GITHUB_ACTIONS": "true"})
+    @patch("builtins.print")
+    def test_handle_quality_check_details_with_github_annotations(self, mock_print):
+        """GitHub Actionsアノテーション付き品質チェック詳細処理のテスト"""
+        handler = CIErrorHandler(enable_github_annotations=True)
+        
+        # Ruffエラーの詳細を持つエラーオブジェクトを作成
+        error = QualityCheckError("Ruff check failed")
+        error.details = {
+            "issues": [
+                {
+                    "filename": "test.py",
+                    "location": {"row": 10},
+                    "message": "Line too long"
+                }
+            ]
+        }
+        
+        handler.handle_quality_check_error("ruff", error)
+        
+        # GitHub Actionsアノテーションが出力されることを確認
+        mock_print.assert_called()
+        call_args = [call[0][0] for call in mock_print.call_args_list]
+        assert any("::warning" in arg for arg in call_args)
+
+    def test_comprehensive_error_report_with_error_details(self):
+        """詳細情報付きエラーレポート作成のテスト"""
+        handler = CIErrorHandler(enable_github_annotations=False)
+        
+        # 詳細情報付きエラーを追加
+        error1 = QualityCheckError("Test error 1", "ERROR_001")
+        error1.details = {"file": "test.py", "line": 10}
+        error1.timestamp = "2023-01-01T00:00:00"
+        
+        error2 = RuffError("Test error 2", [{"file": "main.py"}])
+        
+        handler.errors.extend([error1, error2])
+        
+        report = handler.create_comprehensive_error_report()
+        
+        assert report["total_errors"] == 2
+        assert len(report["errors"]) == 2
+        
+        # 最初のエラーの詳細を確認
+        first_error = report["errors"][0]
+        assert first_error["type"] == "QualityCheckError"
+        assert first_error["message"] == "Test error 1"
+        assert first_error["code"] == "ERROR_001"
+        assert first_error["details"] == {"file": "test.py", "line": 10}
+        assert first_error["timestamp"] == "2023-01-01T00:00:00"
+
+    def test_save_error_report_with_custom_filename(self):
+        """カスタムファイル名でのエラーレポート保存のテスト"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            error_report_dir = Path(temp_dir)
+            handler = CIErrorHandler(
+                enable_github_annotations=False, error_report_dir=error_report_dir
+            )
+            
+            # エラーを追加
+            error = QualityCheckError("Test error")
+            handler.errors.append(error)
+            
+            # カスタムファイル名でレポートを保存
+            output_file = handler.save_error_report("custom_report.json")
+            
+            assert output_file.exists()
+            assert output_file.name == "custom_report.json"
+            assert output_file.parent == error_report_dir
+            
+            # レポート内容を確認
+            with open(output_file, encoding="utf-8") as f:
+                report = json.load(f)
+            
+            assert report["total_errors"] == 1
+            assert report["errors"][0]["message"] == "Test error"
+
+    @patch.dict(os.environ, {"GITHUB_ACTIONS": "true"})
+    @patch("builtins.print")
+    def test_save_error_report_github_actions_notice(self, mock_print):
+        """GitHub Actions環境でのエラーレポート保存通知のテスト"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            error_report_dir = Path(temp_dir)
+            handler = CIErrorHandler(
+                enable_github_annotations=True, error_report_dir=error_report_dir
+            )
+            
+            # エラーを追加
+            error = QualityCheckError("Test error")
+            handler.errors.append(error)
+            
+            # レポートを保存
+            handler.save_error_report("test_report.json")
+            
+            # GitHub Actionsアノテーションが出力されることを確認
+            mock_print.assert_called()
+            call_args = [call[0][0] for call in mock_print.call_args_list]
+            assert any("::notice" in arg and "Error report saved" in arg for arg in call_args)
+
+    def test_generate_failure_summary_with_multiple_errors(self):
+        """複数エラーでの失敗サマリー生成のテスト"""
+        handler = CIErrorHandler(enable_github_annotations=False)
+        
+        # 複数のエラーを追加
+        error1 = QualityCheckError("First error", "ERROR_001")
+        error1.details = {"severity": "high"}
+        
+        error2 = RuffError("Second error", [{"file": "test.py"}])
+        
+        handler.errors.extend([error1, error2])
+        
+        summary = handler.generate_failure_summary()
+        
+        assert "CI/CD失敗サマリー (2件のエラー)" in summary
+        assert "1. QualityCheckError" in summary
+        assert "2. RuffError" in summary
+        assert "First error" in summary
+        assert "Second error" in summary
+        assert "ERROR_001" in summary
+
+    @patch.dict(os.environ, {"GITHUB_STEP_SUMMARY": "/tmp/summary"})
+    @patch("builtins.open", create=True)
+    def test_output_github_step_summary_with_errors(self, mock_open):
+        """エラーありでのGitHub Step Summary出力のテスト"""
+        handler = CIErrorHandler(enable_github_annotations=False)
+        
+        # エラーを追加
+        error = QualityCheckError("Test error")
+        handler.errors.append(error)
+        
+        handler.output_github_step_summary()
+        
+        # ファイルが開かれることを確認
+        mock_open.assert_called_once_with("/tmp/summary", "a", encoding="utf-8")
+
+    @patch.dict(os.environ, {"GITHUB_STEP_SUMMARY": ""})
+    def test_output_github_step_summary_no_env_var(self):
+        """GITHUB_STEP_SUMMARY環境変数がない場合のテスト"""
+        handler = CIErrorHandler(enable_github_annotations=False)
+        
+        # エラーを追加
+        error = QualityCheckError("Test error")
+        handler.errors.append(error)
+        
+        # 例外が発生しないことを確認
+        handler.output_github_step_summary()
+
+    @patch.dict(os.environ, {"GITHUB_STEP_SUMMARY": "/tmp/summary"})
+    @patch("builtins.open", side_effect=OSError("Permission denied"))
+    def test_output_github_step_summary_file_error(self, mock_open):
+        """GitHub Step Summary出力時のファイルエラーのテスト"""
+        handler = CIErrorHandler(enable_github_annotations=False)
+        
+        # エラーを追加
+        error = QualityCheckError("Test error")
+        handler.errors.append(error)
+        
+        # 例外が発生しないことを確認（内部でキャッチされる）
+        handler.output_github_step_summary()
+
+    @patch("sys.exit")
+    def test_set_exit_code_with_errors(self, mock_exit):
+        """エラーありでの終了コード設定のテスト"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            error_report_dir = Path(temp_dir)
+            handler = CIErrorHandler(
+                enable_github_annotations=False, error_report_dir=error_report_dir
+            )
+            
+            # エラーを追加
+            error = QualityCheckError("Test error")
+            handler.errors.append(error)
+            
+            handler.set_exit_code(2)
+            
+            # sys.exitが呼ばれることを確認
+            mock_exit.assert_called_once_with(2)
+
+    @patch("sys.exit")
+    def test_set_exit_code_no_errors(self, mock_exit):
+        """エラーなしでの終了コード設定のテスト"""
+        handler = CIErrorHandler(enable_github_annotations=False)
+        
+        handler.set_exit_code(0)
+        
+        # sys.exitが呼ばれることを確認
+        mock_exit.assert_called_once_with(0)
+
+    def test_output_github_annotation_with_file_and_line(self):
+        """ファイルと行番号付きGitHub Actionsアノテーション出力のテスト"""
+        handler = CIErrorHandler(enable_github_annotations=True)
+        
+        with patch("builtins.print") as mock_print, \
+             patch.dict(os.environ, {"GITHUB_ACTIONS": "true"}):
+            
+            handler._output_github_annotation("warning", "Test message", "test.py", 10)
+            
+            mock_print.assert_called_once_with("::warning file=test.py,line=10::Test message")
+
+    def test_output_github_annotation_with_file_only(self):
+        """ファイルのみ指定のGitHub Actionsアノテーション出力のテスト"""
+        handler = CIErrorHandler(enable_github_annotations=True)
+        
+        with patch("builtins.print") as mock_print, \
+             patch.dict(os.environ, {"GITHUB_ACTIONS": "true"}):
+            
+            handler._output_github_annotation("error", "Test message", "test.py")
+            
+            mock_print.assert_called_once_with("::error file=test.py::Test message")
+
+    def test_handle_stage_error_with_context(self):
+        """コンテキスト付きステージエラーハンドリングのテスト"""
+        handler = CIErrorHandler(enable_github_annotations=False)
+        
+        error = QualityCheckError("Stage error")
+        context = {"additional_info": "test context", "retry_count": 3}
+        
+        handler.handle_stage_error("TestStage", error, 10.5, context)
+        
+        assert len(handler.errors) == 1
+        assert handler.errors[0] == error
+
+    def test_error_reporter_integration(self):
+        """ErrorReporterとの統合テスト"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            error_report_dir = Path(temp_dir)
+            handler = CIErrorHandler(
+                enable_github_annotations=False, error_report_dir=error_report_dir
+            )
+            
+            # ErrorReporterが正しく初期化されていることを確認
+            assert handler.error_reporter is not None
+            assert handler.error_reporter.report_dir == error_report_dir

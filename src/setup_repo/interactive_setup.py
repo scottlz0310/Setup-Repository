@@ -7,9 +7,16 @@ from pathlib import Path
 
 from .config import get_github_token, get_github_user
 from .platform_detector import (
-    detect_platform,
+    PlatformDetector,
     get_available_package_managers,
     get_install_commands,
+)
+from .setup_validators import (
+    validate_github_credentials,
+    validate_directory_path,
+    validate_setup_prerequisites,
+    check_system_requirements,
+    validate_user_input,
 )
 
 
@@ -17,7 +24,8 @@ class InteractiveSetup:
     """インタラクティブセットアップクラス"""
 
     def __init__(self):
-        self.platform_info = detect_platform()
+        self.platform_detector = PlatformDetector()
+        self.platform_info = self.platform_detector.get_platform_info()
         self.config = {}
         self.errors = []
 
@@ -78,7 +86,8 @@ class SetupWizard:
     """セットアップウィザード"""
 
     def __init__(self):
-        self.platform_info = detect_platform()
+        self.platform_detector = PlatformDetector()
+        self.platform_info = self.platform_detector.get_platform_info()
         self.config = {}
         self.errors = []
 
@@ -99,30 +108,29 @@ class SetupWizard:
         """前提条件のチェック"""
         print("\\n🔍 前提条件をチェック中...")
 
-        # Python バージョンチェック
-        python_version = sys.version_info
-        if python_version < (3, 9):
-            self.errors.append(
-                f"Python 3.9以上が必要です "
-                f"(現在: {python_version[0]}.{python_version[1]})"
-            )
-        else:
-            print(
-                f"✅ Python {python_version[0]}.{python_version[1]}.{python_version[2]}"
-            )
-
-        # Git チェック
-        try:
-            result = subprocess.run(
-                ["git", "--version"], capture_output=True, text=True, check=True
-            )
-            print(f"✅ {result.stdout.strip()}")
-        except (subprocess.CalledProcessError, FileNotFoundError):
-            self.errors.append("Git がインストールされていません")
-
-        if self.errors:
+        prereq_result = validate_setup_prerequisites()
+        
+        # 成功した項目を表示
+        if prereq_result["python"]["valid"]:
+            print(f"✅ Python {prereq_result['python']['version']}")
+        
+        if prereq_result["git"]["available"]:
+            print(f"✅ {prereq_result['git']['version']}")
+        
+        if prereq_result["uv"]["available"]:
+            print(f"✅ {prereq_result['uv']['version']}")
+        
+        if prereq_result["gh"]["available"]:
+            print(f"✅ {prereq_result['gh']['version']}")
+        
+        # 警告を表示
+        for warning in prereq_result["warnings"]:
+            print(f"⚠️  {warning}")
+        
+        # エラーがある場合
+        if not prereq_result["valid"]:
             print("\\n❌ 前提条件が満たされていません:")
-            for error in self.errors:
+            for error in prereq_result["errors"]:
                 print(f"   • {error}")
             self._show_prerequisite_help()
             return False
@@ -299,13 +307,21 @@ class SetupWizard:
         """GitHub設定の構成"""
         print("\\n🔑 GitHub設定を構成中...")
 
-        # ユーザー名の検出・設定
-        username = get_github_user()
+        # 既存の認証情報をチェック
+        credentials = validate_github_credentials()
+        
+        # ユーザー名の設定
+        username = credentials["username"]
         if not username:
             print("\\n👤 GitHubユーザー名が検出されませんでした")
-            username = input("GitHubユーザー名を入力してください: ").strip()
-
-            if username:
+            username_input = validate_user_input(
+                "GitHubユーザー名を入力してください: ",
+                "string",
+                required=True
+            )
+            
+            if username_input["valid"]:
+                username = username_input["value"]
                 # git config に設定
                 try:
                     subprocess.run(
@@ -319,8 +335,8 @@ class SetupWizard:
 
         self.config["owner"] = username
 
-        # トークンの検出・設定
-        token = get_github_token()
+        # トークンの設定
+        token = credentials["token"]
         if not token:
             print("\\n🔐 GitHubトークンが検出されませんでした")
             print("\\n以下の方法でトークンを設定できます:")
@@ -328,13 +344,19 @@ class SetupWizard:
             print("  2. 環境変数: export GITHUB_TOKEN=your_token")
             print("  3. 手動設定: config.local.json で後から設定")
 
-            choice = (
-                input("\\n今すぐ GitHub CLI で認証しますか? (Y/n): ").strip().lower()
+            choice_input = validate_user_input(
+                "\\n今すぐ GitHub CLI で認証しますか? (Y/n): ",
+                "boolean",
+                required=False,
+                default="y"
             )
-            if choice not in ["n", "no", "いいえ"]:
+            
+            if choice_input["valid"] and choice_input["value"]:
                 try:
                     subprocess.run(["gh", "auth", "login"], check=True)
-                    token = get_github_token()
+                    # 再度トークンをチェック
+                    updated_credentials = validate_github_credentials()
+                    token = updated_credentials["token"]
                     if token:
                         print("✅ GitHub認証が完了しました")
                 except (subprocess.CalledProcessError, FileNotFoundError):
@@ -351,20 +373,32 @@ class SetupWizard:
         default_workspace = str(Path.home() / "workspace")
         print(f"\\nデフォルトのワークスペース: {default_workspace}")
 
-        custom_path = input("別のパスを使用しますか? (空白でデフォルト): ").strip()
-        workspace_path = custom_path if custom_path else default_workspace
-
-        # ディレクトリの作成確認
-        workspace_dir = Path(workspace_path)
-        if not workspace_dir.exists():
-            try:
-                workspace_dir.mkdir(parents=True, exist_ok=True)
-                print(f"✅ ワークスペースディレクトリを作成しました: {workspace_path}")
-            except OSError as e:
-                print(f"❌ ディレクトリ作成に失敗: {e}")
-                workspace_path = default_workspace
-
-        self.config["dest"] = workspace_path
+        path_input = validate_user_input(
+            "別のパスを使用しますか? (空白でデフォルト): ",
+            "string",
+            required=False,
+            default=default_workspace
+        )
+        
+        if path_input["valid"]:
+            workspace_path = path_input["value"] or default_workspace
+            
+            # ディレクトリの検証と作成
+            path_validation = validate_directory_path(workspace_path)
+            
+            if path_validation["valid"]:
+                if path_validation.get("created"):
+                    print(f"✅ ワークスペースディレクトリを作成しました: {workspace_path}")
+                else:
+                    print(f"✅ ワークスペースディレクトリを確認しました: {workspace_path}")
+                self.config["dest"] = str(path_validation["path"])
+            else:
+                print(f"❌ {path_validation['error']}")
+                print(f"デフォルトのワークスペースを使用します: {default_workspace}")
+                self.config["dest"] = default_workspace
+        else:
+            print(f"デフォルトのワークスペースを使用します: {default_workspace}")
+            self.config["dest"] = default_workspace
 
     def save_config(self):
         """設定ファイルの保存"""
@@ -455,3 +489,12 @@ class SetupWizard:
         except Exception as e:
             print(f"\\n❌ 予期しないエラーが発生しました: {e}")
             return False
+
+
+# 後方互換性のためのエイリアス
+__all__ = [
+    'InteractiveSetup', 'SetupWizard',
+    # バリデーター（後方互換性）
+    'validate_github_credentials', 'validate_directory_path', 
+    'validate_setup_prerequisites', 'check_system_requirements'
+]

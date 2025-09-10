@@ -7,7 +7,6 @@ CI/CD専用エラーハンドリングとレポート機能
 
 import json
 import os
-import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -18,111 +17,15 @@ from .quality_logger import (
     QualityLogger,
     get_quality_logger,
 )
+from .quality_errors import ErrorReporter
+from .ci_environment import CIEnvironmentInfo
 
-
-class CIEnvironmentInfo:
-    """CI環境情報を収集するクラス"""
-
-    @staticmethod
-    def get_github_actions_info() -> dict[str, Any]:
-        """GitHub Actions環境情報を取得"""
-        return {
-            "runner_os": os.getenv("RUNNER_OS"),
-            "runner_arch": os.getenv("RUNNER_ARCH"),
-            "github_workflow": os.getenv("GITHUB_WORKFLOW"),
-            "github_action": os.getenv("GITHUB_ACTION"),
-            "github_actor": os.getenv("GITHUB_ACTOR"),
-            "github_repository": os.getenv("GITHUB_REPOSITORY"),
-            "github_ref": os.getenv("GITHUB_REF"),
-            "github_sha": os.getenv("GITHUB_SHA"),
-            "github_run_id": os.getenv("GITHUB_RUN_ID"),
-            "github_run_number": os.getenv("GITHUB_RUN_NUMBER"),
-            "github_job": os.getenv("GITHUB_JOB"),
-            "github_step_summary": os.getenv("GITHUB_STEP_SUMMARY"),
-        }
-
-    @staticmethod
-    def get_system_info() -> dict[str, Any]:
-        """システム情報を取得"""
-        try:
-            python_version = (
-                f"{sys.version_info.major}."
-                f"{sys.version_info.minor}."
-                f"{sys.version_info.micro}"
-            )
-
-            # Git情報を取得
-            git_info = {}
-            try:
-                git_commit = subprocess.check_output(
-                    ["git", "rev-parse", "HEAD"], text=True, stderr=subprocess.DEVNULL
-                ).strip()
-                git_info["commit"] = git_commit
-
-                git_branch = subprocess.check_output(
-                    ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-                    text=True,
-                    stderr=subprocess.DEVNULL,
-                ).strip()
-                git_info["branch"] = git_branch
-
-            except (subprocess.CalledProcessError, FileNotFoundError):
-                git_info = {"commit": "unknown", "branch": "unknown"}
-
-            return {
-                "python_version": python_version,
-                "platform": sys.platform,
-                "architecture": (
-                    os.uname().machine if hasattr(os, "uname") else "unknown"
-                ),
-                "working_directory": os.getcwd(),
-                "git_info": git_info,
-                "environment_variables": {
-                    key: value
-                    for key, value in os.environ.items()
-                    if key.startswith(("GITHUB_", "CI_", "RUNNER_"))
-                },
-            }
-        except Exception as e:
-            return {"error": f"システム情報取得エラー: {str(e)}"}
-
-    @staticmethod
-    def get_dependency_info() -> dict[str, Any]:
-        """依存関係情報を取得"""
-        try:
-            # uv環境情報
-            uv_info = {}
-            try:
-                uv_version = subprocess.check_output(
-                    ["uv", "--version"], text=True, stderr=subprocess.DEVNULL
-                ).strip()
-                uv_info["version"] = uv_version
-
-                # 仮想環境情報
-                if "VIRTUAL_ENV" in os.environ:
-                    uv_info["virtual_env"] = os.environ["VIRTUAL_ENV"]
-
-            except (subprocess.CalledProcessError, FileNotFoundError):
-                uv_info["error"] = "uv not found"
-
-            # Python パッケージ情報
-            packages_info = {}
-            try:
-                pip_list = subprocess.check_output(
-                    [sys.executable, "-m", "pip", "list", "--format=json"],
-                    text=True,
-                    stderr=subprocess.DEVNULL,
-                )
-                packages = json.loads(pip_list)
-                packages_info = {pkg["name"]: pkg["version"] for pkg in packages}
-
-            except (subprocess.CalledProcessError, json.JSONDecodeError):
-                packages_info["error"] = "パッケージ情報取得エラー"
-
-            return {"uv_info": uv_info, "packages": packages_info}
-
-        except Exception as e:
-            return {"error": f"依存関係情報取得エラー: {str(e)}"}
+# 後方互換性のためのエイリアス
+__all__ = [
+    'CIErrorHandler', 'create_ci_error_handler',
+    # CI環境情報（後方互換性）
+    'CIEnvironmentInfo'
+]
 
 
 class CIErrorHandler:
@@ -146,9 +49,12 @@ class CIErrorHandler:
         self.enable_github_annotations = enable_github_annotations
         self.error_report_dir = error_report_dir or Path("ci-error-reports")
         self.errors: list[Exception] = []
+        
+        # 統一されたエラーレポーターを初期化
+        self.error_reporter = ErrorReporter(self.error_report_dir)
 
         # CI環境情報を収集
-        self.ci_info = CIEnvironmentInfo.get_github_actions_info()
+        self.ci_info = CIEnvironmentInfo.get_ci_metadata()
         self.system_info = CIEnvironmentInfo.get_system_info()
         self.dependency_info = CIEnvironmentInfo.get_dependency_info()
 
@@ -256,19 +162,18 @@ class CIErrorHandler:
 
     def save_error_report(self, filename: Optional[str] = None) -> Path:
         """エラーレポートをファイルに保存"""
-        if not filename:
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"ci_error_report_{timestamp}.json"
-
-        output_file = self.error_report_dir / filename
-        output_file.parent.mkdir(parents=True, exist_ok=True)
-
         report = self.create_comprehensive_error_report()
-
-        with open(output_file, "w", encoding="utf-8") as f:
-            json.dump(report, f, indent=2, ensure_ascii=False)
-
-        self.logger.info(f"CI/CDエラーレポートを保存しました: {output_file}")
+        
+        if filename:
+            output_file = self.error_reporter.get_report_path(filename)
+            output_file.parent.mkdir(parents=True, exist_ok=True)
+            
+            with open(output_file, "w", encoding="utf-8") as f:
+                json.dump(report, f, indent=2, ensure_ascii=False)
+            
+            self.logger.info(f"CI/CDエラーレポートを保存しました: {output_file}")
+        else:
+            output_file = self.error_reporter.save_report(report, "ci")
 
         # GitHub Actionsの場合、アーティファクトとしてアップロード可能にする
         if self._is_github_actions():
@@ -336,7 +241,7 @@ class CIErrorHandler:
 
     def _is_github_actions(self) -> bool:
         """GitHub Actions環境かどうかを判定"""
-        return os.getenv("GITHUB_ACTIONS") == "true"
+        return CIEnvironmentInfo.detect_ci_environment() == "github_actions"
 
     def _output_github_annotation(
         self,

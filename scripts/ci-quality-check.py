@@ -80,7 +80,7 @@ def main():
                     )
                 else:
                     # ステージ固有のエラーを作成
-                    from setup_repo.quality_logger import QualityCheckError
+                    from setup_repo.quality_errors import QualityCheckError
 
                     error_details = {
                         "stage": stage_name,

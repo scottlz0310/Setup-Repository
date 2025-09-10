@@ -10,6 +10,9 @@ from pathlib import Path
 from typing import Optional
 
 from .quality_logger import LogLevel, QualityLogger, configure_quality_logging
+from .logging_handlers import (
+    create_ci_handler, create_development_handler, create_testing_handler
+)
 
 
 class LoggingConfig:
@@ -146,3 +149,12 @@ def setup_testing_logging() -> QualityLogger:
         enable_console=False,  # テスト出力を汚さない
         enable_json_format=False,
     )
+
+
+# 後方互換性のためのエイリアス
+__all__ = [
+    'LoggingConfig', 'setup_project_logging', 'setup_ci_logging', 
+    'setup_development_logging', 'setup_testing_logging',
+    # ハンドラー（後方互換性）
+    'create_ci_handler', 'create_development_handler', 'create_testing_handler'
+]
