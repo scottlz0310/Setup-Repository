@@ -193,7 +193,7 @@ class TestGetRepositories:
         ]
 
         # Act
-        with patch('setup_repo.github_api.logging.getLogger') as mock_logger:
+        with patch('logging.getLogger') as mock_logger:
             result = get_repositories("test_owner")
 
         # Assert
@@ -269,7 +269,7 @@ class TestGetRepositories:
         )
 
         # Act
-        with patch('setup_repo.github_api.logging.getLogger') as mock_logger:
+        with patch('logging.getLogger') as mock_logger:
             result = get_repositories("nonexistent_owner")
 
         # Assert
@@ -284,7 +284,7 @@ class TestGetRepositories:
         mock_urlopen.side_effect = ConnectionError("Network error")
 
         # Act
-        with patch('setup_repo.github_api.logging.getLogger') as mock_logger:
+        with patch('logging.getLogger') as mock_logger:
             result = get_repositories("test_owner")
 
         # Assert
@@ -604,7 +604,7 @@ class TestGetRepositoriesAdvanced:
         mock_urlopen.return_value.__enter__.return_value = mock_response
 
         # Act
-        with patch('setup_repo.github_api.logging.getLogger') as mock_logger:
+        with patch('logging.getLogger') as mock_logger:
             result = get_repositories("test_owner")
 
         # Assert
