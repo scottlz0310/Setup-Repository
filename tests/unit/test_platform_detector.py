@@ -561,7 +561,7 @@ class TestPlatformDetectorIntegration:
 
             # 結果の検証
             assert platform_info.name == "windows"
-            assert len(commands) > 0
+            assert commands
             assert len(available) == len(platform_info.package_managers)
 
     def test_full_platform_detection_workflow_linux(self) -> None:
@@ -592,7 +592,7 @@ class TestPlatformDetectorIntegration:
 
             # 結果の検証
             assert platform_info.name == "linux"
-            assert len(commands) > 0
+            assert commands
             assert available == ["apt", "curl"]
 
     def test_platform_detection_consistency(self) -> None:
@@ -616,11 +616,11 @@ class TestPlatformDetectorIntegration:
         for manager in platform_info.package_managers:
             if manager in commands:
                 assert isinstance(commands[manager], list)
-                assert len(commands[manager]) > 0
+                assert commands[manager]
                 # 各コマンドが文字列であることを確認
                 for command in commands[manager]:
                     assert isinstance(command, str)
-                    assert len(command) > 0
+                    assert command
 
 
 @pytest.mark.unit

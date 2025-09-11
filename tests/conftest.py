@@ -153,7 +153,7 @@ class PlatformMocker:
 
             # 元のos.path.exists関数を保存
             original_exists = os.path.exists
-            
+
             exists_patch = patch(
                 "os.path.exists",
                 side_effect=lambda path: (
@@ -167,7 +167,7 @@ class PlatformMocker:
             # microsoftが含まれない内容にする
             # 元のos.path.exists関数を保存
             original_exists = os.path.exists
-            
+
             exists_patch = patch(
                 "os.path.exists",
                 side_effect=lambda path: (
@@ -466,8 +466,10 @@ def test_lock():
             lock.release()
         if lock.lock_file.exists():
             lock.lock_file.unlink()
-    except Exception:
-        pass  # クリーンアップエラーは無視
+    except Exception as e:
+        # クリーンアップエラーをログに記録
+        import logging
+        logging.getLogger(__name__).warning(f"テストロッククリーンアップエラー: {e}")
 
 
 # テスト実行前の環境クリーンアップ

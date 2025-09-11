@@ -110,8 +110,18 @@ class ProjectDetector:
         )
 
     def _path_exists(self, path_str: str) -> bool:
-        """パスの存在確認"""
+        """パスの存在確認（パストラバーサル対策）"""
+        # パストラバーサル攻撃を防ぐため、相対パスのみ許可
+        if ".." in path_str or path_str.startswith("/"):
+            return False
+
         path = self.repo_path / path_str
+        # 解決されたパスがrepo_path配下にあることを確認
+        try:
+            path.resolve().relative_to(self.repo_path.resolve())
+        except ValueError:
+            return False
+
         return path.exists()
 
     def _has_files_with_extensions(self, extensions: list[str]) -> bool:

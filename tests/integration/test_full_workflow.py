@@ -72,7 +72,7 @@ class TestFullWorkflow:
         assert len(result.synced_repos) == 2
         assert "workflow-test-repo-1" in result.synced_repos
         assert "workflow-test-repo-2" in result.synced_repos
-        assert len(result.errors) == 0
+        assert not result.errors
 
         # 6. ディレクトリ構造の検証
         assert clone_destination.exists()
@@ -481,7 +481,7 @@ class TestFullWorkflow:
                 assert not result.success, (
                     f"設定{i}で失敗すべきでした: {invalid_config}"
                 )
-                assert len(result.errors) > 0
+                assert result.errors
 
         # 有効な設定のテスト
         valid_config = {

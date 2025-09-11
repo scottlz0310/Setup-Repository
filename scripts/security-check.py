@@ -30,7 +30,7 @@ class SecurityChecker:
         print("🔍 Safety による既知の脆弱性チェックを実行中...")
 
         try:
-            # 新しいscanコマンドを使用
+            # 新しいscanコマンドを使用（shell=Falseで安全に実行）
             result = subprocess.run(
                 [
                     "uv",
@@ -45,17 +45,20 @@ class SecurityChecker:
                 capture_output=True,
                 text=True,
                 check=False,
+                shell=False,  # 明示的にshell=Falseを指定
             )
 
             # 標準出力でも結果表示
             subprocess.run(
-                ["uv", "run", "safety", "scan", "--output", "screen"], check=False
+                ["uv", "run", "safety", "scan", "--output", "screen"], 
+                check=False,
+                shell=False
             )
 
             # 結果解析
             report_file = self.output_dir / "safety-report.json"
             if report_file.exists():
-                with open(report_file) as f:
+                with open(report_file, encoding="utf-8") as f:
                     data = json.load(f)
                     # 新しいフォーマットに対応
                     vulnerabilities = data.get("vulnerabilities", [])
@@ -141,7 +144,7 @@ class SecurityChecker:
             # 結果解析
             report_file = self.output_dir / "bandit-report.json"
             if report_file.exists():
-                with open(report_file) as f:
+                with open(report_file, encoding="utf-8") as f:
                     data = json.load(f)
                     results = data.get("results", [])
                     high_issues = [
@@ -220,7 +223,7 @@ class SecurityChecker:
             # 結果解析
             report_file = self.output_dir / "semgrep-report.json"
             if report_file.exists():
-                with open(report_file) as f:
+                with open(report_file, encoding="utf-8") as f:
                     data = json.load(f)
                     results = data.get("results", [])
                     errors = [
@@ -275,7 +278,7 @@ class SecurityChecker:
             # 結果解析
             report_file = self.output_dir / "licenses-report.json"
             if report_file.exists():
-                with open(report_file) as f:
+                with open(report_file, encoding="utf-8") as f:
                     data = json.load(f)
 
                     # 禁止ライセンスをチェック

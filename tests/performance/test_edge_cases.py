@@ -96,7 +96,7 @@ class TestEmptyAndNullValues:
 
             # 空値の場合は失敗することを期待
             assert not result.success, f"空値 {empty_value} で成功すべきではありません"
-            assert len(result.errors) > 0
+            assert result.errors
 
     def test_none_configuration_values(
         self,
@@ -117,7 +117,7 @@ class TestEmptyAndNullValues:
             result = sync_repositories(test_config, dry_run=True)
 
             assert not result.success, f"{key}=None で成功すべきではありません"
-            assert len(result.errors) > 0
+            assert result.errors
 
     def test_empty_repository_list(
         self,
@@ -131,7 +131,7 @@ class TestEmptyAndNullValues:
 
         # 空のリポジトリリストは適切にエラーとして処理される
         assert not result.success
-        assert len(result.synced_repos) == 0
+        assert not result.synced_repos
         assert len(result.errors) == 1
         assert "リポジトリが見つかりませんでした" in str(result.errors[0])
 
@@ -155,7 +155,7 @@ class TestEmptyAndNullValues:
             assert not result.success, (
                 f"空白文字 '{repr(whitespace)}' で成功すべきではありません"
             )
-            assert len(result.errors) > 0
+            assert result.errors
 
 
 @pytest.mark.performance
@@ -492,7 +492,7 @@ class TestMalformedData:
             # ただし、一部は処理できる場合もある
             print(f"不正形式データ処理結果: {result.success}")
             if not result.success:
-                assert len(result.errors) > 0
+                assert result.errors
 
     def test_corrupted_json_configuration(
         self,

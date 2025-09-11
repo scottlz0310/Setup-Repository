@@ -348,7 +348,7 @@ class TestCIDiagnostics:
             diagnosis = diagnose_platform_issues()
 
             assert "recommendations" in diagnosis
-            assert len(diagnosis["recommendations"]) > 0
+            assert diagnosis["recommendations"]
 
             # パッケージマネージャーまたはuvに関する推奨事項が含まれることを確認
             relevant_recommendation = any(
@@ -358,7 +358,7 @@ class TestCIDiagnostics:
             assert relevant_recommendation, (
                 f"関連する推奨事項が見つかりません: {diagnosis['recommendations']}"
             )
-            
+
             # ログ関数が呼び出されていないことを確認（再帰回避）
             mock_log.assert_not_called()
 
@@ -412,7 +412,7 @@ class TestCIPlatformIntegration:
         assert platform_info.display_name
         assert platform_info.shell
         assert platform_info.python_cmd
-        assert len(platform_info.package_managers) > 0
+        assert platform_info.package_managers
 
     def test_ci_diagnostics_workflow(self):
         """CI診断ワークフローテスト"""

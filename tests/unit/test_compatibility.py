@@ -357,7 +357,7 @@ class TestDeprecatedImportCheck:
             deprecated_warnings = [
                 warning for warning in w if "非推奨モジュール" in str(warning.message)
             ]
-            assert len(deprecated_warnings) == 0
+            assert not deprecated_warnings
 
 
 class TestCompatibilityIntegration:

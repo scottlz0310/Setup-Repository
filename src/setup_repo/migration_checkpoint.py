@@ -35,7 +35,15 @@ class MigrationCheckpoint:
             checkpoint_dir: チェックポイント保存ディレクトリ
                 （デフォルト: .migration_checkpoints）
         """
-        self.checkpoint_dir = checkpoint_dir or Path(".migration_checkpoints")
+        if checkpoint_dir:
+            # パストラバーサル攻撃を防ぐためのバリデーション
+            resolved_dir = checkpoint_dir.resolve()
+            current_dir = Path.cwd().resolve()
+            if not str(resolved_dir).startswith(str(current_dir)):
+                raise ValueError("チェックポイントディレクトリは現在のディレクトリ以下である必要があります")
+            self.checkpoint_dir = resolved_dir
+        else:
+            self.checkpoint_dir = Path(".migration_checkpoints").resolve()
         self.checkpoint_dir.mkdir(exist_ok=True)
         self.metadata_file = self.checkpoint_dir / "metadata.json"
 

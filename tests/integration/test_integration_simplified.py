@@ -49,7 +49,7 @@ class TestIntegrationSimplified:
 
         assert success_result.success is True
         assert len(success_result.synced_repos) == 2
-        assert len(success_result.errors) == 0
+        assert not success_result.errors
         assert success_result.timestamp is not None
 
         # 失敗ケース
@@ -58,7 +58,7 @@ class TestIntegrationSimplified:
         )
 
         assert error_result.success is False
-        assert len(error_result.synced_repos) == 0
+        assert not error_result.synced_repos
         assert len(error_result.errors) == 1
 
     def test_sync_with_invalid_config(self) -> None:
@@ -69,7 +69,7 @@ class TestIntegrationSimplified:
 
         assert isinstance(result, SyncResult)
         assert result.success is False
-        assert len(result.errors) > 0
+        assert result.errors
 
         # 不完全な設定
         incomplete_config = {
@@ -80,7 +80,7 @@ class TestIntegrationSimplified:
 
         assert isinstance(result, SyncResult)
         assert result.success is False
-        assert len(result.errors) > 0
+        assert result.errors
 
     def test_sync_dry_run_mode(
         self,
@@ -103,7 +103,7 @@ class TestIntegrationSimplified:
         # ドライランモードでは成功するはず
         assert isinstance(result, SyncResult)
         assert result.success is True
-        assert len(result.synced_repos) > 0
+        assert result.synced_repos
 
     def test_config_validation(
         self,
@@ -168,7 +168,7 @@ class TestIntegrationSimplified:
         # 設定のシリアライゼーション
         json_str = json.dumps(sample_config, ensure_ascii=False, indent=2)
         assert json_str is not None
-        assert len(json_str) > 0
+        assert json_str
 
         # デシリアライゼーション
         deserialized = json.loads(json_str)
@@ -187,7 +187,7 @@ class TestIntegrationSimplified:
 
         result_json = json.dumps(result_dict, ensure_ascii=False, indent=2)
         assert result_json is not None
-        assert len(result_json) > 0
+        assert result_json
 
     def test_environment_variable_handling(self) -> None:
         """環境変数処理テスト"""

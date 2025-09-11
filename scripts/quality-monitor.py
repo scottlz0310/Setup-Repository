@@ -136,6 +136,7 @@ class QualityMonitor:
                 capture_output=True,
                 text=True,
                 cwd=self.project_root,
+                shell=False,
             ).stdout.strip()
 
             branch = subprocess.run(
@@ -143,6 +144,7 @@ class QualityMonitor:
                 capture_output=True,
                 text=True,
                 cwd=self.project_root,
+                shell=False,
             ).stdout.strip()
 
             # カバレッジデータを収集
@@ -158,6 +160,7 @@ class QualityMonitor:
                 cwd=self.project_root,
                 capture_output=True,
                 text=True,
+                shell=False,
             )
 
             test_coverage = 0.0

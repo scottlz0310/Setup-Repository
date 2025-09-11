@@ -220,6 +220,7 @@ class VersionManager:
                 capture_output=True,
                 text=True,
                 check=True,
+                shell=False,
             )
 
             if result.stdout.strip():
@@ -228,12 +229,18 @@ class VersionManager:
 
             # タグを作成
             subprocess.run(
-                ["git", "tag", "-a", tag_name, "-m", f"Release {tag_name}"], check=True
+                ["git", "tag", "-a", tag_name, "-m", f"Release {tag_name}"], 
+                check=True,
+                shell=False,
             )
             print(f"✅ Gitタグを作成: {tag_name}")
 
             if push:
-                subprocess.run(["git", "push", "origin", tag_name], check=True)
+                subprocess.run(
+                    ["git", "push", "origin", tag_name], 
+                    check=True,
+                    shell=False,
+                )
                 print(f"✅ タグをプッシュ: {tag_name}")
 
             return True

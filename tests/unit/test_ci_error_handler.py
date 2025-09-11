@@ -85,7 +85,7 @@ class TestCIErrorHandler:
 
             assert handler.enable_github_annotations is True
             assert handler.error_report_dir == error_report_dir
-            assert len(handler.errors) == 0
+            assert not handler.errors
 
     def test_handle_stage_error(self):
         """ステージエラーハンドリングのテスト"""
@@ -206,7 +206,7 @@ class TestCIErrorHandler:
         summary_calls = [
             call for call in mock_open.call_args_list if "/tmp/summary" in str(call)
         ]
-        assert len(summary_calls) > 0, "GitHub Step Summaryファイルが開かれませんでした"
+        assert summary_calls, "GitHub Step Summaryファイルが開かれませんでした"
 
     @patch.dict(os.environ, {"GITHUB_ACTIONS": "false"})
     def test_non_github_actions_environment(self):
@@ -454,7 +454,7 @@ class TestCIErrorHandlerAdvanced:
         summary_calls = [
             call for call in mock_open.call_args_list if "/tmp/summary" in str(call)
         ]
-        assert len(summary_calls) > 0, "GitHub Step Summaryファイルが開かれませんでした"
+        assert summary_calls, "GitHub Step Summaryファイルが開かれませんでした"
 
     @patch.dict(os.environ, {"GITHUB_STEP_SUMMARY": ""})
     def test_output_github_step_summary_no_env_var(self):
@@ -569,7 +569,7 @@ class TestCIErrorHandlerEdgeCases:
 
         assert handler.enable_github_annotations is True
         assert handler.error_report_dir == Path("ci-error-reports")
-        assert len(handler.errors) == 0
+        assert not handler.errors
         assert handler.logger is not None
         assert handler.error_reporter is not None
 
@@ -667,7 +667,7 @@ class TestCIErrorHandlerEdgeCases:
         report = handler.create_comprehensive_error_report()
 
         assert report["total_errors"] == 0
-        assert len(report["errors"]) == 0
+        assert not report["errors"]
         assert "timestamp" in report
         assert "ci_environment" in report
         assert "system_info" in report

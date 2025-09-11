@@ -234,7 +234,11 @@ class SetupWizard:
         """ツールの存在チェック"""
         try:
             result = subprocess.run(
-                [tool, "--version"], capture_output=True, text=True, check=True
+                [tool, "--version"],
+                capture_output=True,
+                text=True,
+                check=True,
+                shell=False
             )
             parts = result.stdout.strip().split()
             version = f"{parts[0]} {parts[1] if len(parts) > 1 else ''}"
@@ -260,10 +264,13 @@ class SetupWizard:
                     if manager == "curl":
                         # curl の場合は特別処理 - shell=Trueを避けてshlex.splitを使用
                         import shlex
-
-                        subprocess.run(shlex.split(cmd), check=True)
+                        # コマンドを安全に分割して実行
+                        cmd_parts = shlex.split(cmd)
+                        subprocess.run(cmd_parts, check=True, shell=False)
                     else:
-                        subprocess.run(cmd.split(), check=True)
+                        # コマンドを安全に分割して実行
+                        cmd_parts = cmd.split()
+                        subprocess.run(cmd_parts, check=True, shell=False)
 
                     print("✅ uv のインストールが完了しました")
                     return True
@@ -291,7 +298,9 @@ class SetupWizard:
                 try:
                     cmd = install_commands[manager][1]  # gh install command
                     print(f"   {manager} を使用: {cmd}")
-                    subprocess.run(cmd.split(), check=True)
+                    # コマンドを安全に分割して実行
+                    cmd_parts = cmd.split()
+                    subprocess.run(cmd_parts, check=True, shell=False)
                     print("✅ GitHub CLI のインストールが完了しました")
                     return True
                 except subprocess.CalledProcessError:
@@ -321,7 +330,9 @@ class SetupWizard:
                 # git config に設定
                 try:
                     subprocess.run(
-                        ["git", "config", "--global", "user.name", username], check=True
+                        ["git", "config", "--global", "user.name", username],
+                        check=True,
+                        shell=False
                     )
                     print(f"✅ Git設定にユーザー名を保存しました: {username}")
                 except subprocess.CalledProcessError:
@@ -349,7 +360,7 @@ class SetupWizard:
 
             if choice_input["valid"] and choice_input["value"]:
                 try:
-                    subprocess.run(["gh", "auth", "login"], check=True)
+                    subprocess.run(["gh", "auth", "login"], check=True, shell=False)
                     # 再度トークンをチェック
                     updated_credentials = validate_github_credentials()
                     token = updated_credentials["token"]

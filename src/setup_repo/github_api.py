@@ -34,10 +34,18 @@ class GitHubAPI:
     def get_user_info(self) -> dict:
         """認証されたユーザーの情報を取得"""
         try:
-            req = urllib.request.Request(
-                "https://api.github.com/user", headers=self.headers
-            )
-            with urllib.request.urlopen(req) as response:
+            import ssl
+            import urllib.request
+
+            # HTTPSのみ許可し、SSL検証を強制
+            url = "https://api.github.com/user"
+            if not url.startswith("https://"):
+                raise ValueError("HTTPS URLのみ許可されています")
+
+            req = urllib.request.Request(url, headers=self.headers)
+            # SSL検証を強制するコンテキストを作成
+            context = ssl.create_default_context()
+            with urllib.request.urlopen(req, context=context) as response:
                 return json.loads(response.read().decode())
         except urllib.error.HTTPError as e:
             error_msg = f"GitHub API エラー: {e.code} {e.reason}"
@@ -88,12 +96,11 @@ def get_repositories(owner: str, token: Optional[str] = None) -> list[dict]:
     headers = {"User-Agent": "repo-sync/1.0"}
 
     if not token:
-        print(
-            "⚠️  GitHubトークンが設定されていません。"
-            "プライベートリポジトリは取得できません。"
-        )
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning("GitHubトークンが設定されていません。プライベートリポジトリは取得できません。")
         url = f"https://api.github.com/users/{owner}/repos?per_page=100"
-        print(f"🌍 '{owner}' のパブリックリポジトリのみ取得中...")
+        logger.info(f"'{owner}' のパブリックリポジトリのみ取得中...")
     else:
         headers["Authorization"] = f"token {token}"
 
@@ -102,17 +109,16 @@ def get_repositories(owner: str, token: Optional[str] = None) -> list[dict]:
         if auth_user and auth_user.lower() == owner.lower():
             # 自分のリポジトリの場合は /user/repos を使用
             url = "https://api.github.com/user/repos?per_page=100&affiliation=owner,collaborator,organization_member"
-            print(
-                f"🔑 認証ユーザー '{auth_user}' としてプライベートリポジトリを取得中..."
-            )
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"認証ユーザー '{auth_user}' としてプライベートリポジトリを取得中...")
         else:
             # 他のユーザーの場合は /users/{owner}/repos を使用
             url = f"https://api.github.com/users/{owner}/repos?per_page=100"
             if auth_user:
-                print(
-                    f"🔍 認証ユーザー '{auth_user}' で '{owner}' の"
-                    "パブリックリポジトリを取得中..."
-                )
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.info(f"認証ユーザー '{auth_user}' で '{owner}' のパブリックリポジトリを取得中...")
 
     repos = []
     page = 1
@@ -125,7 +131,10 @@ def get_repositories(owner: str, token: Optional[str] = None) -> list[dict]:
             # HTTPS URLのみ許可してセキュリティを確保
             if not page_url.startswith("https://"):
                 raise ValueError("HTTPS URLのみ許可されています")
-            with urllib.request.urlopen(req) as response:
+
+            import ssl
+            context = ssl.create_default_context()
+            with urllib.request.urlopen(req, context=context) as response:
                 page_repos = json.loads(response.read().decode())
 
                 if not page_repos:
@@ -136,11 +145,15 @@ def get_repositories(owner: str, token: Optional[str] = None) -> list[dict]:
 
         except urllib.error.HTTPError as e:
             if page == 1:  # 最初のページでエラーの場合のみ表示
-                print(f"❌ GitHub API エラー: {e.code} {e.reason}")
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"GitHub API エラー: {e.code} {e.reason}")
             break
         except Exception as e:
             if page == 1:
-                print(f"❌ リポジトリ取得エラー: {e}")
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"リポジトリ取得エラー: {e}")
             break
 
     return repos
@@ -153,7 +166,9 @@ def _get_authenticated_user(token: str) -> Optional[str]:
         req = urllib.request.Request("https://api.github.com/user", headers=headers)
 
         # HTTPS URLのみ許可してセキュリティを確保
-        with urllib.request.urlopen(req) as response:
+        import ssl
+        context = ssl.create_default_context()
+        with urllib.request.urlopen(req, context=context) as response:
             user_data = json.loads(response.read().decode())
             return user_data.get("login")
 

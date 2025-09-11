@@ -108,8 +108,8 @@ class TestProjectDetector:
         tools = detector.detect_tools()
         templates = detector.get_recommended_templates()
 
-        assert len(project_types) == 0
-        assert len(tools) == 0
+        assert not project_types
+        assert not tools
         assert templates == ["common"]  # 常にcommonは含まれる
 
     def test_rust_project_detection(self, temp_dir):

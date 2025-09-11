@@ -169,15 +169,23 @@ def format_metrics_summary(metrics: dict[str, Any]) -> str:
 
 def format_quality_check_result(check_type: str, result: dict[str, Any]) -> str:
     """品質チェック結果をフォーマット"""
+    import html
+
+    # 入力値をサニタイズ
+    safe_check_type = html.escape(str(check_type))
+
     if result.get("success", False):
-        message = f"品質チェック成功: {check_type}"
+        message = f"品質チェック成功: {safe_check_type}"
         if "metrics" in result:
-            message += f" - メトリクス: {result['metrics']}"
+            safe_metrics = html.escape(str(result['metrics']))
+            message += f" - メトリクス: {safe_metrics}"
         return message
     else:
         errors = result.get("errors", [])
-        error_message = "; ".join(errors) if errors else "不明なエラー"
-        message = f"品質チェック失敗: {check_type} - {error_message}"
+        safe_errors = [html.escape(str(error)) for error in errors]
+        error_message = "; ".join(safe_errors) if safe_errors else "不明なエラー"
+        message = f"品質チェック失敗: {safe_check_type} - {error_message}"
         if "details" in result:
-            message += f" - 詳細: {result['details']}"
+            safe_details = html.escape(str(result['details']))
+            message += f" - 詳細: {safe_details}"
         return message

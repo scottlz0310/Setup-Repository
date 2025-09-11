@@ -208,7 +208,7 @@ class TestQualityTrendManager:
             assert analysis.coverage_trend == "stable"
             assert analysis.average_quality_score == 0.0
             assert analysis.average_coverage == 0.0
-            assert len(analysis.recommendations) > 0
+            assert analysis.recommendations
 
     def test_analyze_trend_with_data(self):
         """データありでのトレンド分析テスト"""

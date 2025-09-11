@@ -82,6 +82,7 @@ def choose_clone_url(repo: dict, use_https: bool = False) -> str:
                 ],
                 capture_output=True,
                 timeout=5,
+                shell=False,
             )
             if result.returncode in [0, 1]:  # 0=成功, 1=認証成功だが接続拒否
                 full_name = repo.get("full_name")

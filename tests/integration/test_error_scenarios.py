@@ -42,7 +42,7 @@ class TestErrorScenarios:
 
         # エラーが適切に処理されることを確認
         assert not result.success
-        assert len(result.errors) > 0
+        assert result.errors
         assert "ネットワークに接続できません" in str(result.errors[0])
 
     def test_github_api_authentication_error(
@@ -69,7 +69,7 @@ class TestErrorScenarios:
 
             # エラーが適切に処理されることを確認
             assert not result.success
-            assert len(result.errors) > 0
+            assert result.errors
             assert "認証に失敗しました" in str(result.errors[0])
 
     def test_github_api_rate_limit_error(
@@ -96,7 +96,7 @@ class TestErrorScenarios:
 
             # エラーが適切に処理されることを確認
             assert not result.success
-            assert len(result.errors) > 0
+            assert result.errors
             assert "rate limit" in str(result.errors[0]).lower()
 
     def test_file_system_permission_error(
@@ -135,7 +135,7 @@ class TestErrorScenarios:
 
         # エラーが適切に処理されることを確認
         assert not result.success
-        assert len(result.errors) > 0
+        assert result.errors
 
     def test_disk_space_error(
         self,
@@ -170,7 +170,7 @@ class TestErrorScenarios:
             result = sync_repositories(sample_config, dry_run=False)
 
         assert not result.success
-        assert len(result.errors) > 0
+        assert result.errors
 
     def test_git_clone_error(
         self,
@@ -195,7 +195,7 @@ class TestErrorScenarios:
 
         def mock_sync_with_error(repo, dest_dir, config):
             # Gitクローンエラーをシミュレート
-            raise Exception(
+            raise RuntimeError(
                 "fatal: repository "
                 "'https://github.com/test_user/clone-error-repo.git' not found"
             )
@@ -210,7 +210,7 @@ class TestErrorScenarios:
             result = sync_repositories(sample_config, dry_run=False)
 
         assert not result.success
-        assert len(result.errors) > 0
+        assert result.errors
         assert "not found" in str(result.errors[0])
 
     def test_git_pull_error(
@@ -241,7 +241,7 @@ class TestErrorScenarios:
 
         def mock_sync_with_pull_error(repo, dest_dir, config):
             # Gitプルエラーをシミュレート
-            raise Exception(
+            raise RuntimeError(
                 "error: Your local changes to the following files "
                 "would be overwritten by merge"
             )
@@ -256,7 +256,7 @@ class TestErrorScenarios:
             result = sync_repositories(sample_config, dry_run=False)
 
         assert not result.success
-        assert len(result.errors) > 0
+        assert result.errors
         assert "overwritten by merge" in str(result.errors[0])
 
     def test_corrupted_config_file_error(
@@ -297,7 +297,7 @@ class TestErrorScenarios:
         for incomplete_config in incomplete_configs:
             result = sync_repositories(incomplete_config, dry_run=True)
             assert not result.success
-            assert len(result.errors) > 0
+            assert result.errors
 
     def test_timeout_error(
         self,
@@ -315,7 +315,7 @@ class TestErrorScenarios:
             result = sync_repositories(sample_config, dry_run=False)
 
         assert not result.success
-        assert len(result.errors) > 0
+        assert result.errors
         assert "timed out" in str(result.errors[0]).lower()
 
     def test_ssl_certificate_error(
@@ -334,7 +334,7 @@ class TestErrorScenarios:
             result = sync_repositories(sample_config, dry_run=False)
 
         assert not result.success
-        assert len(result.errors) > 0
+        assert result.errors
         assert "ssl" in str(result.errors[0]).lower()
 
     def test_partial_failure_recovery(
@@ -378,7 +378,7 @@ class TestErrorScenarios:
 
         def mock_sync_with_partial_error(repo, dest_dir, config):
             if repo["name"] == "error-repo":
-                raise Exception("リポジトリ固有のエラー")
+                raise RuntimeError("リポジトリ固有のエラー")
             return True
 
         with (
@@ -399,7 +399,7 @@ class TestErrorScenarios:
         assert "success-repo-1" in result.synced_repos
         assert "success-repo-2" in result.synced_repos
         assert "error-repo" not in result.synced_repos
-        assert len(result.errors) > 0, "エラーが記録されていることを確認"
+        assert result.errors, "エラーが記録されていることを確認"
 
     def test_retry_mechanism(
         self,
@@ -429,7 +429,7 @@ class TestErrorScenarios:
             nonlocal call_count
             call_count += 1
             if call_count <= 2:
-                raise Exception("一時的なエラー")
+                raise RuntimeError("一時的なエラー")
             return True
 
         with (
@@ -478,7 +478,7 @@ class TestErrorScenarios:
             result = sync_repositories(sample_config, dry_run=False)
 
         assert not result.success
-        assert len(result.errors) > 0
+        assert result.errors
 
     def test_keyboard_interrupt_error(
         self,
@@ -550,7 +550,7 @@ class TestErrorScenarios:
             result = sync_repositories(sample_config, dry_run=False)
 
         assert not result.success
-        assert len(result.errors) > 0
+        assert result.errors
 
     def test_concurrent_access_error(
         self,
@@ -585,7 +585,7 @@ class TestErrorScenarios:
             result = sync_repositories(sample_config, dry_run=False)
 
         assert not result.success
-        assert len(result.errors) > 0
+        assert result.errors
 
     def test_error_logging_and_reporting(
         self,
@@ -608,7 +608,7 @@ class TestErrorScenarios:
             },
         ]
 
-        test_error = Exception("テスト用エラーメッセージ")
+        test_error = RuntimeError("テスト用エラーメッセージ")
 
         with (
             patch("setup_repo.sync.get_repositories", return_value=mock_repos),
@@ -621,7 +621,7 @@ class TestErrorScenarios:
 
         # エラーが適切に記録されることを確認
         assert not result.success
-        assert len(result.errors) > 0
+        assert result.errors
         assert "テスト用エラーメッセージ" in str(result.errors[0])
 
         # ログ記録が呼び出されることを確認（実装に依存）

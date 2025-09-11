@@ -284,15 +284,21 @@ class QualityLogger:
         report = error_reporter.create_error_report(errors, context)
 
         if output_file:
-            output_file.parent.mkdir(parents=True, exist_ok=True)
+            # パストラバーサル攻撃を防ぐためのバリデーション
+            resolved_path = output_file.resolve()
+            current_dir = Path.cwd().resolve()
+            if not str(resolved_path).startswith(str(current_dir)):
+                raise ValueError("出力ファイルは現在のディレクトリ以下である必要があります")
 
-            with open(output_file, "w", encoding="utf-8") as f:
+            resolved_path.parent.mkdir(parents=True, exist_ok=True)
+
+            with open(resolved_path, "w", encoding="utf-8") as f:
                 import json
 
                 json.dump(report, f, indent=2, ensure_ascii=False)
 
-            self.info(f"エラーレポートを保存しました: {output_file}")
-            return output_file
+            self.info(f"エラーレポートを保存しました: {resolved_path}")
+            return resolved_path
         else:
             # ErrorReporterを使用して統一されたレポート保存
             saved_path = error_reporter.save_report(report, "quality")

@@ -228,7 +228,7 @@ class TestQualityMetricsCollector:
 
         assert result["success"] is False
         assert result["issue_count"] == 1
-        assert len(result["errors"]) > 0
+        assert result["errors"]
 
     @patch("subprocess.run")
     def test_collect_mypy_metrics_success(self, mock_run):
@@ -259,7 +259,7 @@ class TestQualityMetricsCollector:
 
         assert result["success"] is False
         assert result["error_count"] == 2
-        assert len(result["errors"]) > 0
+        assert result["errors"]
 
     @patch("subprocess.run")
     def test_collect_test_metrics_success(self, mock_run):

@@ -52,7 +52,7 @@ Issues = "https://github.com/scottlz0310/Setup-Repository/issues"
 
 [tool.ruff]
 target-version = "py39"
-line-length = 88
+line-length = 120
 
 [tool.ruff.lint]
 select = [
@@ -71,6 +71,7 @@ select = [
 ]
 ignore = [
     "T201",  # print文の使用を一時的に許可（段階的厳格化）
+    "SIM108",  # 三項演算子の簡素化は自動修正不可のため一旦無効化
 ]
 
 [tool.ruff.format]

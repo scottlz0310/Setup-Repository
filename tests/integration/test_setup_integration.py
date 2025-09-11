@@ -234,7 +234,7 @@ class TestSetupIntegration:
             # ドライランモードでは新しいリポジトリは作成されない
             existing_repos = list(repos_dir.iterdir())
             # テスト環境では既存のリポジトリのみが存在する
-            assert len(existing_repos) == 0 or all(
+            assert not existing_repos or all(
                 repo.name.startswith("test-") for repo in existing_repos
             )
 

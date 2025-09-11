@@ -245,10 +245,10 @@ class TestQualityIntegration:
             assert analysis.coverage_trend == "declining"
 
             # 最近の問題が多数検出されるはず
-            assert len(analysis.recent_issues) > 0
+            assert analysis.recent_issues
 
             # 推奨事項が提供されるはず
-            assert len(analysis.recommendations) > 0
+            assert analysis.recommendations
             assert any("品質スコア" in rec for rec in analysis.recommendations)
 
     def test_trend_data_persistence(self):

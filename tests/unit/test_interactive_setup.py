@@ -58,7 +58,7 @@ class TestInteractiveSetup:
             for call in mock_file.call_args_list
             if "config.local.json" in str(call)
         ]
-        assert len(config_calls) > 0, "設定ファイルが開かれませんでした"
+        assert config_calls, "設定ファイルが開かれませんでした"
         handle = mock_file()
         handle.write.assert_called()
 
@@ -673,7 +673,7 @@ class TestSetupWizard:
             for call in mock_file.call_args_list
             if "config.local.json" in str(call)
         ]
-        assert len(config_calls) > 0, "設定ファイルが開かれませんでした"
+        assert config_calls, "設定ファイルが開かれませんでした"
 
     @patch("builtins.open")
     @patch("builtins.print")

@@ -188,7 +188,7 @@ class CoverageMonitor:
                 total_coverage=total_coverage,
                 module_coverage=module_coverage,
                 missing_lines=missing_lines,
-                timestamp=datetime.now(),
+                timestamp=datetime.now(tz=None),
             )
 
         except Exception as e:
@@ -238,7 +238,7 @@ class CoverageMonitor:
                 total_coverage=total_coverage,
                 module_coverage=module_coverage,
                 missing_lines=missing_lines,
-                timestamp=datetime.now(),
+                timestamp=datetime.now(tz=None),
             )
 
         except Exception as e:
@@ -309,7 +309,7 @@ class CoverageMonitor:
 
         # レポートデータを構築
         report_data = {
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(tz=None).isoformat(),
             "coverage": report.to_dict(),
             "requirements_check": {
                 "passed": passed,
@@ -335,7 +335,7 @@ class CoverageMonitor:
         # レポートファイルを保存
         report_file = (
             self.reports_dir
-            / f"coverage_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            / f"coverage_report_{datetime.now(tz=None).strftime('%Y%m%d_%H%M%S')}.json"
         )
         with open(report_file, "w", encoding="utf-8") as f:
             json.dump(report_data, f, indent=2, ensure_ascii=False)
@@ -363,7 +363,7 @@ class CoverageMonitor:
         # アラートファイルを作成（CI/CDで検出可能）
         alert_file = self.project_root / "coverage_alert.txt"
         with open(alert_file, "w", encoding="utf-8") as f:
-            f.write(f"カバレッジアラート - {datetime.now().isoformat()}\n")
+            f.write(f"カバレッジアラート - {datetime.now(tz=None).isoformat()}\n")
             f.write(f"現在のカバレッジ: {coverage:.2f}%\n")
             f.write("警告:\n")
             for warning in warnings:
@@ -421,7 +421,7 @@ class CoverageMonitor:
             reverse=True,
         )
 
-        cutoff_time = datetime.now().timestamp() - (days * 24 * 3600)
+        cutoff_time = datetime.now(tz=None).timestamp() - (days * 24 * 3600)
 
         for report_file in report_files:
             if report_file.stat().st_mtime < cutoff_time:

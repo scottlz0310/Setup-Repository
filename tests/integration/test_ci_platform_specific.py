@@ -146,7 +146,7 @@ class TestCIPlatformSpecific:
         basic_tools = ["curl", "pip"]
         basic_available = [tool for tool in basic_tools if check_package_manager(tool)]
 
-        assert len(available_managers) > 0 or len(basic_available) > 0, (
+        assert available_managers or len(basic_available) > 0, (
             f"利用可能なパッケージマネージャーが見つかりません。"
             f"プラットフォーム: {platform_info.name}"
         )

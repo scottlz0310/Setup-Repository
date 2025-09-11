@@ -42,7 +42,13 @@ def sync_cli(args) -> None:
 
 def quality_cli(args) -> None:
     """品質メトリクス収集コマンド"""
-    project_root = Path(args.project_root) if args.project_root else Path.cwd()
+    if args.project_root:
+        # パストラバーサル攻撃を防ぐためのバリデーション
+        project_root = Path(args.project_root).resolve()
+        if not str(project_root).startswith(str(Path.cwd().resolve())):
+            raise ValueError("プロジェクトルートは現在のディレクトリ以下である必要があります")
+    else:
+        project_root = Path.cwd()
     collector = QualityMetricsCollector(project_root)
 
     # メトリクス収集
@@ -78,12 +84,21 @@ def quality_cli(args) -> None:
 
 def trend_cli(args) -> None:
     """品質トレンド分析コマンド"""
-    project_root = Path(args.project_root) if args.project_root else Path.cwd()
-    trend_file = (
-        Path(args.trend_file)
-        if args.trend_file
-        else project_root / "quality-trends" / "trend-data.json"
-    )
+    if args.project_root:
+        # パストラバーサル攻撃を防ぐためのバリデーション
+        project_root = Path(args.project_root).resolve()
+        if not str(project_root).startswith(str(Path.cwd().resolve())):
+            raise ValueError("プロジェクトルートは現在のディレクトリ以下である必要があります")
+    else:
+        project_root = Path.cwd()
+
+    if args.trend_file:
+        # トレンドファイルパスの検証
+        trend_file = Path(args.trend_file).resolve()
+        if not str(trend_file).startswith(str(project_root)):
+            raise ValueError("トレンドファイルはプロジェクトルート以下である必要があります")
+    else:
+        trend_file = project_root / "quality-trends" / "trend-data.json"
 
     trend_manager = QualityTrendManager(trend_file)
 

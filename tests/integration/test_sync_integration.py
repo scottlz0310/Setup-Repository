@@ -55,8 +55,8 @@ class TestSyncIntegration:
             result = sync_repositories(sample_config, dry_run=False)
         assert isinstance(result, SyncResult)
         assert result.success
-        assert len(result.synced_repos) > 0
-        assert len(result.errors) == 0
+        assert result.synced_repos
+        assert not result.errors
 
         # モックが適切に呼び出されたことを確認
         mock_get_repos.assert_called_once()
@@ -162,7 +162,7 @@ class TestSyncIntegration:
         # sync_repository_with_retriesがFalseを返しても、エラーは発生しない
         # 成功カウントが0になるだけ
         assert result.success  # エラーは発生しないので成功となる
-        assert len(result.synced_repos) == 0  # 同期されたリポジトリは0個
+        assert not result.synced_repos  # 同期されたリポジトリは0個
 
     def test_sync_with_network_errors(
         self,
@@ -188,7 +188,7 @@ class TestSyncIntegration:
             result = sync_repositories(sample_config, dry_run=False)
 
         assert not result.success
-        assert len(result.errors) > 0
+        assert result.errors
         assert "ネットワークエラー" in str(result.errors[0])
 
     def test_sync_with_partial_failures(
@@ -217,7 +217,7 @@ class TestSyncIntegration:
         ):
             result = sync_repositories(sample_config, dry_run=False)
 
-        assert len(result.synced_repos) > 0
+        assert result.synced_repos
 
     @pytest.mark.slow
     def test_sync_performance_with_many_repositories(
@@ -351,7 +351,7 @@ class TestSyncIntegration:
         # JSONシリアライゼーションが成功することを確認
         json_str = json.dumps(result_dict, ensure_ascii=False, indent=2)
         assert json_str is not None
-        assert len(json_str) > 0
+        assert json_str
 
         # デシリアライゼーションも確認
         deserialized = json.loads(json_str)
@@ -380,4 +380,4 @@ class TestSyncIntegration:
             # 無効な設定では同期が失敗することを確認
             result = sync_repositories(invalid_config, dry_run=True)
             assert not result.success
-            assert len(result.errors) > 0
+            assert result.errors
