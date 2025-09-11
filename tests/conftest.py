@@ -48,6 +48,7 @@ class PlatformMocker:
             "fcntl_available": False,
             "msvcrt_available": True,
             "path_separator": "\\",
+            "proc_version_exists": False,
         },
         "linux": {
             "system": "Linux",
@@ -56,6 +57,7 @@ class PlatformMocker:
             "fcntl_available": True,
             "msvcrt_available": False,
             "path_separator": "/",
+            "proc_version_exists": False,
         },
         "macos": {
             "system": "Darwin",
@@ -64,6 +66,7 @@ class PlatformMocker:
             "fcntl_available": True,
             "msvcrt_available": False,
             "path_separator": "/",
+            "proc_version_exists": False,
         },
         "wsl": {
             "system": "Linux",
@@ -72,6 +75,7 @@ class PlatformMocker:
             "fcntl_available": True,
             "msvcrt_available": False,
             "path_separator": "/",
+            "proc_version_exists": True,
         },
     }
 
@@ -122,6 +126,50 @@ class PlatformMocker:
         )
         self.patches.append(msvcrt_patch)
         msvcrt_patch.start()
+
+        # /proc/versionファイルの存在をモック
+        proc_version_exists = self.config.get("proc_version_exists", False)
+        if proc_version_exists:
+            # WSLの場合、/proc/versionファイルが存在し、適切な内容を返すようにモック
+            proc_version_content = (
+                "Linux version 5.4.0-microsoft-standard-WSL2 (Microsoft) "
+                "#1 SMP Wed Mar 2 00:56:28 UTC 2021"
+            )
+
+            # 元のopen関数を保存
+            original_open = open
+
+            def mock_open_proc_version(*args, **kwargs):
+                if args and args[0] == "/proc/version":
+                    from io import StringIO
+
+                    return StringIO(proc_version_content)
+                # 他のファイルは元のopen関数で開く
+                return original_open(*args, **kwargs)
+
+            open_patch = patch("builtins.open", side_effect=mock_open_proc_version)
+            self.patches.append(open_patch)
+            open_patch.start()
+
+            exists_patch = patch(
+                "os.path.exists",
+                side_effect=lambda path: (
+                    path == "/proc/version" or os.path.exists(path)
+                ),
+            )
+            self.patches.append(exists_patch)
+            exists_patch.start()
+        else:
+            # Linuxの場合、/proc/versionファイルが存在しないか、
+            # microsoftが含まれない内容にする
+            exists_patch = patch(
+                "os.path.exists",
+                side_effect=lambda path: (
+                    False if path == "/proc/version" else os.path.exists(path)
+                ),
+            )
+            self.patches.append(exists_patch)
+            exists_patch.start()
 
         return self
 

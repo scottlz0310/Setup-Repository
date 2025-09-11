@@ -142,8 +142,9 @@ class TestMockStrategyConsistency:
             # WSL検出を無効化してテストの一貫性を保つ
             def mock_exists(path):
                 return False
+
             monkeypatch.setattr("os.path.exists", mock_exists)
-            
+
             # プラットフォーム検出が正しく動作することを確認
             detector = PlatformDetector()
             detected = detector.detect_platform()
@@ -339,6 +340,7 @@ class TestMockStrategyReproducibility:
             patch("platform.system", return_value="UnknownOS"),
             patch("platform.release", return_value="unknown-release"),
             patch("os.name", "unknown"),
+            patch("os.path.exists", return_value=False),  # /proc/versionが存在しない
             module_availability_mocker(fcntl_available=False, msvcrt_available=False),
         ):
             detector = PlatformDetector()

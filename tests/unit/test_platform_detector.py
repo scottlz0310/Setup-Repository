@@ -242,9 +242,17 @@ class TestCheckPackageManager:
 
     def test_check_package_manager_different_managers(self) -> None:
         """異なるパッケージマネージャーのテスト"""
-        managers_to_test = ["apt", "snap", "brew", "scoop", "winget", "chocolatey"]
+        # マネージャー名と実際のコマンドのマッピング
+        managers_to_test = {
+            "apt": "apt",
+            "snap": "snap",
+            "brew": "brew",
+            "scoop": "scoop",
+            "winget": "winget",
+            "chocolatey": "choco",  # chocolateyはchocoコマンドにマッピング
+        }
 
-        for manager in managers_to_test:
+        for manager, expected_cmd in managers_to_test.items():
             with patch("subprocess.run") as mock_run:
                 mock_run.return_value.returncode = 0
 
@@ -252,7 +260,11 @@ class TestCheckPackageManager:
 
                 assert result is True
                 mock_run.assert_called_once_with(
-                    [manager, "--version"], capture_output=True, check=True
+                    [expected_cmd, "--version"],
+                    capture_output=True,
+                    check=True,
+                    timeout=10,
+                    text=True,
                 )
 
 

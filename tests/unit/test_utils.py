@@ -844,6 +844,7 @@ class TestDetectPlatform:
             patch("platform.system", return_value="DARWIN"),  # 大文字
             patch("platform.release", return_value="21.0.0"),
             patch("os.name", "posix"),
+            patch("os.path.exists", return_value=False),  # /proc/versionが存在しない
         ):
             detector = PlatformDetector()
             platform = detector.detect_platform()
@@ -854,6 +855,7 @@ class TestDetectPlatform:
         with (
             patch("platform.system") as mock_system,
             patch("platform.release") as mock_release,
+            patch("os.path.exists", return_value=False),  # /proc/versionが存在しない
         ):
             mock_system.return_value = "FreeBSD"
             mock_release.return_value = "13.0-RELEASE"
@@ -894,10 +896,29 @@ class TestDetectPlatform:
         ]
 
         for system, expected_platform, release in test_cases:
+            # ループ変数をキャプチャしてクロージャの問題を回避
+            def create_side_effects(current_release):
+                return (
+                    lambda path: (
+                        path == "/proc/version" and "microsoft" in current_release
+                    ),
+                    lambda path, *args, **kwargs: (
+                        __import__("io").StringIO(
+                            f"Linux version {current_release} (Microsoft)"
+                        )
+                        if path == "/proc/version" and "microsoft" in current_release
+                        else open(path, *args, **kwargs)
+                    ),
+                )
+
+            exists_side_effect, open_side_effect = create_side_effects(release)
+
             with (
                 patch("platform.system") as mock_system,
                 patch("platform.release") as mock_release,
                 patch("os.name", "posix" if system != "Windows" else "nt"),
+                patch("os.path.exists", side_effect=exists_side_effect),
+                patch("builtins.open", side_effect=open_side_effect),
             ):
                 mock_system.return_value = system
                 mock_release.return_value = release
