@@ -38,15 +38,76 @@ try {
     } else {
         Write-Host "❌ uv実行ファイルが見つかりません" -ForegroundColor Red
 
-        # インストールを試行
+        # インストールを試行（複数の方法を試す）
         Write-Host "uvのインストールを試行します..." -ForegroundColor Yellow
-        irm https://astral.sh/uv/install.ps1 | iex
-
-        # 再度確認
-        if (Test-Path $uvExe) {
-            Write-Host "✅ uvのインストールが成功しました" -ForegroundColor Green
-        } else {
-            throw "uvのインストールに失敗しました"
+        
+        $installSuccess = $false
+        
+        # 方法1: 公式インストーラー
+        try {
+            Write-Host "方法1: 公式インストーラーを使用" -ForegroundColor Yellow
+            irm https://astral.sh/uv/install.ps1 | iex
+            Start-Sleep -Seconds 3
+            if (Test-Path $uvExe) {
+                $installSuccess = $true
+                Write-Host "✅ 公式インストーラーでのインストールが成功" -ForegroundColor Green
+            }
+        } catch {
+            Write-Host "⚠️  公式インストーラーでのインストールに失敗: $_" -ForegroundColor Yellow
+        }
+        
+        # 方法2: pipでのインストール
+        if (-not $installSuccess) {
+            try {
+                Write-Host "方法2: pipでのインストールを試行" -ForegroundColor Yellow
+                python -m pip install uv --upgrade
+                
+                # pipでインストールした場合のパスを確認
+                $pipUvPath = python -c "import uv; print(uv.__file__.replace('__init__.py', '').replace('\\', '/'))" 2>$null
+                if ($pipUvPath) {
+                    Write-Host "✅ pipでのインストールが成功" -ForegroundColor Green
+                    $installSuccess = $true
+                }
+            } catch {
+                Write-Host "⚠️  pipでのインストールに失敗: $_" -ForegroundColor Yellow
+            }
+        }
+        
+        # 方法3: GitHub Releasesから直接ダウンロード
+        if (-not $installSuccess) {
+            try {
+                Write-Host "方法3: GitHub Releasesから直接ダウンロード" -ForegroundColor Yellow
+                $downloadUrl = "https://github.com/astral-sh/uv/releases/latest/download/uv-x86_64-pc-windows-msvc.zip"
+                $tempZip = "$env:TEMP\uv.zip"
+                $extractPath = "$env:TEMP\uv-extract"
+                
+                Invoke-WebRequest -Uri $downloadUrl -OutFile $tempZip
+                Expand-Archive -Path $tempZip -DestinationPath $extractPath -Force
+                
+                # 抽出したファイルをコピー
+                $extractedUv = Get-ChildItem -Path $extractPath -Name "uv.exe" -Recurse | Select-Object -First 1
+                if ($extractedUv) {
+                    $sourcePath = Join-Path $extractPath $extractedUv.FullName
+                    New-Item -ItemType Directory -Path $uvPath -Force | Out-Null
+                    Copy-Item -Path $sourcePath -Destination $uvExe -Force
+                    
+                    if (Test-Path $uvExe) {
+                        Write-Host "✅ GitHub Releasesからのダウンロードが成功" -ForegroundColor Green
+                        $installSuccess = $true
+                    }
+                }
+                
+                # 一時ファイルを清理
+                Remove-Item -Path $tempZip -Force -ErrorAction SilentlyContinue
+                Remove-Item -Path $extractPath -Recurse -Force -ErrorAction SilentlyContinue
+                
+            } catch {
+                Write-Host "⚠️  GitHub Releasesからのダウンロードに失敗: $_" -ForegroundColor Yellow
+            }
+        }
+        
+        if (-not $installSuccess) {
+            throw "uvのインストールに失敗しました（すべての方法で失敗）"
         }
     }
 

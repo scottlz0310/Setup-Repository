@@ -286,7 +286,7 @@ class QualityLogger:
         if output_file:
             # パストラバーサル攻撃を防ぐためのバリデーション
             current_dir = Path.cwd().resolve()
-            
+
             # 相対パスで指定された場合は、現在のディレクトリからの相対パスとして処理
             if not output_file.is_absolute():
                 resolved_path = current_dir / output_file

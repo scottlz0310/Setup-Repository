@@ -222,10 +222,10 @@ class TestSetupWithUv:
         # uv venvとuv syncが実行される
         assert mock_run.call_count == 2
         mock_run.assert_any_call(
-            ["uv", "venv"], cwd=repo_path, check=True, capture_output=True
+            ["uv", "venv"], cwd=repo_path, check=True, capture_output=True, shell=False, timeout=300
         )
         mock_run.assert_any_call(
-            ["uv", "sync"], cwd=repo_path, check=True, capture_output=True
+            ["uv", "sync"], cwd=repo_path, check=True, capture_output=True, shell=False, timeout=300
         )
 
     @patch("subprocess.run")
@@ -257,13 +257,13 @@ class TestSetupWithUv:
         # uv lock、uv venv、uv syncが実行される
         assert mock_run.call_count == 3
         mock_run.assert_any_call(
-            ["uv", "lock"], cwd=repo_path, check=True, capture_output=True
+            ["uv", "lock"], cwd=repo_path, check=True, capture_output=True, shell=False, timeout=300
         )
         mock_run.assert_any_call(
-            ["uv", "venv"], cwd=repo_path, check=True, capture_output=True
+            ["uv", "venv"], cwd=repo_path, check=True, capture_output=True, shell=False, timeout=300
         )
         mock_run.assert_any_call(
-            ["uv", "sync"], cwd=repo_path, check=True, capture_output=True
+            ["uv", "sync"], cwd=repo_path, check=True, capture_output=True, shell=False, timeout=300
         )
 
     @patch("subprocess.run")

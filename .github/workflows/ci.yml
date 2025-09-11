@@ -220,7 +220,50 @@ jobs:
       if: runner.os == 'Windows'
       run: |
         # Windows用のuv設定スクリプトを実行
-        .\scripts\windows-uv-setup.ps1 -Verbose
+        try {
+          .\scripts\windows-uv-setup.ps1 -Verbose
+        } catch {
+          Write-Host "⚠️  カスタムスクリプトが失敗しました。フォールバックを試行します..." -ForegroundColor Yellow
+          
+          # フォールバック1: 公式インストーラー
+          try {
+            Write-Host "フォールバック1: 公式インストーラーを使用" -ForegroundColor Yellow
+            irm https://astral.sh/uv/install.ps1 | iex
+            
+            # PATHに追加
+            $uvPath = "$env:USERPROFILE\.cargo\bin"
+            if (Test-Path "$uvPath\uv.exe") {
+              $env:PATH = "$uvPath;$env:PATH"
+              if ($env:GITHUB_PATH) {
+                Add-Content -Path $env:GITHUB_PATH -Value $uvPath -Encoding UTF8
+              }
+              Write-Host "✅ フォールバック1が成功" -ForegroundColor Green
+            } else {
+              throw "公式インストーラーでのインストールに失敗"
+            }
+          } catch {
+            Write-Host "フォールバック1が失敗: $_" -ForegroundColor Yellow
+            
+            # フォールバック2: pipでインストール
+            try {
+              Write-Host "フォールバック2: pipでインストール" -ForegroundColor Yellow
+              python -m pip install uv --upgrade
+              
+              # uvコマンドのテスト
+              $uvVersion = python -m uv --version 2>&1
+              if ($LASTEXITCODE -eq 0) {
+                Write-Host "✅ フォールバック2が成功: $uvVersion" -ForegroundColor Green
+                # uvエイリアスを作成
+                function uv { python -m uv @args }
+              } else {
+                throw "pipでのインストールに失敗"
+              }
+            } catch {
+              Write-Host "❌ すべてのフォールバックが失敗しました: $_" -ForegroundColor Red
+              exit 1
+            }
+          }
+        }
       shell: powershell
 
     - name: Verify uv installation

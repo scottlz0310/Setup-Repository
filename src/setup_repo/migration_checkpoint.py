@@ -38,7 +38,7 @@ class MigrationCheckpoint:
         if checkpoint_dir:
             # パストラバーサル攻撃を防ぐためのバリデーション
             current_dir = Path.cwd().resolve()
-            
+
             # 相対パスで指定された場合は、現在のディレクトリからの相対パスとして処理
             if not checkpoint_dir.is_absolute():
                 resolved_dir = (current_dir / checkpoint_dir).resolve()
@@ -49,8 +49,10 @@ class MigrationCheckpoint:
                     # 現在のディレクトリからの相対パスを計算
                     resolved_dir.relative_to(current_dir)
                 except ValueError:
-                    raise ValueError("チェックポイントディレクトリは現在のディレクトリ以下である必要があります") from None
-            
+                    raise ValueError(
+                        "チェックポイントディレクトリは現在のディレクトリ以下である必要があります"
+                    ) from None
+
             self.checkpoint_dir = resolved_dir
         else:
             self.checkpoint_dir = Path(".migration_checkpoints").resolve()

@@ -50,7 +50,7 @@ class SecurityChecker:
 
             # 標準出力でも結果表示
             subprocess.run(
-                ["uv", "run", "safety", "scan", "--output", "screen"], 
+                ["uv", "run", "safety", "scan", "--output", "screen"],
                 check=False,
                 shell=False
             )

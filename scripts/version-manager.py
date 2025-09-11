@@ -229,7 +229,7 @@ class VersionManager:
 
             # タグを作成
             subprocess.run(
-                ["git", "tag", "-a", tag_name, "-m", f"Release {tag_name}"], 
+                ["git", "tag", "-a", tag_name, "-m", f"Release {tag_name}"],
                 check=True,
                 shell=False,
             )
@@ -237,7 +237,7 @@ class VersionManager:
 
             if push:
                 subprocess.run(
-                    ["git", "push", "origin", tag_name], 
+                    ["git", "push", "origin", tag_name],
                     check=True,
                     shell=False,
                 )

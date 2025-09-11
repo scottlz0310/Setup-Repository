@@ -22,12 +22,12 @@ class TestMigrationCheckpoint:
     def setup_method(self):
         """テスト前の準備"""
         self.temp_dir = Path(tempfile.mkdtemp())
-        
+
         # 元のディレクトリを保存し、テスト用ディレクトリに移動
         self.original_cwd = Path.cwd()
         import os
         os.chdir(self.temp_dir)
-        
+
         # ディレクトリ変更後にMigrationCheckpointを初期化
         self.checkpoint_manager = MigrationCheckpoint(Path("checkpoints"))
 
@@ -243,12 +243,12 @@ class TestMigrationCheckpointIntegration:
     def setup_method(self):
         """テスト前の準備"""
         self.temp_dir = Path(tempfile.mkdtemp())
-        
+
         # 元のディレクトリを保存し、テスト用ディレクトリに移動
         self.original_cwd = Path.cwd()
         import os
         os.chdir(self.temp_dir)
-        
+
         # ディレクトリ変更後にMigrationCheckpointを初期化
         self.checkpoint_manager = MigrationCheckpoint(Path("checkpoints"))
 

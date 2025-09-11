@@ -31,8 +31,7 @@ def sync_cli(args) -> None:
             "use_https": args.use_https or config.get("use_https", False),
             "sync_only": args.sync_only or config.get("sync_only", False),
             "auto_stash": args.auto_stash or config.get("auto_stash", False),
-            "skip_uv_install": args.skip_uv_install
-            or config.get("skip_uv_install", False),
+            "skip_uv_install": args.skip_uv_install or config.get("skip_uv_install", False),
         }
     )
 
@@ -46,7 +45,7 @@ def quality_cli(args) -> None:
         # パストラバーサル攻撃を防ぐためのバリデーション
         project_root_path = Path(args.project_root)
         current_dir = Path.cwd().resolve()
-        
+
         # 相対パスで指定された場合は、現在のディレクトリからの相対パスとして処理
         if not project_root_path.is_absolute():
             project_root = current_dir / project_root_path
@@ -55,7 +54,8 @@ def quality_cli(args) -> None:
             project_root = project_root_path.resolve()
             # 絶対パスの場合、セキュリティチェックを実行（テスト環境では緩和）
             import os
-            if not os.environ.get('PYTEST_CURRENT_TEST') and not os.environ.get('CI'):
+
+            if not os.environ.get("PYTEST_CURRENT_TEST") and not os.environ.get("CI"):
                 try:
                     project_root.relative_to(current_dir)
                 except ValueError:
@@ -81,9 +81,7 @@ def quality_cli(args) -> None:
 
     # トレンドデータに追加
     if args.save_trend:
-        trend_manager = QualityTrendManager(
-            project_root / "quality-trends" / "trend-data.json"
-        )
+        trend_manager = QualityTrendManager(project_root / "quality-trends" / "trend-data.json")
         trend_manager.add_data_point(metrics)
         print("  トレンドデータを更新しました")
 
@@ -101,7 +99,7 @@ def trend_cli(args) -> None:
         # パストラバーサル攻撃を防ぐためのバリデーション
         project_root_path = Path(args.project_root)
         current_dir = Path.cwd().resolve()
-        
+
         # 相対パスで指定された場合は、現在のディレクトリからの相対パスとして処理
         if not project_root_path.is_absolute():
             project_root = current_dir / project_root_path
@@ -110,7 +108,8 @@ def trend_cli(args) -> None:
             project_root = project_root_path.resolve()
             # 絶対パスの場合、セキュリティチェックを実行（テスト環境では緩和）
             import os
-            if not os.environ.get('PYTEST_CURRENT_TEST') and not os.environ.get('CI'):
+
+            if not os.environ.get("PYTEST_CURRENT_TEST") and not os.environ.get("CI"):
                 try:
                     project_root.relative_to(current_dir)
                 except ValueError:
@@ -122,14 +121,18 @@ def trend_cli(args) -> None:
         # トレンドファイルパスの検証（テスト環境では緩和）
         trend_file = Path(args.trend_file).resolve()
         import os
-        if not os.environ.get('PYTEST_CURRENT_TEST') and not os.environ.get('CI'):
-            if not str(trend_file).startswith(str(project_root)):
-                raise ValueError("トレンドファイルはプロジェクトルート以下である必要があります")
+
+        if (
+            not os.environ.get("PYTEST_CURRENT_TEST")
+            and not os.environ.get("CI")
+            and not str(trend_file).startswith(str(project_root))
+        ):
+            raise ValueError("トレンドファイルはプロジェクトルート以下である必要があります")
     else:
         trend_file = project_root / "quality-trends" / "trend-data.json"
-    
+
     # テスト環境でtrend_fileが設定されている場合はそのまま使用
-    if hasattr(args, 'trend_file') and args.trend_file:
+    if hasattr(args, "trend_file") and args.trend_file:
         trend_file = Path(args.trend_file).resolve()
 
     trend_manager = QualityTrendManager(trend_file)
@@ -159,11 +162,7 @@ def trend_cli(args) -> None:
 
     elif args.action == "report":
         # HTMLレポート生成
-        output_file = (
-            Path(args.output)
-            if args.output
-            else project_root / "quality-trends" / "trend-report.html"
-        )
+        output_file = Path(args.output) if args.output else project_root / "quality-trends" / "trend-report.html"
         report_file = trend_manager.generate_html_report(output_file)
         print(f"HTMLレポートを生成しました: {report_file}")
 
@@ -177,8 +176,7 @@ def trend_cli(args) -> None:
             filtered_points = [
                 point
                 for point in data_points
-                if datetime.fromisoformat(point.timestamp.replace("Z", "+00:00"))
-                >= cutoff_date
+                if datetime.fromisoformat(point.timestamp.replace("Z", "+00:00")) >= cutoff_date
             ]
             trend_manager.save_trend_data(filtered_points)
             removed_count = len(data_points) - len(filtered_points)

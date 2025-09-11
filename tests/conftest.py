@@ -374,7 +374,7 @@ def sample_config() -> dict[str, Any]:
         },
         "platform": {"detected": "linux", "package_manager": "apt"},
         "logging": {"level": "INFO", "file": "/tmp/test.log"},
-        
+
         # 後方互換性のための古い構造
         "github_token": "test_token_123",
         "github_username": "test_user",

@@ -47,11 +47,11 @@ def detect_platform() -> PlatformInfo:
     elif system == "linux":
         # Linux環境でWSLをチェック
         is_wsl = False
-        
+
         # 方法1: platform.release()でMicrosoftをチェック
         if "microsoft" in platform.release().lower():
             is_wsl = True
-        
+
         # 方法2: /proc/versionファイルでWSLをチェック
         if not is_wsl and os.path.exists("/proc/version"):
             try:
@@ -61,7 +61,7 @@ def detect_platform() -> PlatformInfo:
                         is_wsl = True
             except (FileNotFoundError, PermissionError, OSError):
                 pass
-        
+
         # 方法3: /proc/sys/kernel/osreleaseでチェック
         if not is_wsl and os.path.exists("/proc/sys/kernel/osrelease"):
             try:
@@ -71,7 +71,7 @@ def detect_platform() -> PlatformInfo:
                         is_wsl = True
             except (FileNotFoundError, PermissionError, OSError):
                 pass
-        
+
         if is_wsl:
             return PlatformInfo(
                 name="wsl",
