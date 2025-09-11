@@ -111,4 +111,6 @@ try {
     Write-Host "スタックトレース:" -ForegroundColor Red
     Write-Host $_.ScriptStackTrace -ForegroundColor Red
     exit 1
+} finally {
+    Write-Host "=== スクリプト実行終了 ===" -ForegroundColor Cyan
 }

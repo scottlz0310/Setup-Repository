@@ -173,9 +173,8 @@ class TestGetRepositories:
 
     @patch("setup_repo.github_api._get_authenticated_user")
     @patch("urllib.request.urlopen")
-    @patch("builtins.print")
     def test_get_repositories_no_token(
-        self, mock_print, mock_urlopen, mock_get_auth_user
+        self, mock_urlopen, mock_get_auth_user
     ):
         """トークンなしでのリポジトリ取得のテスト"""
         # Arrange
@@ -194,18 +193,19 @@ class TestGetRepositories:
         ]
 
         # Act
-        result = get_repositories("test_owner")
+        with patch('setup_repo.github_api.logging.getLogger') as mock_logger:
+            result = get_repositories("test_owner")
 
         # Assert
         assert len(result) == 1
         assert result[0]["name"] == "public_repo"
-        mock_print.assert_called()
+        # ログ出力が呼ばれたことを確認
+        mock_logger.assert_called()
 
     @patch("setup_repo.github_api._get_authenticated_user")
     @patch("urllib.request.urlopen")
-    @patch("builtins.print")
     def test_get_repositories_with_token_same_user(
-        self, mock_print, mock_urlopen, mock_get_auth_user
+        self, mock_urlopen, mock_get_auth_user
     ):
         """トークンありで同じユーザーのリポジトリ取得のテスト"""
         # Arrange
@@ -233,9 +233,8 @@ class TestGetRepositories:
 
     @patch("setup_repo.github_api._get_authenticated_user")
     @patch("urllib.request.urlopen")
-    @patch("builtins.print")
     def test_get_repositories_with_token_different_user(
-        self, mock_print, mock_urlopen, mock_get_auth_user
+        self, mock_urlopen, mock_get_auth_user
     ):
         """トークンありで異なるユーザーのリポジトリ取得のテスト"""
         # Arrange
@@ -262,8 +261,7 @@ class TestGetRepositories:
         assert result[0]["name"] == "other_repo"
 
     @patch("urllib.request.urlopen")
-    @patch("builtins.print")
-    def test_get_repositories_http_error(self, mock_print, mock_urlopen):
+    def test_get_repositories_http_error(self, mock_urlopen):
         """HTTPエラー時のテスト"""
         # Arrange
         mock_urlopen.side_effect = urllib.error.HTTPError(
@@ -271,25 +269,28 @@ class TestGetRepositories:
         )
 
         # Act
-        result = get_repositories("nonexistent_owner")
+        with patch('setup_repo.github_api.logging.getLogger') as mock_logger:
+            result = get_repositories("nonexistent_owner")
 
         # Assert
         assert result == []
-        mock_print.assert_called()
+        # ログ出力が呼ばれたことを確認
+        mock_logger.assert_called()
 
     @patch("urllib.request.urlopen")
-    @patch("builtins.print")
-    def test_get_repositories_network_error(self, mock_print, mock_urlopen):
+    def test_get_repositories_network_error(self, mock_urlopen):
         """ネットワークエラー時のテスト"""
         # Arrange
         mock_urlopen.side_effect = ConnectionError("Network error")
 
         # Act
-        result = get_repositories("test_owner")
+        with patch('setup_repo.github_api.logging.getLogger') as mock_logger:
+            result = get_repositories("test_owner")
 
         # Assert
         assert result == []
-        mock_print.assert_called()
+        # ログ出力が呼ばれたことを確認
+        mock_logger.assert_called()
 
     @patch("urllib.request.urlopen")
     def test_get_repositories_https_url_validation(self, mock_urlopen):
@@ -538,9 +539,8 @@ class TestGetRepositoriesAdvanced:
 
     @patch("setup_repo.github_api._get_authenticated_user")
     @patch("urllib.request.urlopen")
-    @patch("builtins.print")
     def test_get_repositories_auth_user_none(
-        self, mock_print, mock_urlopen, mock_get_auth_user
+        self, mock_urlopen, mock_get_auth_user
     ):
         """認証ユーザーがNoneの場合のテスト"""
         # Arrange
@@ -568,9 +568,8 @@ class TestGetRepositoriesAdvanced:
 
     @patch("setup_repo.github_api._get_authenticated_user")
     @patch("urllib.request.urlopen")
-    @patch("builtins.print")
     def test_get_repositories_case_insensitive_user_match(
-        self, mock_print, mock_urlopen, mock_get_auth_user
+        self, mock_urlopen, mock_get_auth_user
     ):
         """大文字小文字を区別しないユーザーマッチのテスト"""
         # Arrange
@@ -597,8 +596,7 @@ class TestGetRepositoriesAdvanced:
         assert result[0]["name"] == "private_repo"
 
     @patch("urllib.request.urlopen")
-    @patch("builtins.print")
-    def test_get_repositories_json_decode_error(self, mock_print, mock_urlopen):
+    def test_get_repositories_json_decode_error(self, mock_urlopen):
         """JSONデコードエラーのテスト"""
         # Arrange
         mock_response = Mock()
@@ -606,15 +604,16 @@ class TestGetRepositoriesAdvanced:
         mock_urlopen.return_value.__enter__.return_value = mock_response
 
         # Act
-        result = get_repositories("test_owner")
+        with patch('setup_repo.github_api.logging.getLogger') as mock_logger:
+            result = get_repositories("test_owner")
 
         # Assert
         assert result == []
-        mock_print.assert_called()
+        # ログ出力が呼ばれたことを確認
+        mock_logger.assert_called()
 
     @patch("urllib.request.urlopen")
-    @patch("builtins.print")
-    def test_get_repositories_second_page_error(self, mock_print, mock_urlopen):
+    def test_get_repositories_second_page_error(self, mock_urlopen):
         """2ページ目でエラーが発生した場合のテスト"""
         # Arrange
         repos_page1 = [{"name": "repo1", "id": 1}]
@@ -638,8 +637,7 @@ class TestGetRepositoriesAdvanced:
         assert result[0]["name"] == "repo1"
 
     @patch("urllib.request.urlopen")
-    @patch("builtins.print")
-    def test_get_repositories_url_validation(self, mock_print, mock_urlopen):
+    def test_get_repositories_url_validation(self, mock_urlopen):
         """URL検証のテスト（実際にはHTTPS URLのみ使用されることを確認）"""
         # Arrange
         repos_page1 = [{"name": "repo1", "id": 1}]
