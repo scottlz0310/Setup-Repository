@@ -6,6 +6,7 @@
 """
 
 import os
+import platform
 from pathlib import Path
 from typing import Any, Optional
 
@@ -87,17 +88,29 @@ class LoggingConfig:
         if cls.is_debug_mode():
             log_level = LogLevel.DEBUG
 
-        return configure_quality_logging(
+        logger = configure_quality_logging(
             log_level=log_level,
             log_file=log_file,
             enable_console=enable_console,
             enable_json_format=enable_json_format,
         )
 
+        # プラットフォーム情報をログに記録
+        if cls.is_debug_mode():
+            debug_context = cls.get_debug_context()
+            logger.debug("ロギング設定完了", extra={"context": debug_context})
+
+        return logger
+
     @classmethod
     def get_debug_context(cls) -> dict[str, Any]:
         """デバッグ用の環境情報を取得"""
-        return {
+        from .platform_detector import PlatformDetector
+
+        detector = PlatformDetector()
+        platform_info = detector.get_platform_info()
+
+        context = {
             "log_level": cls.get_log_level_from_env().value,
             "debug_mode": str(cls.is_debug_mode()),
             "ci_environment": str(cls.is_ci_environment()),
@@ -105,12 +118,33 @@ class LoggingConfig:
             "log_file": (
                 str(cls.get_log_file_path()) if cls.get_log_file_path() else "None"
             ),
+            "platform_info": {
+                "name": platform_info.name,
+                "display_name": platform_info.display_name,
+                "shell": platform_info.shell,
+                "python_cmd": platform_info.python_cmd,
+                "package_managers": platform_info.package_managers,
+            },
+            "system_info": {
+                "platform_system": platform.system(),
+                "platform_release": platform.release(),
+                "platform_version": platform.version(),
+                "platform_machine": platform.machine(),
+                "platform_processor": platform.processor(),
+            },
             "environment_variables": {
                 key: str(value)
                 for key, value in os.environ.items()
-                if key.startswith(("LOG_", "DEBUG", "CI", "GITHUB_"))
+                if key.startswith(("LOG_", "DEBUG", "CI", "GITHUB_", "RUNNER_"))
             },
         }
+
+        # CI環境の場合は追加の診断情報を含める
+        if cls.is_ci_environment():
+            context["ci_diagnostics"] = detector.diagnose_issues()
+            context["ci_info"] = detector.get_ci_info()
+
+        return context
 
 
 def setup_project_logging() -> QualityLogger:
@@ -153,6 +187,190 @@ def setup_testing_logging() -> QualityLogger:
     )
 
 
+def create_platform_specific_error_message(
+    error: Exception, platform_name: str, context: Optional[dict[str, Any]] = None
+) -> str:
+    """プラットフォーム固有のエラーメッセージを作成"""
+    from .platform_detector import check_module_availability, detect_platform
+
+    platform_info = detect_platform()
+    base_message = str(error)
+
+    # プラットフォーム固有のエラーメッセージ拡張
+    platform_specific_info = []
+    troubleshooting_steps = []
+
+    if platform_name == "windows":
+        if "fcntl" in base_message.lower():
+            platform_specific_info.append(
+                "Windows環境では fcntl モジュールは利用できません。"
+                "代替として msvcrt モジュールを使用してください。"
+            )
+            # msvcrtの可用性をチェック
+            msvcrt_info = check_module_availability("msvcrt")
+            if not msvcrt_info["available"]:
+                troubleshooting_steps.append(
+                    "msvcrtモジュールも利用できません。フォールバック機構を使用します。"
+                )
+
+        if "permission" in base_message.lower():
+            platform_specific_info.append(
+                "Windows環境では管理者権限が必要な場合があります。"
+                "PowerShellを管理者として実行してください。"
+            )
+            troubleshooting_steps.append(
+                "1. PowerShellを右クリックして「管理者として実行」を選択\n"
+                "2. Set-ExecutionPolicy RemoteSigned を実行\n"
+                "3. 再度コマンドを実行"
+            )
+
+        if (
+            "path" in base_message.lower()
+            or "command not found" in base_message.lower()
+        ):
+            platform_specific_info.append(
+                "Windows環境でPATHの問題が発生している可能性があります。"
+            )
+            troubleshooting_steps.append(
+                "PowerShellで $env:PATH を確認し、必要なディレクトリが"
+                "含まれているか確認してください。"
+            )
+
+    elif platform_name == "macos":
+        if "command not found" in base_message.lower():
+            missing_tool = (
+                context.get("missing_tool", "required-tool")
+                if context
+                else "required-tool"
+            )
+            platform_specific_info.append(
+                f"macOS環境では Homebrew を使用してツールをインストールしてください: "
+                f"brew install {missing_tool}"
+            )
+            troubleshooting_steps.append(
+                "1. Homebrewがインストールされているか確認: brew --version\n"
+                '2. インストールされていない場合: /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"\n'
+                f"3. ツールをインストール: brew install {missing_tool}"
+            )
+
+        if "permission" in base_message.lower():
+            platform_specific_info.append(
+                "macOS環境では、セキュリティ設定により実行が制限される場合があります。"
+            )
+            troubleshooting_steps.append(
+                "システム環境設定 > セキュリティとプライバシー で"
+                "実行を許可してください。"
+            )
+
+    elif platform_name == "linux":
+        if "command not found" in base_message.lower():
+            missing_tool = (
+                context.get("missing_tool", "required-tool")
+                if context
+                else "required-tool"
+            )
+            platform_specific_info.append(
+                "Linux環境では apt または snap を使用して"
+                f"ツールをインストールしてください: "
+                f"sudo apt install {missing_tool}"
+            )
+            troubleshooting_steps.append(
+                f"1. パッケージリストを更新: sudo apt update\n"
+                f"2. ツールをインストール: sudo apt install {missing_tool}\n"
+                f"3. 代替: sudo snap install {missing_tool}"
+            )
+
+        if "permission" in base_message.lower():
+            platform_specific_info.append(
+                "Linux環境では sudo 権限が必要な場合があります。"
+            )
+
+    elif platform_name == "wsl":
+        if "windows" in base_message.lower():
+            platform_specific_info.append(
+                "WSL環境では Windows と Linux の両方のパスが混在する場合があります。"
+                "適切なパス形式を使用してください。"
+            )
+            troubleshooting_steps.append(
+                "1. wslpath コマンドでパス変換を確認\n"
+                "2. /mnt/c/ 形式のWindowsパスを使用\n"
+                "3. Linux形式のパス（/home/user/）を使用"
+            )
+
+    # CI環境固有の情報を追加
+    if LoggingConfig.is_ci_environment():
+        platform_specific_info.append(
+            f"CI環境（{os.environ.get('GITHUB_ACTIONS', 'Unknown CI')}）で実行中です。"
+        )
+
+        # GitHub Actions固有のトラブルシューティング
+        if os.environ.get("GITHUB_ACTIONS", "").lower() == "true":
+            troubleshooting_steps.append(
+                "GitHub Actions環境でのトラブルシューティング:\n"
+                "1. ワークフローファイルの runs-on を確認\n"
+                "2. setup-uv アクションのバージョンを確認\n"
+                "3. PATH設定が正しく行われているか確認"
+            )
+
+    # エラーメッセージを構築
+    enhanced_message = f"[{platform_info.display_name}] {base_message}"
+
+    if platform_specific_info:
+        enhanced_message += "\n\nプラットフォーム固有の情報:\n"
+        for info in platform_specific_info:
+            enhanced_message += f"  • {info}\n"
+
+    if troubleshooting_steps:
+        enhanced_message += "\nトラブルシューティング手順:\n"
+        for step in troubleshooting_steps:
+            enhanced_message += f"  {step}\n"
+
+    # 推奨パッケージマネージャー情報を追加
+    if platform_info.package_managers:
+        enhanced_message += (
+            f"\n推奨パッケージマネージャー: {platform_info.package_managers[0]}"
+        )
+
+    # CI環境では追加の診断情報を含める
+    if LoggingConfig.is_ci_environment() and context:
+        enhanced_message += f"\n\nCI診断情報: {context}"
+
+    return enhanced_message
+
+
+def get_platform_debug_info() -> dict[str, Any]:
+    """プラットフォーム固有のデバッグ情報を取得"""
+    from .platform_detector import detect_platform, get_available_package_managers
+
+    platform_info = detect_platform()
+    available_managers = get_available_package_managers(platform_info)
+
+    return {
+        "platform": {
+            "name": platform_info.name,
+            "display_name": platform_info.display_name,
+            "shell": platform_info.shell,
+            "python_cmd": platform_info.python_cmd,
+            "supported_package_managers": platform_info.package_managers,
+            "available_package_managers": available_managers,
+        },
+        "system": {
+            "platform_system": platform.system(),
+            "platform_release": platform.release(),
+            "platform_version": platform.version(),
+            "platform_machine": platform.machine(),
+            "platform_processor": platform.processor(),
+            "platform_node": platform.node(),
+        },
+        "environment": {
+            "path": os.environ.get("PATH", ""),
+            "home": os.environ.get("HOME", os.environ.get("USERPROFILE", "")),
+            "shell": os.environ.get("SHELL", ""),
+            "term": os.environ.get("TERM", ""),
+        },
+    }
+
+
 # 後方互換性のためのエイリアス
 __all__ = [
     "LoggingConfig",
@@ -160,6 +378,8 @@ __all__ = [
     "setup_ci_logging",
     "setup_development_logging",
     "setup_testing_logging",
+    "create_platform_specific_error_message",
+    "get_platform_debug_info",
     # ハンドラー（後方互換性）
     "create_ci_handler",
     "create_development_handler",

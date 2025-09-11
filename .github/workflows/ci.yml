@@ -65,6 +65,7 @@ jobs:
         CI_JSON_LOGS: "true"
         GITHUB_STEP_SUMMARY: ${{ github.step_summary }}
         PYTEST_XDIST_WORKER_COUNT: "auto"
+        CI_PLATFORM_DIAGNOSTICS: "true"
 
     - name: Upload error reports on failure
       if: failure()
@@ -209,10 +210,17 @@ jobs:
       if: runner.os != 'Windows'
       run: curl -LsSf https://astral.sh/uv/install.sh | sh
 
-    - name: Install uv (Windows)
+    - name: Install and setup uv (Windows)
       if: runner.os == 'Windows'
-      run: irm https://astral.sh/uv/install.ps1 | iex
+      run: |
+        # Windows用のuv設定スクリプトを実行
+        .\scripts\windows-uv-setup.ps1 -Verbose
       shell: powershell
+
+    - name: Verify uv installation
+      run: |
+        uv --version
+        echo "uv installation verified successfully"
 
     - name: Set up Python ${{ matrix.python-version }}
       run: uv python install ${{ matrix.python-version }}
@@ -220,16 +228,187 @@ jobs:
     - name: Create virtual environment
       run: uv venv --python ${{ matrix.python-version }}
 
-    - name: Install dependencies
-      run: uv sync --dev
+    - name: Install dependencies with retry
+      run: |
+        # 依存関係インストールをリトライ機能付きで実行
+        $maxRetries = 3
+        $retryCount = 0
+        do {
+          try {
+            uv sync --dev
+            Write-Host "依存関係のインストールが成功しました"
+            break
+          } catch {
+            $retryCount++
+            if ($retryCount -ge $maxRetries) {
+              Write-Error "依存関係のインストールが$maxRetries回失敗しました: $_"
+              exit 1
+            }
+            Write-Warning "依存関係のインストールが失敗しました (試行 $retryCount/$maxRetries): $_"
+            Start-Sleep -Seconds 5
+          }
+        } while ($retryCount -lt $maxRetries)
+      shell: powershell
+      if: runner.os == 'Windows'
+
+    - name: Install dependencies (Unix)
+      if: runner.os != 'Windows'
+      run: |
+        # Unix系でのリトライ機能付きインストール
+        for i in {1..3}; do
+          if uv sync --dev; then
+            echo "依存関係のインストールが成功しました"
+            break
+          else
+            echo "依存関係のインストールが失敗しました (試行 $i/3)"
+            if [ $i -eq 3 ]; then
+              echo "依存関係のインストールが3回失敗しました"
+              exit 1
+            fi
+            sleep 5
+          fi
+        done
 
     - name: Run basic functionality tests
       run: |
-        uv run python -m pytest tests/unit/ -v
+        echo "基本機能テストを開始します"
+        uv run python -m pytest tests/unit/ -v --tb=short
+        echo "CLIヘルプテストを実行します"
         uv run python main.py --help
 
-    - name: Test platform detection
-      run: uv run python -c "from src.setup_repo.platform_detector import detect_platform; print('Detected platform:', detect_platform())"
+    - name: Run platform diagnostics
+      run: |
+        echo "プラットフォーム診断を実行します"
+        uv run python scripts/ci-platform-diagnostics.py
+
+    - name: Test platform detection with enhanced error handling
+      run: |
+        echo "::group::プラットフォーム検出テスト"
+        uv run python -c "
+        import sys
+        import traceback
+        from src.setup_repo.platform_detector import PlatformDetector
+        from src.setup_repo.logging_config import create_platform_specific_error_message
+
+        try:
+            detector = PlatformDetector()
+            platform_info = detector.get_platform_info()
+
+            print(f'✅ 検出されたプラットフォーム: {platform_info.name}')
+            print(f'📋 表示名: {platform_info.display_name}')
+            print(f'🐚 シェル: {platform_info.shell}')
+            print(f'🐍 Pythonコマンド: {platform_info.python_cmd}')
+            print(f'📦 パッケージマネージャー: {platform_info.package_managers}')
+
+            # CI環境情報
+            if detector.is_ci_environment():
+                print('🔧 CI環境で実行中です')
+                ci_info = detector.get_ci_info()
+                important_keys = ['GITHUB_ACTIONS', 'RUNNER_OS', 'RUNNER_ARCH', 'platform_system']
+                for key in important_keys:
+                    if key in ci_info:
+                        print(f'  {key}: {ci_info[key]}')
+
+            # プラットフォーム固有のテスト
+            print(f'🧪 {platform_info.name}固有の機能をテストします')
+
+            if platform_info.name == 'windows':
+                # Windows固有のモジュールテスト
+                try:
+                    import msvcrt
+                    print('✅ msvcrtモジュールが利用可能です')
+                except ImportError as e:
+                    print(f'❌ msvcrtモジュールのインポートに失敗: {e}')
+
+                try:
+                    import fcntl
+                    print('⚠️ fcntlモジュールが利用可能です（予期しない動作）')
+                except ImportError:
+                    print('✅ fcntlモジュールは期待通り利用できません（Windows環境）')
+
+            elif platform_info.name in ['linux', 'wsl']:
+                # Linux/WSL固有のモジュールテスト
+                try:
+                    import fcntl
+                    print('✅ fcntlモジュールが利用可能です')
+                except ImportError as e:
+                    print(f'❌ fcntlモジュールのインポートに失敗: {e}')
+
+                try:
+                    import msvcrt
+                    print('⚠️ msvcrtモジュールが利用可能です（予期しない動作）')
+                except ImportError:
+                    print('✅ msvcrtモジュールは期待通り利用できません（Unix環境）')
+
+            elif platform_info.name == 'macos':
+                # macOS固有のテスト
+                try:
+                    import fcntl
+                    print('✅ fcntlモジュールが利用可能です')
+                except ImportError as e:
+                    print(f'❌ fcntlモジュールのインポートに失敗: {e}')
+
+            # 診断実行
+            print('🔍 プラットフォーム診断を実行します')
+            diagnosis = detector.diagnose_issues()
+
+            # パッケージマネージャーの状態を報告
+            available_managers = [
+                m for m, info in diagnosis['package_managers'].items()
+                if info['available']
+            ]
+            if available_managers:
+                print(f'✅ 利用可能なパッケージマネージャー: {available_managers}')
+            else:
+                print('⚠️ 利用可能なパッケージマネージャーが見つかりません')
+
+            # CI固有の問題を報告
+            if 'ci_specific_issues' in diagnosis and diagnosis['ci_specific_issues']:
+                print('⚠️ CI固有の問題が検出されました:')
+                for issue in diagnosis['ci_specific_issues']:
+                    print(f'  • {issue}')
+            else:
+                print('✅ CI固有の問題は検出されませんでした')
+
+            # 推奨事項を表示
+            if diagnosis['recommendations']:
+                print('💡 推奨事項:')
+                for rec in diagnosis['recommendations'][:3]:  # 最初の3つのみ表示
+                    print(f'  • {rec}')
+
+        except Exception as e:
+            print(f'❌ プラットフォーム検出エラー: {e}')
+
+            # プラットフォーム固有のエラーメッセージを生成
+            try:
+                import platform
+                platform_name = platform.system().lower()
+                if platform_name == 'darwin':
+                    platform_name = 'macos'
+                elif platform_name == 'windows':
+                    platform_name = 'windows'
+                else:
+                    platform_name = 'linux'
+
+                enhanced_message = create_platform_specific_error_message(e, platform_name)
+                print(f'🔧 拡張エラー情報:\n{enhanced_message}')
+            except Exception as enhance_error:
+                print(f'エラーメッセージ拡張に失敗: {enhance_error}')
+
+            traceback.print_exc()
+            sys.exit(1)
+        "
+        echo "::endgroup::"
+
+    - name: Upload platform test results on failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: platform-test-failure-${{ matrix.os }}-${{ matrix.python-version }}
+        path: |
+          *.log
+          .pytest_cache/
+        retention-days: 7
 
   security-scan:
     name: Security Scan

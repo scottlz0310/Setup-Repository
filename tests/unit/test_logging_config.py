@@ -6,6 +6,8 @@ import os
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 from setup_repo.logging_config import (
     LoggingConfig,
     setup_ci_logging,
@@ -104,11 +106,32 @@ class TestLoggingConfig:
             path = LoggingConfig.get_log_file_path()
             assert path == Path("logs/quality.log")
 
-    @patch.dict(os.environ, {"LOG_DIR": "/custom/logs"})
-    def test_get_log_file_path_custom_dir(self):
-        """カスタムログディレクトリの場合をテスト"""
-        path = LoggingConfig.get_log_file_path("custom")
-        assert path == Path("/custom/logs/custom.log")
+    def test_get_log_file_path_custom_dir_unix(self, platform_mocker):
+        """Unix系システムでのカスタムログディレクトリの場合をテスト"""
+        with (
+            patch.dict(os.environ, {"LOG_DIR": "/custom/logs"}),
+            platform_mocker("linux"),
+        ):
+            path = LoggingConfig.get_log_file_path("custom")
+            assert path == Path("/custom/logs/custom.log")
+
+    def test_get_log_file_path_custom_dir_windows(self, platform_mocker):
+        """Windowsでのカスタムログディレクトリの場合をテスト"""
+        with (
+            patch.dict(os.environ, {"LOG_DIR": "C:\\custom\\logs"}),
+            platform_mocker("windows"),
+        ):
+            path = LoggingConfig.get_log_file_path("custom")
+            # Pathオブジェクトは現在のプラットフォームに基づいて正規化するため、
+            # パスの構成要素を確認する
+            assert path.parts[-1] == "custom.log"
+            assert "custom" in str(path) and "logs" in str(path)
+
+    def test_get_log_file_path_custom_dir_relative(self):
+        """相対パスでのカスタムログディレクトリの場合をテスト"""
+        with patch.dict(os.environ, {"LOG_DIR": "custom_logs"}):
+            path = LoggingConfig.get_log_file_path("custom")
+            assert path == Path("custom_logs/custom.log")
 
     @patch.dict(os.environ, {"CI": "true"})
     def test_get_log_file_path_ci_environment(self):
@@ -172,14 +195,73 @@ class TestLoggingConfig:
             assert "environment_variables" in context
             assert "LOG_LEVEL" in context["environment_variables"]
 
+    def test_get_log_file_path_cross_platform_compatibility(self, platform_mocker):
+        """クロスプラットフォーム互換性のテスト"""
+        test_cases = [
+            # (platform, log_dir, expected_components)
+            ("windows", "C:\\logs", ["logs", "test.log"]),
+            ("linux", "/var/log", ["var", "log", "test.log"]),
+            ("macos", "/var/log", ["var", "log", "test.log"]),
+        ]
+
+        for platform_name, log_dir, expected_components in test_cases:
+            with (
+                patch.dict(os.environ, {"LOG_DIR": log_dir}),
+                platform_mocker(platform_name),
+            ):
+                path = LoggingConfig.get_log_file_path("test")
+                # Pathオブジェクトの構成要素を確認
+                assert path.name == "test.log"
+                # パスに期待される要素が含まれていることを確認
+                path_str = str(path)
+                for component in expected_components[:-1]:  # ファイル名以外の要素
+                    assert component in path_str
+
+    def test_get_log_file_path_environment_variables_mock(self):
+        """環境変数のモックが適切に設定されることをテスト"""
+        # CI環境でない場合のテスト
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            patch.dict(os.environ, {"LOG_DIR": "test_logs"}),
+        ):
+            path = LoggingConfig.get_log_file_path()
+            assert path == Path("test_logs/quality.log")
+
+        # CI環境の場合のテスト
+        with patch.dict(os.environ, {"CI": "true"}, clear=True):
+            path = LoggingConfig.get_log_file_path()
+            assert path is None
+
+        # CI環境でCI_LOG_FILE=trueの場合のテスト
+        with patch.dict(os.environ, {"CI": "true", "CI_LOG_FILE": "true"}, clear=True):
+            path = LoggingConfig.get_log_file_path()
+            assert path == Path("logs/quality.log")
+
 
 class TestLoggingSetupFunctions:
     """ロギングセットアップ関数のテスト"""
 
     def test_setup_project_logging(self):
         """プロジェクトロギングセットアップをテスト"""
-        logger = setup_project_logging()
-        assert isinstance(logger, QualityLogger)
+        with patch.dict(os.environ, {}, clear=True):
+            logger = setup_project_logging()
+            assert isinstance(logger, QualityLogger)
+
+    @pytest.mark.parametrize(
+        "platform_name", ["linux", "macos", "wsl"]
+    )  # Windowsは除外
+    def test_setup_project_logging_cross_platform(
+        self, platform_name: str, platform_mocker
+    ):
+        """Unix系プラットフォームでのプロジェクトロギングセットアップをテスト"""
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            platform_mocker(platform_name),
+        ):
+            logger = setup_project_logging()
+            assert isinstance(logger, QualityLogger)
+            # プラットフォームに関係なく基本的な設定が正しいことを確認
+            assert logger.enable_console is True
 
     def test_setup_ci_logging(self):
         """CI環境ロギングセットアップをテスト"""
@@ -216,3 +298,47 @@ class TestLoggingSetupFunctions:
         assert logger.log_file is None
         assert logger.enable_console is False
         assert logger.enable_json_format is False
+
+    def test_ci_environment_detection_cross_platform(self, platform_mocker):
+        """CI環境検出のクロスプラットフォームテスト"""
+        ci_env_vars = [
+            {"CI": "true"},
+            {"GITHUB_ACTIONS": "true"},
+            {"CONTINUOUS_INTEGRATION": "1"},
+        ]
+
+        for env_vars in ci_env_vars:
+            with patch.dict(os.environ, env_vars, clear=True):
+                # 各プラットフォームでCI環境が正しく検出されることを確認
+                for platform_name in ["windows", "linux", "macos"]:
+                    with platform_mocker(platform_name):
+                        assert LoggingConfig.is_ci_environment() is True
+                        logger = setup_ci_logging()
+                        assert isinstance(logger, QualityLogger)
+                        assert logger.log_file is None
+                        assert logger.enable_console is True
+                        assert logger.enable_json_format is True
+
+    def test_path_handling_with_environment_variables(self, platform_mocker):
+        """環境変数を使用したパス処理のテスト"""
+        # Unix系のパス
+        with (
+            patch.dict(os.environ, {"LOG_DIR": "/tmp/logs"}, clear=True),
+            platform_mocker("linux"),
+        ):
+            logger = LoggingConfig.configure_for_environment()
+            # CI環境でない場合、ログファイルが設定されることを確認
+            if not LoggingConfig.is_ci_environment():
+                expected_path = Path("/tmp/logs/quality.log")
+                assert logger.log_file == expected_path
+
+        # Windowsのパス
+        with (
+            patch.dict(os.environ, {"LOG_DIR": "C:\\temp\\logs"}, clear=True),
+            platform_mocker("windows"),
+        ):
+            logger = LoggingConfig.configure_for_environment()
+            if not LoggingConfig.is_ci_environment():
+                # パスの構成要素を確認
+                assert logger.log_file.name == "quality.log"
+                assert "temp" in str(logger.log_file) and "logs" in str(logger.log_file)

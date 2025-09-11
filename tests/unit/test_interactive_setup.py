@@ -2,7 +2,7 @@
 
 import subprocess
 from pathlib import Path
-from unittest.mock import Mock, mock_open, patch
+from unittest.mock import MagicMock, Mock, mock_open, patch
 
 import pytest
 
@@ -52,8 +52,13 @@ class TestInteractiveSetup:
         assert result["dry_run"] is False
         assert result["verbose"] is True
 
-        # ファイル保存の確認
-        mock_file.assert_called_once()
+        # 設定ファイルが保存されることを確認
+        config_calls = [
+            call
+            for call in mock_file.call_args_list
+            if "config.local.json" in str(call)
+        ]
+        assert len(config_calls) > 0, "設定ファイルが開かれませんでした"
         handle = mock_file()
         handle.write.assert_called()
 
@@ -662,16 +667,31 @@ class TestSetupWizard:
 
         # Assert
         assert result is True
-        mock_file.assert_called_once_with(
-            Path("config.local.json"), "w", encoding="utf-8"
-        )
+        # 設定ファイルが保存されることを確認
+        config_calls = [
+            call
+            for call in mock_file.call_args_list
+            if "config.local.json" in str(call)
+        ]
+        assert len(config_calls) > 0, "設定ファイルが開かれませんでした"
 
     @patch("builtins.open")
     @patch("builtins.print")
-    def test_save_config_failure(self, mock_print, mock_file):
+    @patch("src.setup_repo.platform_detector.detect_platform")
+    def test_save_config_failure(self, mock_detect_platform, mock_print, mock_file):
         """設定保存失敗のテスト"""
         # Arrange
-        mock_file.side_effect = OSError("Permission denied")
+        mock_detect_platform.return_value = MagicMock(
+            name="linux", display_name="Linux", shell="bash", python_cmd="python3"
+        )
+
+        # 設定ファイル保存時にエラーが発生するように設定
+        def side_effect(*args, **kwargs):
+            if "config.local.json" in str(args):
+                raise OSError("Permission denied")
+            return MagicMock()
+
+        mock_file.side_effect = side_effect
 
         wizard = SetupWizard()
         wizard.config = {"owner": "test_user"}

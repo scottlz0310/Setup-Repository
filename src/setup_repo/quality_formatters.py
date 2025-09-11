@@ -25,9 +25,31 @@ class ColoredFormatter(logging.Formatter):
         "RESET": "\033[0m",  # リセット
     }
 
+    def __init__(self, fmt=None, datefmt=None, include_platform_info: bool = False):
+        super().__init__(fmt, datefmt)
+        self.include_platform_info = include_platform_info
+        self._platform_info: Optional[str] = None
+
+    def _get_platform_info(self) -> str:
+        """プラットフォーム情報を取得（キャッシュ付き）"""
+        if self._platform_info is None and self.include_platform_info:
+            try:
+                from .platform_detector import detect_platform
+
+                platform_info = detect_platform()
+                self._platform_info = f"[{platform_info.name}]"
+            except ImportError:
+                self._platform_info = "[unknown]"
+        return self._platform_info or ""
+
     def format(self, record):
         # 基本フォーマット
         formatted = super().format(record)
+
+        # プラットフォーム情報を追加
+        if self.include_platform_info:
+            platform_prefix = self._get_platform_info()
+            formatted = f"{platform_prefix} {formatted}"
 
         # 色を追加
         color = self.COLORS.get(record.levelname, "")
@@ -39,6 +61,28 @@ class ColoredFormatter(logging.Formatter):
 class JSONFormatter(logging.Formatter):
     """JSON形式ログフォーマッター"""
 
+    def __init__(self, include_platform_info: bool = True):
+        super().__init__()
+        self.include_platform_info = include_platform_info
+        self._platform_info: Optional[dict[str, str]] = None
+
+    def _get_platform_info(self) -> dict[str, Any]:
+        """プラットフォーム情報を取得（キャッシュ付き）"""
+        if self._platform_info is None and self.include_platform_info:
+            try:
+                from .platform_detector import detect_platform
+
+                platform_info = detect_platform()
+                self._platform_info = {
+                    "name": platform_info.name,
+                    "display_name": platform_info.display_name,
+                    "shell": platform_info.shell,
+                    "python_cmd": platform_info.python_cmd,
+                }
+            except ImportError:
+                self._platform_info = {"error": "platform_detector not available"}
+        return self._platform_info or {}
+
     def format(self, record):
         log_entry = {
             "timestamp": datetime.fromtimestamp(record.created).isoformat(),
@@ -49,6 +93,14 @@ class JSONFormatter(logging.Formatter):
             "function": record.funcName,
             "line": record.lineno,
         }
+
+        # プラットフォーム情報を追加
+        if self.include_platform_info:
+            log_entry["platform"] = self._get_platform_info()
+
+        # コンテキスト情報を追加
+        if hasattr(record, "context") and record.context:
+            log_entry["context"] = record.context
 
         if record.exc_info:
             log_entry["exception"] = self.formatException(record.exc_info)

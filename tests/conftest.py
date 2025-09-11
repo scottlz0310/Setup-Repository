@@ -1,17 +1,15 @@
 """
-プロジェクト共通のpytestフィクスチャとテスト設定
+テスト共通設定とフィクスチャ
 
-このファイルには、全テストで共通して使用されるフィクスチャと
-テスト環境の設定を定義します。
+このモジュールは全テストで共有される設定とフィクスチャを提供します。
 """
 
-import json
 import os
 import tempfile
 from collections.abc import Generator
 from pathlib import Path
 from typing import Any
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -19,236 +17,409 @@ import pytest
 @pytest.fixture
 def temp_dir() -> Generator[Path, None, None]:
     """一時ディレクトリを作成するフィクスチャ"""
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        yield Path(tmp_dir)
+    with tempfile.TemporaryDirectory() as temp_dir_str:
+        yield Path(temp_dir_str)
 
 
 @pytest.fixture
-def temp_config_dir(temp_dir: Path) -> Path:
-    """一時的な設定ディレクトリを作成するフィクスチャ"""
-    config_dir = temp_dir / "config"
-    config_dir.mkdir(parents=True, exist_ok=True)
-    return config_dir
+def mock_env() -> Generator[dict[str, str], None, None]:
+    """環境変数をモックするフィクスチャ"""
+    original_env = os.environ.copy()
+    try:
+        os.environ.clear()
+        yield os.environ
+    finally:
+        os.environ.clear()
+        os.environ.update(original_env)
 
 
+class PlatformMocker:
+    """プラットフォーム固有の動作をモックするためのヘルパークラス"""
+
+    # サポートされているプラットフォーム
+    SUPPORTED_PLATFORMS = ["windows", "linux", "macos", "wsl"]
+
+    # プラットフォーム固有の設定
+    PLATFORM_CONFIGS = {
+        "windows": {
+            "system": "Windows",
+            "os_name": "nt",
+            "release": "10.0.19041",
+            "fcntl_available": False,
+            "msvcrt_available": True,
+            "path_separator": "\\",
+        },
+        "linux": {
+            "system": "Linux",
+            "os_name": "posix",
+            "release": "5.4.0-generic",
+            "fcntl_available": True,
+            "msvcrt_available": False,
+            "path_separator": "/",
+        },
+        "macos": {
+            "system": "Darwin",
+            "os_name": "posix",
+            "release": "21.0.0",
+            "fcntl_available": True,
+            "msvcrt_available": False,
+            "path_separator": "/",
+        },
+        "wsl": {
+            "system": "Linux",
+            "os_name": "posix",
+            "release": "5.4.0-microsoft-standard-WSL2",
+            "fcntl_available": True,
+            "msvcrt_available": False,
+            "path_separator": "/",
+        },
+    }
+
+    def __init__(self, platform: str):
+        """
+        プラットフォームモッカーを初期化
+
+        Args:
+            platform: モックするプラットフォーム名
+        """
+        if platform not in self.SUPPORTED_PLATFORMS:
+            raise ValueError(
+                f"Unsupported platform: {platform}. "
+                f"Supported: {self.SUPPORTED_PLATFORMS}"
+            )
+
+        self.platform = platform
+        self.config = self.PLATFORM_CONFIGS[platform]
+        self.patches = []
+
+    def __enter__(self):
+        """コンテキストマネージャーの開始"""
+        # platform.system()のモック
+        system_patch = patch("platform.system", return_value=self.config["system"])
+        self.patches.append(system_patch)
+        system_patch.start()
+
+        # platform.release()のモック
+        release_patch = patch("platform.release", return_value=self.config["release"])
+        self.patches.append(release_patch)
+        release_patch.start()
+
+        # os.nameのモック（Windowsの場合はパスライブラリの問題を回避）
+        if self.platform != "windows":
+            os_name_patch = patch("os.name", self.config["os_name"])
+            self.patches.append(os_name_patch)
+            os_name_patch.start()
+
+        # モジュール可用性フラグのモック
+        fcntl_patch = patch(
+            "src.setup_repo.utils.FCNTL_AVAILABLE", self.config["fcntl_available"]
+        )
+        self.patches.append(fcntl_patch)
+        fcntl_patch.start()
+
+        msvcrt_patch = patch(
+            "src.setup_repo.utils.MSVCRT_AVAILABLE", self.config["msvcrt_available"]
+        )
+        self.patches.append(msvcrt_patch)
+        msvcrt_patch.start()
+
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """コンテキストマネージャーの終了"""
+        for patch_obj in reversed(self.patches):
+            patch_obj.stop()
+        self.patches.clear()
+
+    def get_expected_lock_implementation_type(self) -> str:
+        """期待されるロック実装タイプを取得"""
+        if self.platform == "windows":
+            return "WindowsLockImplementation"
+        elif self.platform in ["linux", "macos", "wsl"]:
+            return "UnixLockImplementation"
+        else:
+            return "FallbackLockImplementation"
+
+    def is_unix_like(self) -> bool:
+        """Unix系プラットフォームかどうかを判定"""
+        return self.platform in ["linux", "macos", "wsl"]
+
+    def supports_fcntl(self) -> bool:
+        """fcntlモジュールをサポートするかどうかを判定"""
+        return self.config["fcntl_available"]
+
+    def supports_msvcrt(self) -> bool:
+        """msvcrtモジュールをサポートするかどうかを判定"""
+        return self.config["msvcrt_available"]
+
+
+@pytest.fixture
+def platform_mocker():
+    """プラットフォームモッカーのファクトリフィクスチャ"""
+
+    def _create_mocker(platform: str) -> PlatformMocker:
+        return PlatformMocker(platform)
+
+    return _create_mocker
+
+
+class ModuleAvailabilityMocker:
+    """モジュール可用性をモックするためのヘルパークラス"""
+
+    def __init__(self, fcntl_available: bool = True, msvcrt_available: bool = True):
+        """
+        モジュール可用性モッカーを初期化
+
+        Args:
+            fcntl_available: fcntlモジュールが利用可能かどうか
+            msvcrt_available: msvcrtモジュールが利用可能かどうか
+        """
+        self.fcntl_available = fcntl_available
+        self.msvcrt_available = msvcrt_available
+        self.patches = []
+
+    def __enter__(self):
+        """コンテキストマネージャーの開始"""
+        # モジュール可用性フラグのモック
+        fcntl_patch = patch(
+            "src.setup_repo.utils.FCNTL_AVAILABLE", self.fcntl_available
+        )
+        self.patches.append(fcntl_patch)
+        fcntl_patch.start()
+
+        msvcrt_patch = patch(
+            "src.setup_repo.utils.MSVCRT_AVAILABLE", self.msvcrt_available
+        )
+        self.patches.append(msvcrt_patch)
+        msvcrt_patch.start()
+
+        # 実際のモジュールインポートのモック（必要に応じて）
+        if not self.fcntl_available:
+            # fcntlモジュールが利用できない場合のモック
+            fcntl_import_patch = patch.dict("sys.modules", {"fcntl": None})
+            self.patches.append(fcntl_import_patch)
+            fcntl_import_patch.start()
+
+        if not self.msvcrt_available:
+            # msvcrtモジュールが利用できない場合のモック
+            msvcrt_import_patch = patch.dict("sys.modules", {"msvcrt": None})
+            self.patches.append(msvcrt_import_patch)
+            msvcrt_import_patch.start()
+
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """コンテキストマネージャーの終了"""
+        for patch_obj in reversed(self.patches):
+            patch_obj.stop()
+        self.patches.clear()
+
+
+@pytest.fixture
+def module_availability_mocker():
+    """モジュール可用性モッカーのファクトリフィクスチャ"""
+
+    def _create_mocker(
+        fcntl_available: bool = True, msvcrt_available: bool = True
+    ) -> ModuleAvailabilityMocker:
+        return ModuleAvailabilityMocker(fcntl_available, msvcrt_available)
+
+    return _create_mocker
+
+
+class CrossPlatformTestHelper:
+    """クロスプラットフォームテストを支援するヘルパークラス"""
+
+    @staticmethod
+    def run_on_all_platforms(test_func, platform_mocker_factory, *args, **kwargs):
+        """
+        全プラットフォームでテスト関数を実行
+
+        Args:
+            test_func: 実行するテスト関数
+            platform_mocker_factory: プラットフォームモッカーファクトリ
+            *args: テスト関数に渡す引数
+            **kwargs: テスト関数に渡すキーワード引数
+        """
+        results = {}
+        for platform in PlatformMocker.SUPPORTED_PLATFORMS:
+            with platform_mocker_factory(platform):
+                try:
+                    result = test_func(platform, *args, **kwargs)
+                    results[platform] = {"success": True, "result": result}
+                except Exception as e:
+                    results[platform] = {"success": False, "error": str(e)}
+        return results
+
+    @staticmethod
+    def assert_consistent_behavior(
+        results: dict[str, dict[str, Any]], expected_behavior: str = "success"
+    ):
+        """
+        全プラットフォームで一貫した動作を確認
+
+        Args:
+            results: run_on_all_platformsの結果
+            expected_behavior: 期待される動作（"success" または "failure"）
+        """
+        for platform, result in results.items():
+            if expected_behavior == "success":
+                assert result["success"], (
+                    f"Platform {platform} failed: "
+                    f"{result.get('error', 'Unknown error')}"
+                )
+            elif expected_behavior == "failure":
+                assert not result["success"], (
+                    f"Platform {platform} should have failed but succeeded"
+                )
+
+
+@pytest.fixture
+def cross_platform_helper():
+    """クロスプラットフォームテストヘルパーのフィクスチャ"""
+    return CrossPlatformTestHelper()
+
+
+# プラットフォーム固有のテストマーカー
+pytest.mark.windows = pytest.mark.parametrize("platform", ["windows"])
+pytest.mark.linux = pytest.mark.parametrize("platform", ["linux"])
+pytest.mark.macos = pytest.mark.parametrize("platform", ["macos"])
+pytest.mark.wsl = pytest.mark.parametrize("platform", ["wsl"])
+pytest.mark.unix_like = pytest.mark.parametrize("platform", ["linux", "macos", "wsl"])
+pytest.mark.all_platforms = pytest.mark.parametrize(
+    "platform", PlatformMocker.SUPPORTED_PLATFORMS
+)
+
+
+# テスト環境の設定
+def pytest_configure(config):
+    """pytest設定の初期化"""
+    # カスタムマーカーの登録
+    config.addinivalue_line("markers", "unit: 単体テスト")
+    config.addinivalue_line("markers", "integration: 統合テスト")
+    config.addinivalue_line("markers", "cross_platform: クロスプラットフォームテスト")
+    config.addinivalue_line("markers", "windows: Windows固有テスト")
+    config.addinivalue_line("markers", "linux: Linux固有テスト")
+    config.addinivalue_line("markers", "macos: macOS固有テスト")
+    config.addinivalue_line("markers", "wsl: WSL固有テスト")
+    config.addinivalue_line("markers", "unix_like: Unix系プラットフォームテスト")
+    config.addinivalue_line("markers", "all_platforms: 全プラットフォームテスト")
+
+
+# 統合テスト用フィクスチャ
 @pytest.fixture
 def sample_config() -> dict[str, Any]:
-    """サンプル設定データを提供するフィクスチャ"""
+    """統合テスト用のサンプル設定"""
     return {
-        "github_token": "test_token_12345",
-        "github_username": "test_user",
-        "clone_destination": "/tmp/test_repos",
-        "auto_install_dependencies": True,
-        "setup_vscode": True,
-        "platform_specific_setup": True,
-        "dry_run": False,
-        "verbose": True,
+        "github": {"username": "test_user", "token": "test_token_123"},
+        "repositories": {
+            "base_path": "/tmp/test_repos",
+            "include_forks": False,
+            "include_private": True,
+        },
+        "platform": {"detected": "linux", "package_manager": "apt"},
+        "logging": {"level": "INFO", "file": "/tmp/test.log"},
     }
 
 
 @pytest.fixture
-def config_file(temp_config_dir: Path, sample_config: dict[str, Any]) -> Path:
-    """一時的な設定ファイルを作成するフィクスチャ"""
-    config_file = temp_config_dir / "config.local.json"
-    with open(config_file, "w", encoding="utf-8") as f:
-        json.dump(sample_config, f, indent=2, ensure_ascii=False)
-    return config_file
+def config_file(temp_dir: Path, sample_config: dict[str, Any]) -> Path:
+    """設定ファイルのフィクスチャ"""
+    import json
+
+    config_path = temp_dir / "config.json"
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(sample_config, f, indent=2)
+    return config_path
 
 
 @pytest.fixture
-def mock_github_api() -> Mock:
-    """GitHub APIのモックを提供するフィクスチャ"""
-    mock = Mock()
+def mock_github_api():
+    """GitHub APIのモックフィクスチャ"""
+    mock_api = MagicMock()
 
-    # サンプルリポジトリデータ
-    mock.get_user_repos.return_value = [
+    # ユーザー情報のモック
+    mock_api.get_user_info.return_value = {
+        "login": "test_user",
+        "name": "Test User",
+        "public_repos": 10,
+        "private_repos": 5,
+    }
+
+    # リポジトリ一覧のモック
+    mock_api.get_user_repos.return_value = [
         {
             "name": "test-repo-1",
             "full_name": "test_user/test-repo-1",
             "clone_url": "https://github.com/test_user/test-repo-1.git",
-            "ssh_url": "git@github.com:test_user/test-repo-1.git",
-            "description": "テストリポジトリ1",
             "private": False,
-            "default_branch": "main",
+            "fork": False,
         },
         {
             "name": "test-repo-2",
             "full_name": "test_user/test-repo-2",
             "clone_url": "https://github.com/test_user/test-repo-2.git",
-            "ssh_url": "git@github.com:test_user/test-repo-2.git",
-            "description": "テストリポジトリ2",
             "private": True,
-            "default_branch": "master",
+            "fork": False,
         },
     ]
 
-    mock.get_user_info.return_value = {
-        "login": "test_user",
-        "name": "Test User",
-        "email": "test@example.com",
+    return mock_api
+
+
+@pytest.fixture
+def mock_git_operations():
+    """Git操作のモックフィクスチャ"""
+    mock_git = MagicMock()
+
+    # Git操作の成功を模擬
+    mock_git.clone_repository.return_value = True
+    mock_git.pull_repository.return_value = True
+    mock_git.get_repository_status.return_value = {
+        "clean": True,
+        "ahead": 0,
+        "behind": 0,
     }
 
-    return mock
+    return mock_git
 
 
 @pytest.fixture
-def mock_git_operations() -> Mock:
-    """Git操作のモックを提供するフィクスチャ"""
-    mock = Mock()
-
-    # 成功時の戻り値を設定
-    mock.clone_repository.return_value = True
-    mock.pull_repository.return_value = True
-    mock.is_git_repository.return_value = True
-    mock.get_current_branch.return_value = "main"
-    mock.get_remote_url.return_value = "https://github.com/test_user/test-repo.git"
-
-    return mock
+def mock_platform_detector():
+    """プラットフォーム検出のモックフィクスチャ"""
+    mock_detector = MagicMock()
+    mock_detector.detect_platform.return_value = "linux"
+    mock_detector.get_package_manager.return_value = "apt"
+    return mock_detector
 
 
 @pytest.fixture
-def mock_platform_detector() -> Mock:
-    """プラットフォーム検出のモックを提供するフィクスチャ"""
-    mock = Mock()
+def test_lock():
+    """テスト用の一意なプロセスロックフィクスチャ"""
+    import uuid
 
-    # デフォルトでLinuxプラットフォームを返す
-    mock.detect_platform.return_value = "linux"
-    mock.is_wsl.return_value = False
-    mock.get_package_manager.return_value = "apt"
+    from src.setup_repo.utils import ProcessLock
 
-    return mock
+    # テスト用の一意なロックファイルを作成
+    test_id = uuid.uuid4().hex[:8]
+    lock = ProcessLock.create_test_lock(f"pytest-{test_id}")
 
+    yield lock
 
-@pytest.fixture
-def mock_subprocess() -> Generator[Mock, None, None]:
-    """subprocessモジュールのモックを提供するフィクスチャ"""
-    with patch("subprocess.run") as mock_run:
-        # 成功時の戻り値を設定
-        mock_run.return_value.returncode = 0
-        mock_run.return_value.stdout = "success"
-        mock_run.return_value.stderr = ""
-        yield mock_run
-
-
-@pytest.fixture
-def mock_process_lock() -> Mock:
-    """ProcessLockのモックを提供するフィクスチャ"""
-    mock = Mock()
-    mock.acquire.return_value = True
-    mock.release.return_value = None
-    return mock
-
-
-@pytest.fixture
-def mock_file_system(temp_dir: Path) -> Generator[Path, None, None]:
-    """ファイルシステム操作用の一時ディレクトリを提供するフィクスチャ"""
-    # テスト用のディレクトリ構造を作成
-    test_repo_dir = temp_dir / "repos"
-    test_repo_dir.mkdir(parents=True, exist_ok=True)
-
-    # サンプルリポジトリディレクトリを作成
-    (test_repo_dir / "test-repo-1").mkdir()
-    (test_repo_dir / "test-repo-2").mkdir()
-
-    yield test_repo_dir
-
-
-@pytest.fixture
-def mock_environment_variables() -> Generator[None, None, None]:
-    """環境変数のモックを提供するフィクスチャ"""
-    original_env = os.environ.copy()
-
-    # テスト用環境変数を設定
-    test_env = {
-        "GITHUB_TOKEN": "test_env_token",
-        "GITHUB_USERNAME": "test_env_user",
-        "HOME": "/tmp/test_home",
-        "USERPROFILE": "C:\\Users\\TestUser",  # Windows用
-    }
-
-    os.environ.update(test_env)
-
+    # テスト後のクリーンアップ
     try:
-        yield
-    finally:
-        # 元の環境変数を復元
-        os.environ.clear()
-        os.environ.update(original_env)
+        if lock.lock_fd is not None:
+            lock.release()
+        if lock.lock_file.exists():
+            lock.lock_file.unlink()
+    except Exception:
+        pass  # クリーンアップエラーは無視
 
 
-@pytest.fixture
-def capture_logs(caplog: pytest.LogCaptureFixture) -> pytest.LogCaptureFixture:
-    """ログキャプチャを設定するフィクスチャ"""
-    caplog.set_level("DEBUG")
-    return caplog
-
-
-# テストマーカーの設定
-def pytest_configure(config: pytest.Config) -> None:
-    """pytestの設定を行う"""
-    config.addinivalue_line("markers", "unit: 単体テストのマーカー")
-    config.addinivalue_line("markers", "integration: 統合テストのマーカー")
-    config.addinivalue_line("markers", "slow: 実行時間の長いテストのマーカー")
-
-
-# テスト実行前の共通セットアップ
+# テスト実行前の環境クリーンアップ
 @pytest.fixture(autouse=True)
-def setup_test_environment() -> Generator[None, None, None]:
-    """各テスト実行前の共通セットアップ"""
-    # テスト開始前の処理
-    original_cwd = os.getcwd()
-
-    # ロックファイルをクリーンアップ
-    lock_file = Path(tempfile.gettempdir()) / "repo-sync.lock"
-    if lock_file.exists():
-        lock_file.unlink()
-
-    try:
-        yield
-    finally:
-        # テスト終了後のクリーンアップ
-        os.chdir(original_cwd)
-
-        # ロックファイルをクリーンアップ
-        if lock_file.exists():
-            lock_file.unlink()
-
-
-# カスタムアサーション関数
-def assert_config_valid(config: dict[str, Any]) -> None:
-    """設定データの妥当性をチェックするアサーション関数"""
-    required_keys = ["github_token", "github_username", "clone_destination"]
-
-    for key in required_keys:
-        assert key in config, f"必須キー '{key}' が設定に含まれていません"
-        assert config[key], f"キー '{key}' の値が空です"
-
-
-def assert_file_exists_with_content(
-    file_path: Path, expected_content: str = None
-) -> None:
-    """ファイルの存在と内容をチェックするアサーション関数"""
-    assert file_path.exists(), f"ファイル {file_path} が存在しません"
-    assert file_path.is_file(), f"{file_path} はファイルではありません"
-
-    if expected_content is not None:
-        actual_content = file_path.read_text(encoding="utf-8")
-        assert expected_content in actual_content, (
-            "期待する内容がファイルに含まれていません"
-        )
-
-
-def assert_directory_structure(
-    base_dir: Path, expected_structure: dict[str, Any]
-) -> None:
-    """ディレクトリ構造をチェックするアサーション関数"""
-    for name, content in expected_structure.items():
-        path = base_dir / name
-
-        if isinstance(content, dict):
-            assert path.is_dir(), f"ディレクトリ {path} が存在しません"
-            assert_directory_structure(path, content)
-        else:
-            assert path.is_file(), f"ファイル {path} が存在しません"
-            if content:  # 内容が指定されている場合
-                assert_file_exists_with_content(path, content)
+def clean_test_environment():
+    """テスト実行前後の環境クリーンアップ"""
+    # テスト実行前のクリーンアップ
+    yield
+    # テスト実行後のクリーンアップ（必要に応じて）

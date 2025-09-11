@@ -69,19 +69,35 @@ class CIErrorHandler:
         """CI/CDステージエラーを処理"""
         self.errors.append(error)
 
+        # プラットフォーム固有のエラーメッセージを作成
+        from .logging_config import (
+            create_platform_specific_error_message,
+            get_platform_debug_info,
+        )
+        from .platform_detector import detect_platform
+
+        platform_info = detect_platform()
+        enhanced_error_message = create_platform_specific_error_message(
+            error, platform_info.name, context
+        )
+
         # ログに記録
         self.logger.log_ci_stage_failure(stage, error, duration)
 
-        # GitHub Actionsアノテーションを出力
+        # GitHub Actionsアノテーションを出力（プラットフォーム情報付き）
         if self.enable_github_annotations and self._is_github_actions():
-            self._output_github_annotation(
-                "error", f"Stage '{stage}' failed: {str(error)}"
+            annotation_message = (
+                f"[{platform_info.display_name}] Stage '{stage}' failed: {str(error)}"
             )
+            self._output_github_annotation("error", annotation_message)
 
-        # 詳細なエラー情報をログ
+        # 詳細なエラー情報をログ（プラットフォーム情報を含む）
+        platform_debug_info = get_platform_debug_info()
         error_context = {
             "stage": stage,
             "duration": duration,
+            "enhanced_error_message": enhanced_error_message,
+            "platform_debug_info": platform_debug_info,
             "ci_info": self.ci_info,
             "system_info": self.system_info,
             **(context or {}),
@@ -98,14 +114,41 @@ class CIErrorHandler:
         """品質チェックエラーを処理"""
         self.errors.append(error)
 
+        # プラットフォーム固有のエラーメッセージを作成
+        from .logging_config import (
+            create_platform_specific_error_message,
+            get_platform_debug_info,
+        )
+        from .platform_detector import detect_platform
+
+        platform_info = detect_platform()
+        context = {"check_type": check_type, "metrics": metrics}
+        enhanced_error_message = create_platform_specific_error_message(
+            error, platform_info.name, context
+        )
+
         # ログに記録
         self.logger.log_quality_check_failure(check_type, error, metrics)
 
-        # GitHub Actionsアノテーションを出力
+        # GitHub Actionsアノテーションを出力（プラットフォーム情報付き）
         if self.enable_github_annotations and self._is_github_actions():
-            self._output_github_annotation(
-                "error", f"Quality check '{check_type}' failed: {str(error)}"
+            annotation_message = (
+                f"[{platform_info.display_name}] Quality check '{check_type}' "
+                f"failed: {str(error)}"
             )
+            self._output_github_annotation("error", annotation_message)
+
+        # プラットフォーム固有の詳細情報をログに追加
+        platform_debug_info = get_platform_debug_info()
+        self.logger.log_error_with_context(
+            error,
+            {
+                "check_type": check_type,
+                "enhanced_error_message": enhanced_error_message,
+                "platform_debug_info": platform_debug_info,
+                "metrics": metrics,
+            },
+        )
 
         # 品質チェック固有の詳細情報
         if hasattr(error, "details") and error.details:
@@ -135,11 +178,16 @@ class CIErrorHandler:
 
     def create_comprehensive_error_report(self) -> dict[str, Any]:
         """包括的なエラーレポートを作成"""
+        from .logging_config import get_platform_debug_info
+
+        platform_debug_info = get_platform_debug_info()
+
         report: dict[str, Any] = {
             "timestamp": datetime.now().isoformat(),
             "ci_environment": self.ci_info,
             "system_info": self.system_info,
             "dependency_info": self.dependency_info,
+            "platform_debug_info": platform_debug_info,
             "total_errors": len(self.errors),
             "errors": [],
         }
@@ -156,6 +204,10 @@ class CIErrorHandler:
 
             if hasattr(error, "details"):
                 error_entry["details"] = error.details
+
+            # プラットフォーム固有のエラー情報を追加
+            if hasattr(error, "platform_context"):
+                error_entry["platform_context"] = error.platform_context
 
             report["errors"].append(error_entry)
 
@@ -189,15 +241,31 @@ class CIErrorHandler:
         if not self.errors:
             return "エラーは発生していません。"
 
+        from .logging_config import get_platform_debug_info
+        from .platform_detector import detect_platform
+
+        platform_info = detect_platform()
+        platform_debug_info = get_platform_debug_info()
+
         summary_lines = [
             f"## CI/CD失敗サマリー ({len(self.errors)}件のエラー)",
             "",
             f"**実行時刻:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            f"**プラットフォーム:** {platform_info.display_name} "
+            f"({platform_info.name})",
             f"**リポジトリ:** {self.ci_info.get('github_repository', 'unknown')}",
             f"**ブランチ:** "
             f"{self.system_info.get('git_info', {}).get('branch', 'unknown')}",
             f"**コミット:** "
             f"{self.system_info.get('git_info', {}).get('commit', 'unknown')[:8]}",
+            "",
+            "### プラットフォーム情報:",
+            f"- **シェル:** {platform_info.shell}",
+            f"- **Pythonコマンド:** {platform_info.python_cmd}",
+            f"- **システム:** {platform_debug_info['system']['platform_system']} "
+            f"{platform_debug_info['system']['platform_release']}",
+            f"- **アーキテクチャ:** "
+            f"{platform_debug_info['system']['platform_machine']}",
             "",
             "### エラー詳細:",
             "",
@@ -214,6 +282,24 @@ class CIErrorHandler:
                 summary_lines.append(
                     f"   - 詳細: {json.dumps(error.details, ensure_ascii=False)}"
                 )
+
+            # プラットフォーム固有の推奨事項を追加
+            if "fcntl" in str(error).lower() and platform_info.name == "windows":
+                summary_lines.append(
+                    "   - **推奨事項:** Windows環境では msvcrt モジュールを"
+                    "使用してください"
+                )
+            elif "command not found" in str(error).lower():
+                if platform_info.name == "macos":
+                    summary_lines.append(
+                        "   - **推奨事項:** `brew install <tool>` で"
+                        "ツールをインストールしてください"
+                    )
+                elif platform_info.name in ["linux", "wsl"]:
+                    summary_lines.append(
+                        "   - **推奨事項:** `sudo apt install <tool>` または "
+                        "`sudo snap install <tool>` でツールをインストールしてください"
+                    )
 
             summary_lines.append("")
 

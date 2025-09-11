@@ -41,6 +41,41 @@ def main():
         error_handler.logger.info("CI/CD品質チェックを開始します")
         start_time = time.time()
 
+        # プラットフォーム診断を実行
+        from setup_repo.platform_detector import PlatformDetector
+
+        detector = PlatformDetector()
+        if detector.is_ci_environment():
+            error_handler.logger.info("CI環境でのプラットフォーム診断を実行します")
+            diagnosis = detector.diagnose_issues()
+
+            # 診断結果をログ出力
+            platform_info = detector.get_platform_info()
+            platform_name = platform_info.display_name
+            error_handler.logger.info(f"検出されたプラットフォーム: {platform_name}")
+
+            # パッケージマネージャーの状態をチェック
+            available_managers = [
+                m
+                for m, info in diagnosis["package_managers"].items()
+                if info["available"]
+            ]
+
+            if available_managers:
+                managers_list = ", ".join(available_managers)
+                error_handler.logger.info(
+                    f"利用可能なパッケージマネージャー: {managers_list}"
+                )
+            else:
+                error_handler.logger.warning(
+                    "利用可能なパッケージマネージャーが見つかりません"
+                )
+
+            # PATH関連の問題があれば警告
+            if diagnosis["path_issues"]:
+                for issue in diagnosis["path_issues"]:
+                    error_handler.logger.warning(f"PATH問題: {issue}")
+
         # 品質メトリクス収集を実行
         collector = QualityMetricsCollector(
             project_root=project_root, logger=error_handler.logger

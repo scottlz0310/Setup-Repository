@@ -28,17 +28,33 @@ jobs:
 
     - name: Install uv (Unix)
       if: runner.os != 'Windows'
-      run: curl -LsSf https://astral.sh/uv/install.sh | sh
+      run: |
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
-    - name: Install uv (Windows)
+    - name: Install and setup uv (Windows)
       if: runner.os == 'Windows'
-      run: irm https://astral.sh/uv/install.ps1 | iex
+      run: |
+        # Windows用のuv設定スクリプトを実行
+        .\scripts\windows-uv-setup.ps1 -Verbose
       shell: powershell
 
-    - name: Add uv to PATH (Windows)
-      if: runner.os == 'Windows'
-      run: echo "$env:USERPROFILE\.cargo\bin" >> $env:GITHUB_PATH
+    - name: Verify uv installation and PATH
+      run: |
+        echo "PATH verification:"
+        echo $env:PATH
+        uv --version
+        echo "uv installation verified successfully"
       shell: powershell
+      if: runner.os == 'Windows'
+
+    - name: Verify uv installation (Unix)
+      if: runner.os != 'Windows'
+      run: |
+        echo "PATH verification:"
+        echo $PATH
+        uv --version
+        echo "uv installation verified successfully"
 
     - name: Set up Python ${{ matrix.python-version }}
       run: uv python install ${{ matrix.python-version }}

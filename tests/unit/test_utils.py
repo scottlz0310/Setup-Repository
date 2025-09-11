@@ -10,11 +10,11 @@ utils.pyモジュールの包括的な単体テスト
 import sys
 from io import StringIO
 from pathlib import Path
-from unittest.mock import mock_open, patch
+from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 
-from src.setup_repo.platform_detector import PlatformDetector
+from src.setup_repo.platform_detector import PlatformDetector, PlatformInfo
 from src.setup_repo.utils import ProcessLock, TeeLogger
 
 
@@ -154,6 +154,479 @@ class TestProcessLock:
             lock.release()
             assert lock.lock_fd is None
             mock_close.assert_called_once_with(original_fd)
+
+
+@pytest.mark.unit
+@pytest.mark.cross_platform
+class TestProcessLockCrossPlatform:
+    """ProcessLockのクロスプラットフォームテスト"""
+
+    @pytest.mark.all_platforms
+    def test_lock_implementation_selection_by_platform(
+        self, temp_dir: Path, platform: str, platform_mocker
+    ) -> None:
+        """プラットフォーム別ロック実装選択テスト"""
+        lock_file = temp_dir / "test.lock"
+
+        with platform_mocker(platform):
+            lock = ProcessLock(str(lock_file))
+
+            # 期待される実装タイプを取得
+            mocker = platform_mocker(platform)
+            expected_type = mocker.get_expected_lock_implementation_type()
+
+            # 実装タイプを確認
+            if expected_type == "WindowsLockImplementation":
+                from src.setup_repo.utils import WindowsLockImplementation
+
+                assert isinstance(lock.lock_implementation, WindowsLockImplementation)
+            elif expected_type == "UnixLockImplementation":
+                from src.setup_repo.utils import UnixLockImplementation
+
+                assert isinstance(lock.lock_implementation, UnixLockImplementation)
+            else:
+                from src.setup_repo.utils import FallbackLockImplementation
+
+                assert isinstance(lock.lock_implementation, FallbackLockImplementation)
+
+    def test_windows_lock_implementation_selection(
+        self, temp_dir: Path, platform_mocker
+    ) -> None:
+        """Windows環境でのロック実装選択テスト"""
+        lock_file = temp_dir / "test.lock"
+
+        with platform_mocker("windows"):
+            lock = ProcessLock(str(lock_file))
+
+            # Windows実装が選択されることを確認
+            from src.setup_repo.utils import WindowsLockImplementation
+
+            assert isinstance(lock.lock_implementation, WindowsLockImplementation)
+
+    def test_unix_lock_implementation_selection(
+        self, temp_dir: Path, platform_mocker
+    ) -> None:
+        """Unix環境でのロック実装選択テスト"""
+        lock_file = temp_dir / "test.lock"
+
+        with platform_mocker("linux"):
+            lock = ProcessLock(str(lock_file))
+
+            # Unix実装が選択されることを確認
+            from src.setup_repo.utils import UnixLockImplementation
+
+            assert isinstance(lock.lock_implementation, UnixLockImplementation)
+
+    def test_macos_lock_implementation_selection(
+        self, temp_dir: Path, platform_mocker
+    ) -> None:
+        """macOS環境でのロック実装選択テスト"""
+        lock_file = temp_dir / "test.lock"
+
+        with platform_mocker("macos"):
+            lock = ProcessLock(str(lock_file))
+
+            # Unix実装が選択されることを確認（macOSはUnix系）
+            from src.setup_repo.utils import UnixLockImplementation
+
+            assert isinstance(lock.lock_implementation, UnixLockImplementation)
+
+    def test_wsl_lock_implementation_selection(
+        self, temp_dir: Path, platform_mocker
+    ) -> None:
+        """WSL環境でのロック実装選択テスト"""
+        lock_file = temp_dir / "test.lock"
+
+        with platform_mocker("wsl"):
+            lock = ProcessLock(str(lock_file))
+
+            # Unix実装が選択されることを確認（WSLはLinuxベース）
+            from src.setup_repo.utils import UnixLockImplementation
+
+            assert isinstance(lock.lock_implementation, UnixLockImplementation)
+
+    def test_fallback_lock_implementation_selection(
+        self, temp_dir: Path, module_availability_mocker
+    ) -> None:
+        """フォールバック実装選択テスト"""
+        lock_file = temp_dir / "test.lock"
+
+        with (
+            patch("platform.system", return_value="UnknownOS"),
+            module_availability_mocker(fcntl_available=False, msvcrt_available=False),
+        ):
+            lock = ProcessLock(str(lock_file))
+
+            # フォールバック実装が選択されることを確認
+            from src.setup_repo.utils import FallbackLockImplementation
+
+            assert isinstance(lock.lock_implementation, FallbackLockImplementation)
+
+    def test_windows_lock_acquire_success(
+        self, temp_dir: Path, platform_mocker
+    ) -> None:
+        """Windows実装でのロック取得成功テスト"""
+        lock_file = temp_dir / "test.lock"
+
+        with (
+            platform_mocker("windows"),
+            patch("os.open") as mock_open,
+            patch("os.close"),
+        ):
+            mock_open.return_value = 123
+
+            # WindowsLockImplementationのacquireメソッドをモック
+            with patch.object(ProcessLock, "_get_lock_implementation") as mock_get_impl:
+                mock_impl = MagicMock()
+                mock_impl.acquire.return_value = True
+                mock_get_impl.return_value = mock_impl
+
+                lock = ProcessLock(str(lock_file))
+                result = lock.acquire()
+
+                assert result is True
+                assert lock.lock_fd == 123
+                mock_impl.acquire.assert_called_once_with(123)
+
+                # クリーンアップ
+                lock.release()
+
+    def test_windows_lock_acquire_failure(
+        self, temp_dir: Path, platform_mocker
+    ) -> None:
+        """Windows実装でのロック取得失敗テスト"""
+        lock_file = temp_dir / "test.lock"
+
+        with (
+            platform_mocker("windows"),
+            patch("os.open") as mock_open,
+            patch("os.close") as mock_close,
+        ):
+            mock_open.return_value = 123
+
+            # WindowsLockImplementationのacquireメソッドをモック（失敗）
+            with patch.object(ProcessLock, "_get_lock_implementation") as mock_get_impl:
+                mock_impl = MagicMock()
+                mock_impl.acquire.return_value = False
+                mock_get_impl.return_value = mock_impl
+
+                lock = ProcessLock(str(lock_file))
+                result = lock.acquire()
+
+                assert result is False
+                assert lock.lock_fd is None
+                mock_close.assert_called_once_with(123)
+
+    def test_unix_lock_acquire_success(self, temp_dir: Path, platform_mocker) -> None:
+        """Unix実装でのロック取得成功テスト"""
+        lock_file = temp_dir / "test.lock"
+
+        with (
+            platform_mocker("linux"),
+            patch("os.open") as mock_open,
+            patch("fcntl.flock") as mock_flock,
+            patch("os.close"),
+        ):
+            mock_open.return_value = 123
+            mock_flock.return_value = None  # 成功
+
+            lock = ProcessLock(str(lock_file))
+            result = lock.acquire()
+
+            assert result is True
+            assert lock.lock_fd == 123
+            mock_flock.assert_called_once()
+
+            # クリーンアップ
+            lock.release()
+
+    def test_unix_lock_acquire_failure(self, temp_dir: Path, platform_mocker) -> None:
+        """Unix実装でのロック取得失敗テスト"""
+        lock_file = temp_dir / "test.lock"
+
+        with (
+            platform_mocker("linux"),
+            patch("os.open") as mock_open,
+            patch("fcntl.flock") as mock_flock,
+            patch("os.close") as mock_close,
+        ):
+            mock_open.return_value = 123
+            mock_flock.side_effect = OSError("Resource temporarily unavailable")
+
+            lock = ProcessLock(str(lock_file))
+            result = lock.acquire()
+
+            assert result is False
+            assert lock.lock_fd is None
+            mock_close.assert_called_once_with(123)
+
+    def test_fallback_lock_acquire_always_succeeds(
+        self, temp_dir: Path, module_availability_mocker
+    ) -> None:
+        """フォールバック実装でのロック取得は常に成功することをテスト"""
+        lock_file = temp_dir / "test.lock"
+
+        with (
+            patch("platform.system", return_value="UnknownOS"),
+            module_availability_mocker(fcntl_available=False, msvcrt_available=False),
+            patch("os.open") as mock_open,
+        ):
+            mock_open.return_value = 123
+
+            lock = ProcessLock(str(lock_file))
+            result = lock.acquire()
+
+            assert result is True
+            assert lock.lock_fd == 123
+
+            # クリーンアップ
+            lock.release()
+
+    def test_windows_lock_release(self, temp_dir: Path, platform_mocker) -> None:
+        """Windows実装でのロック解放テスト"""
+        lock_file = temp_dir / "test.lock"
+
+        with (
+            platform_mocker("windows"),
+            patch("os.open") as mock_open,
+            patch("os.close") as mock_close,
+            patch("pathlib.Path.unlink"),
+        ):
+            mock_open.return_value = 123
+
+            # WindowsLockImplementationをモック
+            with patch.object(ProcessLock, "_get_lock_implementation") as mock_get_impl:
+                mock_impl = MagicMock()
+                mock_impl.acquire.return_value = True
+                mock_get_impl.return_value = mock_impl
+
+                lock = ProcessLock(str(lock_file))
+                lock.acquire()
+
+                # ロック解放
+                lock.release()
+
+                # releaseメソッドが呼ばれることを確認
+                mock_impl.release.assert_called_once_with(123)
+                mock_close.assert_called_with(123)
+                assert lock.lock_fd is None
+
+    def test_unix_lock_release(self, temp_dir: Path, platform_mocker) -> None:
+        """Unix実装でのロック解放テスト"""
+        lock_file = temp_dir / "test.lock"
+
+        with (
+            platform_mocker("linux"),
+            patch("os.open") as mock_open,
+            patch("fcntl.flock") as mock_flock,
+            patch("os.close") as mock_close,
+            patch("pathlib.Path.unlink"),
+        ):
+            mock_open.return_value = 123
+
+            lock = ProcessLock(str(lock_file))
+            lock.acquire()
+
+            # ロック解放
+            lock.release()
+
+            # fcntl.flockが解放用に呼ばれることを確認
+            assert mock_flock.call_count == 2  # acquire + release
+            mock_close.assert_called_with(123)
+            assert lock.lock_fd is None
+
+    def test_lock_implementation_availability_checks(self) -> None:
+        """各ロック実装の可用性チェックテスト"""
+        from src.setup_repo.utils import (
+            FallbackLockImplementation,
+            UnixLockImplementation,
+            WindowsLockImplementation,
+        )
+
+        # Unix実装の可用性テスト
+        with patch("src.setup_repo.utils.FCNTL_AVAILABLE", True):
+            unix_impl = UnixLockImplementation()
+            assert unix_impl.is_available() is True
+
+        with patch("src.setup_repo.utils.FCNTL_AVAILABLE", False):
+            unix_impl = UnixLockImplementation()
+            assert unix_impl.is_available() is False
+
+        # Windows実装の可用性テスト
+        with patch("src.setup_repo.utils.MSVCRT_AVAILABLE", True):
+            windows_impl = WindowsLockImplementation()
+            assert windows_impl.is_available() is True
+
+        with patch("src.setup_repo.utils.MSVCRT_AVAILABLE", False):
+            windows_impl = WindowsLockImplementation()
+            assert windows_impl.is_available() is False
+
+        # フォールバック実装は常に利用可能
+        fallback_impl = FallbackLockImplementation()
+        assert fallback_impl.is_available() is True
+
+    def test_wsl_detection(self, temp_dir: Path) -> None:
+        """WSL検出機能のテスト"""
+        lock_file = temp_dir / "test.lock"
+        lock = ProcessLock(str(lock_file))
+
+        # WSL環境をシミュレート
+        with patch(
+            "builtins.open",
+            mock_open(read_data="Linux version 5.4.0-microsoft-standard-WSL2"),
+        ):
+            assert lock._is_wsl() is True
+
+        # 通常のLinux環境をシミュレート
+        with patch("builtins.open", mock_open(read_data="Linux version 5.4.0-generic")):
+            assert lock._is_wsl() is False
+
+        # ファイルが存在しない場合
+        with patch("builtins.open", side_effect=FileNotFoundError):
+            assert lock._is_wsl() is False
+
+        # 権限エラーの場合
+        with patch("builtins.open", side_effect=PermissionError):
+            assert lock._is_wsl() is False
+
+    def test_concurrent_lock_access_simulation(self, temp_dir: Path) -> None:
+        """並行アクセスシナリオのシミュレーションテスト"""
+        lock_file = temp_dir / "test.lock"
+
+        # 最初のプロセスがロックを取得
+        with (
+            patch("os.open") as mock_open,
+            patch("fcntl.flock") as mock_flock,
+            patch("os.close"),
+        ):
+            mock_open.return_value = 123
+            mock_flock.return_value = None
+
+            lock1 = ProcessLock(str(lock_file))
+            result1 = lock1.acquire()
+            assert result1 is True
+
+            # 2番目のプロセスがロック取得を試行（失敗するはず）
+            mock_open.return_value = 124
+            mock_flock.side_effect = OSError("Resource temporarily unavailable")
+
+            lock2 = ProcessLock(str(lock_file))
+            result2 = lock2.acquire()
+            assert result2 is False
+
+            # 最初のプロセスがロックを解放
+            mock_flock.side_effect = None  # エラーをリセット
+            lock1.release()
+
+            # 2番目のプロセスが再度ロック取得を試行（成功するはず）
+            mock_flock.side_effect = None
+            result3 = lock2.acquire()
+            assert result3 is True
+
+            # クリーンアップ
+            lock2.release()
+
+    def test_error_conditions_and_fallback_mechanisms(
+        self, temp_dir: Path, module_availability_mocker
+    ) -> None:
+        """エラー条件とフォールバック機構のテスト"""
+        lock_file = temp_dir / "test.lock"
+
+        # プラットフォーム固有モジュールが利用できない場合のフォールバック
+        with (
+            patch("platform.system", return_value="Linux"),
+            module_availability_mocker(fcntl_available=False, msvcrt_available=False),
+        ):
+            lock = ProcessLock(str(lock_file))
+
+            # フォールバック実装が選択されることを確認
+            from src.setup_repo.utils import FallbackLockImplementation
+
+            assert isinstance(lock.lock_implementation, FallbackLockImplementation)
+
+            # フォールバック実装でもロック取得が可能
+            result = lock.acquire()
+            assert result is True
+
+            # クリーンアップ
+            lock.release()
+
+    def test_platform_specific_error_handling(
+        self, temp_dir: Path, platform_mocker
+    ) -> None:
+        """プラットフォーム固有のエラーハンドリングテスト"""
+        lock_file = temp_dir / "test.lock"
+
+        # Windows固有のエラー
+        with (
+            platform_mocker("windows"),
+            patch("os.open") as mock_open,
+            patch("os.close") as mock_close,
+        ):
+            mock_open.return_value = 123
+
+            # WindowsLockImplementationのacquireメソッドをモック（エラー）
+            with patch.object(ProcessLock, "_get_lock_implementation") as mock_get_impl:
+                mock_impl = MagicMock()
+                mock_impl.acquire.return_value = False
+                mock_get_impl.return_value = mock_impl
+
+                lock = ProcessLock(str(lock_file))
+                result = lock.acquire()
+
+                assert result is False
+                assert lock.lock_fd is None
+                mock_close.assert_called_once_with(123)
+
+        # Unix固有のエラー
+        with (
+            platform_mocker("linux"),
+            patch("os.open") as mock_open,
+            patch("fcntl.flock") as mock_flock,
+            patch("os.close") as mock_close,
+        ):
+            mock_open.return_value = 123
+            mock_flock.side_effect = OSError("Operation not permitted")
+
+            lock = ProcessLock(str(lock_file))
+            result = lock.acquire()
+
+            assert result is False
+            assert lock.lock_fd is None
+            mock_close.assert_called_once_with(123)
+
+    def test_lock_implementation_interface_compliance(self) -> None:
+        """ロック実装インターフェースの準拠性テスト"""
+        from src.setup_repo.utils import (
+            FallbackLockImplementation,
+            LockImplementation,
+            UnixLockImplementation,
+            WindowsLockImplementation,
+        )
+
+        implementations = [
+            UnixLockImplementation(),
+            WindowsLockImplementation(),
+            FallbackLockImplementation(),
+        ]
+
+        for impl in implementations:
+            # 抽象基底クラスのインスタンスであることを確認
+            assert isinstance(impl, LockImplementation)
+
+            # 必要なメソッドが実装されていることを確認
+            assert hasattr(impl, "acquire")
+            assert hasattr(impl, "release")
+            assert hasattr(impl, "is_available")
+
+            # メソッドが呼び出し可能であることを確認
+            assert callable(impl.acquire)
+            assert callable(impl.release)
+            assert callable(impl.is_available)
+
+            # is_availableメソッドがbooleanを返すことを確認
+            availability = impl.is_available()
+            assert isinstance(availability, bool)
 
 
 @pytest.mark.unit
@@ -318,65 +791,63 @@ class TestTeeLogger:
 
 
 @pytest.mark.unit
+@pytest.mark.cross_platform
 class TestDetectPlatform:
     """detect_platform関数のテスト"""
 
-    def test_detect_windows_platform(self) -> None:
-        """Windowsプラットフォーム検出のテスト"""
-        with patch("platform.system") as mock_system:
-            mock_system.return_value = "Windows"
+    @pytest.mark.all_platforms
+    def test_detect_platform_by_platform(self, platform: str, platform_mocker) -> None:
+        """プラットフォーム別検出テスト"""
+        with platform_mocker(platform):
+            detector = PlatformDetector()
+            detected_platform = detector.detect_platform()
+            assert detected_platform == platform
 
+    def test_detect_windows_platform(self, platform_mocker) -> None:
+        """Windowsプラットフォーム検出のテスト"""
+        with platform_mocker("windows"):
             detector = PlatformDetector()
             platform = detector.detect_platform()
             assert platform == "windows"
 
     def test_detect_windows_platform_by_os_name(self) -> None:
         """os.nameによるWindows検出のテスト"""
-        with patch("platform.system") as mock_system, patch("os.name", "nt"):
-            mock_system.return_value = "Linux"  # 他のシステムを返す
-
+        with patch("platform.system", return_value="Linux"), patch("os.name", "nt"):
             detector = PlatformDetector()
             platform = detector.detect_platform()
             assert platform == "windows"
 
-    def test_detect_wsl_platform(self) -> None:
+    def test_detect_wsl_platform(self, platform_mocker) -> None:
         """WSLプラットフォーム検出のテスト"""
-        with (
-            patch("platform.system") as mock_system,
-            patch("platform.release") as mock_release,
-        ):
-            mock_system.return_value = "Linux"
-            mock_release.return_value = "5.4.0-microsoft-standard-WSL2"
-
+        with platform_mocker("wsl"):
             detector = PlatformDetector()
             platform = detector.detect_platform()
             assert platform == "wsl"
 
-    def test_detect_linux_platform(self) -> None:
+    def test_detect_linux_platform(self, platform_mocker) -> None:
         """Linuxプラットフォーム検出のテスト"""
-        with (
-            patch("platform.system") as mock_system,
-            patch("platform.release") as mock_release,
-        ):
-            mock_system.return_value = "Linux"
-            mock_release.return_value = "5.4.0-generic"
-
+        with platform_mocker("linux"):
             detector = PlatformDetector()
             platform = detector.detect_platform()
             assert platform == "linux"
 
-    def test_detect_macos_platform(self) -> None:
-        """macOSプラットフォーム検出のテスト（将来の拡張用）"""
-        with (
-            patch("platform.system") as mock_system,
-            patch("platform.release") as mock_release,
-        ):
-            mock_system.return_value = "Darwin"
-            mock_release.return_value = "21.0.0"  # macOS release
-
+    def test_detect_macos_platform(self, platform_mocker) -> None:
+        """macOSプラットフォーム検出のテスト"""
+        with platform_mocker("macos"):
             detector = PlatformDetector()
             platform = detector.detect_platform()
-            assert platform == "macos"  # 正しい実装ではmacosを返す
+            assert platform == "macos"
+
+    def test_detect_macos_platform_case_insensitive(self) -> None:
+        """macOS検出の大文字小文字を区別しないテスト"""
+        with (
+            patch("platform.system", return_value="DARWIN"),  # 大文字
+            patch("platform.release", return_value="21.0.0"),
+            patch("os.name", "posix"),
+        ):
+            detector = PlatformDetector()
+            platform = detector.detect_platform()
+            assert platform == "macos"
 
     def test_detect_unknown_platform(self) -> None:
         """未知のプラットフォーム検出のテスト"""
@@ -412,6 +883,64 @@ class TestDetectPlatform:
             detector = PlatformDetector()
             platform = detector.detect_platform()
             assert platform == "wsl"
+
+    def test_detect_platform_all_supported_platforms(self) -> None:
+        """サポートされている全プラットフォームの検出テスト"""
+        test_cases = [
+            ("Windows", "windows", ""),
+            ("Linux", "linux", "5.4.0-generic"),
+            ("Linux", "wsl", "5.4.0-microsoft-standard-WSL2"),
+            ("Darwin", "macos", "21.0.0"),
+        ]
+
+        for system, expected_platform, release in test_cases:
+            with (
+                patch("platform.system") as mock_system,
+                patch("platform.release") as mock_release,
+                patch("os.name", "posix" if system != "Windows" else "nt"),
+            ):
+                mock_system.return_value = system
+                mock_release.return_value = release
+
+                detector = PlatformDetector()
+                platform = detector.detect_platform()
+                assert platform == expected_platform, (
+                    f"Failed for {system} -> {expected_platform}"
+                )
+
+    def test_detect_platform_edge_cases(self) -> None:
+        """プラットフォーム検出のエッジケーステスト"""
+        # WSLの様々なバリエーション
+        wsl_releases = [
+            "5.4.0-microsoft-standard-WSL2",
+            "4.19.128-microsoft-standard",
+            "5.10.16.3-microsoft-standard-WSL2+",
+        ]
+
+        for release in wsl_releases:
+            with (
+                patch("platform.system") as mock_system,
+                patch("platform.release") as mock_release,
+            ):
+                mock_system.return_value = "Linux"
+                mock_release.return_value = release
+
+                detector = PlatformDetector()
+                platform = detector.detect_platform()
+                assert platform == "wsl", f"Failed to detect WSL for release: {release}"
+
+    def test_detect_platform_with_os_name_fallback(self) -> None:
+        """os.nameによるフォールバック検出のテスト"""
+        with (
+            patch("platform.system") as mock_system,
+            patch("os.name", "nt"),
+        ):
+            # platform.system()が異常な値を返してもos.nameでWindowsを検出
+            mock_system.return_value = "Unknown"
+
+            detector = PlatformDetector()
+            platform = detector.detect_platform()
+            assert platform == "windows"
 
 
 @pytest.mark.unit
@@ -471,4 +1000,52 @@ class TestUtilsIntegration:
         platform2 = detector.detect_platform()
 
         assert platform1 == platform2
-        assert platform1 in ["windows", "wsl", "linux"]
+        assert platform1 in ["windows", "wsl", "linux", "macos"]
+
+    def test_platform_detection_caching(self) -> None:
+        """プラットフォーム検出のキャッシュ機能テスト"""
+        detector = PlatformDetector()
+
+        # 最初の検出
+        with patch("src.setup_repo.platform_detector.detect_platform") as mock_detect:
+            mock_detect.return_value = PlatformInfo(
+                name="linux",
+                display_name="Linux",
+                package_managers=["apt"],
+                shell="bash",
+                python_cmd="python3",
+            )
+
+            platform1 = detector.detect_platform()
+            assert platform1 == "linux"
+            assert mock_detect.call_count == 1
+
+            # 2回目の呼び出しではキャッシュが使用される
+            platform2 = detector.detect_platform()
+            assert platform2 == "linux"
+            assert (
+                mock_detect.call_count == 1
+            )  # キャッシュにより呼び出し回数は変わらない
+
+    def test_platform_detection_valid_platforms_only(self) -> None:
+        """有効なプラットフォームのみが返されることをテスト"""
+        valid_platforms = ["windows", "wsl", "linux", "macos"]
+
+        # 様々なシステム値をテスト
+        test_systems = ["Windows", "Linux", "Darwin", "FreeBSD", "Unknown"]
+
+        for system in test_systems:
+            with (
+                patch("platform.system") as mock_system,
+                patch("platform.release") as mock_release,
+                patch("os.name", "posix"),
+            ):
+                mock_system.return_value = system
+                mock_release.return_value = "generic-release"
+
+                detector = PlatformDetector()
+                platform = detector.detect_platform()
+
+                assert platform in valid_platforms, (
+                    f"Invalid platform returned: {platform} for system: {system}"
+                )

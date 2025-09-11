@@ -63,12 +63,15 @@ class RotatingFileHandler(logging.handlers.RotatingFileHandler):
 class ColoredConsoleHandler(logging.StreamHandler):
     """色付きコンソール出力ハンドラー"""
 
-    def __init__(self, stream: Optional[TextIO] = None):
+    def __init__(
+        self, stream: Optional[TextIO] = None, include_platform_info: bool = False
+    ):
         super().__init__(stream or sys.stdout)
         self.setFormatter(
             ColoredFormatter(
                 "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
                 datefmt="%Y-%m-%d %H:%M:%S",
+                include_platform_info=include_platform_info,
             )
         )
 
@@ -76,6 +79,7 @@ class ColoredConsoleHandler(logging.StreamHandler):
 def create_file_handler(
     log_file: Path,
     enable_json_format: bool = False,
+    include_platform_info: bool = True,
     max_bytes: int = 10 * 1024 * 1024,
     backup_count: int = 5,
 ) -> logging.Handler:
@@ -87,7 +91,9 @@ def create_file_handler(
     )
 
     if enable_json_format:
-        formatter: logging.Formatter = JSONFormatter()
+        formatter: logging.Formatter = JSONFormatter(
+            include_platform_info=include_platform_info
+        )
     else:
         formatter = logging.Formatter(
             "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -101,17 +107,21 @@ def create_file_handler(
 def create_console_handler(
     enable_json_format: bool = False,
     enable_colors: bool = True,
+    include_platform_info: bool = False,
     stream: Optional[TextIO] = None,
 ) -> logging.Handler:
     """コンソールハンドラーを作成"""
     handler = logging.StreamHandler(stream or sys.stdout)
 
     if enable_json_format:
-        formatter: logging.Formatter = JSONFormatter()
+        formatter: logging.Formatter = JSONFormatter(
+            include_platform_info=include_platform_info
+        )
     elif enable_colors:
         formatter = ColoredFormatter(
             "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S",
+            include_platform_info=include_platform_info,
         )
     else:
         formatter = logging.Formatter(
@@ -136,6 +146,7 @@ def create_ci_handler(enable_json_format: bool = True) -> logging.Handler:
     return create_console_handler(
         enable_json_format=enable_json_format,
         enable_colors=False,  # CI環境では色を無効化
+        include_platform_info=True,  # CI環境ではプラットフォーム情報を含める
         stream=sys.stdout,
     )
 
@@ -145,12 +156,14 @@ def create_development_handler(log_file: Optional[Path] = None) -> logging.Handl
     console_handler = create_console_handler(
         enable_json_format=False,
         enable_colors=True,
+        include_platform_info=True,  # 開発環境ではプラットフォーム情報を含める
     )
 
     if log_file:
         file_handler = create_file_handler(
             log_file=log_file,
             enable_json_format=False,
+            include_platform_info=True,
         )
         return create_tee_handler(console_handler, file_handler)
     else:
