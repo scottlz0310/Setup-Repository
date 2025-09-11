@@ -19,8 +19,8 @@ class TestSyncPerformance:
         start_time = time.time()
 
         # モックを使用して実際のGit操作を回避
-        with patch("src.setup_repo.git_operations.clone_repository") as mock_clone:
-            mock_clone.return_value = True
+        with patch("src.setup_repo.git_operations.sync_repository") as mock_sync:
+            mock_sync.return_value = True
 
             # 小規模テスト（5リポジトリ）
             test_repos = [f"test-repo-{i}" for i in range(5)]
@@ -39,8 +39,8 @@ class TestSyncPerformance:
         """中規模リポジトリセットの同期パフォーマンステスト"""
         start_time = time.time()
 
-        with patch("src.setup_repo.git_operations.clone_repository") as mock_clone:
-            mock_clone.return_value = True
+        with patch("src.setup_repo.git_operations.sync_repository") as mock_sync:
+            mock_sync.return_value = True
 
             # 中規模テスト（20リポジトリ）
             test_repos = [f"test-repo-{i}" for i in range(20)]
@@ -59,8 +59,8 @@ class TestSyncPerformance:
         """大規模リポジトリセットの同期パフォーマンステスト"""
         start_time = time.time()
 
-        with patch("src.setup_repo.git_operations.clone_repository") as mock_clone:
-            mock_clone.return_value = True
+        with patch("src.setup_repo.git_operations.sync_repository") as mock_sync:
+            mock_sync.return_value = True
 
             # 大規模テスト（100リポジトリ）
             test_repos = [f"test-repo-{i}" for i in range(100)]

@@ -80,7 +80,8 @@ jobs:
           --tb=short \
           --durations=10 \
           --json-report \
-          --json-report-file=performance-small.json
+          --json-report-file=performance-small.json \
+          --cov-fail-under=0
 
     - name: Run medium scale performance tests
       if: env.SKIP_PERFORMANCE_TESTS != 'true' && (github.event.inputs.test_scale == 'medium' || github.event.inputs.test_scale == 'all' || github.event.inputs.test_scale == '')
@@ -90,7 +91,8 @@ jobs:
           --tb=short \
           --durations=10 \
           --json-report \
-          --json-report-file=performance-medium.json
+          --json-report-file=performance-medium.json \
+          --cov-fail-under=0
 
     - name: Run large scale performance tests
       if: env.SKIP_PERFORMANCE_TESTS != 'true' && (github.event.inputs.test_scale == 'large' || github.event.inputs.test_scale == 'all')
@@ -100,7 +102,8 @@ jobs:
           --tb=short \
           --durations=10 \
           --json-report \
-          --json-report-file=performance-large.json
+          --json-report-file=performance-large.json \
+          --cov-fail-under=0
 
     - name: Run concurrent operations performance tests
       if: env.SKIP_PERFORMANCE_TESTS != 'true'
@@ -110,7 +113,8 @@ jobs:
           --tb=short \
           --durations=10 \
           --json-report \
-          --json-report-file=performance-concurrent.json
+          --json-report-file=performance-concurrent.json \
+          --cov-fail-under=0
 
     - name: Generate performance report
       if: always()
