@@ -44,24 +44,49 @@ def detect_platform() -> PlatformInfo:
             shell=shell,
             python_cmd="python",
         )
-    elif "microsoft" in platform.release().lower() or os.path.exists("/proc/version"):
-        # WSL環境の詳細検出
-        try:
-            with open("/proc/version", encoding="utf-8") as f:
-                version_info = f.read().lower()
-                if "microsoft" in version_info or "wsl" in version_info:
-                    return PlatformInfo(
-                        name="wsl",
-                        display_name="WSL (Windows Subsystem for Linux)"
-                        + (" (CI)" if is_ci else ""),
-                        package_managers=["apt", "snap", "curl"],
-                        shell="bash",
-                        python_cmd="python3",
-                    )
-        except (FileNotFoundError, PermissionError):
-            pass
+    elif system == "linux":
+        # Linux環境でWSLをチェック
+        is_wsl = False
+        
+        # 方法1: platform.release()でMicrosoftをチェック
+        if "microsoft" in platform.release().lower():
+            is_wsl = True
+        
+        # 方法2: /proc/versionファイルでWSLをチェック
+        if not is_wsl and os.path.exists("/proc/version"):
+            try:
+                with open("/proc/version", encoding="utf-8") as f:
+                    version_info = f.read().lower()
+                    if "microsoft" in version_info or "wsl" in version_info:
+                        is_wsl = True
+            except (FileNotFoundError, PermissionError, OSError):
+                pass
+        
+        # 方法3: /proc/sys/kernel/osreleaseでチェック
+        if not is_wsl and os.path.exists("/proc/sys/kernel/osrelease"):
+            try:
+                with open("/proc/sys/kernel/osrelease", encoding="utf-8") as f:
+                    osrelease_info = f.read().lower()
+                    if "microsoft" in osrelease_info or "wsl" in osrelease_info:
+                        is_wsl = True
+            except (FileNotFoundError, PermissionError, OSError):
+                pass
+        
+        if is_wsl:
+            return PlatformInfo(
+                name="wsl",
+                display_name="WSL (Windows Subsystem for Linux)"
+                + (" (CI)" if is_ci else ""),
+                package_managers=["apt", "snap", "curl"],
+                shell="bash",
+                python_cmd="python3",
+            )
 
         # 通常のLinux環境として処理
+        if github_actions:
+            # GitHub ActionsのLinux環境での特別な設定
+            _log_linux_path_info()
+
         return PlatformInfo(
             name="linux",
             display_name="Linux" + (" (GitHub Actions)" if github_actions else ""),

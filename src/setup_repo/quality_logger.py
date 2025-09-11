@@ -285,10 +285,19 @@ class QualityLogger:
 
         if output_file:
             # パストラバーサル攻撃を防ぐためのバリデーション
-            resolved_path = output_file.resolve()
             current_dir = Path.cwd().resolve()
-            if not str(resolved_path).startswith(str(current_dir)):
-                raise ValueError("出力ファイルは現在のディレクトリ以下である必要があります")
+            
+            # 相対パスで指定された場合は、現在のディレクトリからの相対パスとして処理
+            if not output_file.is_absolute():
+                resolved_path = current_dir / output_file
+                resolved_path = resolved_path.resolve()
+            else:
+                resolved_path = output_file.resolve()
+                # 絶対パスの場合のみセキュリティチェックを実行
+                try:
+                    resolved_path.relative_to(current_dir)
+                except ValueError:
+                    raise ValueError("出力ファイルは現在のディレクトリ以下である必要があります") from None
 
             resolved_path.parent.mkdir(parents=True, exist_ok=True)
 

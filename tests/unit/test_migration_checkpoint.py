@@ -22,18 +22,19 @@ class TestMigrationCheckpoint:
     def setup_method(self):
         """テスト前の準備"""
         self.temp_dir = Path(tempfile.mkdtemp())
-        self.checkpoint_manager = MigrationCheckpoint(self.temp_dir / "checkpoints")
-
-        # テスト用のソースディレクトリを作成
-        self.test_src = self.temp_dir / "src"
-        self.test_src.mkdir()
-        (self.test_src / "test_file.py").write_text("# test content")
-
-        # 元のディレクトリを変更
+        
+        # 元のディレクトリを保存し、テスト用ディレクトリに移動
         self.original_cwd = Path.cwd()
         import os
-
         os.chdir(self.temp_dir)
+        
+        # ディレクトリ変更後にMigrationCheckpointを初期化
+        self.checkpoint_manager = MigrationCheckpoint(Path("checkpoints"))
+
+        # テスト用のソースディレクトリを作成
+        self.test_src = Path("src")
+        self.test_src.mkdir()
+        (self.test_src / "test_file.py").write_text("# test content")
 
     def teardown_method(self):
         """テスト後のクリーンアップ"""
@@ -242,25 +243,26 @@ class TestMigrationCheckpointIntegration:
     def setup_method(self):
         """テスト前の準備"""
         self.temp_dir = Path(tempfile.mkdtemp())
-        self.checkpoint_manager = MigrationCheckpoint(self.temp_dir / "checkpoints")
+        
+        # 元のディレクトリを保存し、テスト用ディレクトリに移動
+        self.original_cwd = Path.cwd()
+        import os
+        os.chdir(self.temp_dir)
+        
+        # ディレクトリ変更後にMigrationCheckpointを初期化
+        self.checkpoint_manager = MigrationCheckpoint(Path("checkpoints"))
 
         # テスト用のプロジェクト構造を作成
-        self.test_src = self.temp_dir / "src"
+        self.test_src = Path("src")
         self.test_src.mkdir()
         (self.test_src / "module1.py").write_text("# module1 original")
         (self.test_src / "module2.py").write_text("# module2 original")
 
-        self.test_tests = self.temp_dir / "tests"
+        self.test_tests = Path("tests")
         self.test_tests.mkdir()
         (self.test_tests / "test_module1.py").write_text("# test1 original")
 
-        (self.temp_dir / "pyproject.toml").write_text("[tool.pytest]")
-
-        # 元のディレクトリを変更
-        self.original_cwd = Path.cwd()
-        import os
-
-        os.chdir(self.temp_dir)
+        Path("pyproject.toml").write_text("[tool.pytest]")
 
     def teardown_method(self):
         """テスト後のクリーンアップ"""

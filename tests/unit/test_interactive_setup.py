@@ -350,7 +350,7 @@ class TestSetupWizard:
         # Assert
         assert result is True
         mock_run.assert_called_once_with(
-            ["uv", "--version"], capture_output=True, text=True, check=True
+            ["uv", "--version"], capture_output=True, text=True, check=True, shell=False
         )
 
     @patch("subprocess.run")
@@ -546,7 +546,7 @@ class TestSetupWizard:
         # Assert
         assert wizard.config["owner"] == "new_user"
         mock_run.assert_called_with(
-            ["git", "config", "--global", "user.name", "new_user"], check=True
+            ["git", "config", "--global", "user.name", "new_user"], check=True, shell=False
         )
 
     @patch("src.setup_repo.interactive_setup.validate_github_credentials")
@@ -574,7 +574,7 @@ class TestSetupWizard:
 
         # Assert
         assert wizard.config["github_token"] == "new_token"
-        mock_run.assert_called_with(["gh", "auth", "login"], check=True)
+        mock_run.assert_called_with(["gh", "auth", "login"], check=True, shell=False)
 
     @patch("src.setup_repo.interactive_setup.validate_user_input")
     @patch("src.setup_repo.interactive_setup.validate_directory_path")

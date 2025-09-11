@@ -44,9 +44,20 @@ def quality_cli(args) -> None:
     """品質メトリクス収集コマンド"""
     if args.project_root:
         # パストラバーサル攻撃を防ぐためのバリデーション
-        project_root = Path(args.project_root).resolve()
-        if not str(project_root).startswith(str(Path.cwd().resolve())):
-            raise ValueError("プロジェクトルートは現在のディレクトリ以下である必要があります")
+        project_root_path = Path(args.project_root)
+        current_dir = Path.cwd().resolve()
+        
+        # 相対パスで指定された場合は、現在のディレクトリからの相対パスとして処理
+        if not project_root_path.is_absolute():
+            project_root = current_dir / project_root_path
+            project_root = project_root.resolve()
+        else:
+            project_root = project_root_path.resolve()
+            # 絶対パスの場合のみセキュリティチェックを実行
+            try:
+                project_root.relative_to(current_dir)
+            except ValueError:
+                raise ValueError("プロジェクトルートは現在のディレクトリ以下である必要があります") from None
     else:
         project_root = Path.cwd()
     collector = QualityMetricsCollector(project_root)
@@ -86,9 +97,20 @@ def trend_cli(args) -> None:
     """品質トレンド分析コマンド"""
     if args.project_root:
         # パストラバーサル攻撃を防ぐためのバリデーション
-        project_root = Path(args.project_root).resolve()
-        if not str(project_root).startswith(str(Path.cwd().resolve())):
-            raise ValueError("プロジェクトルートは現在のディレクトリ以下である必要があります")
+        project_root_path = Path(args.project_root)
+        current_dir = Path.cwd().resolve()
+        
+        # 相対パスで指定された場合は、現在のディレクトリからの相対パスとして処理
+        if not project_root_path.is_absolute():
+            project_root = current_dir / project_root_path
+            project_root = project_root.resolve()
+        else:
+            project_root = project_root_path.resolve()
+            # 絶対パスの場合のみセキュリティチェックを実行
+            try:
+                project_root.relative_to(current_dir)
+            except ValueError:
+                raise ValueError("プロジェクトルートは現在のディレクトリ以下である必要があります") from None
     else:
         project_root = Path.cwd()
 

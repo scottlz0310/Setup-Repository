@@ -64,8 +64,8 @@ class LoggingConfig:
     @classmethod
     def get_log_file_path(cls, log_name: str = "quality") -> Optional[Path]:
         """ログファイルパスを取得"""
-        # CI環境では通常ファイルログは不要
-        if cls.is_ci_environment() and not os.getenv("CI_LOG_FILE"):
+        # CI環境では通常ファイルログは不要（明示的に指定された場合を除く）
+        if cls.is_ci_environment() and not os.getenv("CI_LOG_FILE") and not os.getenv("LOG_DIR"):
             return None
 
         # ログディレクトリを環境変数から取得、デフォルトはlogs/

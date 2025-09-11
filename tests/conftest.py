@@ -363,8 +363,9 @@ def pytest_configure(config):
 # 統合テスト用フィクスチャ
 @pytest.fixture
 def sample_config() -> dict[str, Any]:
-    """統合テスト用のサンプル設定"""
+    """統合テスト用のサンプル設定（後方互換性を維持）"""
     return {
+        # 新しい構造
         "github": {"username": "test_user", "token": "test_token_123"},
         "repositories": {
             "base_path": "/tmp/test_repos",
@@ -373,6 +374,13 @@ def sample_config() -> dict[str, Any]:
         },
         "platform": {"detected": "linux", "package_manager": "apt"},
         "logging": {"level": "INFO", "file": "/tmp/test.log"},
+        
+        # 後方互換性のための古い構造
+        "github_token": "test_token_123",
+        "github_username": "test_user",
+        "clone_destination": "/tmp/test_repos",
+        "owner": "test_user",
+        "dest": "/tmp/test_repos",
     }
 
 

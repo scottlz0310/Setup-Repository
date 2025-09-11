@@ -35,10 +35,8 @@ jobs:
       run: |
         # 開発依存をインストール
         uv sync --dev
-        uv pip install --upgrade pip
-        # セキュリティツール（公開PyPIで取得可能なもの）を追加インストール
-        uv pip install "bandit>=1.7.0"
-        uv pip install "safety<3.0"
+        # セキュリティツールを追加インストール
+        uv add --group security bandit safety
 
     - name: Cache uv dependencies
       uses: actions/cache@v4
@@ -238,24 +236,20 @@ jobs:
 
     - name: Install dependencies with retry
       run: |
-        # 依存関係インストールをリトライ機能付きで実行
-        $maxRetries = 3
-        $retryCount = 0
-        do {
+        for ($i = 1; $i -le 3; $i++) {
           try {
             uv sync --dev
             Write-Host "依存関係のインストールが成功しました"
-            break
+            exit 0
           } catch {
-            $retryCount++
-            if ($retryCount -ge $maxRetries) {
-              Write-Error "依存関係のインストールが$maxRetries回失敗しました: $_"
+            Write-Warning "依存関係のインストールが失敗しました (試行 $i/3): $_"
+            if ($i -eq 3) {
+              Write-Error "依存関係のインストールが3回失敗しました"
               exit 1
             }
-            Write-Warning "依存関係のインストールが失敗しました (試行 $retryCount/$maxRetries): $_"
             Start-Sleep -Seconds 5
           }
-        } while ($retryCount -lt $maxRetries)
+        }
       shell: powershell
       if: runner.os == 'Windows'
 
@@ -280,7 +274,7 @@ jobs:
     - name: Run basic functionality tests
       run: |
         echo "基本機能テストを開始します"
-        uv run python -m pytest tests/unit/ -v --tb=short
+        uv run python -m pytest tests/unit/ -v --tb=short -x --maxfail=5
         echo "CLIヘルプテストを実行します"
         uv run python main.py --help
 
@@ -443,7 +437,7 @@ jobs:
 
     - name: Run safety check
       run: |
-        uv pip install safety
+        uv add --group security safety
         uv run safety check --json --output safety-report.json || true
 
     - name: Upload security scan results
