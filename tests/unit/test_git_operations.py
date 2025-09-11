@@ -335,9 +335,11 @@ class TestChooseCloneUrl:
         }
 
         # Act
-        with patch("pathlib.Path.exists", return_value=True):
-            with patch("subprocess.run", return_value=Mock(returncode=1)):
-                result = choose_clone_url(repo, use_https=False)
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch("subprocess.run", return_value=Mock(returncode=1)),
+        ):
+            result = choose_clone_url(repo, use_https=False)
 
         # Assert
         assert result == "git@github.com:user/repo.git"  # full_nameから生成

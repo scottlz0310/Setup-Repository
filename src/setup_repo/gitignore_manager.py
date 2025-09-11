@@ -198,7 +198,8 @@ class GitignoreManager:
         if not dry_run:
             analysis = detector.analyze_project()
             print(
-                f"   🔍 検出されたプロジェクトタイプ: {', '.join(analysis['project_types']) or 'なし'}"
+                f"   🔍 検出されたプロジェクトタイプ: "
+                f"{', '.join(analysis['project_types']) or 'なし'}"
             )
             print(f"   🛠️  検出されたツール: {', '.join(analysis['tools']) or 'なし'}")
             print(f"   📝 適用テンプレート: {', '.join(recommended_templates)}")

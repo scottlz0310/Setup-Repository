@@ -7,10 +7,14 @@ config.local.json
 
 # Log files
 *.log
-logs/
+logs/*.log
+debug.log
+error.log
+setup.log
 
 # Lock files
 *.lock
+.pre-commit-config.yaml.bak
 
 # Python
 __pycache__/
@@ -40,6 +44,12 @@ wheels/
 coverage.*
 htmlcov/
 .tox/
+test-report.json
+quality-report.json
+error-reports/
+quality-history/
+security-reports/
+.benchmarks/
 
 # OS specific
 .DS_Store
@@ -58,6 +68,10 @@ Thumbs.db
 venv/
 .mypy_cache/
 .ruff_cache/
+.bandit
+.bandit/
+.safety/
+.safety-project.ini
 
 # Auto-generated entries
 uv.lock
@@ -161,3 +175,25 @@ vendor/
 venv.bak/
 yarn-debug.log*
 yarn-error.log*
+# Migration and backup files
+.migration_checkpoints/
+*.backup
+backup_*/
+checkpoint_*/
+
+# Performance test artifacts
+benchmark_results/
+performance_logs/
+
+# Temporary development files
+scratch/
+playground/
+temp_*
+tmp_*
+debug_*
+
+# Generated reports and documentation
+*-report.md
+*-verification-report.md
+final-*.md
+test-issues-*.md

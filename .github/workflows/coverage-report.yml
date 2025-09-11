@@ -68,17 +68,17 @@ jobs:
           try:
               with open('$LATEST_REPORT', 'r', encoding='utf-8') as f:
                   data = json.load(f)
-              
+
               coverage = data['coverage']
               req_check = data['requirements_check']
               summary = data['summary']
-              
+
               print(f\"**全体カバレッジ**: {coverage['total_coverage']:.2f}%\")
               print(f\"**モジュール数**: {summary['total_modules']}\")
               print(f\"**目標達成モジュール**: {summary['modules_above_target']}/{summary['total_modules']}\")
               print(f\"**重要モジュール目標達成**: {summary['critical_modules_above_target']}\")
               print()
-              
+
               if req_check['passed']:
                   print('✅ **品質ゲート**: 通過')
               else:
@@ -87,14 +87,14 @@ jobs:
                   print('**警告:**')
                   for warning in req_check['warnings']:
                       print(f'- {warning}')
-              
+
               print()
               print('## モジュール別カバレッジ')
               print()
               for module, cov in sorted(coverage['module_coverage'].items()):
                   status = '✅' if cov >= 80 else '⚠️' if cov >= 60 else '❌'
                   print(f'{status} **{module}**: {cov:.2f}%')
-                  
+
           except Exception as e:
               print(f'レポート解析エラー: {e}')
               sys.exit(1)
@@ -221,7 +221,7 @@ jobs:
           if [ -f "coverage_badge.json" ]; then
             COVERAGE=$(uv run python -c "import json; data=json.load(open('coverage_badge.json')); print(data['message'].replace('%', ''))")
             COLOR=$(uv run python -c "import json; data=json.load(open('coverage_badge.json')); print(data['color'])")
-            
+
             # バッジURL生成
             BADGE_URL="https://img.shields.io/badge/coverage-${COVERAGE}%25-${COLOR}"
             echo "Coverage badge URL: $BADGE_URL"

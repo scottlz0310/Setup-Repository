@@ -46,7 +46,7 @@ from setup_repo.platform_detector import detect_platform
 
 #### 1.2 UV環境管理統一
 ```python
-# 統一後のインターフェース  
+# 統一後のインターフェース
 from setup_repo.uv_installer import ensure_uv
 
 # 削除対象: python_env.py の ensure_uv()
@@ -216,7 +216,7 @@ class CoverageMonitor:
 
 #### 4.2 品質メトリクス監視
 ```python
-# scripts/quality-monitor.py  
+# scripts/quality-monitor.py
 class QualityMonitor:
     def collect_quality_metrics(self) -> dict
     def compare_with_baseline(self, metrics: dict) -> dict
@@ -234,8 +234,8 @@ class CoverageReport:
     module_coverage: Dict[str, float]
     missing_lines: Dict[str, List[int]]
     timestamp: datetime
-    
-@dataclass  
+
+@dataclass
 class CoverageTarget:
     total_target: float = 80.0
     module_target: float = 60.0
@@ -311,7 +311,7 @@ def handle_migration_error(error: Exception, rollback_point: str) -> None:
 │   ├── 各モジュールの関数・クラステスト
 │   ├── モック使用による依存関係分離
 │   └── エッジケース・異常系テスト
-├── Integration Tests (統合テスト)  
+├── Integration Tests (統合テスト)
 │   ├── モジュール間連携テスト
 │   ├── エンドツーエンドワークフローテスト
 │   └── 外部依存関係テスト
@@ -366,7 +366,7 @@ def test_config_load_error_handling():
 - 段階的な重複解消
 - インポート文の更新
 
-### Phase 2: モジュール分割 (Week 2)  
+### Phase 2: モジュール分割 (Week 2)
 - 大きなモジュールの責任分析
 - 分割設計と新モジュール作成
 - 既存コードの移行
@@ -428,9 +428,9 @@ def monitor_quality_trends():
     """品質トレンドの継続的監視"""
     current_metrics = collect_quality_metrics()
     baseline_metrics = load_baseline_metrics()
-    
+
     if quality_degraded(current_metrics, baseline_metrics):
         send_quality_alert(current_metrics)
-        
+
     update_quality_dashboard(current_metrics)
 ```

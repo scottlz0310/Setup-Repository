@@ -125,13 +125,13 @@ jobs:
               f.write(f'**実行日時**: {metrics[\"timestamp\"]}\\n')
               f.write(f'**コミット**: {metrics[\"commit_sha\"][:8]}\\n')
               f.write(f'**ブランチ**: {metrics[\"branch\"]}\\n\\n')
-              
+
               f.write('## メトリクス\\n\\n')
               f.write(f'- **テストカバレッジ**: {metrics[\"test_coverage\"]:.2f}%\\n')
               f.write(f'- **テスト結果**: {metrics[\"test_passed\"]} 成功, {metrics[\"test_failed\"]} 失敗\\n')
               f.write(f'- **Ruff問題**: {metrics[\"ruff_issues\"]} 件\\n')
               f.write(f'- **MyPyエラー**: {metrics[\"mypy_errors\"]} 件\\n\\n')
-              
+
               # 品質スコアを計算
               quality_score = 100
               if metrics['test_coverage'] < 80:
@@ -140,9 +140,9 @@ jobs:
               quality_score -= metrics['mypy_errors'] * 1
               quality_score -= metrics['test_failed'] * 5
               quality_score = max(0, quality_score)
-              
+
               f.write(f'## 品質スコア: {quality_score:.1f}/100\\n\\n')
-              
+
               if quality_score >= 90:
                   f.write('✅ **優秀**: 品質基準を大幅に上回っています\\n')
               elif quality_score >= 80:
@@ -230,22 +230,22 @@ jobs:
           with open('quality-comparison.md', 'w') as f:
               f.write('# 📊 品質メトリクス比較\\n\\n')
               f.write('## ベースブランチとの比較\\n\\n')
-              
+
               # カバレッジ比較
               cov_diff = comparison['coverage_diff']
               cov_icon = '✅' if cov_diff >= 0 else '⚠️' if cov_diff > -5 else '❌'
               f.write(f'{cov_icon} **カバレッジ**: {cov_diff:+.2f}% ({current.get(\"test_coverage\", 0):.2f}% vs {base_metrics[\"test_coverage\"]:.2f}%)\\n')
-              
+
               # Ruff問題比較
               ruff_diff = comparison['ruff_diff']
               ruff_icon = '✅' if ruff_diff <= 0 else '⚠️' if ruff_diff <= 5 else '❌'
               f.write(f'{ruff_icon} **Ruff問題**: {ruff_diff:+d} 件 ({current.get(\"ruff_issues\", 0)} vs {base_metrics[\"ruff_issues\"]})\\n')
-              
+
               # MyPyエラー比較
               mypy_diff = comparison['mypy_diff']
               mypy_icon = '✅' if mypy_diff <= 0 else '⚠️' if mypy_diff <= 3 else '❌'
               f.write(f'{mypy_icon} **MyPyエラー**: {mypy_diff:+d} 件 ({current.get(\"mypy_errors\", 0)} vs {base_metrics[\"mypy_errors\"]})\\n\\n')
-              
+
               # 総合判定
               if cov_diff >= 0 and ruff_diff <= 0 and mypy_diff <= 0:
                   f.write('✅ **総合判定**: 品質が向上または維持されています\\n')
@@ -280,12 +280,12 @@ jobs:
             const fs = require('fs');
             try {
               let summary = '';
-              
+
               // 品質サマリーを読み込み
               if (fs.existsSync('quality-summary.md')) {
                 summary += fs.readFileSync('quality-summary.md', 'utf8') + '\\n\\n';
               }
-              
+
               // 比較レポートを読み込み
               if (fs.existsSync('quality-comparison.md')) {
                 summary += fs.readFileSync('quality-comparison.md', 'utf8');

@@ -196,7 +196,8 @@ class TestErrorScenarios:
         def mock_sync_with_error(repo, dest_dir, config):
             # Gitクローンエラーをシミュレート
             raise Exception(
-                "fatal: repository 'https://github.com/test_user/clone-error-repo.git' not found"
+                "fatal: repository "
+                "'https://github.com/test_user/clone-error-repo.git' not found"
             )
 
         with (
@@ -241,7 +242,8 @@ class TestErrorScenarios:
         def mock_sync_with_pull_error(repo, dest_dir, config):
             # Gitプルエラーをシミュレート
             raise Exception(
-                "error: Your local changes to the following files would be overwritten by merge"
+                "error: Your local changes to the following files "
+                "would be overwritten by merge"
             )
 
         with (
@@ -270,11 +272,13 @@ class TestErrorScenarios:
             )  # 閉じ括弧なし
 
         # 設定読み込みでエラーが発生することを確認
-        with patch("setup_repo.config.Path.cwd", return_value=temp_dir):
+        with (
+            patch("setup_repo.config.Path.cwd", return_value=temp_dir),
+            pytest.raises(json.JSONDecodeError),
+            open(corrupted_config_file, encoding="utf-8") as f,
+        ):
             # 破損した設定ファイルを読み込もうとする
-            with pytest.raises(json.JSONDecodeError):
-                with open(corrupted_config_file, encoding="utf-8") as f:
-                    json.load(f)
+            json.load(f)
 
     def test_missing_required_config_error(
         self,
@@ -389,7 +393,9 @@ class TestErrorScenarios:
         # 部分的成功を確認
         # 現在の実装では、エラーがあると全体が失敗とみなされるため、
         # 成功したリポジトリ数とエラーの存在を確認
-        assert len(result.synced_repos) == 2, f"期待される成功数: 2, 実際: {len(result.synced_repos)}"
+        assert len(result.synced_repos) == 2, (
+            f"期待される成功数: 2, 実際: {len(result.synced_repos)}"
+        )
         assert "success-repo-1" in result.synced_repos
         assert "success-repo-2" in result.synced_repos
         assert "error-repo" not in result.synced_repos
@@ -502,10 +508,10 @@ class TestErrorScenarios:
                 "setup_repo.sync.sync_repository_with_retries",
                 side_effect=KeyboardInterrupt,
             ),
+            pytest.raises(KeyboardInterrupt),
         ):
             # KeyboardInterruptは通常再発生させる
-            with pytest.raises(KeyboardInterrupt):
-                sync_repositories(sample_config, dry_run=False)
+            sync_repositories(sample_config, dry_run=False)
 
     def test_unicode_encoding_error(
         self,

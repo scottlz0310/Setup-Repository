@@ -381,9 +381,11 @@ class TestApplyVscodeTemplate:
                 return True
             return bool(path_str.endswith(".vscode"))
 
-        with patch("src.setup_repo.vscode_setup.time.time", return_value=1234567890):
-            with patch.object(Path, "exists", mock_exists):
-                result = apply_vscode_template(repo_path, platform)
+        with (
+            patch("src.setup_repo.vscode_setup.time.time", return_value=1234567890),
+            patch.object(Path, "exists", mock_exists),
+        ):
+            result = apply_vscode_template(repo_path, platform)
 
         assert result is True
         captured = capsys.readouterr()
@@ -458,9 +460,11 @@ class TestApplyVscodeTemplate:
                 return True
             return bool(path_str.endswith(".vscode"))
 
-        with patch("src.setup_repo.vscode_setup.time.time", return_value=1640995200):
-            with patch.object(Path, "exists", mock_exists):
-                result = apply_vscode_template(repo_path, platform)
+        with (
+            patch("src.setup_repo.vscode_setup.time.time", return_value=1640995200),
+            patch.object(Path, "exists", mock_exists),
+        ):
+            result = apply_vscode_template(repo_path, platform)
 
         assert result is True
         captured = capsys.readouterr()

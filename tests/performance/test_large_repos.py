@@ -317,7 +317,8 @@ class TestLargeRepositoryPerformance:
         for level, metrics in results.items():
             throughput = 100 / metrics["execution_time"]
             print(
-                f"  並行数 {level}: {metrics['execution_time']:.2f}s, {throughput:.2f} repos/s"
+                f"  並行数 {level}: {metrics['execution_time']:.2f}s, "
+                f"{throughput:.2f} repos/s"
             )
 
         # 並行処理により処理時間が改善されることを確認
@@ -326,18 +327,21 @@ class TestLargeRepositoryPerformance:
 
         # 並行処理による改善を確認（ドライランモードでは改善が限定的な場合がある）
         improvement_ratio = (sequential_time - parallel_time) / sequential_time
-        
+
         # ドライランモードでは並行処理のオーバーヘッドにより性能劣化する場合があるため、
         # 極端な劣化がないことを確認（-10%以内）
         assert improvement_ratio > -0.1, (
             f"並行処理による極端な性能劣化が発生: {improvement_ratio:.2%}"
         )
-        
+
         # 実際の改善があった場合は記録
         if improvement_ratio > 0.05:
             print(f"並行処理による改善: {improvement_ratio:.2%}")
         elif improvement_ratio < -0.02:
-            print(f"並行処理によるオーバーヘッド: {improvement_ratio:.2%} (ドライランモードのため)")
+            print(
+                f"並行処理によるオーバーヘッド: {improvement_ratio:.2%} "
+                f"(ドライランモードのため)"
+            )
         else:
             print(f"並行処理による影響は軽微: {improvement_ratio:.2%}")
 
@@ -459,7 +463,8 @@ class TestLargeRepositoryPerformance:
         )
 
         print(
-            f"スケーラビリティテスト結果: 最大{max_successful_repos}リポジトリまで処理可能"
+            f"スケーラビリティテスト結果: "
+            f"最大{max_successful_repos}リポジトリまで処理可能"
         )
 
     @pytest.mark.stress
@@ -524,7 +529,8 @@ class TestLargeRepositoryPerformance:
                 assert metrics["memory_peak_mb"] < 4000.0  # 4GB以内
             else:
                 print(
-                    f"ストレステスト部分成功: {len(result.synced_repos)}/{len(repositories)}リポジトリ処理"
+                    f"ストレステスト部分成功: "
+                    f"{len(result.synced_repos)}/{len(repositories)}リポジトリ処理"
                 )
                 # 部分的成功でも50%以上は処理できることを期待
                 success_rate = len(result.synced_repos) / len(repositories)

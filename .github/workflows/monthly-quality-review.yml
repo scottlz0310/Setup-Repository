@@ -91,25 +91,25 @@ jobs:
               goals_met += 1
           else:
               print('❌ カバレッジ目標未達成')
-              
+
           if quality_score >= 80:
               print('✅ 品質スコア目標達成')
               goals_met += 1
           else:
               print('❌ 品質スコア目標未達成')
-              
+
           if ruff_issues <= 10:
               print('✅ Ruff問題目標達成')
               goals_met += 1
           else:
               print('❌ Ruff問題目標未達成')
-              
+
           if mypy_errors <= 5:
               print('✅ MyPyエラー目標達成')
               goals_met += 1
           else:
               print('❌ MyPyエラー目標未達成')
-              
+
           print()
           print(f'**目標達成率**: {goals_met}/{total_goals} ({goals_met/total_goals*100:.1f}%)')
           " >> monthly-quality-report.md
@@ -131,7 +131,7 @@ jobs:
             echo "" >> monthly-quality-report.md
             echo "## 💡 改善提案" >> monthly-quality-report.md
             echo "" >> monthly-quality-report.md
-            
+
             uv run python -c "
           import json
 
@@ -161,34 +161,34 @@ jobs:
           try:
               with open('quality-history/latest-metrics.json', 'r') as f:
                   metrics = json.load(f)
-              
+
               if metrics['test_coverage'] < 80:
                   actions.append('🎯 テストカバレッジを80%以上に向上させる')
                   actions.append('📝 低カバレッジモジュールの特定とテスト追加')
-              
+
               if metrics['quality_score'] < 80:
                   actions.append('🔧 品質スコア向上のための包括的リファクタリング')
-              
+
               if metrics['ruff_issues'] > 10:
                   actions.append('🧹 Ruffリンティング問題の解決')
                   actions.append('📏 コードスタイルガイドラインの徹底')
-              
+
               if metrics['mypy_errors'] > 5:
                   actions.append('🔍 型ヒントの追加とMyPyエラーの解決')
                   actions.append('📚 型安全性向上のためのドキュメント整備')
-              
+
               # 責任分離に関するアクション
               actions.append('🏗️ 大きなモジュールの分割検討')
               actions.append('📊 月次品質メトリクス監視の継続')
               actions.append('🔄 継続的改善プロセスの見直し')
-              
+
               if not actions:
                   actions.append('✅ 現在の品質レベルを維持')
                   actions.append('🚀 新機能開発時の品質基準遵守')
-              
+
               for i, action in enumerate(actions, 1):
                   print(f'{i}. {action}')
-                  
+
           except Exception as e:
               print('1. 品質メトリクス収集システムの確認')
               print('2. 基本的な品質ゲートの設定')
@@ -222,7 +222,7 @@ jobs:
           try:
               with open('quality-history/latest-metrics.json', 'r') as f:
                   latest_metrics = json.load(f)
-              
+
               dashboard_data['summary'] = {
                   'coverage': latest_metrics['test_coverage'],
                   'quality_score': latest_metrics['quality_score'],
@@ -231,20 +231,20 @@ jobs:
                   'test_passed': latest_metrics['test_passed'],
                   'test_failed': latest_metrics['test_failed']
               }
-              
+
               # アラートを生成
               if latest_metrics['test_coverage'] < 80:
                   dashboard_data['alerts'].append({
                       'type': 'warning',
                       'message': f\"カバレッジが目標を下回っています: {latest_metrics['test_coverage']:.2f}%\"
                   })
-              
+
               if latest_metrics['quality_score'] < 80:
                   dashboard_data['alerts'].append({
                       'type': 'error',
                       'message': f\"品質スコアが目標を下回っています: {latest_metrics['quality_score']:.1f}\"
                   })
-                  
+
           except Exception as e:
               dashboard_data['alerts'].append({
                   'type': 'error',
@@ -280,7 +280,7 @@ jobs:
             try {
               const report = fs.readFileSync('monthly-quality-report.md', 'utf8');
               const dashboardData = JSON.parse(fs.readFileSync('quality-dashboard.json', 'utf8'));
-              
+
               const issueTitle = `月次品質レビュー - ${dashboardData.month}`;
               const issueBody = `${report}
 
@@ -289,7 +289,7 @@ jobs:
             - [詳細なメトリクス履歴](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})
 
             ## 👥 レビュー担当者
-            @${context.repo.owner} 
+            @${context.repo.owner}
 
             このIssueは自動生成されました。レビュー完了後にクローズしてください。`;
 
@@ -314,13 +314,13 @@ jobs:
           # 品質ゲートをチェック
           if ! uv run python scripts/quality-monitor.py --check-gates; then
             echo "❌ 品質ゲートを通過できませんでした"
-            
+
             # アラートファイルが存在する場合は内容を表示
             if [ -f "quality_alert.txt" ]; then
               echo "品質アラート内容:"
               cat quality_alert.txt
             fi
-            
+
             # 重要な品質問題がある場合は失敗させる
             exit 1
           else

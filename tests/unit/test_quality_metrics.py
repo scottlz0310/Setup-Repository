@@ -370,7 +370,10 @@ class TestQualityMetricsCollector:
 
             command = args[0]
             if "bandit" in command:
-                mock_result.stdout = '{"results": [{"issue_severity": "HIGH", "issue_text": "Test vulnerability"}]}'
+                mock_result.stdout = (
+                    '{"results": [{"issue_severity": "HIGH", '
+                    '"issue_text": "Test vulnerability"}]}'
+                )
             elif "safety" in command:
                 mock_result.stdout = '[{"vulnerability": "Test safety issue"}]'
             else:

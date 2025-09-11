@@ -444,6 +444,6 @@ python -W default::DeprecationWarning -m pytest
 
 ---
 
-**最終更新日**: 2025年1月  
-**ドキュメントバージョン**: 1.0  
+**最終更新日**: 2025年1月
+**ドキュメントバージョン**: 1.0
 **対象リリース**: Setup-Repository v1.1.0

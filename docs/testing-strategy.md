@@ -64,24 +64,24 @@ from setup_repo.module_name import function_name
 
 class TestFunctionName:
     """function_name関数のテスト"""
-    
+
     def test_normal_case(self):
         """正常系テスト"""
         # Arrange
         input_data = "test_input"
         expected = "expected_output"
-        
+
         # Act
         result = function_name(input_data)
-        
+
         # Assert
         assert result == expected
-    
+
     def test_error_case(self):
         """異常系テスト"""
         with pytest.raises(ValueError, match="Invalid input"):
             function_name(None)
-    
+
     @pytest.mark.parametrize("input_val,expected", [
         ("input1", "output1"),
         ("input2", "output2"),
@@ -101,10 +101,10 @@ def test_with_external_dependency(self, mock_dependency):
     """外部依存関係をモックしたテスト"""
     # Arrange
     mock_dependency.return_value = "mocked_result"
-    
+
     # Act
     result = function_with_dependency()
-    
+
     # Assert
     assert result == "expected_result"
     mock_dependency.assert_called_once_with("expected_args")
@@ -121,10 +121,10 @@ def test_file_operation():
     with tempfile.TemporaryDirectory() as temp_dir:
         # Arrange
         test_file = Path(temp_dir) / "test.txt"
-        
+
         # Act
         create_file(test_file, "test content")
-        
+
         # Assert
         assert test_file.exists()
         assert test_file.read_text() == "test content"
@@ -145,7 +145,7 @@ def test_file_operation():
 ```python
 class TestSetupWorkflow:
     """セットアップワークフローの統合テスト"""
-    
+
     @patch('setup_repo.github_api.get_repositories')
     @patch('setup_repo.git_operations.clone_repository')
     def test_full_setup_workflow(self, mock_clone, mock_get_repos):
@@ -153,15 +153,15 @@ class TestSetupWorkflow:
         # Arrange
         mock_get_repos.return_value = [{"name": "test-repo", "clone_url": "https://github.com/user/test-repo.git"}]
         mock_clone.return_value = True
-        
+
         config = {
             "github_token": "test_token",
             "target_directory": "/tmp/test"
         }
-        
+
         # Act
         result = run_setup(config)
-        
+
         # Assert
         assert result.success is True
         mock_get_repos.assert_called_once()
@@ -173,13 +173,13 @@ class TestSetupWorkflow:
 ```python
 class TestErrorHandlingIntegration:
     """エラーハンドリングの統合テスト"""
-    
+
     @patch('setup_repo.github_api.get_repositories')
     def test_github_api_error_handling(self, mock_get_repos):
         """GitHub APIエラー時の統合処理テスト"""
         # Arrange
         mock_get_repos.side_effect = GitHubAPIError("API rate limit exceeded")
-        
+
         # Act & Assert
         with pytest.raises(SetupError, match="GitHub API error"):
             run_setup({"github_token": "invalid_token"})
@@ -190,17 +190,17 @@ class TestErrorHandlingIntegration:
 ```python
 class TestCrossPlatformIntegration:
     """クロスプラットフォーム統合テスト"""
-    
+
     @pytest.mark.parametrize("platform", ["windows", "linux", "macos"])
     @patch('setup_repo.platform_detector.detect_platform')
     def test_platform_specific_setup(self, mock_detect, platform):
         """プラットフォーム固有セットアップの統合テスト"""
         # Arrange
         mock_detect.return_value = platform
-        
+
         # Act
         result = setup_platform_specific_tools()
-        
+
         # Assert
         assert result.platform == platform
         assert result.tools_installed is True
@@ -223,7 +223,7 @@ import pytest
 
 class TestLargeRepositoryPerformance:
     """大量リポジトリ処理のパフォーマンステスト"""
-    
+
     @pytest.mark.performance
     def test_sync_100_repositories(self):
         """100個のリポジトリ同期パフォーマンステスト"""
@@ -231,17 +231,17 @@ class TestLargeRepositoryPerformance:
         repositories = [f"repo_{i}" for i in range(100)]
         start_time = time.time()
         start_memory = psutil.Process().memory_info().rss
-        
+
         # Act
         result = sync_repositories(repositories)
-        
+
         # Assert
         end_time = time.time()
         end_memory = psutil.Process().memory_info().rss
-        
+
         execution_time = end_time - start_time
         memory_usage = end_memory - start_memory
-        
+
         assert execution_time < 300  # 5分以内
         assert memory_usage < 100 * 1024 * 1024  # 100MB以内
         assert result.success_count == 100
@@ -252,20 +252,20 @@ class TestLargeRepositoryPerformance:
 ```python
 class TestMemoryLeaks:
     """メモリリークテスト"""
-    
+
     @pytest.mark.performance
     def test_repeated_operations_memory_usage(self):
         """繰り返し操作でのメモリ使用量テスト"""
         initial_memory = psutil.Process().memory_info().rss
-        
+
         # 1000回の操作を実行
         for i in range(1000):
             result = perform_operation()
             assert result is not None
-        
+
         final_memory = psutil.Process().memory_info().rss
         memory_increase = final_memory - initial_memory
-        
+
         # メモリ増加が10MB以内であることを確認
         assert memory_increase < 10 * 1024 * 1024
 ```
@@ -285,7 +285,7 @@ from pathlib import Path
 
 class TestEndToEndScenarios:
     """エンドツーエンドシナリオテスト"""
-    
+
     def test_complete_setup_scenario(self):
         """完全なセットアップシナリオのE2Eテスト"""
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -295,13 +295,13 @@ class TestEndToEndScenarios:
                 "github_token": "test_token",
                 "target_directory": temp_dir
             }))
-            
+
             # Act
             result = subprocess.run([
                 "python", "main.py", "setup",
                 "--config", str(config_file)
             ], capture_output=True, text=True)
-            
+
             # Assert
             assert result.returncode == 0
             assert "Setup completed successfully" in result.stdout
@@ -353,17 +353,17 @@ def git_repository(temp_directory):
     """Gitリポジトリフィクスチャ"""
     repo_dir = temp_directory / "test-repo"
     repo_dir.mkdir()
-    
+
     # 初期化
     subprocess.run(["git", "init"], cwd=repo_dir, check=True)
     subprocess.run(["git", "config", "user.name", "Test User"], cwd=repo_dir, check=True)
     subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=repo_dir, check=True)
-    
+
     # 初期コミット
     (repo_dir / "README.md").write_text("# Test Repository")
     subprocess.run(["git", "add", "README.md"], cwd=repo_dir, check=True)
     subprocess.run(["git", "commit", "-m", "Initial commit"], cwd=repo_dir, check=True)
-    
+
     return repo_dir
 ```
 
@@ -418,7 +418,7 @@ def mock_file_operations():
     with patch('pathlib.Path.exists') as mock_exists, \
          patch('pathlib.Path.mkdir') as mock_mkdir, \
          patch('pathlib.Path.write_text') as mock_write:
-        
+
         mock_exists.return_value = True
         yield {
             'exists': mock_exists,
@@ -517,27 +517,27 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python-version: [3.9, 3.10, 3.11, 3.12]
-    
+
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Install uv
       uses: astral-sh/setup-uv@v1
       with:
         version: "latest"
-    
+
     - name: Set up Python
       run: uv python install ${{ matrix.python-version }}
-    
+
     - name: Install dependencies
       run: uv sync --dev
-    
+
     - name: Run unit tests
       run: uv run pytest tests/unit/ --cov=src/setup_repo --cov-report=xml
-    
+
     - name: Run integration tests
       run: uv run pytest tests/integration/
-    
+
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
       with:
@@ -557,25 +557,25 @@ on:
 jobs:
   quality-check:
     runs-on: ubuntu-latest
-    
+
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Install uv
       uses: astral-sh/setup-uv@v1
-    
+
     - name: Install dependencies
       run: uv sync --dev
-    
+
     - name: Run linting
       run: uv run ruff check .
-    
+
     - name: Run type checking
       run: uv run mypy src/
-    
+
     - name: Run tests with coverage
       run: uv run pytest --cov=src/setup_repo --cov-fail-under=80
-    
+
     - name: Run security checks
       run: uv run bandit -r src/
 ```

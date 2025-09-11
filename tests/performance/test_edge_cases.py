@@ -652,9 +652,8 @@ class TestResourceExhaustion:
 
         def mock_sync_with_file_operations(repo, dest_dir, config):
             # ファイル操作をシミュレート
-            temp_file = tempfile.NamedTemporaryFile(delete=False)
-            temp_file.write(b"test data")
-            temp_file.close()
+            with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+                temp_file.write(b"test data")
             os.unlink(temp_file.name)
             return True
 

@@ -533,28 +533,32 @@ class QualityMonitor:
         # カバレッジ改善提案
         if latest.test_coverage < self.thresholds.min_coverage:
             suggestions.append(
-                f"テストカバレッジが目標値を下回っています ({latest.test_coverage:.2f}% < {self.thresholds.min_coverage}%)。"
+                f"テストカバレッジが目標値を下回っています "
+                f"({latest.test_coverage:.2f}% < {self.thresholds.min_coverage}%)。"
                 "低カバレッジモジュールのテスト追加を検討してください。"
             )
 
         # Ruff問題改善提案
         if latest.ruff_issues > self.thresholds.max_ruff_issues:
             suggestions.append(
-                f"Ruff問題が多すぎます ({latest.ruff_issues} > {self.thresholds.max_ruff_issues})。"
+                f"Ruff問題が多すぎます "
+                f"({latest.ruff_issues} > {self.thresholds.max_ruff_issues})。"
                 "コードスタイルの統一とリファクタリングを検討してください。"
             )
 
         # MyPyエラー改善提案
         if latest.mypy_errors > self.thresholds.max_mypy_errors:
             suggestions.append(
-                f"MyPyエラーが多すぎます ({latest.mypy_errors} > {self.thresholds.max_mypy_errors})。"
+                f"MyPyエラーが多すぎます "
+                f"({latest.mypy_errors} > {self.thresholds.max_mypy_errors})。"
                 "型ヒントの追加と型安全性の向上を検討してください。"
             )
 
         # 品質スコア改善提案
         if latest.quality_score < self.thresholds.min_quality_score:
             suggestions.append(
-                f"品質スコアが目標値を下回っています ({latest.quality_score:.1f} < {self.thresholds.min_quality_score})。"
+                f"品質スコアが目標値を下回っています "
+                f"({latest.quality_score:.1f} < {self.thresholds.min_quality_score})。"
                 "包括的な品質改善計画の実施を検討してください。"
             )
 
@@ -587,7 +591,8 @@ class QualityMonitor:
         # カバレッジチェック
         if metrics.test_coverage < self.thresholds.min_coverage:
             warnings.append(
-                f"カバレッジが目標値を下回っています: {metrics.test_coverage:.2f}% < {self.thresholds.min_coverage}%"
+                f"カバレッジが目標値を下回っています: "
+                f"{metrics.test_coverage:.2f}% < {self.thresholds.min_coverage}%"
             )
             passed = False
 
@@ -599,7 +604,8 @@ class QualityMonitor:
         # 品質スコアチェック
         if metrics.quality_score < self.thresholds.min_quality_score:
             warnings.append(
-                f"品質スコアが目標値を下回っています: {metrics.quality_score:.1f} < {self.thresholds.min_quality_score}"
+                f"品質スコアが目標値を下回っています: "
+                f"{metrics.quality_score:.1f} < {self.thresholds.min_quality_score}"
             )
             passed = False
 

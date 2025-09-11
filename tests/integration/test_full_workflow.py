@@ -184,9 +184,7 @@ class TestFullWorkflow:
         ]
 
         def mock_sync_with_retries(repo, dest_dir, config):
-            if repo["name"] == "error-repo":
-                return False  # エラーをシミュレート
-            return True
+            return repo["name"] != "error-repo"
 
         with (
             patch("setup_repo.sync.get_repositories", return_value=mock_repos),
@@ -241,7 +239,7 @@ class TestFullWorkflow:
         # ローカル設定が優先されることを確認
         assert loaded_config["github_token"] == "local_token"
         assert loaded_config["clone_destination"] == str(temp_dir / "local_repos")
-        
+
         # config.local.jsonが最初に見つかるため、config.jsonは読み込まれない
         # これは現在の実装の動作
 

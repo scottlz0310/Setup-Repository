@@ -185,7 +185,7 @@ def mock_github_api():
     with patch('setup_repo.github_api.GitHubAPI') as mock:
         yield mock
 
-@pytest.fixture  
+@pytest.fixture
 def mock_git_operations():
     """Git操作モック"""
     with patch('setup_repo.git_operations.GitOperations') as mock:
@@ -205,7 +205,7 @@ def temp_repo_structure(temp_dir):
 ```python
 @pytest.mark.parametrize("platform,expected", [
     ("windows", "windows"),
-    ("linux", "linux"), 
+    ("linux", "linux"),
     ("darwin", "macos"),
 ])
 def test_platform_detection(platform, expected):
@@ -228,7 +228,7 @@ def test_full_sync_workflow(temp_dir, mock_github_api):
 ```
 現在: 66.18%
 Week 4 終了: 75% (低・中カバレッジ改善完了)
-Week 5 終了: 80% (統合テスト・最適化完了)  
+Week 5 終了: 80% (統合テスト・最適化完了)
 Week 6 終了: 85% (品質向上・最終調整完了)
 ```
 
@@ -256,7 +256,7 @@ def monitor_coverage():
     """カバレッジ監視とアラート"""
     current = get_current_coverage()
     target = get_target_coverage()
-    
+
     if current < target:
         send_alert(f"カバレッジ低下: {current}% < {target}%")
 ```
@@ -268,7 +268,7 @@ def monitor_coverage():
   run: |
     uv run pytest --cov=src/setup_repo --cov-report=json
     uv run python scripts/coverage-check.py --min-coverage 80
-    
+
 - name: Coverage Badge Update
   run: |
     COVERAGE=$(python -c "import json; print(json.load(open('coverage.json'))['totals']['percent_covered'])")
@@ -283,7 +283,7 @@ def monitor_coverage():
 - [ ] 重要モジュール 80%以上
 - [ ] テスト実行時間 5分以内
 
-### 定性的指標  
+### 定性的指標
 - [ ] テストの保守性向上
 - [ ] バグ検出率向上
 - [ ] リファクタリング安全性向上

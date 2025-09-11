@@ -57,24 +57,24 @@ class TestTeeHandler:
         handler2.emit.assert_called_once_with(record)
 
     def test_tee_handler_set_level(self):
-        """TeeHandlerのsetLevelメソッドをテスト"""
+        """TeeHandlerのset_levelメソッドをテスト"""
         handler1 = MagicMock(spec=logging.Handler)
         handler2 = MagicMock(spec=logging.Handler)
 
         tee_handler = TeeHandler([handler1, handler2])
-        tee_handler.setLevel(logging.DEBUG)
+        tee_handler.set_level(logging.DEBUG)
 
         handler1.setLevel.assert_called_once_with(logging.DEBUG)
         handler2.setLevel.assert_called_once_with(logging.DEBUG)
 
     def test_tee_handler_set_formatter(self):
-        """TeeHandlerのsetFormatterメソッドをテスト"""
+        """TeeHandlerのset_formatterメソッドをテスト"""
         handler1 = MagicMock(spec=logging.Handler)
         handler2 = MagicMock(spec=logging.Handler)
         formatter = MagicMock(spec=logging.Formatter)
 
         tee_handler = TeeHandler([handler1, handler2])
-        tee_handler.setFormatter(formatter)
+        tee_handler.set_formatter(formatter)
 
         handler1.setFormatter.assert_called_once_with(formatter)
         handler2.setFormatter.assert_called_once_with(formatter)

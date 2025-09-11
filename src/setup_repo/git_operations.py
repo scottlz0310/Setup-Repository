@@ -52,8 +52,18 @@ class GitOperations:
 
 def choose_clone_url(repo: dict, use_https: bool = False) -> str:
     """SSH/HTTPSを選択してクローンURLを決定"""
+    # データ型の検証とサニタイズ
+    clone_url = repo.get("clone_url", "")
+    ssh_url = repo.get("ssh_url", "")
+
+    # 不正なデータ型の場合は空文字列に変換
+    if not isinstance(clone_url, str):
+        clone_url = ""
+    if not isinstance(ssh_url, str):
+        ssh_url = ""
+
     if use_https:
-        return repo["clone_url"]
+        return clone_url
 
     # SSH鍵の存在チェック
     ssh_keys = [Path.home() / ".ssh" / "id_rsa", Path.home() / ".ssh" / "id_ed25519"]
@@ -76,14 +86,14 @@ def choose_clone_url(repo: dict, use_https: bool = False) -> str:
             if result.returncode in [0, 1]:  # 0=成功, 1=認証成功だが接続拒否
                 full_name = repo.get("full_name")
                 if full_name and isinstance(full_name, str):
-                    return repo.get("ssh_url", f"git@github.com:{full_name}.git")
+                    return ssh_url or f"git@github.com:{full_name}.git"
                 else:
                     # full_nameが無効な場合はHTTPSにフォールバック
-                    return repo.get("clone_url", "")
+                    return clone_url
         except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
             pass
 
-    return repo.get("clone_url", "")  # HTTPSにフォールバック
+    return clone_url  # HTTPSにフォールバック
 
 
 def sync_repository(repo: dict, dest_dir: Path, dry_run: bool = False) -> bool:

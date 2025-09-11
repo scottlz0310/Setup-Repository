@@ -332,7 +332,8 @@ class TestSetupRepositoryEnvironment:
 
             # Assert
             assert result["success"] is True
-            mock_mkdir.assert_not_called()  # clone_destinationがないのでディレクトリ作成しない
+            # clone_destinationがないのでディレクトリ作成しない
+            mock_mkdir.assert_not_called()
 
 
 class TestEdgeCases:
@@ -346,10 +347,12 @@ class TestEdgeCases:
         mock_file.read.return_value = "invalid json"
         mock_open.return_value.__enter__.return_value = mock_file
 
-        with patch("pathlib.Path.exists", return_value=True):
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            pytest.raises(json.JSONDecodeError),
+        ):
             # Act & Assert
-            with pytest.raises(json.JSONDecodeError):
-                setup_repository_environment(config_path="/invalid/config.json")
+            setup_repository_environment(config_path="/invalid/config.json")
 
     @patch("setup_repo.setup.GitHubAPI")
     @patch("setup_repo.setup.PlatformDetector")
@@ -414,10 +417,12 @@ class TestEdgeCases:
         mock_github_api.get_user_info.return_value = {"login": "test_user", "id": 123}
         mock_github_api_class.return_value = mock_github_api
 
-        with patch("pathlib.Path.mkdir", side_effect=OSError("Permission denied")):
+        with (
+            patch("pathlib.Path.mkdir", side_effect=OSError("Permission denied")),
+            pytest.raises(OSError, match="Permission denied"),
+        ):
             # Act & Assert
-            with pytest.raises(OSError, match="Permission denied"):
-                setup_repository_environment()
+            setup_repository_environment()
 
 
 class TestSetupRepositoryEnvironmentAdvanced:
@@ -538,10 +543,12 @@ class TestSetupRepositoryEnvironmentAdvanced:
         mock_file.read.side_effect = json.JSONDecodeError("Invalid JSON", "test", 0)
         mock_open.return_value.__enter__.return_value = mock_file
 
-        with patch("pathlib.Path.exists", return_value=True):
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            pytest.raises(json.JSONDecodeError),
+        ):
             # Act & Assert
-            with pytest.raises(json.JSONDecodeError):
-                setup_repository_environment(config_path="/invalid/config.json")
+            setup_repository_environment(config_path="/invalid/config.json")
 
     @patch("builtins.open")
     def test_setup_repository_environment_custom_config_file_read_error(
@@ -551,10 +558,12 @@ class TestSetupRepositoryEnvironmentAdvanced:
         # Arrange
         mock_open.side_effect = OSError("Permission denied")
 
-        with patch("pathlib.Path.exists", return_value=True):
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            pytest.raises(IOError, match="Permission denied"),
+        ):
             # Act & Assert
-            with pytest.raises(IOError, match="Permission denied"):
-                setup_repository_environment(config_path="/restricted/config.json")
+            setup_repository_environment(config_path="/restricted/config.json")
 
     @patch("setup_repo.setup.GitHubAPI")
     @patch("setup_repo.setup.PlatformDetector")
@@ -707,10 +716,12 @@ class TestSetupFunctionsEdgeCases:
         mock_file.read.return_value = "{}"  # 空のJSON
         mock_open.return_value.__enter__.return_value = mock_file
 
-        with patch("pathlib.Path.exists", return_value=True):
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            pytest.raises(ValueError, match="必須フィールドが不足しています"),
+        ):
             # Act & Assert
-            with pytest.raises(ValueError, match="必須フィールドが不足しています"):
-                setup_repository_environment(config_path="/empty/config.json")
+            setup_repository_environment(config_path="/empty/config.json")
 
     @patch("setup_repo.setup.GitHubAPI")
     @patch("setup_repo.setup.PlatformDetector")

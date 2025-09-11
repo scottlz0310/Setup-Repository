@@ -14,7 +14,7 @@ from unittest.mock import patch
 
 import pytest
 
-from setup_repo.platform_detector import detect_platform, PlatformInfo
+from setup_repo.platform_detector import PlatformInfo, detect_platform
 from setup_repo.sync import sync_repositories
 
 
@@ -54,7 +54,8 @@ class TestCrossPlatform:
             python_cmd="python",
         )
         with patch(
-            "setup_repo.platform_detector.detect_platform", return_value=windows_platform
+            "setup_repo.platform_detector.detect_platform",
+            return_value=windows_platform,
         ):
             # Windowsスタイルのパスを設定
             windows_path = temp_dir / "repos"
@@ -184,13 +185,16 @@ class TestCrossPlatform:
         with (
             patch.dict(os.environ, wsl_env),
             patch("platform.system", return_value="Linux"),
-            patch("setup_repo.platform_detector.detect_platform", return_value=PlatformInfo(
-                name="wsl",
-                display_name="WSL (Windows Subsystem for Linux)",
-                package_managers=["apt", "snap", "curl"],
-                shell="bash",
-                python_cmd="python3",
-            )),
+            patch(
+                "setup_repo.platform_detector.detect_platform",
+                return_value=PlatformInfo(
+                    name="wsl",
+                    display_name="WSL (Windows Subsystem for Linux)",
+                    package_managers=["apt", "snap", "curl"],
+                    shell="bash",
+                    python_cmd="python3",
+                ),
+            ),
         ):
             clone_destination = temp_dir / "repos"
             sample_config["clone_destination"] = str(clone_destination)
@@ -270,9 +274,17 @@ class TestCrossPlatform:
                     mock_repos = [
                         {
                             "name": f"{platform_name}-env-repo",
-                            "full_name": f"{platform_name}_user/{platform_name}-env-repo",
-                            "clone_url": f"https://github.com/{platform_name}_user/{platform_name}-env-repo.git",
-                            "ssh_url": f"git@github.com:{platform_name}_user/{platform_name}-env-repo.git",
+                            "full_name": (
+                                f"{platform_name}_user/{platform_name}-env-repo"
+                            ),
+                            "clone_url": (
+                                f"https://github.com/{platform_name}_user/"
+                                f"{platform_name}-env-repo.git"
+                            ),
+                            "ssh_url": (
+                                f"git@github.com:{platform_name}_user/"
+                                f"{platform_name}-env-repo.git"
+                            ),
                             "description": f"{platform_name}環境変数テスト用リポジトリ",
                             "private": False,
                             "default_branch": "main",
@@ -446,7 +458,8 @@ class TestCrossPlatform:
             python_cmd="python",
         )
         with patch(
-            "setup_repo.platform_detector.detect_platform", return_value=windows_platform
+            "setup_repo.platform_detector.detect_platform",
+            return_value=windows_platform,
         ):
             # UNCパスをシミュレート
             network_path = "\\\\server\\share\\repos"
@@ -561,8 +574,14 @@ class TestCrossPlatform:
                     {
                         "name": f"{platform_name}-permission-repo",
                         "full_name": f"test_user/{platform_name}-permission-repo",
-                        "clone_url": f"https://github.com/test_user/{platform_name}-permission-repo.git",
-                        "ssh_url": f"git@github.com:test_user/{platform_name}-permission-repo.git",
+                        "clone_url": (
+                            f"https://github.com/test_user/"
+                            f"{platform_name}-permission-repo.git"
+                        ),
+                        "ssh_url": (
+                            f"git@github.com:test_user/"
+                            f"{platform_name}-permission-repo.git"
+                        ),
                         "description": f"{platform_name}権限テスト用リポジトリ",
                         "private": False,
                         "default_branch": "main",
@@ -592,27 +611,36 @@ class TestCrossPlatform:
 
         # 異なる改行コードを含む設定ファイルをテスト
         platforms = {
-            "windows": (PlatformInfo(
-                name="windows",
-                display_name="Windows",
-                package_managers=["scoop", "winget", "chocolatey"],
-                shell="powershell",
-                python_cmd="python",
-            ), "\r\n"),
-            "linux": (PlatformInfo(
-                name="linux",
-                display_name="Linux",
-                package_managers=["apt", "snap", "curl"],
-                shell="bash",
-                python_cmd="python3",
-            ), "\n"),
-            "macos": (PlatformInfo(
-                name="macos",
-                display_name="macOS",
-                package_managers=["brew", "curl"],
-                shell="zsh",
-                python_cmd="python3",
-            ), "\r"),  # 古いMac
+            "windows": (
+                PlatformInfo(
+                    name="windows",
+                    display_name="Windows",
+                    package_managers=["scoop", "winget", "chocolatey"],
+                    shell="powershell",
+                    python_cmd="python",
+                ),
+                "\r\n",
+            ),
+            "linux": (
+                PlatformInfo(
+                    name="linux",
+                    display_name="Linux",
+                    package_managers=["apt", "snap", "curl"],
+                    shell="bash",
+                    python_cmd="python3",
+                ),
+                "\n",
+            ),
+            "macos": (
+                PlatformInfo(
+                    name="macos",
+                    display_name="macOS",
+                    package_managers=["brew", "curl"],
+                    shell="zsh",
+                    python_cmd="python3",
+                ),
+                "\r",
+            ),  # 古いMac
         }
 
         for platform_name, (platform_info, _line_ending) in platforms.items():
@@ -624,8 +652,14 @@ class TestCrossPlatform:
                     {
                         "name": f"{platform_name}-lineending-repo",
                         "full_name": f"test_user/{platform_name}-lineending-repo",
-                        "clone_url": f"https://github.com/test_user/{platform_name}-lineending-repo.git",
-                        "ssh_url": f"git@github.com:test_user/{platform_name}-lineending-repo.git",
+                        "clone_url": (
+                            f"https://github.com/test_user/"
+                            f"{platform_name}-lineending-repo.git"
+                        ),
+                        "ssh_url": (
+                            f"git@github.com:test_user/"
+                            f"{platform_name}-lineending-repo.git"
+                        ),
                         "description": f"{platform_name}改行コードテスト用リポジトリ",
                         "private": False,
                         "default_branch": "main",
@@ -690,9 +724,17 @@ class TestCrossPlatform:
                     {
                         "name": f"{platform_name}-perf-repo-{i}",
                         "full_name": f"test_user/{platform_name}-perf-repo-{i}",
-                        "clone_url": f"https://github.com/test_user/{platform_name}-perf-repo-{i}.git",
-                        "ssh_url": f"git@github.com:test_user/{platform_name}-perf-repo-{i}.git",
-                        "description": f"{platform_name}パフォーマンステスト用リポジトリ{i}",
+                        "clone_url": (
+                            f"https://github.com/test_user/"
+                            f"{platform_name}-perf-repo-{i}.git"
+                        ),
+                        "ssh_url": (
+                            f"git@github.com:test_user/"
+                            f"{platform_name}-perf-repo-{i}.git"
+                        ),
+                        "description": (
+                            f"{platform_name}パフォーマンステスト用リポジトリ{i}"
+                        ),
                         "private": False,
                         "default_branch": "main",
                     }

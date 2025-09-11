@@ -8,7 +8,7 @@
 - [ ] 他の呼び出し箇所の更新
 - [ ] テスト実行・確認
 
-### ✅ Task 1.2: ensure_uv()重複解消  
+### ✅ Task 1.2: ensure_uv()重複解消
 - [ ] `python_env.py`の`ensure_uv()`削除
 - [ ] `uv_installer`への統一
 - [ ] 依存関係の更新

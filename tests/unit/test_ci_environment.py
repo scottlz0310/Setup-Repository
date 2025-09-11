@@ -182,7 +182,10 @@ class TestCIEnvironmentInfo:
         """依存関係情報取得成功のテスト"""
         mock_subprocess.side_effect = [
             "uv 0.1.0\n",  # uv --version
-            '[{"name": "pytest", "version": "7.0.0"}, {"name": "ruff", "version": "0.1.0"}]',  # pip list
+            (
+                '[{"name": "pytest", "version": "7.0.0"}, '
+                '{"name": "ruff", "version": "0.1.0"}]'
+            ),  # pip list
         ]
 
         with patch.dict(os.environ, {"VIRTUAL_ENV": "/path/to/venv"}):

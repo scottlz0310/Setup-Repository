@@ -55,7 +55,7 @@ from .platform_detector import detect_platform
 def ensure_uv():
     # 重複実装
 
-# uv_installer.py  
+# uv_installer.py
 def ensure_uv():
     # メイン実装
 ```
@@ -109,10 +109,10 @@ class RuffError(QualityCheckError):
 class TestQualityLogger:
     def test_logging_functions(self):
         pass
-    
+
     def test_error_classes(self):
         pass
-    
+
     def test_formatters(self):
         pass
 
@@ -122,7 +122,7 @@ class TestQualityLogger:
     def test_logging_functions(self):
         pass
 
-# test_quality_errors.py  
+# test_quality_errors.py
 class TestQualityErrors:
     def test_error_classes(self):
         pass
@@ -179,7 +179,7 @@ uv run python main.py trend analyze --days 7
 git add src/setup_repo/utils.py
 git commit -m "refactor: remove duplicate detect_platform() from utils"
 
-git add src/setup_repo/sync.py  
+git add src/setup_repo/sync.py
 git commit -m "refactor: update import for detect_platform()"
 ```
 

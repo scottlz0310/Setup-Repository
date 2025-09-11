@@ -105,7 +105,8 @@ def sync_repositories(config: dict, dry_run: bool = False) -> SyncResult:
 
     # 実際の接続方式を表示
     sample_url = choose_clone_url(repos[0], config.get("use_https", False))
-    if isinstance(sample_url, str):
+    # sample_urlが文字列でない場合の安全な処理
+    if isinstance(sample_url, str) and sample_url:
         connection_type = "SSH" if sample_url.startswith("git@") else "HTTPS"
     else:
         connection_type = "UNKNOWN"
@@ -121,10 +122,18 @@ def sync_repositories(config: dict, dry_run: bool = False) -> SyncResult:
     success_count = 0
 
     for repo in repos:
+        # リポジトリデータの基本検証
         repo_name = repo.get("name")
-        if not isinstance(repo_name, str):
+        if not isinstance(repo_name, str) or not repo_name:
             # 不正なリポジトリ名の場合はスキップ
             print(f"   ⚠️  不正なリポジトリ名をスキップ: {repo_name}")
+            errors.append(ValueError(f"不正なリポジトリ名: {repo_name}"))
+            continue
+
+        # 必須フィールドの検証
+        if not repo.get("clone_url") and not repo.get("ssh_url"):
+            print(f"   ⚠️  {repo_name}: クローンURLが見つかりません")
+            errors.append(ValueError(f"{repo_name}: クローンURLが見つかりません"))
             continue
         repo_path = dest_dir / repo_name
 

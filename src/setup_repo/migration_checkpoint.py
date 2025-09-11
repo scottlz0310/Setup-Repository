@@ -32,7 +32,8 @@ class MigrationCheckpoint:
         チェックポイント管理を初期化
 
         Args:
-            checkpoint_dir: チェックポイント保存ディレクトリ（デフォルト: .migration_checkpoints）
+            checkpoint_dir: チェックポイント保存ディレクトリ
+                （デフォルト: .migration_checkpoints）
         """
         self.checkpoint_dir = checkpoint_dir or Path(".migration_checkpoints")
         self.checkpoint_dir.mkdir(exist_ok=True)
@@ -201,7 +202,8 @@ class MigrationCheckpoint:
 
             self._save_metadata(metadata)
             logger.info(
-                f"チェックポイントクリーンアップ完了: {len(checkpoints_to_remove)}個削除"
+                f"チェックポイントクリーンアップ完了: "
+                f"{len(checkpoints_to_remove)}個削除"
             )
 
         except Exception as e:

@@ -26,13 +26,13 @@ class TeeHandler(logging.Handler):
         for handler in self.handlers:
             handler.emit(record)
 
-    def setLevel(self, level):
+    def set_level(self, level):
         """全てのハンドラーのレベルを設定"""
         super().setLevel(level)
         for handler in self.handlers:
             handler.setLevel(level)
 
-    def setFormatter(self, formatter):
+    def set_formatter(self, formatter):
         """全てのハンドラーのフォーマッターを設定"""
         super().setFormatter(formatter)
         for handler in self.handlers:

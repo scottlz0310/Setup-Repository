@@ -29,20 +29,20 @@ graph TB
     subgraph "CLI Layer"
         CLI[cli.py]
     end
-    
+
     subgraph "Application Layer"
         Setup[setup.py]
         Sync[sync.py]
         Interactive[interactive_setup.py]
     end
-    
+
     subgraph "Domain Layer"
         Git[git_operations.py]
         GitHub[github_api.py]
         Platform[platform_detector.py]
         Project[project_detector.py]
     end
-    
+
     subgraph "Infrastructure Layer"
         Config[config.py]
         Utils[utils.py]
@@ -52,7 +52,7 @@ graph TB
         GitIgnore[gitignore_manager.py]
         Safety[safety_check.py]
     end
-    
+
     subgraph "Quality Assurance Layer"
         QualityLogger[quality_logger.py]
         QualityErrors[quality_errors.py]
@@ -61,26 +61,26 @@ graph TB
         QualityCollectors[quality_collectors.py]
         QualityTrends[quality_trends.py]
     end
-    
+
     subgraph "Logging Layer"
         LoggingConfig[logging_config.py]
         LoggingHandlers[logging_handlers.py]
     end
-    
+
     subgraph "CI/CD Layer"
         CIEnvironment[ci_environment.py]
         CIErrorHandler[ci_error_handler.py]
     end
-    
+
     subgraph "Validation Layer"
         SetupValidators[setup_validators.py]
     end
-    
+
     subgraph "Migration Layer"
         MigrationCheckpoint[migration_checkpoint.py]
         Compatibility[compatibility.py]
     end
-    
+
     CLI --> Setup
     CLI --> Sync
     Setup --> Interactive
@@ -95,15 +95,15 @@ graph TB
     Setup --> VSCode
     Setup --> GitIgnore
     Setup --> Safety
-    
+
     QualityLogger --> QualityErrors
     QualityLogger --> QualityFormatters
     QualityMetrics --> QualityCollectors
     QualityMetrics --> QualityTrends
-    
+
     LoggingConfig --> LoggingHandlers
     CIErrorHandler --> CIEnvironment
-    
+
     Setup --> MigrationCheckpoint
     All --> Compatibility
 ```
@@ -381,7 +381,7 @@ sequenceDiagram
     participant Git
     participant GitHub
     participant Config
-    
+
     User->>CLI: setup command
     CLI->>Setup: run_setup()
     Setup->>Interactive: run_interactive_setup()
@@ -406,7 +406,7 @@ sequenceDiagram
     participant Config
     participant GitHub
     participant Git
-    
+
     User->>CLI: sync command
     CLI->>Sync: sync_repositories()
     Sync->>Config: load_config()
@@ -430,7 +430,7 @@ sequenceDiagram
     participant QualityLogger
     participant QualityErrors
     participant QualityFormatters
-    
+
     QualityMetrics->>QualityCollectors: collect_ruff_metrics()
     QualityCollectors-->>QualityMetrics: ruff results
     QualityMetrics->>QualityCollectors: collect_mypy_metrics()
@@ -518,11 +518,11 @@ class SetupTemplate:
         self.configure_environment()
         self.install_dependencies()
         self.finalize_setup()
-    
+
     def validate_prerequisites(self) -> None:
         # 共通前提条件チェック
         pass
-    
+
     def configure_environment(self) -> None:
         raise NotImplementedError  # サブクラスで実装
 ```
@@ -613,14 +613,14 @@ class QualityError(SetupRepositoryError):
 class Plugin:
     def initialize(self) -> None:
         pass
-    
+
     def execute(self) -> None:
         pass
 
 class PluginManager:
     def register_plugin(self, plugin: Plugin) -> None:
         pass
-    
+
     def execute_plugins(self) -> None:
         pass
 ```
@@ -654,7 +654,7 @@ class PluginManager:
 class EventBus:
     def publish(self, event: Event) -> None:
         pass
-    
+
     def subscribe(self, event_type: str, handler: Callable) -> None:
         pass
 ```

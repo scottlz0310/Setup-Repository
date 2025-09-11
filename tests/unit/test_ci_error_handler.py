@@ -9,7 +9,6 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-from setup_repo.ci_environment import CIEnvironmentInfo
 from setup_repo.ci_error_handler import (
     CIEnvironmentInfo,
     CIErrorHandler,

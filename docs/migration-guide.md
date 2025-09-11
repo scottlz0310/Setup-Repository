@@ -24,7 +24,7 @@ from setup_repo.quality_logger import QualityError, ColoredFormatter, setup_qual
 # エラー処理関連
 from setup_repo.quality_errors import QualityError, QualityWarning, handle_quality_error
 
-# フォーマッター関連  
+# フォーマッター関連
 from setup_repo.quality_formatters import ColoredFormatter, JSONFormatter, format_log_message
 
 # 基本ログ機能
@@ -195,23 +195,23 @@ IMPORT_MAPPINGS = {
         r'from setup_repo.quality_errors import \1',
     r'from setup_repo\.quality_logger import (ColoredFormatter|JSONFormatter|format_log_message|add_color_codes|strip_color_codes)':
         r'from setup_repo.quality_formatters import \1',
-    
+
     # CI Error Handler分割
     r'from setup_repo\.ci_error_handler import (detect_ci_environment|get_system_info|collect_environment_vars|get_ci_metadata|is_ci_environment)':
         r'from setup_repo.ci_environment import \1',
-    
+
     # Logging Config分割
     r'from setup_repo\.logging_config import (TeeHandler|RotatingFileHandler|ColoredConsoleHandler|create_file_handler|create_console_handler)':
         r'from setup_repo.logging_handlers import \1',
-    
+
     # Quality Metrics分割
     r'from setup_repo\.quality_metrics import (collect_ruff_metrics|collect_mypy_metrics|collect_pytest_metrics|collect_coverage_metrics|parse_tool_output)':
         r'from setup_repo.quality_collectors import \1',
-    
+
     # Interactive Setup分割
     r'from setup_repo\.interactive_setup import (validate_github_credentials|validate_directory_path|validate_setup_prerequisites|check_system_requirements)':
         r'from setup_repo.setup_validators import \1',
-    
+
     # 重複解消
     r'from setup_repo\.utils import detect_platform':
         r'from setup_repo.platform_detector import detect_platform',
@@ -224,17 +224,17 @@ def update_imports_in_file(file_path: Path) -> bool:
     try:
         content = file_path.read_text(encoding='utf-8')
         original_content = content
-        
+
         for pattern, replacement in IMPORT_MAPPINGS.items():
             content = re.sub(pattern, replacement, content)
-        
+
         if content != original_content:
             file_path.write_text(content, encoding='utf-8')
             print(f"更新: {file_path}")
             return True
-        
+
         return False
-    
+
     except Exception as e:
         print(f"エラー: {file_path} - {e}")
         return False
@@ -242,15 +242,15 @@ def update_imports_in_file(file_path: Path) -> bool:
 def main():
     """メイン処理"""
     updated_files = []
-    
+
     # Pythonファイルを検索して更新
     for py_file in Path('.').rglob('*.py'):
         if py_file.name.startswith('.') or 'venv' in str(py_file) or '__pycache__' in str(py_file):
             continue
-        
+
         if update_imports_in_file(py_file):
             updated_files.append(py_file)
-    
+
     print(f"\n更新完了: {len(updated_files)}個のファイルを更新しました")
     for file_path in updated_files:
         print(f"  - {file_path}")
@@ -302,7 +302,7 @@ checkpoint_manager = MigrationCheckpoint()
 
 # チェックポイント作成
 checkpoint_id = checkpoint_manager.create_checkpoint(
-    "phase1_complete", 
+    "phase1_complete",
     "Phase 1完了時点"
 )
 
@@ -375,7 +375,7 @@ DeprecationWarning: quality_logger.QualityError is deprecated. Use quality_error
 # 変更前
 @patch('setup_repo.quality_logger.QualityError')
 
-# 変更後  
+# 変更後
 @patch('setup_repo.quality_errors.QualityError')
 ```
 
