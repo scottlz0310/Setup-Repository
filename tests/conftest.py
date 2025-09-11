@@ -151,10 +151,13 @@ class PlatformMocker:
             self.patches.append(open_patch)
             open_patch.start()
 
+            # 元のos.path.exists関数を保存
+            original_exists = os.path.exists
+            
             exists_patch = patch(
                 "os.path.exists",
                 side_effect=lambda path: (
-                    path == "/proc/version" or os.path.exists(path)
+                    path == "/proc/version" or original_exists(path)
                 ),
             )
             self.patches.append(exists_patch)
@@ -162,10 +165,13 @@ class PlatformMocker:
         else:
             # Linuxの場合、/proc/versionファイルが存在しないか、
             # microsoftが含まれない内容にする
+            # 元のos.path.exists関数を保存
+            original_exists = os.path.exists
+            
             exists_patch = patch(
                 "os.path.exists",
                 side_effect=lambda path: (
-                    False if path == "/proc/version" else os.path.exists(path)
+                    False if path == "/proc/version" else original_exists(path)
                 ),
             )
             self.patches.append(exists_patch)

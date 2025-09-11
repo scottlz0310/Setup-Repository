@@ -10,7 +10,7 @@ platform_detector.pyモジュールの包括的な単体テスト
 """
 
 import subprocess
-from unittest.mock import patch
+from unittest.mock import mock_open, patch
 
 import pytest
 
@@ -90,7 +90,14 @@ class TestDetectPlatform:
 
     def test_detect_windows_platform(self) -> None:
         """Windowsプラットフォーム検出のテスト"""
-        with patch("platform.system") as mock_system:
+        with (
+            patch("src.setup_repo.platform_detector.platform.system") as mock_system,
+            patch("src.setup_repo.platform_detector.os.name", "nt"),
+            patch(
+                "src.setup_repo.platform_detector.os.environ",
+                {"CI": "false", "GITHUB_ACTIONS": "false", "RUNNER_OS": "windows"},
+            ),
+        ):
             mock_system.return_value = "Windows"
 
             platform_info = detect_platform()
@@ -105,7 +112,14 @@ class TestDetectPlatform:
 
     def test_detect_windows_platform_by_os_name(self) -> None:
         """os.nameによるWindows検出のテスト"""
-        with patch("platform.system") as mock_system, patch("os.name", "nt"):
+        with (
+            patch("src.setup_repo.platform_detector.platform.system") as mock_system,
+            patch("src.setup_repo.platform_detector.os.name", "nt"),
+            patch(
+                "src.setup_repo.platform_detector.os.environ",
+                {"CI": "false", "GITHUB_ACTIONS": "false", "RUNNER_OS": "windows"},
+            ),
+        ):
             mock_system.return_value = "Linux"  # 他のシステムを返す
 
             platform_info = detect_platform()
@@ -116,8 +130,18 @@ class TestDetectPlatform:
     def test_detect_wsl_platform(self) -> None:
         """WSLプラットフォーム検出のテスト"""
         with (
-            patch("platform.system") as mock_system,
-            patch("platform.release") as mock_release,
+            patch("src.setup_repo.platform_detector.platform.system") as mock_system,
+            patch("src.setup_repo.platform_detector.platform.release") as mock_release,
+            patch("src.setup_repo.platform_detector.os.name", "posix"),
+            patch(
+                "src.setup_repo.platform_detector.os.environ",
+                {"CI": "false", "GITHUB_ACTIONS": "false", "RUNNER_OS": "linux"},
+            ),
+            patch("src.setup_repo.platform_detector.os.path.exists", return_value=True),
+            patch(
+                "builtins.open",
+                mock_open(read_data="Linux version 5.4.0-microsoft-standard-WSL2"),
+            ),
         ):
             mock_system.return_value = "Linux"
             mock_release.return_value = "5.4.0-microsoft-standard-WSL2"
@@ -135,8 +159,16 @@ class TestDetectPlatform:
     def test_detect_macos_platform(self) -> None:
         """macOSプラットフォーム検出のテスト"""
         with (
-            patch("platform.system") as mock_system,
-            patch("platform.release") as mock_release,
+            patch("src.setup_repo.platform_detector.platform.system") as mock_system,
+            patch("src.setup_repo.platform_detector.platform.release") as mock_release,
+            patch("src.setup_repo.platform_detector.os.name", "posix"),
+            patch(
+                "src.setup_repo.platform_detector.os.environ",
+                {"CI": "false", "GITHUB_ACTIONS": "false", "RUNNER_OS": "macos"},
+            ),
+            patch(
+                "src.setup_repo.platform_detector.os.path.exists", return_value=False
+            ),
         ):
             mock_system.return_value = "Darwin"
             mock_release.return_value = "21.0.0"  # macOS release
@@ -153,8 +185,16 @@ class TestDetectPlatform:
     def test_detect_linux_platform(self) -> None:
         """Linuxプラットフォーム検出のテスト"""
         with (
-            patch("platform.system") as mock_system,
-            patch("platform.release") as mock_release,
+            patch("src.setup_repo.platform_detector.platform.system") as mock_system,
+            patch("src.setup_repo.platform_detector.platform.release") as mock_release,
+            patch("src.setup_repo.platform_detector.os.name", "posix"),
+            patch(
+                "src.setup_repo.platform_detector.os.environ",
+                {"CI": "false", "GITHUB_ACTIONS": "false", "RUNNER_OS": "linux"},
+            ),
+            patch(
+                "src.setup_repo.platform_detector.os.path.exists", return_value=False
+            ),
         ):
             mock_system.return_value = "Linux"
             mock_release.return_value = "5.4.0-generic"  # WSLではない
@@ -172,8 +212,16 @@ class TestDetectPlatform:
     def test_detect_unknown_platform_defaults_to_linux(self) -> None:
         """未知のプラットフォームがLinuxにデフォルトされることをテスト"""
         with (
-            patch("platform.system") as mock_system,
-            patch("platform.release") as mock_release,
+            patch("src.setup_repo.platform_detector.platform.system") as mock_system,
+            patch("src.setup_repo.platform_detector.platform.release") as mock_release,
+            patch("src.setup_repo.platform_detector.os.name", "posix"),
+            patch(
+                "src.setup_repo.platform_detector.os.environ",
+                {"CI": "false", "GITHUB_ACTIONS": "false", "RUNNER_OS": ""},
+            ),
+            patch(
+                "src.setup_repo.platform_detector.os.path.exists", return_value=False
+            ),
         ):
             mock_system.return_value = "FreeBSD"
             mock_release.return_value = "13.0-RELEASE"
@@ -185,7 +233,10 @@ class TestDetectPlatform:
 
     def test_detect_platform_case_insensitive(self) -> None:
         """大文字小文字を区別しない検出のテスト"""
-        with patch("platform.system") as mock_system:
+        with (
+            patch("src.setup_repo.platform_detector.platform.system") as mock_system,
+            patch("src.setup_repo.platform_detector.os.name", "nt"),
+        ):
             mock_system.return_value = "WINDOWS"  # 大文字
 
             platform_info = detect_platform()
@@ -195,8 +246,9 @@ class TestDetectPlatform:
     def test_detect_wsl_case_insensitive(self) -> None:
         """WSL検出の大文字小文字を区別しないテスト"""
         with (
-            patch("platform.system") as mock_system,
-            patch("platform.release") as mock_release,
+            patch("src.setup_repo.platform_detector.platform.system") as mock_system,
+            patch("src.setup_repo.platform_detector.platform.release") as mock_release,
+            patch("src.setup_repo.platform_detector.os.name", "posix"),
         ):
             mock_system.return_value = "Linux"
             mock_release.return_value = "5.4.0-MICROSOFT-standard-WSL2"  # 大文字
@@ -488,7 +540,10 @@ class TestPlatformDetectorIntegration:
 
     def test_full_platform_detection_workflow_windows(self) -> None:
         """Windows環境での完全なワークフローテスト"""
-        with patch("platform.system") as mock_system:
+        with (
+            patch("src.setup_repo.platform_detector.platform.system") as mock_system,
+            patch("src.setup_repo.platform_detector.os.name", "nt"),
+        ):
             mock_system.return_value = "Windows"
 
             # プラットフォーム検出
@@ -512,8 +567,9 @@ class TestPlatformDetectorIntegration:
     def test_full_platform_detection_workflow_linux(self) -> None:
         """Linux環境での完全なワークフローテスト"""
         with (
-            patch("platform.system") as mock_system,
-            patch("platform.release") as mock_release,
+            patch("src.setup_repo.platform_detector.platform.system") as mock_system,
+            patch("src.setup_repo.platform_detector.platform.release") as mock_release,
+            patch("src.setup_repo.platform_detector.os.name", "posix"),
         ):
             mock_system.return_value = "Linux"
             mock_release.return_value = "5.4.0-generic"
@@ -599,8 +655,9 @@ class TestPlatformDetectorClass:
         detector = PlatformDetector()
 
         with (
-            patch("platform.system") as mock_system,
-            patch("platform.release") as mock_release,
+            patch("src.setup_repo.platform_detector.platform.system") as mock_system,
+            patch("src.setup_repo.platform_detector.platform.release") as mock_release,
+            patch("src.setup_repo.platform_detector.os.name", "posix"),
         ):
             mock_system.return_value = "Linux"
             mock_release.return_value = "5.4.0-microsoft-standard-WSL2"
@@ -617,8 +674,9 @@ class TestPlatformDetectorClass:
         detector = PlatformDetector()
 
         with (
-            patch("platform.system") as mock_system,
-            patch("platform.release") as mock_release,
+            patch("src.setup_repo.platform_detector.platform.system") as mock_system,
+            patch("src.setup_repo.platform_detector.platform.release") as mock_release,
+            patch("src.setup_repo.platform_detector.os.name", "posix"),
         ):
             mock_system.return_value = "Linux"
             mock_release.return_value = "5.4.0-generic"
@@ -634,8 +692,13 @@ class TestPlatformDetectorClass:
 
         detector = PlatformDetector()
 
-        with patch("platform.system") as mock_system:
+        with (
+            patch("src.setup_repo.platform_detector.platform.system") as mock_system,
+            patch("src.setup_repo.platform_detector.platform.release") as mock_release,
+            patch("src.setup_repo.platform_detector.os.name", "posix"),
+        ):
             mock_system.return_value = "Linux"
+            mock_release.return_value = "5.4.0-generic"
 
             # キャッシュをクリア
             detector._platform_info = None
@@ -654,8 +717,13 @@ class TestPlatformDetectorClass:
 
         detector = PlatformDetector()
 
-        with patch("platform.system") as mock_system:
+        with (
+            patch("src.setup_repo.platform_detector.platform.system") as mock_system,
+            patch("src.setup_repo.platform_detector.platform.release") as mock_release,
+            patch("src.setup_repo.platform_detector.os.name", "posix"),
+        ):
             mock_system.return_value = "Linux"
+            mock_release.return_value = "5.4.0-generic"
 
             # キャッシュをクリア
             detector._platform_info = None
@@ -730,8 +798,13 @@ class TestEdgeCasesAndErrorHandling:
 
         for system_value, expected_platform in test_cases:
             with (
-                patch("platform.system") as mock_system,
-                patch("platform.release") as mock_release,
+                patch(
+                    "src.setup_repo.platform_detector.platform.system"
+                ) as mock_system,
+                patch(
+                    "src.setup_repo.platform_detector.platform.release"
+                ) as mock_release,
+                patch("src.setup_repo.platform_detector.os.name", "posix"),
             ):
                 mock_system.return_value = system_value
                 mock_release.return_value = "1.0.0"
@@ -750,8 +823,13 @@ class TestEdgeCasesAndErrorHandling:
 
         for release_string in wsl_release_strings:
             with (
-                patch("platform.system") as mock_system,
-                patch("platform.release") as mock_release,
+                patch(
+                    "src.setup_repo.platform_detector.platform.system"
+                ) as mock_system,
+                patch(
+                    "src.setup_repo.platform_detector.platform.release"
+                ) as mock_release,
+                patch("src.setup_repo.platform_detector.os.name", "posix"),
             ):
                 mock_system.return_value = "Linux"
                 mock_release.return_value = release_string
@@ -770,8 +848,13 @@ class TestEdgeCasesAndErrorHandling:
 
         for release_string in non_wsl_release_strings:
             with (
-                patch("platform.system") as mock_system,
-                patch("platform.release") as mock_release,
+                patch(
+                    "src.setup_repo.platform_detector.platform.system"
+                ) as mock_system,
+                patch(
+                    "src.setup_repo.platform_detector.platform.release"
+                ) as mock_release,
+                patch("src.setup_repo.platform_detector.os.name", "posix"),
             ):
                 mock_system.return_value = "Linux"
                 mock_release.return_value = release_string

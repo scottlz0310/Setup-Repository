@@ -279,17 +279,17 @@ def _log_package_manager_check_failure(manager: str, error: Exception) -> None:
         f"{error_type} - {error_msg}"
     )
 
-    # プラットフォーム固有のアドバイス
-    platform_info = detect_platform()
-    if platform_info.name == "windows" and manager == "uv":
+    # プラットフォーム固有のアドバイス（簡易版）
+    system = platform.system().lower()
+    if system == "windows" and manager == "uv":
         print(
             "::warning::Windows環境でuvが見つかりません。PowerShellでPATHを確認してください。"
         )
-    elif platform_info.name == "macos" and manager == "brew":
+    elif system == "darwin" and manager == "brew":
         print(
             "::warning::macOS環境でHomebrewが見つかりません。Homebrewをインストールしてください。"
         )
-    elif platform_info.name == "linux" and manager in ["apt", "snap"]:
+    elif system == "linux" and manager in ["apt", "snap"]:
         print(
             f"::warning::Linux環境で{manager}が見つかりません。パッケージマネージャーが利用可能か確認してください。"
         )

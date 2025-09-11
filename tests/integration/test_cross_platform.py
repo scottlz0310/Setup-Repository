@@ -33,9 +33,30 @@ class TestCrossPlatform:
     def test_platform_detection(self, platform_name: str, expected: str) -> None:
         """プラットフォーム検出テスト"""
         with (
-            patch("platform.system", return_value=platform_name),
-            patch("platform.release", return_value="5.4.0-generic"),  # 非WSLリリース
+            patch(
+                "setup_repo.platform_detector.platform.system",
+                return_value=platform_name,
+            ),
+            patch(
+                "setup_repo.platform_detector.platform.release",
+                return_value="5.4.0-generic",
+            ),  # 非WSLリリース
+            patch(
+                "setup_repo.platform_detector.os.path.exists", return_value=False
+            ),  # WSL検出を無効化
+            patch("setup_repo.platform_detector.os.environ") as mock_env,
+            patch(
+                "setup_repo.platform_detector.os.name",
+                "nt" if platform_name == "Windows" else "posix",
+            ),
         ):
+            # CI環境変数をモック
+            mock_env.get.side_effect = lambda key, default="": {
+                "CI": "false",
+                "GITHUB_ACTIONS": "false",
+                "RUNNER_OS": expected,
+            }.get(key, default)
+
             platform_info = detect_platform()
             assert platform_info.name == expected
 

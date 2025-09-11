@@ -1,0 +1,574 @@
+{
+  "timestamp": "2025-09-11T15:53:58.359624",
+  "ci_environment": {
+    "ci_type": "local"
+  },
+  "system_info": {
+    "python_version": "3.13.7",
+    "platform": "linux",
+    "architecture": "x86_64",
+    "working_directory": "/home/hiro/workspace/Setup-Repository",
+    "git_info": {
+      "commit": "f6bbf42f5ca926f1fe72bc4efc26ea6489492288",
+      "branch": "main"
+    },
+    "environment_variables": {},
+    "ci_type": "local"
+  },
+  "dependency_info": {
+    "uv_info": {
+      "version": "uv 0.8.16",
+      "virtual_env": "/home/hiro/workspace/Setup-Repository/.venv"
+    },
+    "packages": {
+      "error": "パッケージ情報取得エラー"
+    }
+  },
+  "platform_debug_info": {
+    "platform": {
+      "name": "wsl",
+      "display_name": "WSL (Windows Subsystem for Linux)",
+      "shell": "bash",
+      "python_cmd": "python3",
+      "supported_package_managers": [
+        "apt",
+        "snap",
+        "curl"
+      ],
+      "available_package_managers": [
+        "apt",
+        "snap",
+        "curl"
+      ]
+    },
+    "system": {
+      "platform_system": "Linux",
+      "platform_release": "6.6.87.2-microsoft-standard-WSL2",
+      "platform_version": "#1 SMP PREEMPT_DYNAMIC Thu Jun  5 18:30:46 UTC 2025",
+      "platform_machine": "x86_64",
+      "platform_processor": "x86_64",
+      "platform_node": "SUGAWARA-PC2"
+    },
+    "environment": {
+      "path": "/home/hiro/workspace/Setup-Repository/.venv/bin:/home/hiro/workspace/Setup-Repository/.venv/bin:/home/hiro/.kiro-server/bin/46e6f67f1ae2b3624949caf9e4135b4ab37606a9/bin/remote-cli:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/usr/lib/wsl/lib:/mnt/c/Windows/system32:/mnt/c/Windows:/mnt/c/Windows/System32/Wbem:/mnt/c/Windows/System32/WindowsPowerShell/v1.0/:/mnt/c/Windows/System32/OpenSSH/:/mnt/c/Program Files/PowerShell/7/:/mnt/c/Program Files/Git/cmd:/mnt/c/Users/jojob/scoop/apps/python/current/Scripts:/mnt/c/Users/jojob/scoop/apps/python/current:/mnt/c/Users/jojob/scoop/shims:/mnt/c/Users/jojob/AppData/Local/Microsoft/WindowsApps:/mnt/c/Users/jojob/.dotnet/tools:/mnt/c/Users/jojob/AppData/Local/Programs/Microsoft VS Code/bin:/mnt/c/Users/jojob/AppData/Local/Programs/cursor/resources/app/bin:/mnt/c/Users/jojob/AppData/Local/Programs/Kiro/bin:/mnt/c/users/jojob/appdata/local/packages/pythonsoftwarefoundation.python.3.13_qbz5n2kfra8p0/localcache/local-packages/python313/scripts:/mnt/c/users/jojob/.local/bin:/snap/bin:/mnt/c/Users/jojob/AppData/Local/Programs/cursor/resources/app/bin:/home/hiro/.local/bin:/home/hiro/.kiro-server/extensions/ms-python.debugpy-2025.10.0-linux-x64/bundled/scripts/noConfigScripts:/mnt/c/Users/jojob/AppData/Local/Programs/cursor/resources/app/bin:/home/hiro/.local/bin",
+      "home": "/home/hiro",
+      "shell": "/bin/bash",
+      "term": "xterm-256color"
+    }
+  },
+  "total_errors": 2,
+  "errors": [
+    {
+      "type": "QualityCheckError",
+      "message": "品質チェックステージ 'Ruff Linting' が失敗しました",
+      "timestamp": "2025-09-11T15:53:16.831452",
+      "code": "RUFF LINTING_FAILED",
+      "details": {
+        "stage": "Ruff Linting",
+        "result": {
+          "success": false,
+          "issue_count": 16,
+          "issues": [
+            {
+              "cell": null,
+              "code": "E501",
+              "end_location": {
+                "column": 128,
+                "row": 134
+              },
+              "filename": "/home/hiro/workspace/Setup-Repository/tests/conftest.py",
+              "fix": null,
+              "location": {
+                "column": 89,
+                "row": 134
+              },
+              "message": "Line too long (127 > 88)",
+              "noqa_row": 134,
+              "url": "https://docs.astral.sh/ruff/rules/line-too-long"
+            },
+            {
+              "cell": null,
+              "code": "W293",
+              "end_location": {
+                "column": 13,
+                "row": 135
+              },
+              "filename": "/home/hiro/workspace/Setup-Repository/tests/conftest.py",
+              "fix": {
+                "applicability": "safe",
+                "edits": [
+                  {
+                    "content": "",
+                    "end_location": {
+                      "column": 13,
+                      "row": 135
+                    },
+                    "location": {
+                      "column": 1,
+                      "row": 135
+                    }
+                  }
+                ],
+                "message": "Remove whitespace from blank line"
+              },
+              "location": {
+                "column": 1,
+                "row": 135
+              },
+              "message": "Blank line contains whitespace",
+              "noqa_row": 135,
+              "url": "https://docs.astral.sh/ruff/rules/blank-line-with-whitespace"
+            },
+            {
+              "cell": null,
+              "code": "W293",
+              "end_location": {
+                "column": 13,
+                "row": 142
+              },
+              "filename": "/home/hiro/workspace/Setup-Repository/tests/conftest.py",
+              "fix": {
+                "applicability": "safe",
+                "edits": [
+                  {
+                    "content": "",
+                    "end_location": {
+                      "column": 13,
+                      "row": 142
+                    },
+                    "location": {
+                      "column": 1,
+                      "row": 142
+                    }
+                  }
+                ],
+                "message": "Remove whitespace from blank line"
+              },
+              "location": {
+                "column": 1,
+                "row": 142
+              },
+              "message": "Blank line contains whitespace",
+              "noqa_row": 142,
+              "url": "https://docs.astral.sh/ruff/rules/blank-line-with-whitespace"
+            },
+            {
+              "cell": null,
+              "code": "W293",
+              "end_location": {
+                "column": 13,
+                "row": 146
+              },
+              "filename": "/home/hiro/workspace/Setup-Repository/tests/conftest.py",
+              "fix": {
+                "applicability": "safe",
+                "edits": [
+                  {
+                    "content": "",
+                    "end_location": {
+                      "column": 13,
+                      "row": 146
+                    },
+                    "location": {
+                      "column": 1,
+                      "row": 146
+                    }
+                  }
+                ],
+                "message": "Remove whitespace from blank line"
+              },
+              "location": {
+                "column": 1,
+                "row": 146
+              },
+              "message": "Blank line contains whitespace",
+              "noqa_row": 146,
+              "url": "https://docs.astral.sh/ruff/rules/blank-line-with-whitespace"
+            },
+            {
+              "cell": null,
+              "code": "E501",
+              "end_location": {
+                "column": 125,
+                "row": 147
+              },
+              "filename": "/home/hiro/workspace/Setup-Repository/tests/conftest.py",
+              "fix": null,
+              "location": {
+                "column": 89,
+                "row": 147
+              },
+              "message": "Line too long (124 > 88)",
+              "noqa_row": 147,
+              "url": "https://docs.astral.sh/ruff/rules/line-too-long"
+            },
+            {
+              "cell": null,
+              "code": "E501",
+              "end_location": {
+                "column": 69,
+                "row": 151
+              },
+              "filename": "/home/hiro/workspace/Setup-Repository/tests/conftest.py",
+              "fix": null,
+              "location": {
+                "column": 66,
+                "row": 151
+              },
+              "message": "Line too long (95 > 88)",
+              "noqa_row": 151,
+              "url": "https://docs.astral.sh/ruff/rules/line-too-long"
+            },
+            {
+              "cell": null,
+              "code": "E501",
+              "end_location": {
+                "column": 136,
+                "row": 152
+              },
+              "filename": "/home/hiro/workspace/Setup-Repository/tests/conftest.py",
+              "fix": null,
+              "location": {
+                "column": 89,
+                "row": 152
+              },
+              "message": "Line too long (135 > 88)",
+              "noqa_row": 152,
+              "url": "https://docs.astral.sh/ruff/rules/line-too-long"
+            },
+            {
+              "cell": null,
+              "code": "W291",
+              "end_location": {
+                "column": 29,
+                "row": 248
+              },
+              "filename": "/home/hiro/workspace/Setup-Repository/tests/unit/test_platform_detector.py",
+              "fix": {
+                "applicability": "safe",
+                "edits": [
+                  {
+                    "content": "",
+                    "end_location": {
+                      "column": 29,
+                      "row": 248
+                    },
+                    "location": {
+                      "column": 28,
+                      "row": 248
+                    }
+                  }
+                ],
+                "message": "Remove trailing whitespace"
+              },
+              "location": {
+                "column": 28,
+                "row": 248
+              },
+              "message": "Trailing whitespace",
+              "noqa_row": 248,
+              "url": "https://docs.astral.sh/ruff/rules/trailing-whitespace"
+            },
+            {
+              "cell": null,
+              "code": "E501",
+              "end_location": {
+                "column": 104,
+                "row": 263
+              },
+              "filename": "/home/hiro/workspace/Setup-Repository/tests/unit/test_platform_detector.py",
+              "fix": null,
+              "location": {
+                "column": 89,
+                "row": 263
+              },
+              "message": "Line too long (103 > 88)",
+              "noqa_row": 263,
+              "url": "https://docs.astral.sh/ruff/rules/line-too-long"
+            },
+            {
+              "cell": null,
+              "code": "E501",
+              "end_location": {
+                "column": 118,
+                "row": 903
+              },
+              "filename": "/home/hiro/workspace/Setup-Repository/tests/unit/test_utils.py",
+              "fix": null,
+              "location": {
+                "column": 89,
+                "row": 903
+              },
+              "message": "Line too long (117 > 88)",
+              "noqa_row": 903,
+              "url": "https://docs.astral.sh/ruff/rules/line-too-long"
+            },
+            {
+              "cell": null,
+              "code": "B023",
+              "end_location": {
+                "column": 116,
+                "row": 903
+              },
+              "filename": "/home/hiro/workspace/Setup-Repository/tests/unit/test_utils.py",
+              "fix": null,
+              "location": {
+                "column": 109,
+                "row": 903
+              },
+              "message": "Function definition does not bind loop variable `release`",
+              "noqa_row": 903,
+              "url": "https://docs.astral.sh/ruff/rules/function-uses-loop-variable"
+            },
+            {
+              "cell": null,
+              "code": "W291",
+              "end_location": {
+                "column": 82,
+                "row": 904
+              },
+              "filename": "/home/hiro/workspace/Setup-Repository/tests/unit/test_utils.py",
+              "fix": {
+                "applicability": "safe",
+                "edits": [
+                  {
+                    "content": "",
+                    "end_location": {
+                      "column": 82,
+                      "row": 904
+                    },
+                    "location": {
+                      "column": 81,
+                      "row": 904
+                    }
+                  }
+                ],
+                "message": "Remove trailing whitespace"
+              },
+              "location": {
+                "column": 81,
+                "row": 904
+              },
+              "message": "Trailing whitespace",
+              "noqa_row": 904,
+              "url": "https://docs.astral.sh/ruff/rules/trailing-whitespace"
+            },
+            {
+              "cell": null,
+              "code": "B023",
+              "end_location": {
+                "column": 73,
+                "row": 905
+              },
+              "filename": "/home/hiro/workspace/Setup-Repository/tests/unit/test_utils.py",
+              "fix": null,
+              "location": {
+                "column": 66,
+                "row": 905
+              },
+              "message": "Function definition does not bind loop variable `release`",
+              "noqa_row": 905,
+              "url": "https://docs.astral.sh/ruff/rules/function-uses-loop-variable"
+            },
+            {
+              "cell": null,
+              "code": "W291",
+              "end_location": {
+                "column": 89,
+                "row": 905
+              },
+              "filename": "/home/hiro/workspace/Setup-Repository/tests/unit/test_utils.py",
+              "fix": {
+                "applicability": "safe",
+                "edits": [
+                  {
+                    "content": "",
+                    "end_location": {
+                      "column": 89,
+                      "row": 905
+                    },
+                    "location": {
+                      "column": 88,
+                      "row": 905
+                    }
+                  }
+                ],
+                "message": "Remove trailing whitespace"
+              },
+              "location": {
+                "column": 88,
+                "row": 905
+              },
+              "message": "Trailing whitespace",
+              "noqa_row": 905,
+              "url": "https://docs.astral.sh/ruff/rules/trailing-whitespace"
+            },
+            {
+              "cell": null,
+              "code": "B023",
+              "end_location": {
+                "column": 76,
+                "row": 906
+              },
+              "filename": "/home/hiro/workspace/Setup-Repository/tests/unit/test_utils.py",
+              "fix": null,
+              "location": {
+                "column": 69,
+                "row": 906
+              },
+              "message": "Function definition does not bind loop variable `release`",
+              "noqa_row": 906,
+              "url": "https://docs.astral.sh/ruff/rules/function-uses-loop-variable"
+            },
+            {
+              "cell": null,
+              "code": "W291",
+              "end_location": {
+                "column": 77,
+                "row": 906
+              },
+              "filename": "/home/hiro/workspace/Setup-Repository/tests/unit/test_utils.py",
+              "fix": {
+                "applicability": "safe",
+                "edits": [
+                  {
+                    "content": "",
+                    "end_location": {
+                      "column": 77,
+                      "row": 906
+                    },
+                    "location": {
+                      "column": 76,
+                      "row": 906
+                    }
+                  }
+                ],
+                "message": "Remove trailing whitespace"
+              },
+              "location": {
+                "column": 76,
+                "row": 906
+              },
+              "message": "Trailing whitespace",
+              "noqa_row": 906,
+              "url": "https://docs.astral.sh/ruff/rules/trailing-whitespace"
+            }
+          ],
+          "errors": [
+            "Ruffチェックで16件の問題が見つかりました"
+          ]
+        },
+        "duration": 0.1045382022857666
+      }
+    },
+    {
+      "type": "QualityCheckError",
+      "message": "品質チェックステージ 'Test Execution' が失敗しました",
+      "timestamp": "2025-09-11T15:53:52.789299",
+      "code": "TEST EXECUTION_FAILED",
+      "details": {
+        "stage": "Test Execution",
+        "result": {
+          "success": false,
+          "coverage_percent": 92.67897635244574,
+          "tests_passed": 842,
+          "tests_failed": 88,
+          "failed_tests": [
+            "tests/integration/test_sync_integration.py::TestSyncIntegration::test_sync_with_file_system_cleanup",
+            "tests/integration/test_full_workflow.py::TestFullWorkflow::test_error_recovery_workflow",
+            "tests/unit/test_platform_detector.py::TestDetectPlatform::test_detect_macos_platform",
+            "tests/integration/test_cross_platform.py::TestCrossPlatform::test_platform_detection[Linux-linux]",
+            "tests/unit/test_platform_detector.py::TestDetectPlatform::test_detect_linux_platform",
+            "tests/unit/test_platform_detector.py::TestDetectPlatform::test_detect_unknown_platform_defaults_to_linux",
+            "tests/integration/test_full_workflow.py::TestFullWorkflow::test_dry_run_workflow",
+            "tests/unit/test_platform_detector.py::TestCheckPackageManager::test_check_package_manager_available",
+            "tests/integration/test_cross_platform.py::TestCrossPlatform::test_platform_detection[Darwin-macos]",
+            "tests/integration/test_cross_platform.py::TestCrossPlatform::test_windows_path_handling",
+            "tests/integration/test_cross_platform.py::TestCrossPlatform::test_linux_path_handling",
+            "tests/integration/test_cross_platform.py::TestCrossPlatform::test_macos_path_handling",
+            "tests/integration/test_cross_platform.py::TestCrossPlatform::test_wsl_environment_detection",
+            "tests/unit/test_mock_strategy.py::TestMockStrategyReproducibility::test_edge_case_handling",
+            "tests/unit/test_platform_detector.py::TestPlatformDetectorIntegration::test_full_platform_detection_workflow_linux",
+            "tests/unit/test_platform_detector.py::TestPlatformDetectorClass::test_is_not_wsl_detection",
+            "tests/unit/test_platform_detector.py::TestEdgeCasesAndErrorHandling::test_detect_platform_with_unusual_system_values",
+            "tests/unit/test_platform_detector.py::TestEdgeCasesAndErrorHandling::test_non_wsl_linux_detection",
+            "tests/unit/test_platform_ci_integration.py::TestCIPlatformDetection::test_platform_detection_consistency_macos",
+            "tests/unit/test_platform_ci_integration.py::TestCIPlatformDetection::test_runner_os_platform_mismatch_detection",
+            "tests/unit/test_logging_config.py::TestLoggingSetupFunctions::test_setup_project_logging_cross_platform[wsl]",
+            "tests/performance/test_error_recovery.py::TestMixedErrorRecovery::test_multiple_error_types_recovery",
+            "tests/test_environment.py::test_mock_platform_detector_fixture",
+            "tests/test_environment.py::test_sample_config_fixture",
+            "tests/test_environment.py::test_mock_git_operations_fixture",
+            "tests/test_environment.py::test_custom_assertions",
+            "tests/integration/test_setup_integration.py::TestSetupIntegration::test_setup_dry_run_mode",
+            "tests/integration/test_integration_simplified.py::TestIntegrationSimplified::test_performance_basic",
+            "tests/performance/test_error_recovery.py::TestMixedErrorRecovery::test_cascading_failure_recovery",
+            "tests/integration/test_setup_integration.py::TestSetupIntegration::test_setup_with_file_system_operations",
+            "tests/integration/test_integration_simplified.py::TestIntegrationSimplified::test_integration_workflow_basic",
+            "tests/integration/test_setup_integration.py::TestSetupIntegration::test_config_loading_integration",
+            "tests/integration/test_error_scenarios.py::TestErrorScenarios::test_git_clone_error",
+            "tests/integration/test_error_scenarios.py::TestErrorScenarios::test_git_pull_error",
+            "tests/integration/test_github_api_integration.py::TestGitHubAPIIntegration::test_api_authentication_methods",
+            "tests/integration/test_github_api_integration.py::TestGitHubAPIIntegration::test_api_rate_limit_respect",
+            "tests/integration/test_github_api_integration.py::TestGitHubAPIIntegration::test_api_integration_error_recovery",
+            "tests/integration/test_integration_simplified.py::TestIntegrationSimplified::test_github_api_basic_functionality",
+            "tests/integration/test_integration_simplified.py::TestIntegrationSimplified::test_sync_dry_run_mode",
+            "tests/integration/test_integration_simplified.py::TestIntegrationSimplified::test_config_validation",
+            "tests/integration/test_integration_simplified.py::TestIntegrationSimplified::test_json_serialization",
+            "tests/integration/test_error_scenarios.py::TestErrorScenarios::test_timeout_error",
+            "tests/integration/test_error_scenarios.py::TestErrorScenarios::test_ssl_certificate_error",
+            "tests/integration/test_error_scenarios.py::TestErrorScenarios::test_partial_failure_recovery",
+            "tests/integration/test_error_scenarios.py::TestErrorScenarios::test_retry_mechanism",
+            "tests/integration/test_error_scenarios.py::TestErrorScenarios::test_keyboard_interrupt_error",
+            "tests/integration/test_error_scenarios.py::TestErrorScenarios::test_error_logging_and_reporting",
+            "tests/integration/test_full_workflow.py::TestFullWorkflow::test_complete_setup_to_sync_workflow",
+            "tests/integration/test_full_workflow.py::TestFullWorkflow::test_incremental_sync_workflow",
+            "tests/integration/test_cross_platform.py::TestCrossPlatform::test_line_ending_handling",
+            "tests/integration/test_cross_platform.py::TestCrossPlatform::test_cross_platform_performance",
+            "tests/integration/test_error_scenarios.py::TestErrorScenarios::test_network_connection_error",
+            "tests/integration/test_error_scenarios.py::TestErrorScenarios::test_github_api_authentication_error",
+            "tests/integration/test_error_scenarios.py::TestErrorScenarios::test_github_api_rate_limit_error",
+            "tests/integration/test_github_api_integration.py::TestGitHubAPIIntegration::test_get_user_repos_integration",
+            "tests/integration/test_github_api_integration.py::TestGitHubAPIIntegration::test_api_error_handling",
+            "tests/integration/test_github_api_integration.py::TestGitHubAPIIntegration::test_api_pagination_handling",
+            "tests/integration/test_github_api_integration.py::TestGitHubAPIIntegration::test_api_timeout_handling",
+            "tests/integration/test_github_api_integration.py::TestGitHubAPIIntegration::test_api_network_error_handling",
+            "tests/integration/test_github_api_integration.py::TestGitHubAPIIntegration::test_api_response_validation",
+            "tests/integration/test_sync_integration.py::TestSyncIntegration::test_sync_with_git_errors",
+            "tests/integration/test_sync_integration.py::TestSyncIntegration::test_sync_with_network_errors",
+            "tests/integration/test_sync_integration.py::TestSyncIntegration::test_sync_with_partial_failures",
+            "tests/integration/test_sync_integration.py::TestSyncIntegration::test_sync_performance_with_many_repositories",
+            "tests/integration/test_full_workflow.py::TestFullWorkflow::test_performance_workflow",
+            "tests/integration/test_full_workflow.py::TestFullWorkflow::test_concurrent_workflow",
+            "tests/integration/test_full_workflow.py::TestFullWorkflow::test_cleanup_workflow",
+            "tests/performance/test_error_recovery.py::TestNetworkErrorRecovery::test_github_api_rate_limit_recovery",
+            "tests/performance/test_edge_cases.py::TestBoundaryValues::test_large_number_of_repositories",
+            "tests/performance/test_error_recovery.py::TestFileSystemErrorRecovery::test_permission_denied_recovery",
+            "tests/integration/test_cross_platform.py::TestCrossPlatform::test_special_characters_in_paths",
+            "tests/performance/test_error_recovery.py::TestFileSystemErrorRecovery::test_disk_space_error_recovery",
+            "tests/integration/test_cross_platform.py::TestCrossPlatform::test_network_drive_paths_windows",
+            "tests/performance/test_error_recovery.py::TestFileSystemErrorRecovery::test_file_lock_error_recovery",
+            "tests/integration/test_cross_platform.py::TestCrossPlatform::test_symlink_handling",
+            "tests/performance/test_edge_cases.py::TestBoundaryValues::test_extreme_timeout_values",
+            "tests/integration/test_cross_platform.py::TestCrossPlatform::test_permission_differences_cross_platform",
+            "tests/performance/test_error_recovery.py::TestNetworkErrorRecovery::test_dns_resolution_error_recovery",
+            "tests/performance/test_edge_cases.py::TestMalformedData::test_malformed_repository_data",
+            "tests/performance/test_error_recovery.py::TestNetworkErrorRecovery::test_ssl_certificate_error_recovery",
+            "tests/integration/test_cross_platform.py::TestCrossPlatform::test_unicode_path_handling",
+            "tests/integration/test_cross_platform.py::TestCrossPlatform::test_long_path_handling",
+            "tests/integration/test_setup_integration.py::TestSetupIntegration::test_environment_variable_override",
+            "tests/integration/test_sync_integration.py::TestSyncIntegration::test_complete_sync_workflow",
+            "tests/integration/test_github_api_integration.py::TestGitHubAPIIntegration::test_get_user_info_integration",
+            "tests/integration/test_sync_integration.py::TestSyncIntegration::test_sync_with_new_repositories",
+            "tests/integration/test_github_api_integration.py::TestGitHubAPIIntegration::test_github_api_initialization",
+            "tests/integration/test_cross_platform.py::TestCrossPlatform::test_file_system_case_sensitivity"
+          ],
+          "errors": [
+            "テストで88件の失敗がありました"
+          ]
+        },
+        "duration": 34.40336084365845
+      }
+    }
+  ]
+}
