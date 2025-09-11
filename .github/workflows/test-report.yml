@@ -45,6 +45,9 @@ jobs:
           fi
         done
 
+    - name: Checkout code for test reporter
+      uses: actions/checkout@v4
+
     - name: Publish test results
       uses: dorny/test-reporter@v1
       if: always()

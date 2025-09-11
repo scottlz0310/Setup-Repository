@@ -64,8 +64,15 @@ jobs:
         uv sync --dev
         uv pip install psutil  # メモリ使用量測定用
 
+    - name: Check performance tests directory
+      run: |
+        if [ ! -d "tests/performance" ]; then
+          echo "⚠️ パフォーマンステストディレクトリが存在しません。スキップします。"
+          echo "SKIP_PERFORMANCE_TESTS=true" >> $GITHUB_ENV
+        fi
+
     - name: Run small scale performance tests
-      if: github.event.inputs.test_scale == 'small' || github.event.inputs.test_scale == 'all' || github.event.inputs.test_scale == ''
+      if: env.SKIP_PERFORMANCE_TESTS != 'true' && (github.event.inputs.test_scale == 'small' || github.event.inputs.test_scale == 'all' || github.event.inputs.test_scale == '')
       run: |
         uv run pytest tests/performance/ \
           -m "performance and not slow" \
@@ -76,7 +83,7 @@ jobs:
           --json-report-file=performance-small.json
 
     - name: Run medium scale performance tests
-      if: github.event.inputs.test_scale == 'medium' || github.event.inputs.test_scale == 'all' || github.event.inputs.test_scale == ''
+      if: env.SKIP_PERFORMANCE_TESTS != 'true' && (github.event.inputs.test_scale == 'medium' || github.event.inputs.test_scale == 'all' || github.event.inputs.test_scale == '')
       run: |
         uv run pytest tests/performance/test_sync_performance.py::TestSyncPerformance::test_medium_repository_set_performance \
           -v \
@@ -86,7 +93,7 @@ jobs:
           --json-report-file=performance-medium.json
 
     - name: Run large scale performance tests
-      if: github.event.inputs.test_scale == 'large' || github.event.inputs.test_scale == 'all'
+      if: env.SKIP_PERFORMANCE_TESTS != 'true' && (github.event.inputs.test_scale == 'large' || github.event.inputs.test_scale == 'all')
       run: |
         uv run pytest tests/performance/test_sync_performance.py::TestSyncPerformance::test_large_repository_set_performance \
           -v \
@@ -96,6 +103,7 @@ jobs:
           --json-report-file=performance-large.json
 
     - name: Run concurrent operations performance tests
+      if: env.SKIP_PERFORMANCE_TESTS != 'true'
       run: |
         uv run pytest tests/performance/test_sync_performance.py::TestSyncPerformance::test_concurrent_operations_performance \
           -v \

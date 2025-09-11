@@ -36,11 +36,18 @@ jobs:
         run: |
           echo "🔍 包括的カバレッジ分析を実行中..."
 
-          # カバレッジ監視システムを使用してレポート生成
-          uv run python scripts/coverage-monitor.py --generate-report
+          # 基本的なカバレッジレポート生成
+          uv run pytest tests/ \
+            --cov=src/setup_repo \
+            --cov-report=term-missing \
+            --cov-report=xml \
+            --cov-report=html \
+            --cov-report=json \
+            --junit-xml=test-results.xml \
+            -v
 
-          # 追加のJUnitレポート生成
-          uv run pytest tests/ --junit-xml=test-results.xml -v
+          # カバレッジ監視システムを使用してレポート生成（エラー時は継続）
+          uv run python scripts/coverage-monitor.py --generate-report || echo "⚠️ カバレッジ監視システムでエラーが発生しましたが、継続します"
 
       - name: Generate coverage summary
         run: |

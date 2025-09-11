@@ -7,14 +7,7 @@ config.local.json
 
 # Log files
 *.log
-logs/*.log
-debug.log
-error.log
-setup.log
-
-# Lock files
-*.lock
-.pre-commit-config.yaml.bak
+logs/
 
 # Python
 __pycache__/
@@ -37,147 +30,74 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+*.pyc
 
-# Testing
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python tools cache
+.mypy_cache/
+.ruff_cache/
 .pytest_cache/
+.tox/
+.nox/
+.hypothesis/
+dmypy.json
+
+# Testing and coverage
 .coverage
 coverage.*
 htmlcov/
-.tox/
-test-report.json
-quality-report.json
-error-reports/
-quality-history/
-security-reports/
 .benchmarks/
+
+# Security tools
+.bandit/
+.safety/
+
+# Package managers
+uv.lock
+requirements.txt
 
 # OS specific
 .DS_Store
 Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.Trashes
+._*
 
-# IDE
+# IDE and editors
 .vscode/settings.json
+.vscode/launch.json
+.vscode/tasks.json
 .idea/
 *.swp
 *.swo
 *~
 
-# Auto-generated entries
-*.pyc
-.venv/
-venv/
-.mypy_cache/
-.ruff_cache/
-.bandit
-.bandit/
-.safety/
-.safety-project.ini
-
-# Auto-generated entries
-uv.lock
-
-# Dependencies
-requirements.txt
-
-# Auto-generated entries
-.vscode/launch.json
-.vscode/tasks.json
-
-# Auto-generated entries from templates
-$RECYCLE.BIN/
-**/*.rs.bk
-*.7z
-*.backup
-*.bak
-*.cover
-*.dll
-*.dylib
-*.exe
-*.exe~
-*.lcov
-*.manifest
-*.orig
-*.out
-*.pdb
-*.pid
-*.pid.lock
-*.py,cover
-*.rar
-*.seed
-*.spec
-*.sublime-project
-*.sublime-workspace
-*.tar.gz
-*.temp
-*.test
-*.tgz
+# Temporary files
 *.tmp
-*.tsbuildinfo
-*.zip
-.DS_Store?
-.Spotlight-V100
-.Trashes
-._*
-.cache
-.cache/
-.coverage.*
-.dmypy.json
-.env.development.local
-.env.production.local
-.env.test
-.env.test.local
-.eslintcache
-.grunt
-.hypothesis/
-.lock-wscript
-.next
-.node_repl_history
-.nox/
-.npm
-.nuxt
-.nyc_output
-.out
-.parcel-cache
-.rpt2_cache/
-.rts2_cache_cjs/
-.rts2_cache_es/
-.rts2_cache_umd/
-.storybook-out
-.venv
-.vscode/
-.yarn-integrity
-/target/
-Cargo.lock
-Desktop.ini
-ENV/
-MANIFEST
-bower_components
-build/Release
-coverage.xml
-coverage/
-cython_debug/
-dist
-dmypy.json
-ehthumbs.db
-env.bak/
-env/
-go.work
-jspm_packages/
-lerna-debug.log*
-node_modules/
-nosetests.xml
-npm-debug.log*
-pids
-public
+*.temp
 temp/
 tmp/
-vendor/
-venv.bak/
-yarn-debug.log*
-yarn-error.log*
+.cache/
+scratch/
+playground/
+temp_*
+tmp_*
+debug_*
+
+# Backup files
+*.backup
+*.bak
+*.orig
+.pre-commit-config.yaml.bak
+
 # Migration and backup files
 .migration_checkpoints/
-*.backup
 backup_*/
 checkpoint_*/
 
@@ -185,15 +105,15 @@ checkpoint_*/
 benchmark_results/
 performance_logs/
 
-# Temporary development files
-scratch/
-playground/
-temp_*
-tmp_*
-debug_*
-
 # Generated reports and documentation
 *-report.md
 *-verification-report.md
 final-*.md
 test-issues-*.md
+
+# Project specific
+error-reports/
+quality-history/
+security-reports/
+test-report.json
+quality-report.json
