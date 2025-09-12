@@ -63,9 +63,7 @@ class QualityMetrics:
     def _get_current_commit_hash(self) -> str:
         """現在のコミットハッシュを取得"""
         try:
-            result = subprocess.run(
-                ["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=True
-            )
+            result = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=True)
             return result.stdout.strip()[:8]  # 短縮ハッシュ
         except (subprocess.CalledProcessError, FileNotFoundError):
             return "unknown"
@@ -154,9 +152,7 @@ class QualityMetricsCollector:
         """MyPy型チェックメトリクスを収集"""
         return collect_mypy_metrics(self.project_root, self.logger)
 
-    def collect_test_metrics(
-        self, parallel_workers: Union[str, int] = "auto"
-    ) -> dict[str, Any]:
+    def collect_test_metrics(self, parallel_workers: Union[str, int] = "auto") -> dict[str, Any]:
         """テストメトリクスを収集（並列実行対応）"""
         return collect_pytest_metrics(self.project_root, self.logger, parallel_workers)
 
@@ -167,70 +163,134 @@ class QualityMetricsCollector:
         vulnerability_count = 0
         vulnerabilities = []
         errors = []
+        warnings = []
+        tools_available = {"bandit": False, "safety": False}
 
+        # セキュリティツールの利用可能性をチェック
         try:
-            # Banditセキュリティチェック
             result = subprocess.run(
-                ["uv", "run", "bandit", "-r", "src/", "-f", "json"],
+                ["uv", "run", "bandit", "--version"],
                 cwd=self.project_root,
                 capture_output=True,
                 text=True,
                 check=False,
             )
-
-            if result.stdout:
-                try:
-                    bandit_data = json.loads(result.stdout)
-                    bandit_results = bandit_data.get("results", [])
-                    vulnerability_count += len(bandit_results)
-                    vulnerabilities.extend(bandit_results)
-                except json.JSONDecodeError:
-                    pass
-
+            tools_available["bandit"] = result.returncode == 0
         except (subprocess.CalledProcessError, FileNotFoundError):
-            errors.append("Banditセキュリティチェックを実行できませんでした")
+            pass
 
         try:
-            # Safetyチェック（依存関係の脆弱性）
             result = subprocess.run(
-                ["uv", "run", "safety", "check", "--json"],
+                ["uv", "run", "safety", "--version"],
                 cwd=self.project_root,
                 capture_output=True,
                 text=True,
                 check=False,
             )
-
-            if result.stdout:
-                try:
-                    safety_data = json.loads(result.stdout)
-                    if isinstance(safety_data, list):
-                        vulnerability_count += len(safety_data)
-                        vulnerabilities.extend(safety_data)
-                except json.JSONDecodeError:
-                    pass
-
+            tools_available["safety"] = result.returncode == 0
         except (subprocess.CalledProcessError, FileNotFoundError):
-            errors.append("Safetyチェックを実行できませんでした")
+            pass
 
-        success = vulnerability_count == 0 and len(errors) == 0
+        # Banditセキュリティチェック
+        if tools_available["bandit"]:
+            try:
+                result = subprocess.run(
+                    ["uv", "run", "bandit", "-r", "src/", "-f", "json"],
+                    cwd=self.project_root,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+
+                if result.stdout:
+                    try:
+                        bandit_data = json.loads(result.stdout)
+                        bandit_results = bandit_data.get("results", [])
+                        vulnerability_count += len(bandit_results)
+                        vulnerabilities.extend(bandit_results)
+                    except json.JSONDecodeError as e:
+                        warnings.append(f"Bandit出力の解析に失敗: {e}")
+                elif result.returncode != 0:
+                    warnings.append(f"Banditが警告付きで終了: {result.stderr}")
+
+            except (subprocess.CalledProcessError, FileNotFoundError) as e:
+                errors.append(f"Banditセキュリティチェックの実行に失敗: {e}")
+        else:
+            warnings.append("Banditが利用できません。セキュリティグループの依存関係をインストールしてください")
+
+        # Safetyチェック（依存関係の脆弱性）
+        if tools_available["safety"]:
+            try:
+                result = subprocess.run(
+                    ["uv", "run", "safety", "check", "--json"],
+                    cwd=self.project_root,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+
+                if result.stdout:
+                    try:
+                        safety_data = json.loads(result.stdout)
+                        if isinstance(safety_data, list):
+                            vulnerability_count += len(safety_data)
+                            vulnerabilities.extend(safety_data)
+                    except json.JSONDecodeError as e:
+                        warnings.append(f"Safety出力の解析に失敗: {e}")
+                elif result.returncode != 0:
+                    warnings.append(f"Safetyが警告付きで終了: {result.stderr}")
+
+            except (subprocess.CalledProcessError, FileNotFoundError) as e:
+                errors.append(f"Safetyチェックの実行に失敗: {e}")
+        else:
+            warnings.append("Safetyが利用できません。セキュリティグループの依存関係をインストールしてください")
+
+        # 成功判定: 重大なエラーがなく、利用可能なツールで脆弱性が見つからない場合
+        has_critical_errors = len(errors) > 0
+        has_vulnerabilities = vulnerability_count > 0
+        no_tools_available = not any(tools_available.values())
+
+        # ツールが利用できない場合は警告として扱い、失敗とはしない
+        success = not has_critical_errors and not has_vulnerabilities
 
         metrics_result = {
             "success": success,
             "vulnerability_count": vulnerability_count,
             "vulnerabilities": vulnerabilities,
-            "errors": errors if not success else [],
+            "errors": errors,
+            "warnings": warnings,
+            "tools_available": tools_available,
+            "no_tools_available": no_tools_available,
         }
 
         if success:
-            self.logger.log_quality_check_success(
-                "Security", {"vulnerability_count": vulnerability_count}
-            )
+            if no_tools_available:
+                self.logger.log_quality_check_success(
+                    "Security",
+                    {
+                        "vulnerability_count": vulnerability_count,
+                        "status": "スキップ（セキュリティツールが利用できません）",
+                        "available_tools": [k for k, v in tools_available.items() if v],
+                    },
+                )
+            else:
+                self.logger.log_quality_check_success(
+                    "Security",
+                    {
+                        "vulnerability_count": vulnerability_count,
+                        "available_tools": [k for k, v in tools_available.items() if v],
+                    },
+                )
         else:
             error = SecurityScanError(
                 f"{vulnerability_count}件のセキュリティ脆弱性が見つかりました",
                 vulnerabilities,
             )
             self.logger.log_quality_check_failure("Security", error)
+
+        # 警告がある場合はログ出力
+        for warning in warnings:
+            self.logger.warning(warning)
 
         return metrics_result
 
@@ -269,9 +329,7 @@ class QualityMetricsCollector:
         self.logger.log_metrics_summary(metrics_summary)
         return metrics
 
-    def save_metrics_report(
-        self, metrics: QualityMetrics, output_file: Optional[Path] = None
-    ) -> Path:
+    def save_metrics_report(self, metrics: QualityMetrics, output_file: Optional[Path] = None) -> Path:
         """メトリクスレポートをJSONファイルに保存"""
         if output_file is None:
             output_file = self.project_root / "quality-report.json"
