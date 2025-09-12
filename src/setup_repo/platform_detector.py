@@ -227,7 +227,15 @@ def _log_windows_path_info() -> None:
     if not _is_ci_environment():
         return
 
-    print("::group::Windows PATH診断")
+    # Windows環境でのUTF-8エンコーディング強制設定
+    import contextlib
+    import sys
+
+    if hasattr(sys.stdout, "reconfigure"):
+        with contextlib.suppress(Exception):  # nosec B110
+            sys.stdout.reconfigure(encoding="utf-8")
+
+    print("::group::Windows PATH Diagnostics")
     path_env = os.environ.get("PATH", "")
     path_dirs = path_env.split(os.pathsep)
 
@@ -236,9 +244,9 @@ def _log_windows_path_info() -> None:
     # uvが含まれているかチェック
     uv_paths = [p for p in path_dirs if "uv" in p.lower()]
     if uv_paths:
-        print(f"UV関連PATH: {uv_paths}")
+        print(f"UV related PATH: {uv_paths}")
     else:
-        print("⚠️ UV関連のPATHが見つかりません")
+        print("Warning: UV related PATH not found")
 
     # PowerShellの実行ポリシーをチェック
     try:
@@ -249,9 +257,9 @@ def _log_windows_path_info() -> None:
             timeout=5,
         )
         if result.returncode == 0:
-            print(f"PowerShell実行ポリシー: {result.stdout.strip()}")
+            print(f"PowerShell Execution Policy: {result.stdout.strip()}")
     except Exception as e:
-        print(f"PowerShell実行ポリシーチェック失敗: {e}")
+        print(f"PowerShell Execution Policy check failed: {e}")
 
     print("::endgroup::")
 
@@ -261,7 +269,7 @@ def _log_macos_path_info() -> None:
     if not _is_ci_environment():
         return
 
-    print("::group::macOS PATH診断")
+    print("::group::macOS PATH Diagnostics")
     path_env = os.environ.get("PATH", "")
     path_dirs = path_env.split(os.pathsep)
 
@@ -270,11 +278,11 @@ def _log_macos_path_info() -> None:
     # Homebrewパスをチェック
     brew_paths = [p for p in path_dirs if "brew" in p.lower() or "/opt/homebrew" in p or "/usr/local" in p]
     if brew_paths:
-        print(f"Homebrew関連PATH: {brew_paths}")
+        print(f"Homebrew related PATH: {brew_paths}")
 
     # シェル情報をチェック
     shell = os.environ.get("SHELL", "")
-    print(f"現在のシェル: {shell}")
+    print(f"Current shell: {shell}")
 
     print("::endgroup::")
 
@@ -284,7 +292,7 @@ def _log_linux_path_info() -> None:
     if not _is_ci_environment():
         return
 
-    print("::group::Linux PATH診断")
+    print("::group::Linux PATH Diagnostics")
     path_env = os.environ.get("PATH", "")
     path_dirs = path_env.split(os.pathsep)
 
@@ -294,9 +302,9 @@ def _log_linux_path_info() -> None:
     common_paths = ["/usr/bin", "/usr/local/bin", "/bin", "/snap/bin"]
     for common_path in common_paths:
         if common_path in path_dirs:
-            print(f"✅ {common_path} が PATH に含まれています")
+            print(f"OK: {common_path} is in PATH")
         else:
-            print(f"⚠️ {common_path} が PATH に含まれていません")
+            print(f"Warning: {common_path} is not in PATH")
 
     print("::endgroup::")
 
@@ -306,16 +314,16 @@ def _log_package_manager_check_failure(manager: str, error: Exception) -> None:
     error_type = type(error).__name__
     error_msg = str(error)
 
-    print(f"::debug::パッケージマネージャー '{manager}' チェック失敗: {error_type} - {error_msg}")
+    print(f"::debug::Package manager '{manager}' check failed: {error_type} - {error_msg}")
 
     # プラットフォーム固有のアドバイス（簡易版）
     system = platform.system().lower()
     if system == "windows" and manager == "uv":
-        print("::warning::Windows環境でuvが見つかりません。PowerShellでPATHを確認してください。")
+        print("::warning::uv not found in Windows environment. Please check PATH in PowerShell.")
     elif system == "darwin" and manager == "brew":
-        print("::warning::macOS環境でHomebrewが見つかりません。Homebrewをインストールしてください。")
+        print("::warning::Homebrew not found in macOS environment. Please install Homebrew.")
     elif system == "linux" and manager in ["apt", "snap"]:
-        print(f"::warning::Linux環境で{manager}が見つかりません。パッケージマネージャーが利用可能か確認してください。")
+        print(f"::warning::{manager} not found in Linux environment. Please check if package manager is available.")
 
 
 def get_available_package_managers(platform_info: PlatformInfo) -> list[str]:
@@ -449,12 +457,12 @@ def diagnose_platform_issues() -> dict[str, Any]:
         # 空のPATHエントリをチェック
         empty_paths = [i for i, path in enumerate(path_dirs) if not path.strip()]
         if empty_paths:
-            diagnosis["path_issues"].append(f"空のPATHエントリが{len(empty_paths)}個あります")
+            diagnosis["path_issues"].append(f"{len(empty_paths)} empty PATH entries found")
 
         # 存在しないPATHディレクトリをチェック
         missing_paths = [path for path in path_dirs if path.strip() and not os.path.exists(path)]
         if missing_paths:
-            diagnosis["path_issues"].append(f"存在しないPATHディレクトリが{len(missing_paths)}個あります")
+            diagnosis["path_issues"].append(f"{len(missing_paths)} non-existent PATH directories found")
 
         # CI環境固有の問題をチェック
         if _is_ci_environment():
@@ -492,9 +500,7 @@ def _diagnose_ci_specific_issues(diagnosis: dict[str, Any], platform_info: Platf
                 expected_platforms = [expected_platforms]
 
             if detected_platform not in expected_platforms:
-                ci_issues.append(
-                    f"RUNNER_OS ({runner_os}) と検出されたプラットフォーム ({detected_platform}) が一致しません"
-                )
+                ci_issues.append(f"RUNNER_OS ({runner_os}) does not match detected platform ({detected_platform})")
 
         # Windows固有のCI問題
         if platform_info.name == "windows":
@@ -507,26 +513,26 @@ def _diagnose_ci_specific_issues(diagnosis: dict[str, Any], platform_info: Platf
                     timeout=5,
                 )
                 if result.returncode != 0:
-                    ci_issues.append("PowerShellの実行ポリシーが制限されている可能性があります")
+                    ci_issues.append("PowerShell execution policy may be restricted")
             except Exception:
-                ci_issues.append("PowerShellの実行ポリシーをチェックできませんでした")
+                ci_issues.append("Could not check PowerShell execution policy")
 
         # macOS固有のCI問題
         elif platform_info.name == "macos":
             # Homebrewのパスをチェック
             path_env = os.environ.get("PATH", "")
             if "/opt/homebrew/bin" not in path_env and "/usr/local/bin" not in path_env:
-                ci_issues.append("HomebrewのPATHが設定されていない可能性があります")
+                ci_issues.append("Homebrew PATH may not be configured")
 
         # Linux固有のCI問題
         elif platform_info.name == "linux" and not os.path.exists("/var/lib/snapd"):
-            ci_issues.append("snapdが利用できない可能性があります")
+            ci_issues.append("snapd may not be available")
 
     # モジュール可用性の問題をチェック
     module_issues = []
     for module_name, module_info in diagnosis["module_availability"].items():
         if not module_info["available"] and not module_info["platform_specific"]:
-            module_issues.append(f"必須モジュール '{module_name}' が利用できません")
+            module_issues.append(f"Required module '{module_name}' is not available")
         elif module_info["platform_specific"] and not module_info["available"]:
             # プラットフォーム固有モジュールの場合は警告レベル
             if (platform_info.name == "windows" and module_name == "fcntl") or (
@@ -535,7 +541,7 @@ def _diagnose_ci_specific_issues(diagnosis: dict[str, Any], platform_info: Platf
                 # 期待される動作なので問題なし
                 pass
             else:
-                ci_issues.append(f"プラットフォーム固有モジュール '{module_name}' が期待通りに利用できません")
+                ci_issues.append(f"Platform-specific module '{module_name}' is not available as expected")
 
     diagnosis["ci_specific_issues"] = ci_issues
 
@@ -548,41 +554,39 @@ def _generate_platform_recommendations(diagnosis: dict[str, Any], platform_info:
     available_managers = [m for m, info in diagnosis["package_managers"].items() if info["available"]]
     if not available_managers:
         if platform_info.name == "windows":
-            recommendations.append(
-                "Windowsでパッケージマネージャーが見つかりません。Scoopまたはwingetのインストールを検討してください。"
-            )
+            recommendations.append("No package manager found on Windows. Consider installing Scoop or winget.")
         elif platform_info.name == "macos":
             recommendations.append(
-                "macOSでパッケージマネージャーが見つかりません。"
-                'Homebrewのインストールを検討してください: /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"'
+                "No package manager found on macOS. "
+                'Consider installing Homebrew: /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"'
             )
         elif platform_info.name == "linux":
             recommendations.append(
-                "Linuxでパッケージマネージャーが見つかりません。apt、snap、またはcurlが利用可能か確認してください。"
+                "No package manager found on Linux. Please check if apt, snap, or curl is available."
             )
 
     # uv固有の推奨事項
     if not check_package_manager("uv"):
         if platform_info.name == "windows":
             recommendations.append(
-                "WindowsでuvがPATHに見つかりません。"
-                "PowerShellで 'scoop install uv' または"
-                "手動インストールを実行してください。"
+                "uv not found in PATH on Windows. "
+                "Please run 'scoop install uv' in PowerShell or "
+                "perform manual installation."
             )
         else:
-            recommendations.append(
-                "uvが見つかりません。curl -LsSf https://astral.sh/uv/install.sh | sh でインストールしてください。"
-            )
+            recommendations.append("uv not found. Please install with: curl -LsSf https://astral.sh/uv/install.sh | sh")
 
     # CI環境固有の推奨事項
     if _is_ci_environment():
         if diagnosis["ci_specific_issues"]:
-            recommendations.append("CI環境で問題が検出されました。GitHub Actionsワークフローの設定を確認してください。")
+            recommendations.append(
+                "Issues detected in CI environment. Please check GitHub Actions workflow configuration."
+            )
 
         # プラットフォーム固有のCI推奨事項
         if platform_info.name == "windows":
             recommendations.append(
-                "Windows CI環境では、PowerShellスクリプトの実行ポリシーとPATH設定を確認してください。"
+                "In Windows CI environment, please check PowerShell script execution policy and PATH configuration."
             )
 
     diagnosis["recommendations"] = recommendations
