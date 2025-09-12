@@ -11,7 +11,7 @@
 ├── src/setup_repo/       # メインパッケージソース
 ├── docs/                 # ドキュメント
 ├── vscode-templates/     # プラットフォーム固有VS Code設定
-└── .vscode/             # VS Codeワークスペース設定
+└── .vscode/             # VS Codeワークスペース設定（gitignore対象）
 ```
 
 ## ソースコード構成（`src/setup_repo/`）

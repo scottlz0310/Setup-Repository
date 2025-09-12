@@ -270,6 +270,7 @@ class TestCheckPackageManager:
         ):
             mock_run.return_value.returncode = 0
             mock_run.return_value.stdout = "apt version"
+            mock_run.return_value.stderr = ""
 
             result = check_package_manager("apt")
 

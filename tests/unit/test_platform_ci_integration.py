@@ -339,7 +339,8 @@ class TestCIDiagnostics:
         """診断推奨事項テスト"""
         with (
             patch(
-                "src.setup_repo.platform_detector.check_package_manager", return_value=False
+                "src.setup_repo.platform_detector.check_package_manager",
+                return_value=False,
             ),
             patch(
                 "src.setup_repo.platform_detector._log_package_manager_check_failure"
