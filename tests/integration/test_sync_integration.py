@@ -31,6 +31,7 @@ class TestSyncIntegration:
         # テスト用のクローン先ディレクトリを設定
         clone_destination = temp_dir / "repos"
         sample_config["clone_destination"] = str(clone_destination)
+        sample_config["dest"] = str(clone_destination)  # destフィールドも更新
 
         # 既存のリポジトリディレクトリを作成
         existing_repo = clone_destination / "test-repo-1"
@@ -70,13 +71,25 @@ class TestSyncIntegration:
         """新しいリポジトリの同期テスト"""
         clone_destination = temp_dir / "repos"
         sample_config["clone_destination"] = str(clone_destination)
+        sample_config["dest"] = str(clone_destination)  # destフィールドも更新
+
+        def mock_sync_with_retries(repo, dest_dir, config):
+            # クローン先ディレクトリを作成
+            dest_path = Path(dest_dir)
+            dest_path.mkdir(parents=True, exist_ok=True)
+
+            # リポジトリディレクトリを作成
+            repo_path = dest_path / repo["name"]
+            repo_path.mkdir(parents=True, exist_ok=True)
+            (repo_path / ".git").mkdir(exist_ok=True)
+            return True
 
         repos_data = mock_github_api.get_user_repos.return_value
         with (
             patch("setup_repo.sync.get_repositories", return_value=repos_data),
             patch(
                 "setup_repo.sync.sync_repository_with_retries",
-                return_value=True,
+                side_effect=mock_sync_with_retries,
             ),
             patch("sys.exit"),
         ):

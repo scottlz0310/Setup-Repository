@@ -36,6 +36,7 @@ class TestFullWorkflow:
         # 2. クローン先ディレクトリの設定
         clone_destination = temp_dir / "repos"
         sample_config["clone_destination"] = str(clone_destination)
+        sample_config["dest"] = str(clone_destination)  # destフィールドも更新
 
         # 3. GitHub APIとGit操作をモック
         mock_repos = [
@@ -59,9 +60,20 @@ class TestFullWorkflow:
             },
         ]
 
+        def mock_sync_with_retries(repo, dest_dir, config):
+            # クローン先ディレクトリを作成
+            dest_path = Path(dest_dir)
+            dest_path.mkdir(parents=True, exist_ok=True)
+
+            # リポジトリディレクトリを作成
+            repo_path = dest_path / repo["name"]
+            repo_path.mkdir(parents=True, exist_ok=True)
+            (repo_path / ".git").mkdir(exist_ok=True)
+            return True
+
         with (
             patch("setup_repo.sync.get_repositories", return_value=mock_repos),
-            patch("setup_repo.sync.sync_repository_with_retries", return_value=True),
+            patch("setup_repo.sync.sync_repository_with_retries", side_effect=mock_sync_with_retries),
         ):
             # 4. 同期実行
             result = sync_repositories(sample_config, dry_run=False)
