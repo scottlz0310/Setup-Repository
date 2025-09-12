@@ -7,6 +7,11 @@ on:
     branches: [main, develop]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
 jobs:
   coverage-analysis:
     name: Coverage Analysis
@@ -312,20 +317,22 @@ jobs:
       - name: Publish coverage summary
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
+        continue-on-error: true
         with:
           script: |
             const fs = require('fs');
             try {
               const summary = fs.readFileSync('coverage-summary.md', 'utf8');
 
-              github.rest.issues.createComment({
+              await github.rest.issues.createComment({
                 issue_number: context.issue.number,
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 body: summary
               });
+              console.log('カバレッジサマリーを投稿しました');
             } catch (error) {
-              console.log('カバレッジサマリーの投稿に失敗:', error);
+              console.log('カバレッジサマリーの投稿をスキップしました:', error.message);
             }
 
   coverage-badge:
@@ -373,15 +380,21 @@ jobs:
 
       - name: Comment coverage badge
         uses: actions/github-script@v7
+        continue-on-error: true
         with:
           script: |
-            const badgeUrl = process.env.COVERAGE_BADGE_URL;
-            const body = `## 📊 カバレッジバッジ更新\n\n![Coverage](${badgeUrl})\n\nバッジURL: \`${badgeUrl}\``;
+            try {
+              const badgeUrl = process.env.COVERAGE_BADGE_URL;
+              const body = `## 📊 カバレッジバッジ更新\n\n![Coverage](${badgeUrl})\n\nバッジURL: \`${badgeUrl}\``;
 
-            // 最新のコミットにコメント
-            github.rest.repos.createCommitComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              commit_sha: context.sha,
-              body: body
-            });
+              // 最新のコミットにコメント
+              await github.rest.repos.createCommitComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                commit_sha: context.sha,
+                body: body
+              });
+              console.log('カバレッジバッジコメントを投稿しました');
+            } catch (error) {
+              console.log('コメント投稿をスキップしました:', error.message);
+            }
