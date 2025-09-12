@@ -52,6 +52,12 @@ dmypy.json
 coverage.*
 htmlcov/
 .benchmarks/
+coverage-reports/
+coverage_badge.json
+coverage_alert.txt
+coverage-trend.txt
+trends.txt
+test-results.xml
 
 # Security tools
 .bandit/
