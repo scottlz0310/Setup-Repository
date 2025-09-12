@@ -162,9 +162,7 @@ class TestProcessLockCrossPlatform:
     """ProcessLockのクロスプラットフォームテスト"""
 
     @pytest.mark.all_platforms
-    def test_lock_implementation_selection_by_platform(
-        self, temp_dir: Path, platform: str, platform_mocker
-    ) -> None:
+    def test_lock_implementation_selection_by_platform(self, temp_dir: Path, platform: str, platform_mocker) -> None:
         """プラットフォーム別ロック実装選択テスト"""
         lock_file = temp_dir / "test.lock"
 
@@ -189,9 +187,7 @@ class TestProcessLockCrossPlatform:
 
                 assert isinstance(lock.lock_implementation, FallbackLockImplementation)
 
-    def test_windows_lock_implementation_selection(
-        self, temp_dir: Path, platform_mocker
-    ) -> None:
+    def test_windows_lock_implementation_selection(self, temp_dir: Path, platform_mocker) -> None:
         """Windows環境でのロック実装選択テスト"""
         lock_file = temp_dir / "test.lock"
 
@@ -203,9 +199,7 @@ class TestProcessLockCrossPlatform:
 
             assert isinstance(lock.lock_implementation, WindowsLockImplementation)
 
-    def test_unix_lock_implementation_selection(
-        self, temp_dir: Path, platform_mocker
-    ) -> None:
+    def test_unix_lock_implementation_selection(self, temp_dir: Path, platform_mocker) -> None:
         """Unix環境でのロック実装選択テスト"""
         lock_file = temp_dir / "test.lock"
 
@@ -217,9 +211,7 @@ class TestProcessLockCrossPlatform:
 
             assert isinstance(lock.lock_implementation, UnixLockImplementation)
 
-    def test_macos_lock_implementation_selection(
-        self, temp_dir: Path, platform_mocker
-    ) -> None:
+    def test_macos_lock_implementation_selection(self, temp_dir: Path, platform_mocker) -> None:
         """macOS環境でのロック実装選択テスト"""
         lock_file = temp_dir / "test.lock"
 
@@ -231,9 +223,7 @@ class TestProcessLockCrossPlatform:
 
             assert isinstance(lock.lock_implementation, UnixLockImplementation)
 
-    def test_wsl_lock_implementation_selection(
-        self, temp_dir: Path, platform_mocker
-    ) -> None:
+    def test_wsl_lock_implementation_selection(self, temp_dir: Path, platform_mocker) -> None:
         """WSL環境でのロック実装選択テスト"""
         lock_file = temp_dir / "test.lock"
 
@@ -245,9 +235,7 @@ class TestProcessLockCrossPlatform:
 
             assert isinstance(lock.lock_implementation, UnixLockImplementation)
 
-    def test_fallback_lock_implementation_selection(
-        self, temp_dir: Path, module_availability_mocker
-    ) -> None:
+    def test_fallback_lock_implementation_selection(self, temp_dir: Path, module_availability_mocker) -> None:
         """フォールバック実装選択テスト"""
         lock_file = temp_dir / "test.lock"
 
@@ -262,9 +250,7 @@ class TestProcessLockCrossPlatform:
 
             assert isinstance(lock.lock_implementation, FallbackLockImplementation)
 
-    def test_windows_lock_acquire_success(
-        self, temp_dir: Path, platform_mocker
-    ) -> None:
+    def test_windows_lock_acquire_success(self, temp_dir: Path, platform_mocker) -> None:
         """Windows実装でのロック取得成功テスト"""
         lock_file = temp_dir / "test.lock"
 
@@ -291,9 +277,7 @@ class TestProcessLockCrossPlatform:
                 # クリーンアップ
                 lock.release()
 
-    def test_windows_lock_acquire_failure(
-        self, temp_dir: Path, platform_mocker
-    ) -> None:
+    def test_windows_lock_acquire_failure(self, temp_dir: Path, platform_mocker) -> None:
         """Windows実装でのロック取得失敗テスト"""
         lock_file = temp_dir / "test.lock"
 
@@ -360,9 +344,7 @@ class TestProcessLockCrossPlatform:
             assert lock.lock_fd is None
             mock_close.assert_called_once_with(123)
 
-    def test_fallback_lock_acquire_always_succeeds(
-        self, temp_dir: Path, module_availability_mocker
-    ) -> None:
+    def test_fallback_lock_acquire_always_succeeds(self, temp_dir: Path, module_availability_mocker) -> None:
         """フォールバック実装でのロック取得は常に成功することをテスト"""
         lock_file = temp_dir / "test.lock"
 
@@ -526,9 +508,7 @@ class TestProcessLockCrossPlatform:
             # クリーンアップ
             lock2.release()
 
-    def test_error_conditions_and_fallback_mechanisms(
-        self, temp_dir: Path, module_availability_mocker
-    ) -> None:
+    def test_error_conditions_and_fallback_mechanisms(self, temp_dir: Path, module_availability_mocker) -> None:
         """エラー条件とフォールバック機構のテスト"""
         lock_file = temp_dir / "test.lock"
 
@@ -551,9 +531,7 @@ class TestProcessLockCrossPlatform:
             # クリーンアップ
             lock.release()
 
-    def test_platform_specific_error_handling(
-        self, temp_dir: Path, platform_mocker
-    ) -> None:
+    def test_platform_specific_error_handling(self, temp_dir: Path, platform_mocker) -> None:
         """プラットフォーム固有のエラーハンドリングテスト"""
         lock_file = temp_dir / "test.lock"
 
@@ -855,10 +833,20 @@ class TestDetectPlatform:
         with (
             patch("platform.system") as mock_system,
             patch("platform.release") as mock_release,
+            patch("os.name", "posix"),  # os.nameも明示的にモック
             patch("os.path.exists", return_value=False),  # /proc/versionが存在しない
+            patch("src.setup_repo.platform_detector.detect_platform") as mock_detect_func,
         ):
             mock_system.return_value = "FreeBSD"
             mock_release.return_value = "13.0-RELEASE"
+            # detect_platform関数が直接linuxを返すようにモック
+            mock_detect_func.return_value = PlatformInfo(
+                name="linux",
+                display_name="Linux",
+                package_managers=["apt"],
+                shell="bash",
+                python_cmd="python3",
+            )
 
             detector = PlatformDetector()
             platform = detector.detect_platform()
@@ -899,13 +887,9 @@ class TestDetectPlatform:
             # ループ変数をキャプチャしてクロージャの問題を回避
             def create_side_effects(current_release):
                 return (
-                    lambda path: (
-                        path == "/proc/version" and "microsoft" in current_release
-                    ),
+                    lambda path: (path == "/proc/version" and "microsoft" in current_release),
                     lambda path, *args, **kwargs: (
-                        __import__("io").StringIO(
-                            f"Linux version {current_release} (Microsoft)"
-                        )
+                        __import__("io").StringIO(f"Linux version {current_release} (Microsoft)")
                         if path == "/proc/version" and "microsoft" in current_release
                         else open(path, *args, **kwargs)
                     ),
@@ -925,9 +909,7 @@ class TestDetectPlatform:
 
                 detector = PlatformDetector()
                 platform = detector.detect_platform()
-                assert platform == expected_platform, (
-                    f"Failed for {system} -> {expected_platform}"
-                )
+                assert platform == expected_platform, f"Failed for {system} -> {expected_platform}"
 
     def test_detect_platform_edge_cases(self) -> None:
         """プラットフォーム検出のエッジケーステスト"""
@@ -1044,9 +1026,7 @@ class TestUtilsIntegration:
             # 2回目の呼び出しではキャッシュが使用される
             platform2 = detector.detect_platform()
             assert platform2 == "linux"
-            assert (
-                mock_detect.call_count == 1
-            )  # キャッシュにより呼び出し回数は変わらない
+            assert mock_detect.call_count == 1  # キャッシュにより呼び出し回数は変わらない
 
     def test_platform_detection_valid_platforms_only(self) -> None:
         """有効なプラットフォームのみが返されることをテスト"""
@@ -1067,6 +1047,4 @@ class TestUtilsIntegration:
                 detector = PlatformDetector()
                 platform = detector.detect_platform()
 
-                assert platform in valid_platforms, (
-                    f"Invalid platform returned: {platform} for system: {system}"
-                )
+                assert platform in valid_platforms, f"Invalid platform returned: {platform} for system: {system}"

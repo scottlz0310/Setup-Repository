@@ -218,53 +218,9 @@ jobs:
 
     - name: Install and setup uv (Windows)
       if: runner.os == 'Windows'
-      run: |
-        # Windows用のuv設定スクリプトを実行
-        try {
-          .\scripts\windows-uv-setup.ps1 -Verbose
-        } catch {
-          Write-Host "⚠️  カスタムスクリプトが失敗しました。フォールバックを試行します..." -ForegroundColor Yellow
-          
-          # フォールバック1: 公式インストーラー
-          try {
-            Write-Host "フォールバック1: 公式インストーラーを使用" -ForegroundColor Yellow
-            irm https://astral.sh/uv/install.ps1 | iex
-            
-            # PATHに追加
-            $uvPath = "$env:USERPROFILE\.cargo\bin"
-            if (Test-Path "$uvPath\uv.exe") {
-              $env:PATH = "$uvPath;$env:PATH"
-              if ($env:GITHUB_PATH) {
-                Add-Content -Path $env:GITHUB_PATH -Value $uvPath -Encoding UTF8
-              }
-              Write-Host "✅ フォールバック1が成功" -ForegroundColor Green
-            } else {
-              throw "公式インストーラーでのインストールに失敗"
-            }
-          } catch {
-            Write-Host "フォールバック1が失敗: $_" -ForegroundColor Yellow
-            
-            # フォールバック2: pipでインストール
-            try {
-              Write-Host "フォールバック2: pipでインストール" -ForegroundColor Yellow
-              python -m pip install uv --upgrade
-              
-              # uvコマンドのテスト
-              $uvVersion = python -m uv --version 2>&1
-              if ($LASTEXITCODE -eq 0) {
-                Write-Host "✅ フォールバック2が成功: $uvVersion" -ForegroundColor Green
-                # uvエイリアスを作成
-                function uv { python -m uv @args }
-              } else {
-                throw "pipでのインストールに失敗"
-              }
-            } catch {
-              Write-Host "❌ すべてのフォールバックが失敗しました: $_" -ForegroundColor Red
-              exit 1
-            }
-          }
-        }
-      shell: powershell
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
 
     - name: Verify uv installation
       run: |
@@ -277,24 +233,34 @@ jobs:
     - name: Create virtual environment
       run: uv venv --python ${{ matrix.python-version }}
 
-    - name: Install dependencies with retry
+    - name: Install dependencies with retry (Windows)
+      if: runner.os == 'Windows'
       run: |
-        for ($i = 1; $i -le 3; $i++) {
+        # Windows環境での依存関係インストール（リトライ機能付き）
+        $maxRetries = 3
+        $retryDelay = 5
+
+        for ($i = 1; $i -le $maxRetries; $i++) {
+          Write-Host "依存関係のインストールを試行します (試行 $i/$maxRetries)" -ForegroundColor Yellow
+
           try {
+            # 開発依存をインストール
             uv sync --dev
-            Write-Host "依存関係のインストールが成功しました"
-            exit 0
+            Write-Host "✅ 依存関係のインストールが成功しました" -ForegroundColor Green
+            break
           } catch {
-            Write-Warning "依存関係のインストールが失敗しました (試行 $i/3): $_"
-            if ($i -eq 3) {
-              Write-Error "依存関係のインストールが3回失敗しました"
-              exit 1
+            Write-Host "⚠️  依存関係のインストールが失敗しました (試行 $i/$maxRetries): $_" -ForegroundColor Yellow
+
+            if ($i -eq $maxRetries) {
+              Write-Host "❌ 依存関係のインストールが$maxRetries回失敗しました" -ForegroundColor Red
+              throw "依存関係のインストールに失敗しました"
             }
-            Start-Sleep -Seconds 5
+
+            Write-Host "$retryDelay秒待機してから再試行します..." -ForegroundColor Yellow
+            Start-Sleep -Seconds $retryDelay
           }
         }
       shell: powershell
-      if: runner.os == 'Windows'
 
     - name: Install dependencies (Unix)
       if: runner.os != 'Windows'
