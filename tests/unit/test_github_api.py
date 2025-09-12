@@ -74,11 +74,14 @@ class TestGitHubAPI:
         with pytest.raises(GitHubAPIError, match="認証に失敗しました"):
             api.get_user_info()
 
-    @patch("urllib.request.urlopen")
-    def test_get_user_info_403_error(self, mock_urlopen):
+    @patch("requests.get")
+    def test_get_user_info_403_error(self, mock_get):
         """レート制限エラー(403)のテスト"""
         # Arrange
-        mock_urlopen.side_effect = urllib.error.HTTPError(url="", code=403, msg="Forbidden", hdrs=None, fp=None)
+        mock_response = Mock()
+        mock_response.status_code = 403
+        mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError(response=mock_response)
+        mock_get.return_value = mock_response
 
         api = GitHubAPI("test_token", "test_user")
 

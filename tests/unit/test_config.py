@@ -243,7 +243,7 @@ class TestLoadConfig:
         }
 
         config_file = temp_dir / "config.local.json"
-        with open(config_file, "w") as f:
+        with open(config_file, "w", encoding="utf-8") as f:
             json.dump(local_config, f)
 
         # カレントディレクトリを変更してテスト
@@ -251,7 +251,11 @@ class TestLoadConfig:
         try:
             os.chdir(temp_dir)
 
-            with patch("src.setup_repo.config.auto_detect_config") as mock_auto:
+            # 環境変数をクリアして実際の設定ファイルの影響を排除
+            with (
+                patch.dict(os.environ, {}, clear=True),
+                patch("src.setup_repo.config.auto_detect_config") as mock_auto,
+            ):
                 mock_auto.return_value = {
                     "owner": "auto_user",
                     "github_token": "auto_token",
@@ -277,7 +281,7 @@ class TestLoadConfig:
         global_config = {"owner": "global_user", "github_token": "global_token"}
 
         config_file = temp_dir / "config.json"
-        with open(config_file, "w") as f:
+        with open(config_file, "w", encoding="utf-8") as f:
             json.dump(global_config, f)
 
         # カレントディレクトリを変更してテスト
@@ -285,7 +289,11 @@ class TestLoadConfig:
         try:
             os.chdir(temp_dir)
 
-            with patch("src.setup_repo.config.auto_detect_config") as mock_auto:
+            # 環境変数をクリアして実際の設定ファイルの影響を排除
+            with (
+                patch.dict(os.environ, {}, clear=True),
+                patch("src.setup_repo.config.auto_detect_config") as mock_auto,
+            ):
                 mock_auto.return_value = {
                     "owner": "auto_user",
                     "github_token": "auto_token",

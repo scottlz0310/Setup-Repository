@@ -8,16 +8,21 @@ import platform
 import sys
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from .logging_config import setup_project_logging
 
 # プラットフォーム固有のインポートとエラーハンドリング
+if TYPE_CHECKING:
+    import fcntl
+    import msvcrt
+
 try:
-    import fcntl  # noqa: F401
+    import fcntl
 
     FCNTL_AVAILABLE = True
 except ImportError:
+    fcntl = None  # type: ignore[assignment]
     FCNTL_AVAILABLE = False
 
 try:
@@ -25,6 +30,7 @@ try:
 
     MSVCRT_AVAILABLE = True
 except ImportError:
+    msvcrt = None  # type: ignore[assignment]
     MSVCRT_AVAILABLE = False
 
 # ロガーの初期化
@@ -137,13 +143,15 @@ class UnixLockImplementation(LockImplementation):
             logger.warning("fcntlモジュールが利用できません。フォールバック実装を使用します。")
             return False
 
-        try:
-            import fcntl as fcntl_module
+        if not FCNTL_AVAILABLE or fcntl is None:
+            logger.warning("fcntlモジュールが利用できません。フォールバック実装を使用します。")
+            return False
 
-            fcntl_module.flock(file_handle, fcntl_module.LOCK_EX | fcntl_module.LOCK_NB)
+        try:
+            fcntl.flock(file_handle, fcntl.LOCK_EX | fcntl.LOCK_NB)  # type: ignore[attr-defined]
             logger.debug("Unix系システムでfcntlを使用してファイルロックを取得しました")
             return True
-        except (OSError, ImportError) as e:
+        except OSError as e:
             logger.debug(f"fcntlによるファイルロック取得に失敗しました: {e}")
             return False
 
@@ -152,12 +160,13 @@ class UnixLockImplementation(LockImplementation):
         if not FCNTL_AVAILABLE:
             return
 
-        try:
-            import fcntl as fcntl_module
+        if not FCNTL_AVAILABLE or fcntl is None:
+            return
 
-            fcntl_module.flock(file_handle, fcntl_module.LOCK_UN)
+        try:
+            fcntl.flock(file_handle, fcntl.LOCK_UN)  # type: ignore[attr-defined]
             logger.debug("Unix系システムでfcntlを使用してファイルロックを解放しました")
-        except (OSError, ImportError) as e:
+        except OSError as e:
             logger.warning(f"fcntlによるファイルロック解放に失敗しました: {e}")
 
     def is_available(self) -> bool:
