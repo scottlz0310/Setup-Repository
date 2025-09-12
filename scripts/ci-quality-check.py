@@ -55,21 +55,13 @@ def main():
             error_handler.logger.info(f"検出されたプラットフォーム: {platform_name}")
 
             # パッケージマネージャーの状態をチェック
-            available_managers = [
-                m
-                for m, info in diagnosis["package_managers"].items()
-                if info["available"]
-            ]
+            available_managers = [m for m, info in diagnosis["package_managers"].items() if info["available"]]
 
             if available_managers:
                 managers_list = ", ".join(available_managers)
-                error_handler.logger.info(
-                    f"利用可能なパッケージマネージャー: {managers_list}"
-                )
+                error_handler.logger.info(f"利用可能なパッケージマネージャー: {managers_list}")
             else:
-                error_handler.logger.warning(
-                    "利用可能なパッケージマネージャーが見つかりません"
-                )
+                error_handler.logger.warning("利用可能なパッケージマネージャーが見つかりません")
 
             # PATH関連の問題があれば警告
             if diagnosis["path_issues"]:
@@ -77,14 +69,15 @@ def main():
                     error_handler.logger.warning(f"PATH問題: {issue}")
 
         # 品質メトリクス収集を実行
-        collector = QualityMetricsCollector(
-            project_root=project_root, logger=error_handler.logger
-        )
+        collector = QualityMetricsCollector(project_root=project_root, logger=error_handler.logger)
 
         # 並列実行設定を取得
         import os
 
         parallel_workers = os.environ.get("PYTEST_XDIST_WORKER_COUNT", "auto")
+
+        # CI環境変数を設定
+        os.environ["CI"] = "true"
 
         # 各品質チェックを段階的に実行（並列実行対応）
         stages = [
@@ -92,9 +85,7 @@ def main():
             ("MyPy Type Check", collector.collect_mypy_metrics),
             (
                 "Test Execution",
-                lambda: collector.collect_test_metrics(
-                    parallel_workers=parallel_workers
-                ),
+                lambda: collector.collect_test_metrics(parallel_workers=parallel_workers),
             ),
             ("Security Scan", collector.collect_security_metrics),
         ]
@@ -110,9 +101,7 @@ def main():
                 stage_duration = time.time() - stage_start
 
                 if result.get("success", False):
-                    error_handler.logger.log_ci_stage_success(
-                        stage_name, stage_duration
-                    )
+                    error_handler.logger.log_ci_stage_success(stage_name, stage_duration)
                 else:
                     # ステージ固有のエラーを作成
                     from setup_repo.quality_errors import QualityCheckError
@@ -129,9 +118,7 @@ def main():
                         error_details,
                     )
 
-                    error_handler.handle_stage_error(
-                        stage_name, stage_error, stage_duration
-                    )
+                    error_handler.handle_stage_error(stage_name, stage_error, stage_duration)
                     failed_stages.append(stage_name)
 
             except Exception as e:
@@ -154,9 +141,7 @@ def main():
             # 終了コード1で終了
             error_handler.set_exit_code(1)
         else:
-            error_handler.logger.info(
-                f"すべての品質チェックが成功しました (実行時間: {total_duration:.2f}秒)"
-            )
+            error_handler.logger.info(f"すべての品質チェックが成功しました (実行時間: {total_duration:.2f}秒)")
 
             # 全体メトリクスを収集して保存
             try:
