@@ -848,6 +848,11 @@ class TestEdgeCasesAndErrorHandling:
                 patch("src.setup_repo.platform_detector.platform.system") as mock_system,
                 patch("src.setup_repo.platform_detector.platform.release") as mock_release,
                 patch("src.setup_repo.platform_detector.os.name", "posix"),
+                patch(
+                    "src.setup_repo.platform_detector.os.environ",
+                    {"CI": "false", "GITHUB_ACTIONS": "false", "RUNNER_OS": "linux"},
+                ),
+                patch("src.setup_repo.platform_detector.os.path.exists", return_value=False),
             ):
                 mock_system.return_value = "Linux"
                 mock_release.return_value = release_string

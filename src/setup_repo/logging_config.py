@@ -57,13 +57,14 @@ class LoggingConfig:
     @classmethod
     def should_use_json_format(cls) -> bool:
         """JSON形式のログを使用するかどうかを判定"""
-        return os.getenv("CI_JSON_LOGS", "").lower() in ("true", "1") or os.getenv(
-            "JSON_LOGS", ""
-        ).lower() in ("true", "1")
+        return os.getenv("CI_JSON_LOGS", "").lower() in ("true", "1") or os.getenv("JSON_LOGS", "").lower() in (
+            "true",
+            "1",
+        )
 
     @classmethod
     def get_log_file_path(cls, log_name: str = "quality") -> Optional[Path]:
-        """ログファイルパスを取得"""
+        """ログファイルパスを取得（クロスプラットフォーム対応）"""
         # CI環境では通常ファイルログは不要（明示的に指定された場合を除く）
         if cls.is_ci_environment() and not os.getenv("CI_LOG_FILE") and not os.getenv("LOG_DIR"):
             return None
@@ -72,12 +73,24 @@ class LoggingConfig:
         log_dir = os.getenv("LOG_DIR", "logs")
         log_file = f"{log_name}.log"
 
-        return Path(log_dir) / log_file
+        # クロスプラットフォーム対応: 現在のプラットフォームに適したPathオブジェクトを作成
+        try:
+            # os.path.joinを使用してプラットフォーム固有のパス区切り文字を処理
+            full_path = os.path.join(log_dir, log_file)
+            return Path(full_path)
+        except (OSError, NotImplementedError) as e:
+            # パス作成に失敗した場合は、現在のディレクトリを基準にする
+            import logging
+
+            logging.warning(f"ログパス作成に失敗、デフォルトパスを使用: {e}")
+            try:
+                return Path(os.path.join(os.getcwd(), "logs", log_file))
+            except Exception:
+                # 最後の手段として相対パスを使用
+                return Path(f"logs/{log_file}")
 
     @classmethod
-    def configure_for_environment(
-        cls, logger_name: str = "setup_repo.quality"
-    ) -> QualityLogger:
+    def configure_for_environment(cls, logger_name: str = "setup_repo.quality") -> QualityLogger:
         """環境に応じたロギング設定を行う"""
         log_level = cls.get_log_level_from_env()
         log_file = cls.get_log_file_path()
@@ -115,9 +128,7 @@ class LoggingConfig:
             "debug_mode": str(cls.is_debug_mode()),
             "ci_environment": str(cls.is_ci_environment()),
             "json_format": str(cls.should_use_json_format()),
-            "log_file": (
-                str(cls.get_log_file_path()) if cls.get_log_file_path() else "None"
-            ),
+            "log_file": (str(cls.get_log_file_path()) if cls.get_log_file_path() else "None"),
             "platform_info": {
                 "name": platform_info.name,
                 "display_name": platform_info.display_name,
@@ -156,9 +167,7 @@ def setup_ci_logging() -> QualityLogger:
     """CI環境専用のロギングを設定"""
     # CI環境では常にINFOレベル以上、JSON形式を使用
     return configure_quality_logging(
-        log_level=(
-            LogLevel.INFO if not LoggingConfig.is_debug_mode() else LogLevel.DEBUG
-        ),
+        log_level=(LogLevel.INFO if not LoggingConfig.is_debug_mode() else LogLevel.DEBUG),
         log_file=None,  # CI環境ではファイルログは使用しない
         enable_console=True,
         enable_json_format=True,
@@ -203,20 +212,16 @@ def create_platform_specific_error_message(
     if platform_name == "windows":
         if "fcntl" in base_message.lower():
             platform_specific_info.append(
-                "Windows環境では fcntl モジュールは利用できません。"
-                "代替として msvcrt モジュールを使用してください。"
+                "Windows環境では fcntl モジュールは利用できません。代替として msvcrt モジュールを使用してください。"
             )
             # msvcrtの可用性をチェック
             msvcrt_info = check_module_availability("msvcrt")
             if not msvcrt_info["available"]:
-                troubleshooting_steps.append(
-                    "msvcrtモジュールも利用できません。フォールバック機構を使用します。"
-                )
+                troubleshooting_steps.append("msvcrtモジュールも利用できません。フォールバック機構を使用します。")
 
         if "permission" in base_message.lower():
             platform_specific_info.append(
-                "Windows環境では管理者権限が必要な場合があります。"
-                "PowerShellを管理者として実行してください。"
+                "Windows環境では管理者権限が必要な場合があります。PowerShellを管理者として実行してください。"
             )
             troubleshooting_steps.append(
                 "1. PowerShellを右クリックして「管理者として実行」を選択\n"
@@ -224,28 +229,17 @@ def create_platform_specific_error_message(
                 "3. 再度コマンドを実行"
             )
 
-        if (
-            "path" in base_message.lower()
-            or "command not found" in base_message.lower()
-        ):
-            platform_specific_info.append(
-                "Windows環境でPATHの問題が発生している可能性があります。"
-            )
+        if "path" in base_message.lower() or "command not found" in base_message.lower():
+            platform_specific_info.append("Windows環境でPATHの問題が発生している可能性があります。")
             troubleshooting_steps.append(
-                "PowerShellで $env:PATH を確認し、必要なディレクトリが"
-                "含まれているか確認してください。"
+                "PowerShellで $env:PATH を確認し、必要なディレクトリが含まれているか確認してください。"
             )
 
     elif platform_name == "macos":
         if "command not found" in base_message.lower():
-            missing_tool = (
-                context.get("missing_tool", "required-tool")
-                if context
-                else "required-tool"
-            )
+            missing_tool = context.get("missing_tool", "required-tool") if context else "required-tool"
             platform_specific_info.append(
-                f"macOS環境では Homebrew を使用してツールをインストールしてください: "
-                f"brew install {missing_tool}"
+                f"macOS環境では Homebrew を使用してツールをインストールしてください: brew install {missing_tool}"
             )
             troubleshooting_steps.append(
                 "1. Homebrewがインストールされているか確認: brew --version\n"
@@ -254,21 +248,12 @@ def create_platform_specific_error_message(
             )
 
         if "permission" in base_message.lower():
-            platform_specific_info.append(
-                "macOS環境では、セキュリティ設定により実行が制限される場合があります。"
-            )
-            troubleshooting_steps.append(
-                "システム環境設定 > セキュリティとプライバシー で"
-                "実行を許可してください。"
-            )
+            platform_specific_info.append("macOS環境では、セキュリティ設定により実行が制限される場合があります。")
+            troubleshooting_steps.append("システム環境設定 > セキュリティとプライバシー で実行を許可してください。")
 
     elif platform_name == "linux":
         if "command not found" in base_message.lower():
-            missing_tool = (
-                context.get("missing_tool", "required-tool")
-                if context
-                else "required-tool"
-            )
+            missing_tool = context.get("missing_tool", "required-tool") if context else "required-tool"
             platform_specific_info.append(
                 "Linux環境では apt または snap を使用して"
                 f"ツールをインストールしてください: "
@@ -281,15 +266,12 @@ def create_platform_specific_error_message(
             )
 
         if "permission" in base_message.lower():
-            platform_specific_info.append(
-                "Linux環境では sudo 権限が必要な場合があります。"
-            )
+            platform_specific_info.append("Linux環境では sudo 権限が必要な場合があります。")
 
     elif platform_name == "wsl":
         if "windows" in base_message.lower():
             platform_specific_info.append(
-                "WSL環境では Windows と Linux の両方のパスが混在する場合があります。"
-                "適切なパス形式を使用してください。"
+                "WSL環境では Windows と Linux の両方のパスが混在する場合があります。適切なパス形式を使用してください。"
             )
             troubleshooting_steps.append(
                 "1. wslpath コマンドでパス変換を確認\n"
@@ -299,9 +281,7 @@ def create_platform_specific_error_message(
 
     # CI環境固有の情報を追加
     if LoggingConfig.is_ci_environment():
-        platform_specific_info.append(
-            f"CI環境（{os.environ.get('GITHUB_ACTIONS', 'Unknown CI')}）で実行中です。"
-        )
+        platform_specific_info.append(f"CI環境（{os.environ.get('GITHUB_ACTIONS', 'Unknown CI')}）で実行中です。")
 
         # GitHub Actions固有のトラブルシューティング
         if os.environ.get("GITHUB_ACTIONS", "").lower() == "true":
@@ -327,9 +307,7 @@ def create_platform_specific_error_message(
 
     # 推奨パッケージマネージャー情報を追加
     if platform_info.package_managers:
-        enhanced_message += (
-            f"\n推奨パッケージマネージャー: {platform_info.package_managers[0]}"
-        )
+        enhanced_message += f"\n推奨パッケージマネージャー: {platform_info.package_managers[0]}"
 
     # CI環境では追加の診断情報を含める
     if LoggingConfig.is_ci_environment() and context:

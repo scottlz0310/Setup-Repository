@@ -94,9 +94,13 @@ class TestRotatingFileHandler:
                 backup_count=3,
             )
 
-            assert handler.maxBytes == 1024
-            assert handler.backupCount == 3
-            assert log_file.parent.exists()
+            try:
+                assert handler.maxBytes == 1024
+                assert handler.backupCount == 3
+                assert log_file.parent.exists()
+            finally:
+                # Windowsでのファイルロック問題を回避するため明示的にクローズ
+                handler.close()
 
     def test_rotating_file_handler_directory_creation(self):
         """RotatingFileHandlerのディレクトリ作成をテスト"""
@@ -106,10 +110,14 @@ class TestRotatingFileHandler:
             # サブディレクトリは存在しない
             assert not log_file.parent.exists()
 
-            RotatingFileHandler(filename=log_file)
+            handler = RotatingFileHandler(filename=log_file)
 
-            # ハンドラー作成時にディレクトリが作成される
-            assert log_file.parent.exists()
+            try:
+                # ハンドラー作成時にディレクトリが作成される
+                assert log_file.parent.exists()
+            finally:
+                # Windowsでのファイルロック問題を回避するため明示的にクローズ
+                handler.close()
 
 
 class TestColoredConsoleHandler:
@@ -143,8 +151,12 @@ class TestHandlerCreationFunctions:
 
             handler = create_file_handler(log_file)
 
-            assert isinstance(handler, RotatingFileHandler)
-            assert handler.formatter is not None
+            try:
+                assert isinstance(handler, RotatingFileHandler)
+                assert handler.formatter is not None
+            finally:
+                # Windowsでのファイルロック問題を回避するため明示的にクローズ
+                handler.close()
 
     def test_create_file_handler_with_json(self):
         """JSON形式でのcreate_file_handlerのテスト"""
@@ -153,9 +165,13 @@ class TestHandlerCreationFunctions:
 
             handler = create_file_handler(log_file, enable_json_format=True)
 
-            assert isinstance(handler, RotatingFileHandler)
-            # JSONFormatterが設定されていることを確認
-            assert handler.formatter is not None
+            try:
+                assert isinstance(handler, RotatingFileHandler)
+                # JSONFormatterが設定されていることを確認
+                assert handler.formatter is not None
+            finally:
+                # Windowsでのファイルロック問題を回避するため明示的にクローズ
+                handler.close()
 
     def test_create_console_handler(self):
         """create_console_handlerのテスト"""
@@ -186,10 +202,14 @@ class TestHandlerCreationFunctions:
             log_file = Path(temp_dir) / "test.log"
             file_handler = create_file_handler(log_file)
 
-            tee_handler = create_tee_handler(console_handler, file_handler)
+            try:
+                tee_handler = create_tee_handler(console_handler, file_handler)
 
-            assert isinstance(tee_handler, TeeHandler)
-            assert len(tee_handler.handlers) == 2
+                assert isinstance(tee_handler, TeeHandler)
+                assert len(tee_handler.handlers) == 2
+            finally:
+                # Windowsでのファイルロック問題を回避するため明示的にクローズ
+                file_handler.close()
 
     def test_create_ci_handler(self):
         """create_ci_handlerのテスト"""
@@ -218,8 +238,15 @@ class TestHandlerCreationFunctions:
 
             handler = create_development_handler(log_file)
 
-            assert isinstance(handler, TeeHandler)
-            assert len(handler.handlers) == 2
+            try:
+                assert isinstance(handler, TeeHandler)
+                assert len(handler.handlers) == 2
+            finally:
+                # Windowsでのファイルロック問題を回避するため明示的にクローズ
+                if hasattr(handler, "handlers"):
+                    for h in handler.handlers:
+                        if hasattr(h, "close"):
+                            h.close()
 
     def test_create_testing_handler(self):
         """create_testing_handlerのテスト"""
