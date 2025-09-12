@@ -1,6 +1,6 @@
 # 🚀 リポジトリセットアップツール
 
-[![Coverage](https://img.shields.io/badge/coverage-50%25-yellow)](htmlcov/index.html)
+[![Coverage](https://img.shields.io/badge/coverage-90.35%25-brightgreen)](htmlcov/index.html)
 [![Tests](https://github.com/scottlz0310/Setup-Repository/workflows/CI%2FCD%20Pipeline/badge.svg)](https://github.com/scottlz0310/Setup-Repository/actions)
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
