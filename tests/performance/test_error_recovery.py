@@ -144,9 +144,7 @@ class TestNetworkErrorRecovery:
         metrics = RecoveryMetrics()
 
         # 30%の確率でタイムアウトエラーを発生
-        simulator.add_error_pattern(
-            requests.exceptions.Timeout("Connection timeout"), 0.3
-        )
+        simulator.add_error_pattern(requests.exceptions.Timeout("Connection timeout"), 0.3)
 
         # 一部のリポジトリは2回目で成功するように設定
         for i in range(0, 10, 2):
@@ -207,9 +205,7 @@ class TestNetworkErrorRecovery:
         metrics = RecoveryMetrics()
 
         # DNS解決エラーをシミュレート（確率を下げて安定性向上）
-        simulator.add_error_pattern(
-            requests.exceptions.ConnectionError("DNS resolution failed"), 0.3
-        )
+        simulator.add_error_pattern(requests.exceptions.ConnectionError("DNS resolution failed"), 0.3)
 
         # より多くのリポジトリで段階的に成功するように設定
         for i in range(8):  # 8個のリポジトリで回復を保証
@@ -246,9 +242,7 @@ class TestNetworkErrorRecovery:
 
         # DNS エラー回復率の期待値を現実的な値に調整
         # ランダム性とエラーシミュレーションを考慮して、少なくとも40%の回復率を期待
-        assert recovery_rate >= 0.40, (
-            f"DNS エラー回復率が低すぎます: {recovery_rate:.2%}"
-        )
+        assert recovery_rate >= 0.40, f"DNS エラー回復率が低すぎます: {recovery_rate:.2%}"
 
     def test_ssl_certificate_error_recovery(
         self,
@@ -260,9 +254,7 @@ class TestNetworkErrorRecovery:
         metrics = RecoveryMetrics()
 
         # SSL証明書エラーをシミュレート
-        simulator.add_error_pattern(
-            requests.exceptions.SSLError("SSL certificate verification failed"), 0.5
-        )
+        simulator.add_error_pattern(requests.exceptions.SSLError("SSL certificate verification failed"), 0.5)
 
         def mock_sync_with_ssl_recovery(repo, dest_dir, config):
             metrics.record_attempt()
@@ -294,9 +286,7 @@ class TestNetworkErrorRecovery:
         print(f"SSL エラー回復率: {recovery_rate:.2%}")
 
         # SSL エラーは回復が困難な場合が多いため、より現実的な閾値を設定
-        assert recovery_rate >= 0.2, (
-            f"SSL エラー回復率が低すぎます: {recovery_rate:.2%}"
-        )
+        assert recovery_rate >= 0.2, f"SSL エラー回復率が低すぎます: {recovery_rate:.2%}"
 
     def test_github_api_rate_limit_recovery(
         self,
@@ -308,9 +298,7 @@ class TestNetworkErrorRecovery:
         metrics = RecoveryMetrics()
 
         # レート制限エラーをシミュレート
-        simulator.add_error_pattern(
-            GitHubAPIError("API rate limit exceeded. Please wait."), 0.6
-        )
+        simulator.add_error_pattern(GitHubAPIError("API rate limit exceeded. Please wait."), 0.6)
 
         # レート制限は時間経過で回復するため、多くのリポジトリで回復を設定
         for i in range(15):
@@ -346,9 +334,7 @@ class TestNetworkErrorRecovery:
         print(f"レート制限回復率: {recovery_rate:.2%}")
 
         # レート制限は適切な待機により回復可能
-        assert recovery_rate >= 0.25, (
-            f"レート制限回復率が低すぎます: {recovery_rate:.2%}"
-        )
+        assert recovery_rate >= 0.25, f"レート制限回復率が低すぎます: {recovery_rate:.2%}"
 
 
 @pytest.mark.slow
@@ -366,9 +352,7 @@ class TestFileSystemErrorRecovery:
         metrics = RecoveryMetrics()
 
         # 権限エラーをシミュレート
-        simulator.add_error_pattern(
-            PermissionError("Permission denied: cannot write to directory"), 0.4
-        )
+        simulator.add_error_pattern(PermissionError("Permission denied: cannot write to directory"), 0.4)
 
         def mock_sync_with_permission_recovery(repo, dest_dir, config):
             metrics.record_attempt()
@@ -447,9 +431,7 @@ class TestFileSystemErrorRecovery:
         recovery_rate = metrics.get_recovery_rate()
         print(f"ディスク容量エラー回復率: {recovery_rate:.2%}")
 
-        assert recovery_rate > 0.2, (
-            f"ディスク容量エラー回復率が低すぎます: {recovery_rate:.2%}"
-        )
+        assert recovery_rate > 0.2, f"ディスク容量エラー回復率が低すぎます: {recovery_rate:.2%}"
 
     def test_file_lock_error_recovery(
         self,
@@ -497,9 +479,7 @@ class TestFileSystemErrorRecovery:
         print(f"ファイルロックエラー回復率: {recovery_rate:.2%}")
 
         # ファイルロックは時間経過で回復可能
-        assert recovery_rate >= 0.2, (
-            f"ファイルロックエラー回復率が低すぎます: {recovery_rate:.2%}"
-        )
+        assert recovery_rate >= 0.2, f"ファイルロックエラー回復率が低すぎます: {recovery_rate:.2%}"
 
 
 @pytest.mark.slow
@@ -564,9 +544,7 @@ class TestMixedErrorRecovery:
         print(f"エラー種別分布: {metrics.error_types}")
 
         # 複合エラー環境でも一定の回復率を維持
-        assert recovery_rate >= 0.29, (
-            f"複合エラー回復率が低すぎます: {recovery_rate:.2%}"
-        )
+        assert recovery_rate >= 0.29, f"複合エラー回復率が低すぎます: {recovery_rate:.2%}"
 
     def test_cascading_failure_recovery(
         self,
@@ -627,9 +605,7 @@ class TestMixedErrorRecovery:
         metrics = RecoveryMetrics()
 
         # 高い確率でエラーを発生
-        simulator.add_error_pattern(
-            requests.exceptions.Timeout("High load timeout"), 0.7
-        )
+        simulator.add_error_pattern(requests.exceptions.Timeout("High load timeout"), 0.7)
 
         # 高負荷設定
         error_recovery_config["max_concurrent_operations"] = 20
@@ -638,9 +614,7 @@ class TestMixedErrorRecovery:
         # 段階的回復（高負荷のため回復に時間がかかる）
         for i in range(50):
             attempts = 3 + (i % 3)  # 3-5回で成功
-            simulator.set_success_after_attempts(
-                f"recovery-test-repo-{i:03d}", attempts
-            )
+            simulator.set_success_after_attempts(f"recovery-test-repo-{i:03d}", attempts)
 
         def mock_sync_with_high_load_recovery(repo, dest_dir, config):
             metrics.record_attempt()
@@ -682,9 +656,5 @@ class TestMixedErrorRecovery:
         print(f"  平均回復時間: {metrics.get_average_recovery_time():.3f}秒")
 
         # 高負荷下でも基本的な回復能力を維持
-        assert recovery_rate > 0.2, (
-            f"高負荷下での回復率が低すぎます: {recovery_rate:.2%}"
-        )
-        assert total_time < 300.0, (
-            f"高負荷テストの実行時間が長すぎます: {total_time:.2f}秒"
-        )
+        assert recovery_rate > 0.2, f"高負荷下での回復率が低すぎます: {recovery_rate:.2%}"
+        assert total_time < 300.0, f"高負荷テストの実行時間が長すぎます: {total_time:.2f}秒"

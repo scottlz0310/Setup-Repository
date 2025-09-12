@@ -154,9 +154,7 @@ class TestFormatFunctions:
 
         # コンテキスト付きフォーマット
         context = {"key": "value", "number": 42}
-        formatted_with_context = format_log_message(
-            "コンテキストメッセージ", "ERROR", timestamp, context
-        )
+        formatted_with_context = format_log_message("コンテキストメッセージ", "ERROR", timestamp, context)
         assert "コンテキスト" in formatted_with_context
         assert "key" in formatted_with_context
         assert "value" in formatted_with_context

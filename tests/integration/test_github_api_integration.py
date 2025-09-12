@@ -117,9 +117,7 @@ class TestGitHubAPIIntegration:
 
             if call_count == 1:
                 # 最初のページ
-                mock_response.read.return_value = json.dumps(mock_repos_page1).encode(
-                    "utf-8"
-                )
+                mock_response.read.return_value = json.dumps(mock_repos_page1).encode("utf-8")
             else:
                 # 2ページ目以降は空
                 mock_response.read.return_value = json.dumps([]).encode("utf-8")
@@ -249,13 +247,9 @@ class TestGitHubAPIIntegration:
             mock_response.__exit__ = Mock(return_value=None)
 
             if call_count == 1:
-                mock_response.read.return_value = json.dumps(page1_repos).encode(
-                    "utf-8"
-                )
+                mock_response.read.return_value = json.dumps(page1_repos).encode("utf-8")
             elif call_count == 2:
-                mock_response.read.return_value = json.dumps(page2_repos).encode(
-                    "utf-8"
-                )
+                mock_response.read.return_value = json.dumps(page2_repos).encode("utf-8")
             else:
                 # 3ページ目以降は空
                 mock_response.read.return_value = json.dumps([]).encode("utf-8")
@@ -337,9 +331,7 @@ class TestGitHubAPIIntegration:
         # 正常なレスポンス
         with patch("urllib.request.urlopen") as mock_urlopen:
             mock_response = Mock()
-            mock_response.read.return_value = json.dumps(
-                {"login": "test_user", "name": "Test User"}
-            ).encode("utf-8")
+            mock_response.read.return_value = json.dumps({"login": "test_user", "name": "Test User"}).encode("utf-8")
             mock_response.__enter__ = Mock(return_value=mock_response)
             mock_response.__exit__ = Mock(return_value=None)
             mock_urlopen.return_value = mock_response
@@ -361,9 +353,7 @@ class TestGitHubAPIIntegration:
         # トークン認証
         with patch("urllib.request.urlopen") as mock_urlopen:
             mock_response = Mock()
-            mock_response.read.return_value = json.dumps({"login": "test_user"}).encode(
-                "utf-8"
-            )
+            mock_response.read.return_value = json.dumps({"login": "test_user"}).encode("utf-8")
             mock_response.__enter__ = Mock(return_value=mock_response)
             mock_response.__exit__ = Mock(return_value=None)
             mock_urlopen.return_value = mock_response
@@ -378,10 +368,7 @@ class TestGitHubAPIIntegration:
             mock_urlopen.assert_called_once()
             call_args = mock_urlopen.call_args[0][0]  # Requestオブジェクト
             assert "Authorization" in call_args.headers
-            assert (
-                f"token {sample_config['github_token']}"
-                in call_args.headers["Authorization"]
-            )
+            assert f"token {sample_config['github_token']}" in call_args.headers["Authorization"]
 
     @pytest.mark.slow
     def test_api_rate_limit_respect(
@@ -396,9 +383,7 @@ class TestGitHubAPIIntegration:
         def mock_urlopen_with_timing(*args, **kwargs):
             call_times.append(time.time())
             mock_response = Mock()
-            mock_response.read.return_value = json.dumps({"login": "test_user"}).encode(
-                "utf-8"
-            )
+            mock_response.read.return_value = json.dumps({"login": "test_user"}).encode("utf-8")
             mock_response.__enter__ = Mock(return_value=mock_response)
             mock_response.__exit__ = Mock(return_value=None)
             return mock_response
@@ -417,9 +402,7 @@ class TestGitHubAPIIntegration:
         assert len(call_times) == 3
         if len(call_times) > 1:
             # 連続呼び出しの間隔をチェック（実装に依存）
-            intervals = [
-                call_times[i + 1] - call_times[i] for i in range(len(call_times) - 1)
-            ]
+            intervals = [call_times[i + 1] - call_times[i] for i in range(len(call_times) - 1)]
             # 極端に短い間隔でないことを確認
             assert all(interval >= 0 for interval in intervals)
 
@@ -433,15 +416,11 @@ class TestGitHubAPIIntegration:
         env_username = "env_github_user"
 
         with (
-            patch.dict(
-                os.environ, {"GITHUB_TOKEN": env_token, "GITHUB_USERNAME": env_username}
-            ),
+            patch.dict(os.environ, {"GITHUB_TOKEN": env_token, "GITHUB_USERNAME": env_username}),
             patch("urllib.request.urlopen") as mock_urlopen,
         ):
             mock_response = Mock()
-            mock_response.read.return_value = json.dumps(
-                {"login": env_username}
-            ).encode("utf-8")
+            mock_response.read.return_value = json.dumps({"login": env_username}).encode("utf-8")
             mock_response.__enter__ = Mock(return_value=mock_response)
             mock_response.__exit__ = Mock(return_value=None)
             mock_urlopen.return_value = mock_response
@@ -483,9 +462,7 @@ class TestGitHubAPIIntegration:
             else:
                 # 2回目の呼び出しは成功
                 mock_response = Mock()
-                mock_response.read.return_value = json.dumps(
-                    {"login": "test_user"}
-                ).encode("utf-8")
+                mock_response.read.return_value = json.dumps({"login": "test_user"}).encode("utf-8")
                 mock_response.__enter__ = Mock(return_value=mock_response)
                 mock_response.__exit__ = Mock(return_value=None)
                 return mock_response

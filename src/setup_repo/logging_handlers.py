@@ -63,9 +63,7 @@ class RotatingFileHandler(logging.handlers.RotatingFileHandler):
 class ColoredConsoleHandler(logging.StreamHandler):
     """色付きコンソール出力ハンドラー"""
 
-    def __init__(
-        self, stream: Optional[TextIO] = None, include_platform_info: bool = False
-    ):
+    def __init__(self, stream: Optional[TextIO] = None, include_platform_info: bool = False):
         super().__init__(stream or sys.stdout)
         self.setFormatter(
             ColoredFormatter(
@@ -91,9 +89,7 @@ def create_file_handler(
     )
 
     if enable_json_format:
-        formatter: logging.Formatter = JSONFormatter(
-            include_platform_info=include_platform_info
-        )
+        formatter: logging.Formatter = JSONFormatter(include_platform_info=include_platform_info)
     else:
         formatter = logging.Formatter(
             "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -114,9 +110,7 @@ def create_console_handler(
     handler = logging.StreamHandler(stream or sys.stdout)
 
     if enable_json_format:
-        formatter: logging.Formatter = JSONFormatter(
-            include_platform_info=include_platform_info
-        )
+        formatter: logging.Formatter = JSONFormatter(include_platform_info=include_platform_info)
     elif enable_colors:
         formatter = ColoredFormatter(
             "%(asctime)s - %(name)s - %(levelname)s - %(message)s",

@@ -181,9 +181,7 @@ def _update_repository(repo_name: str, repo_path: Path, config: dict) -> bool:
         return False
 
 
-def _clone_repository(
-    repo_name: str, repo_url: str, repo_path: Path, dry_run: bool
-) -> bool:
+def _clone_repository(repo_name: str, repo_url: str, repo_path: Path, dry_run: bool) -> bool:
     """新規リポジトリをクローン"""
     print(f"   📥 {repo_name}: クローン中...")
     if dry_run:

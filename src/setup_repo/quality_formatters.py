@@ -177,7 +177,7 @@ def format_quality_check_result(check_type: str, result: dict[str, Any]) -> str:
     if result.get("success", False):
         message = f"品質チェック成功: {safe_check_type}"
         if "metrics" in result:
-            safe_metrics = html.escape(str(result['metrics']))
+            safe_metrics = html.escape(str(result["metrics"]))
             message += f" - メトリクス: {safe_metrics}"
         return message
     else:
@@ -186,6 +186,6 @@ def format_quality_check_result(check_type: str, result: dict[str, Any]) -> str:
         error_message = "; ".join(safe_errors) if safe_errors else "不明なエラー"
         message = f"品質チェック失敗: {safe_check_type} - {error_message}"
         if "details" in result:
-            safe_details = html.escape(str(result['details']))
+            safe_details = html.escape(str(result["details"]))
             message += f" - 詳細: {safe_details}"
         return message

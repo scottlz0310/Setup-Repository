@@ -16,9 +16,7 @@ def get_github_token() -> Optional[str]:
 
     # gh CLIをフォールバックとして試す
     try:
-        result = subprocess.run(
-            ["gh", "auth", "token"], capture_output=True, text=True, check=True
-        )
+        result = subprocess.run(["gh", "auth", "token"], capture_output=True, text=True, check=True)
         return result.stdout.strip()
     except (subprocess.CalledProcessError, FileNotFoundError):
         return None

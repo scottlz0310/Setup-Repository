@@ -66,17 +66,12 @@ def setup_precommit() -> bool:
 
         # 全ファイルに対してテスト実行
         print("初回Pre-commitチェックを実行中...")
-        result = run_command(
-            ["uv", "run", "pre-commit", "run", "--all-files"], check=False
-        )
+        result = run_command(["uv", "run", "pre-commit", "run", "--all-files"], check=False)
 
         if result.returncode == 0:
             print("✅ Pre-commitフックのセットアップが完了しました")
         else:
-            print(
-                "⚠️ Pre-commitフックはセットアップされましたが、"
-                "一部のチェックで問題が見つかりました"
-            )
+            print("⚠️ Pre-commitフックはセットアップされましたが、一部のチェックで問題が見つかりました")
             print("これは正常です。コードを修正してから再度コミットしてください。")
 
         return True

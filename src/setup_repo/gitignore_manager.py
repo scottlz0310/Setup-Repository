@@ -48,9 +48,7 @@ class GitignoreManager:
             return True
 
         current_entries = self.get_current_entries()
-        entries_to_add = [
-            entry for entry in new_entries if entry not in current_entries
-        ]
+        entries_to_add = [entry for entry in new_entries if entry not in current_entries]
 
         if not entries_to_add:
             return True
@@ -160,11 +158,7 @@ class GitignoreManager:
                 if template_content:
                     for line in template_content.splitlines():
                         line = line.strip()
-                        if (
-                            line
-                            and not line.startswith("#")
-                            and line not in existing_entries
-                        ):
+                        if line and not line.startswith("#") and line not in existing_entries:
                             new_entries.add(line)
 
             if not new_entries:
@@ -197,13 +191,8 @@ class GitignoreManager:
 
         if not dry_run:
             analysis = detector.analyze_project()
-            print(
-                f"   🔍 検出されたプロジェクトタイプ: "
-                f"{', '.join(analysis['project_types']) or 'なし'}"
-            )
+            print(f"   🔍 検出されたプロジェクトタイプ: {', '.join(analysis['project_types']) or 'なし'}")
             print(f"   🛠️  検出されたツール: {', '.join(analysis['tools']) or 'なし'}")
             print(f"   📝 適用テンプレート: {', '.join(recommended_templates)}")
 
-        return self.setup_gitignore_from_templates(
-            recommended_templates, dry_run, merge_mode
-        )
+        return self.setup_gitignore_from_templates(recommended_templates, dry_run, merge_mode)

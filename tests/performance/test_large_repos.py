@@ -159,9 +159,7 @@ class TestLargeRepositoryPerformance:
 
         # パフォーマンス要件の検証
         assert result.success, f"100リポジトリ同期が失敗: {result.errors}"
-        assert metrics["execution_time"] < 30.0, (
-            f"実行時間超過: {metrics['execution_time']:.2f}s > 30.0s"
-        )
+        assert metrics["execution_time"] < 30.0, f"実行時間超過: {metrics['execution_time']:.2f}s > 30.0s"
         assert metrics["memory_growth_mb"] < 200.0, (
             f"メモリ使用量増加が過大: {metrics['memory_growth_mb']:.2f}MB > 200MB"
         )
@@ -190,9 +188,7 @@ class TestLargeRepositoryPerformance:
 
         # パフォーマンス要件の検証
         assert result.success, f"500リポジトリ同期が失敗: {result.errors}"
-        assert metrics["execution_time"] < 120.0, (
-            f"実行時間超過: {metrics['execution_time']:.2f}s > 120.0s"
-        )
+        assert metrics["execution_time"] < 120.0, f"実行時間超過: {metrics['execution_time']:.2f}s > 120.0s"
         assert metrics["memory_growth_mb"] < 500.0, (
             f"メモリ使用量増加が過大: {metrics['memory_growth_mb']:.2f}MB > 500MB"
         )
@@ -225,9 +221,7 @@ class TestLargeRepositoryPerformance:
 
         # パフォーマンス要件の検証
         assert result.success, f"1000リポジトリ同期が失敗: {result.errors}"
-        assert metrics["execution_time"] < 300.0, (
-            f"実行時間超過: {metrics['execution_time']:.2f}s > 300.0s"
-        )
+        assert metrics["execution_time"] < 300.0, f"実行時間超過: {metrics['execution_time']:.2f}s > 300.0s"
         assert metrics["memory_growth_mb"] < 1000.0, (
             f"メモリ使用量増加が過大: {metrics['memory_growth_mb']:.2f}MB > 1000MB"
         )
@@ -253,9 +247,7 @@ class TestLargeRepositoryPerformance:
 
             with (
                 patch("setup_repo.sync.get_repositories", return_value=repositories),
-                patch(
-                    "setup_repo.sync.sync_repository_with_retries", return_value=True
-                ),
+                patch("setup_repo.sync.sync_repository_with_retries", return_value=True),
             ):
                 result = sync_repositories(large_repo_config, dry_run=True)
                 profiler.update_peak_memory()
@@ -278,9 +270,7 @@ class TestLargeRepositoryPerformance:
         # 必ずしも小さいバッチサイズが良いとは限らないが、
         # 極端な差がないことを確認
         memory_ratio = max_batch_memory / min_batch_memory
-        assert memory_ratio < 2.0, (
-            f"バッチサイズによるメモリ使用量の差が大きすぎます: {memory_ratio:.2f}"
-        )
+        assert memory_ratio < 2.0, f"バッチサイズによるメモリ使用量の差が大きすぎます: {memory_ratio:.2f}"
 
     def test_concurrent_processing_performance(
         self,
@@ -300,9 +290,7 @@ class TestLargeRepositoryPerformance:
 
             with (
                 patch("setup_repo.sync.get_repositories", return_value=repositories),
-                patch(
-                    "setup_repo.sync.sync_repository_with_retries", return_value=True
-                ),
+                patch("setup_repo.sync.sync_repository_with_retries", return_value=True),
             ):
                 result = sync_repositories(large_repo_config, dry_run=True)
                 profiler.update_peak_memory()
@@ -316,10 +304,7 @@ class TestLargeRepositoryPerformance:
         print("並行処理レベル別パフォーマンス:")
         for level, metrics in results.items():
             throughput = 100 / metrics["execution_time"]
-            print(
-                f"  並行数 {level}: {metrics['execution_time']:.2f}s, "
-                f"{throughput:.2f} repos/s"
-            )
+            print(f"  並行数 {level}: {metrics['execution_time']:.2f}s, {throughput:.2f} repos/s")
 
         # 並行処理により処理時間が改善されることを確認
         sequential_time = results[1]["execution_time"]
@@ -330,18 +315,13 @@ class TestLargeRepositoryPerformance:
 
         # ドライランモードでは並行処理のオーバーヘッドにより性能劣化する場合があるため、
         # 極端な劣化がないことを確認（-10%以内）
-        assert improvement_ratio > -0.1, (
-            f"並行処理による極端な性能劣化が発生: {improvement_ratio:.2%}"
-        )
+        assert improvement_ratio > -0.1, f"並行処理による極端な性能劣化が発生: {improvement_ratio:.2%}"
 
         # 実際の改善があった場合は記録
         if improvement_ratio > 0.05:
             print(f"並行処理による改善: {improvement_ratio:.2%}")
         elif improvement_ratio < -0.02:
-            print(
-                f"並行処理によるオーバーヘッド: {improvement_ratio:.2%} "
-                f"(ドライランモードのため)"
-            )
+            print(f"並行処理によるオーバーヘッド: {improvement_ratio:.2%} (ドライランモードのため)")
         else:
             print(f"並行処理による影響は軽微: {improvement_ratio:.2%}")
 
@@ -365,9 +345,7 @@ class TestLargeRepositoryPerformance:
 
             with (
                 patch("setup_repo.sync.get_repositories", return_value=repositories),
-                patch(
-                    "setup_repo.sync.sync_repository_with_retries", return_value=True
-                ),
+                patch("setup_repo.sync.sync_repository_with_retries", return_value=True),
             ):
                 result = sync_repositories(large_repo_config, dry_run=True)
 
@@ -411,9 +389,7 @@ class TestLargeRepositoryPerformance:
 
             try:
                 with (
-                    patch(
-                        "setup_repo.sync.get_repositories", return_value=repositories
-                    ),
+                    patch("setup_repo.sync.get_repositories", return_value=repositories),
                     patch(
                         "setup_repo.sync.sync_repository_with_retries",
                         return_value=True,
@@ -435,10 +411,7 @@ class TestLargeRepositoryPerformance:
                     "synced_count": len(result.synced_repos),
                 }
 
-                print(
-                    f"{repo_count}リポジトリ: {throughput:.2f} repos/s, "
-                    f"{metrics['memory_peak_mb']:.2f}MB"
-                )
+                print(f"{repo_count}リポジトリ: {throughput:.2f} repos/s, {metrics['memory_peak_mb']:.2f}MB")
 
             except Exception as e:
                 scalability_results[repo_count] = {
@@ -448,24 +421,15 @@ class TestLargeRepositoryPerformance:
                 print(f"{repo_count}リポジトリでエラー: {e}")
 
         # スケーラビリティ分析
-        successful_tests = {
-            k: v for k, v in scalability_results.items() if v.get("success", False)
-        }
+        successful_tests = {k: v for k, v in scalability_results.items() if v.get("success", False)}
 
-        assert len(successful_tests) >= 3, (
-            "少なくとも3つのスケールでテストが成功する必要があります"
-        )
+        assert len(successful_tests) >= 3, "少なくとも3つのスケールでテストが成功する必要があります"
 
         # 最大成功リポジトリ数を確認
         max_successful_repos = max(successful_tests.keys())
-        assert max_successful_repos >= 500, (
-            f"最低500リポジトリまで処理できる必要があります: {max_successful_repos}"
-        )
+        assert max_successful_repos >= 500, f"最低500リポジトリまで処理できる必要があります: {max_successful_repos}"
 
-        print(
-            f"スケーラビリティテスト結果: "
-            f"最大{max_successful_repos}リポジトリまで処理可能"
-        )
+        print(f"スケーラビリティテスト結果: 最大{max_successful_repos}リポジトリまで処理可能")
 
     @pytest.mark.stress
     def test_stress_test_with_resource_monitoring(
@@ -503,9 +467,7 @@ class TestLargeRepositoryPerformance:
         try:
             with (
                 patch("setup_repo.sync.get_repositories", return_value=repositories),
-                patch(
-                    "setup_repo.sync.sync_repository_with_retries", return_value=True
-                ),
+                patch("setup_repo.sync.sync_repository_with_retries", return_value=True),
             ):
                 # 監視開始
                 time.time()
@@ -528,10 +490,7 @@ class TestLargeRepositoryPerformance:
                 assert metrics["execution_time"] < 900.0  # 15分以内
                 assert metrics["memory_peak_mb"] < 4000.0  # 4GB以内
             else:
-                print(
-                    f"ストレステスト部分成功: "
-                    f"{len(result.synced_repos)}/{len(repositories)}リポジトリ処理"
-                )
+                print(f"ストレステスト部分成功: {len(result.synced_repos)}/{len(repositories)}リポジトリ処理")
                 # 部分的成功でも50%以上は処理できることを期待
                 success_rate = len(result.synced_repos) / len(repositories)
                 assert success_rate > 0.5, f"成功率が低すぎます: {success_rate:.2%}"

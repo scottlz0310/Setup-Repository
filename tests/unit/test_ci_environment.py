@@ -24,9 +24,7 @@ class TestCIEnvironmentInfo:
 
     def test_detect_ci_environment_jenkins(self):
         """Jenkins環境検出のテスト"""
-        with patch.dict(
-            os.environ, {"JENKINS_URL": "http://jenkins.example.com"}, clear=True
-        ):
+        with patch.dict(os.environ, {"JENKINS_URL": "http://jenkins.example.com"}, clear=True):
             assert CIEnvironmentInfo.detect_ci_environment() == "jenkins"
 
     def test_detect_ci_environment_circleci(self):
@@ -86,9 +84,7 @@ class TestCIEnvironmentInfo:
 
     def test_get_ci_metadata_github_actions(self):
         """GitHub ActionsのCI メタデータ取得のテスト"""
-        with patch.dict(
-            os.environ, {"GITHUB_ACTIONS": "true", "GITHUB_REPOSITORY": "test/repo"}
-        ):
+        with patch.dict(os.environ, {"GITHUB_ACTIONS": "true", "GITHUB_REPOSITORY": "test/repo"}):
             metadata = CIEnvironmentInfo.get_ci_metadata()
             assert "github_repository" in metadata
             assert metadata["github_repository"] == "test/repo"
@@ -182,10 +178,7 @@ class TestCIEnvironmentInfo:
         """依存関係情報取得成功のテスト"""
         mock_subprocess.side_effect = [
             "uv 0.1.0\n",  # uv --version
-            (
-                '[{"name": "pytest", "version": "7.0.0"}, '
-                '{"name": "ruff", "version": "0.1.0"}]'
-            ),  # pip list
+            ('[{"name": "pytest", "version": "7.0.0"}, {"name": "ruff", "version": "0.1.0"}]'),  # pip list
         ]
 
         with patch.dict(os.environ, {"VIRTUAL_ENV": "/path/to/venv"}):

@@ -35,10 +35,23 @@ jobs:
       run: |
         # 開発依存をインストール
         uv sync --dev
-        # セキュリティ依存関係グループをインストール
-        uv sync --group security || echo "Security group installation failed, continuing..."
-        # 個別にセキュリティツールをインストール（フォールバック）
-        uv add bandit safety || echo "Individual security tools installation failed, continuing..."
+
+        # セキュリティ依存関係グループをインストール（フォールバック付き）
+        echo "セキュリティツールのインストールを試行します..."
+        if ! uv sync --group security; then
+          echo "セキュリティグループのインストールに失敗しました。個別インストールを試行します..."
+
+          # 個別にセキュリティツールをインストール（フォールバック）
+          uv add bandit || echo "Banditのインストールに失敗しました"
+          uv add safety || echo "Safetyのインストールに失敗しました"
+        else
+          echo "セキュリティグループのインストールに成功しました"
+        fi
+
+        # インストールされたツールを確認
+        echo "インストールされたセキュリティツールを確認します:"
+        uv run bandit --version 2>/dev/null && echo "- Bandit: 利用可能" || echo "- Bandit: 利用不可"
+        uv run safety --version 2>/dev/null && echo "- Safety: 利用可能" || echo "- Safety: 利用不可"
 
     - name: Cache uv dependencies
       uses: actions/cache@v4
@@ -496,20 +509,72 @@ jobs:
       run: |
         # 開発依存をインストール
         uv sync --dev
-        # セキュリティ依存関係グループをインストール
-        uv sync --group security || echo "Security group installation failed, continuing..."
 
-    - name: Run safety check
+        # セキュリティ依存関係グループをインストール（フォールバック付き）
+        echo "セキュリティツールのインストールを試行します..."
+        if ! uv sync --group security; then
+          echo "セキュリティグループのインストールに失敗しました。個別インストールを試行します..."
+
+          # 個別にセキュリティツールをインストール（フォールバック）
+          uv add bandit || echo "Banditのインストールに失敗しました"
+          uv add safety || echo "Safetyのインストールに失敗しました"
+        else
+          echo "セキュリティグループのインストールに成功しました"
+        fi
+
+    - name: Run comprehensive security scan
       run: |
-        # セキュリティツールのインストールを確実に実行
-        uv sync --group security || echo "Security group sync failed"
-        uv add safety || echo "Safety installation failed"
-        # セキュリティチェックを実行（失敗しても続行）
-        uv run safety check --json --output safety-report.json || echo "Safety check completed with warnings"
+        echo "統合セキュリティスキャンを実行します..."
+
+        # セキュリティツールの利用可能性を確認
+        echo "セキュリティツールの利用可能性を確認します:"
+        BANDIT_AVAILABLE=false
+        SAFETY_AVAILABLE=false
+
+        if uv run bandit --version >/dev/null 2>&1; then
+          echo "- Bandit: 利用可能"
+          BANDIT_AVAILABLE=true
+        else
+          echo "- Bandit: 利用不可"
+        fi
+
+        if uv run safety --version >/dev/null 2>&1; then
+          echo "- Safety: 利用可能"
+          SAFETY_AVAILABLE=true
+        else
+          echo "- Safety: 利用不可"
+        fi
+
+        # Banditスキャンを実行
+        if [ "$BANDIT_AVAILABLE" = "true" ]; then
+          echo "Banditセキュリティスキャンを実行します..."
+          uv run bandit -r src/ -f json -o bandit-report.json || echo "Banditスキャンが警告付きで終了しました"
+        else
+          echo "Banditが利用できないため、スキップします"
+        fi
+
+        # Safetyチェックを実行
+        if [ "$SAFETY_AVAILABLE" = "true" ]; then
+          echo "Safety依存関係チェックを実行します..."
+          uv run safety check --json --output safety-report.json || echo "Safetyチェックが警告付きで終了しました"
+        else
+          echo "Safetyが利用できないため、スキップします"
+        fi
+
+        # ツールが利用できない場合のメッセージ
+        if [ "$BANDIT_AVAILABLE" = "false" ] && [ "$SAFETY_AVAILABLE" = "false" ]; then
+          echo "警告: セキュリティツールが利用できません。CI環境では依存関係のインストールに失敗することがあります。"
+          echo "セキュリティスキャンをスキップします。"
+        else
+          echo "セキュリティスキャンが完了しました。"
+        fi
 
     - name: Upload security scan results
       uses: actions/upload-artifact@v4
       if: always()
       with:
         name: security-scan-results
-        path: safety-report.json
+        path: |
+          safety-report.json
+          bandit-report.json
+        retention-days: 30

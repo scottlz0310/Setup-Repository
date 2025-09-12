@@ -102,12 +102,7 @@ class ProjectDetector:
             return True
 
         # ディレクトリ存在チェック
-        return bool(
-            any(
-                self._path_exists(directory)
-                for directory in rules.get("directories", [])
-            )
-        )
+        return bool(any(self._path_exists(directory) for directory in rules.get("directories", [])))
 
     def _path_exists(self, path_str: str) -> bool:
         """パスの存在確認（パストラバーサル対策）"""

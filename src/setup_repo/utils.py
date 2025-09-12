@@ -41,9 +41,7 @@ def _log_platform_module_availability():
 
     # プラットフォーム固有の推奨事項をログ
     if system == "windows" and not MSVCRT_AVAILABLE:
-        logger.warning(
-            "Windows環境でmsvcrtモジュールが利用できません。Python標準ライブラリの問題の可能性があります。"
-        )
+        logger.warning("Windows環境でmsvcrtモジュールが利用できません。Python標準ライブラリの問題の可能性があります。")
     elif system in ("linux", "darwin") and not FCNTL_AVAILABLE:
         logger.warning(
             f"{system.capitalize()}環境でfcntlモジュールが利用できません。Python標準ライブラリの問題の可能性があります。"
@@ -51,9 +49,7 @@ def _log_platform_module_availability():
 
     # 両方のモジュールが利用できない場合の警告
     if not FCNTL_AVAILABLE and not MSVCRT_AVAILABLE:
-        logger.warning(
-            "fcntlとmsvcrtの両方のモジュールが利用できません。フォールバック実装のみが使用されます。"
-        )
+        logger.warning("fcntlとmsvcrtの両方のモジュールが利用できません。フォールバック実装のみが使用されます。")
 
 
 # モジュール初期化時に可用性をログ
@@ -104,18 +100,13 @@ def log_platform_compatibility_warning():
         )
 
         # 具体的な解決策を提案
-        needs_solution = (
-            info["platform"] == "windows" and not info["msvcrt_available"]
-        ) or (info["platform"] in ("linux", "darwin") and not info["fcntl_available"])
-        if needs_solution:
-            logger.info(
-                "解決策: Python標準ライブラリが正しくインストールされているか"
-                "確認してください。"
-            )
-    else:
-        logger.debug(
-            f"プラットフォーム '{info['platform']}' で適切なロック実装が利用可能です。"
+        needs_solution = (info["platform"] == "windows" and not info["msvcrt_available"]) or (
+            info["platform"] in ("linux", "darwin") and not info["fcntl_available"]
         )
+        if needs_solution:
+            logger.info("解決策: Python標準ライブラリが正しくインストールされているか確認してください。")
+    else:
+        logger.debug(f"プラットフォーム '{info['platform']}' で適切なロック実装が利用可能です。")
 
 
 class LockImplementation(ABC):
@@ -143,9 +134,7 @@ class UnixLockImplementation(LockImplementation):
     def acquire(self, file_handle: int) -> bool:
         """fcntlを使用してロックを取得"""
         if not FCNTL_AVAILABLE:
-            logger.warning(
-                "fcntlモジュールが利用できません。フォールバック実装を使用します。"
-            )
+            logger.warning("fcntlモジュールが利用できません。フォールバック実装を使用します。")
             return False
 
         try:
@@ -178,9 +167,7 @@ class WindowsLockImplementation(LockImplementation):
     def acquire(self, file_handle: int) -> bool:
         """msvcrtを使用してロックを取得"""
         if not MSVCRT_AVAILABLE:
-            logger.warning(
-                "msvcrtモジュールが利用できません。フォールバック実装を使用します。"
-            )
+            logger.warning("msvcrtモジュールが利用できません。フォールバック実装を使用します。")
             return False
 
         try:
@@ -213,9 +200,7 @@ class FallbackLockImplementation(LockImplementation):
 
     def __init__(self):
         self.lock_files = set()
-        logger.info(
-            "フォールバックロック実装を使用します。プラットフォーム固有のロック機能は制限されます。"
-        )
+        logger.info("フォールバックロック実装を使用します。プラットフォーム固有のロック機能は制限されます。")
 
     def acquire(self, file_handle: int) -> bool:
         """ファイル存在チェックベースのロック取得"""
@@ -263,9 +248,7 @@ class ProcessLock:
         """プラットフォームに応じた適切なロック実装を選択"""
         system = platform.system().lower()
         logger.debug(f"プラットフォーム検出結果: {system}")
-        logger.debug(
-            f"モジュール可用性 - fcntl: {FCNTL_AVAILABLE}, msvcrt: {MSVCRT_AVAILABLE}"
-        )
+        logger.debug(f"モジュール可用性 - fcntl: {FCNTL_AVAILABLE}, msvcrt: {MSVCRT_AVAILABLE}")
 
         # Windows用実装を優先
         if system == "windows":
@@ -273,16 +256,12 @@ class ProcessLock:
                 logger.info("Windows環境でmsvcrtベースのロック実装を使用します")
                 return WindowsLockImplementation()
             else:
-                logger.warning(
-                    "Windows環境ですがmsvcrtモジュールが利用できません。フォールバック実装を使用します。"
-                )
+                logger.warning("Windows環境ですがmsvcrtモジュールが利用できません。フォールバック実装を使用します。")
 
         # Unix系システム用実装
         elif system in ("linux", "darwin"):
             if FCNTL_AVAILABLE:
-                logger.info(
-                    f"{system.capitalize()}環境でfcntlベースのロック実装を使用します"
-                )
+                logger.info(f"{system.capitalize()}環境でfcntlベースのロック実装を使用します")
                 return UnixLockImplementation()
             else:
                 logger.warning(
@@ -295,21 +274,14 @@ class ProcessLock:
                 logger.info("WSL環境でfcntlベースのロック実装を使用します")
                 return UnixLockImplementation()
             else:
-                logger.warning(
-                    "WSL環境ですがfcntlモジュールが利用できません。フォールバック実装を使用します。"
-                )
+                logger.warning("WSL環境ですがfcntlモジュールが利用できません。フォールバック実装を使用します。")
 
         # 不明なプラットフォームまたはモジュールが利用できない場合
         else:
-            logger.warning(
-                f"不明なプラットフォーム '{system}' または"
-                "プラットフォーム固有モジュールが利用できません。"
-            )
+            logger.warning(f"不明なプラットフォーム '{system}' またはプラットフォーム固有モジュールが利用できません。")
 
         # フォールバック実装
-        logger.info(
-            "フォールバック実装を使用します。一部の機能が制限される可能性があります。"
-        )
+        logger.info("フォールバック実装を使用します。一部の機能が制限される可能性があります。")
         return FallbackLockImplementation()
 
     def _is_wsl(self) -> bool:
@@ -324,9 +296,7 @@ class ProcessLock:
         """ロックを取得"""
         try:
             self.lock_file.parent.mkdir(parents=True, exist_ok=True)
-            self.lock_fd = os.open(
-                self.lock_file, os.O_CREAT | os.O_WRONLY | os.O_TRUNC
-            )
+            self.lock_fd = os.open(self.lock_file, os.O_CREAT | os.O_WRONLY | os.O_TRUNC)
 
             # プラットフォーム固有のロック実装を使用
             if self.lock_implementation.acquire(self.lock_fd):
@@ -399,15 +369,10 @@ class ProcessLock:
                     f"{platform.capitalize()}環境でfcntlモジュールが利用できません。Python標準ライブラリを確認してください。"
                 )
             if error and "permission" in str(error).lower():
-                logger.info(
-                    "ファイル権限を確認してください。必要に応じて sudo を"
-                    "使用してください。"
-                )
+                logger.info("ファイル権限を確認してください。必要に応じて sudo を使用してください。")
 
         if platform_info["fallback_required"]:
-            logger.info(
-                "フォールバック実装を使用しています。完全な排他制御機能は制限されます。"
-            )
+            logger.info("フォールバック実装を使用しています。完全な排他制御機能は制限されます。")
 
     def release(self):
         """ロックを解放"""
@@ -425,10 +390,7 @@ class ProcessLock:
                     self.lock_file.unlink()
                     logger.debug(f"プロセスロックを解放しました: {self.lock_file}")
             except OSError as e:
-                logger.warning(
-                    f"プロセスロックファイルの削除に失敗しました: "
-                    f"{self.lock_file} - {e}"
-                )
+                logger.warning(f"プロセスロックファイルの削除に失敗しました: {self.lock_file} - {e}")
 
 
 class TeeLogger:

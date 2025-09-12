@@ -89,20 +89,14 @@ class TestSyncPerformance:
         test_repos = [f"concurrent-repo-{i}" for i in range(10)]
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-            futures = [
-                executor.submit(mock_sync_operation, repo) for repo in test_repos
-            ]
-            results = [
-                future.result() for future in concurrent.futures.as_completed(futures)
-            ]
+            futures = [executor.submit(mock_sync_operation, repo) for repo in test_repos]
+            results = [future.result() for future in concurrent.futures.as_completed(futures)]
 
         elapsed_time = time.time() - start_time
 
         # 並行処理は逐次処理より高速であるべき
         sequential_time_estimate = len(test_repos) * 0.05
-        assert elapsed_time < sequential_time_estimate * 0.8, (
-            f"並行処理の効果が不十分: {elapsed_time:.2f}秒"
-        )
+        assert elapsed_time < sequential_time_estimate * 0.8, f"並行処理の効果が不十分: {elapsed_time:.2f}秒"
         assert len(results) == len(test_repos), "すべてのリポジトリが処理されていません"
 
     @pytest.mark.performance
@@ -139,6 +133,4 @@ class TestSyncPerformance:
         import_time = time.time() - start_time
 
         # インポート時間は1秒以下であるべき
-        assert import_time < 1.0, (
-            f"モジュールインポートが遅すぎます: {import_time:.2f}秒"
-        )
+        assert import_time < 1.0, f"モジュールインポートが遅すぎます: {import_time:.2f}秒"

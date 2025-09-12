@@ -127,15 +127,11 @@ class MigrationCheckpoint:
         try:
             metadata = self._load_metadata()
             if checkpoint_id not in metadata:
-                raise MigrationError(
-                    f"チェックポイントが見つかりません: {checkpoint_id}"
-                )
+                raise MigrationError(f"チェックポイントが見つかりません: {checkpoint_id}")
 
             checkpoint_path = Path(metadata[checkpoint_id]["path"])
             if not checkpoint_path.exists():
-                raise MigrationError(
-                    f"チェックポイントパスが存在しません: {checkpoint_path}"
-                )
+                raise MigrationError(f"チェックポイントパスが存在しません: {checkpoint_path}")
 
             # 現在の状態をバックアップ（ロールバック前）
             backup_id = f"pre_rollback_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
@@ -221,10 +217,7 @@ class MigrationCheckpoint:
                 logger.info(f"チェックポイント削除: {checkpoint_id}")
 
             self._save_metadata(metadata)
-            logger.info(
-                f"チェックポイントクリーンアップ完了: "
-                f"{len(checkpoints_to_remove)}個削除"
-            )
+            logger.info(f"チェックポイントクリーンアップ完了: {len(checkpoints_to_remove)}個削除")
 
         except Exception as e:
             logger.error(f"チェックポイントクリーンアップに失敗: {e}")
@@ -282,8 +275,6 @@ def handle_migration_error(error: Exception, rollback_point: str) -> None:
         logger.info(f"ロールバック完了: {rollback_point}")
     except Exception as rollback_error:
         logger.error(f"ロールバックにも失敗: {rollback_error}")
-        raise MigrationError(
-            f"移行失敗後のロールバックにも失敗: {error} -> {rollback_error}"
-        ) from error
+        raise MigrationError(f"移行失敗後のロールバックにも失敗: {error} -> {rollback_error}") from error
 
     raise MigrationError(f"移行に失敗しました: {error}") from error

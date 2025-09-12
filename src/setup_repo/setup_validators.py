@@ -121,17 +121,13 @@ def validate_setup_prerequisites() -> dict[str, Any]:
     # Python バージョンチェック
     python_version = sys.version_info
     if python_version < (3, 9):
-        errors.append(
-            f"Python 3.9以上が必要です (現在: {python_version[0]}.{python_version[1]})"
-        )
+        errors.append(f"Python 3.9以上が必要です (現在: {python_version[0]}.{python_version[1]})")
 
     # Git チェック
     git_available = False
     git_version = None
     try:
-        result = subprocess.run(
-            ["git", "--version"], capture_output=True, text=True, check=True
-        )
+        result = subprocess.run(["git", "--version"], capture_output=True, text=True, check=True)
         git_available = True
         git_version = result.stdout.strip()
     except (subprocess.CalledProcessError, FileNotFoundError):
@@ -141,9 +137,7 @@ def validate_setup_prerequisites() -> dict[str, Any]:
     uv_available = False
     uv_version = None
     try:
-        result = subprocess.run(
-            ["uv", "--version"], capture_output=True, text=True, check=True
-        )
+        result = subprocess.run(["uv", "--version"], capture_output=True, text=True, check=True)
         uv_available = True
         uv_version = result.stdout.strip()
     except (subprocess.CalledProcessError, FileNotFoundError):
@@ -153,9 +147,7 @@ def validate_setup_prerequisites() -> dict[str, Any]:
     gh_available = False
     gh_version = None
     try:
-        result = subprocess.run(
-            ["gh", "--version"], capture_output=True, text=True, check=True
-        )
+        result = subprocess.run(["gh", "--version"], capture_output=True, text=True, check=True)
         gh_available = True
         gh_version = result.stdout.strip().split("\n")[0]  # 最初の行のみ
     except (subprocess.CalledProcessError, FileNotFoundError):
@@ -217,7 +209,7 @@ def check_system_requirements() -> dict[str, Any]:
 
     # メモリ情報（可能な場合）
     try:
-        import psutil
+        import psutil  # type: ignore[import-untyped]
 
         memory = psutil.virtual_memory()
         system_info["memory"] = {

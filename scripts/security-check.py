@@ -49,11 +49,7 @@ class SecurityChecker:
             )
 
             # 標準出力でも結果表示
-            subprocess.run(
-                ["uv", "run", "safety", "scan", "--output", "screen"],
-                check=False,
-                shell=False
-            )
+            subprocess.run(["uv", "run", "safety", "scan", "--output", "screen"], check=False, shell=False)
 
             # 結果解析
             report_file = self.output_dir / "safety-report.json"
@@ -91,9 +87,7 @@ class SecurityChecker:
                     "status": "warning" if vuln_count > 0 else "success",
                     "vulnerabilities": vuln_count,
                     "message": (
-                        f"{vuln_count}件の脆弱性が検出されました"
-                        if vuln_count > 0
-                        else "脆弱性は検出されませんでした"
+                        f"{vuln_count}件の脆弱性が検出されました" if vuln_count > 0 else "脆弱性は検出されませんでした"
                     ),
                 }
 
@@ -147,21 +141,11 @@ class SecurityChecker:
                 with open(report_file, encoding="utf-8") as f:
                     data = json.load(f)
                     results = data.get("results", [])
-                    high_issues = [
-                        r for r in results if r.get("issue_severity") == "HIGH"
-                    ]
-                    medium_issues = [
-                        r for r in results if r.get("issue_severity") == "MEDIUM"
-                    ]
+                    high_issues = [r for r in results if r.get("issue_severity") == "HIGH"]
+                    medium_issues = [r for r in results if r.get("issue_severity") == "MEDIUM"]
 
                     return {
-                        "status": (
-                            "error"
-                            if high_issues
-                            else "warning"
-                            if medium_issues
-                            else "success"
-                        ),
+                        "status": ("error" if high_issues else "warning" if medium_issues else "success"),
                         "high_issues": len(high_issues),
                         "medium_issues": len(medium_issues),
                         "total_issues": len(results),
@@ -192,10 +176,7 @@ class SecurityChecker:
                     "errors": 0,
                     "warnings": 0,
                     "total_issues": 0,
-                    "message": (
-                        "Semgrepがインストールされていません"
-                        "（LGPLライセンスのため除外）"
-                    ),
+                    "message": ("Semgrepがインストールされていません（LGPLライセンスのため除外）"),
                 }
 
             # JSON形式でレポート生成
@@ -216,9 +197,7 @@ class SecurityChecker:
             )
 
             # 標準出力でも結果表示
-            subprocess.run(
-                ["uv", "run", "semgrep", "--config=auto", "src/"], check=False
-            )
+            subprocess.run(["uv", "run", "semgrep", "--config=auto", "src/"], check=False)
 
             # 結果解析
             report_file = self.output_dir / "semgrep-report.json"
@@ -226,21 +205,11 @@ class SecurityChecker:
                 with open(report_file, encoding="utf-8") as f:
                     data = json.load(f)
                     results = data.get("results", [])
-                    errors = [
-                        r
-                        for r in results
-                        if r.get("extra", {}).get("severity") == "ERROR"
-                    ]
-                    warnings = [
-                        r
-                        for r in results
-                        if r.get("extra", {}).get("severity") == "WARNING"
-                    ]
+                    errors = [r for r in results if r.get("extra", {}).get("severity") == "ERROR"]
+                    warnings = [r for r in results if r.get("extra", {}).get("severity") == "WARNING"]
 
                     return {
-                        "status": (
-                            "error" if errors else "warning" if warnings else "success"
-                        ),
+                        "status": ("error" if errors else "warning" if warnings else "success"),
                         "errors": len(errors),
                         "warnings": len(warnings),
                         "total_issues": len(results),
@@ -294,21 +263,12 @@ class SecurityChecker:
                         if package_name.lower() == "semgrep":
                             continue
 
-                        if any(
-                            forbidden in license_name.upper()
-                            for forbidden in forbidden_licenses
-                        ):
+                        if any(forbidden in license_name.upper() for forbidden in forbidden_licenses):
                             forbidden_packages.append(package)
                         elif license_name in ["UNKNOWN", ""]:
                             unknown_packages.append(package)
 
-                    status = (
-                        "error"
-                        if forbidden_packages
-                        else "warning"
-                        if unknown_packages
-                        else "success"
-                    )
+                    status = "error" if forbidden_packages else "warning" if unknown_packages else "success"
 
                     return {
                         "status": status,
@@ -343,9 +303,7 @@ class SecurityChecker:
             elif status == "warning" and overall_status != "error":
                 overall_status = "warning"
 
-            status_icon = {"success": "✅", "warning": "⚠️", "error": "❌"}.get(
-                status, "❓"
-            )
+            status_icon = {"success": "✅", "warning": "⚠️", "error": "❌"}.get(status, "❓")
 
             print(f"\n{status_icon} {check_name}:")
 
@@ -367,16 +325,10 @@ class SecurityChecker:
                 forbidden = result.get("forbidden_packages", 0)
                 unknown = result.get("unknown_packages", 0)
                 total = result.get("total_packages", 0)
-                print(
-                    "   総パッケージ: "
-                    f"{total}件, 禁止ライセンス: {forbidden}件, "
-                    f"不明: {unknown}件"
-                )
+                print(f"   総パッケージ: {total}件, 禁止ライセンス: {forbidden}件, 不明: {unknown}件")
 
         print("\n" + "=" * 60)
-        overall_icon = {"success": "✅", "warning": "⚠️", "error": "❌"}.get(
-            overall_status, "❓"
-        )
+        overall_icon = {"success": "✅", "warning": "⚠️", "error": "❌"}.get(overall_status, "❓")
 
         print(f"{overall_icon} 総合結果: {overall_status.upper()}")
         print("=" * 60)

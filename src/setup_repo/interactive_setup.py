@@ -41,19 +41,13 @@ class InteractiveSetup:
             raise ValueError("GitHubユーザー名は必須です")
 
         # クローン先ディレクトリの設定
-        clone_destination = input(
-            "リポジトリのクローン先ディレクトリを入力してください: "
-        ).strip()
+        clone_destination = input("リポジトリのクローン先ディレクトリを入力してください: ").strip()
         if not clone_destination:
             clone_destination = "./repos"
 
         # その他の設定
-        auto_install = (
-            input("依存関係を自動インストールしますか？ (y/n): ").strip().lower() == "y"
-        )
-        setup_vscode = (
-            input("VS Code設定を適用しますか？ (y/n): ").strip().lower() == "y"
-        )
+        auto_install = input("依存関係を自動インストールしますか？ (y/n): ").strip().lower() == "y"
+        setup_vscode = input("VS Code設定を適用しますか？ (y/n): ").strip().lower() == "y"
 
         # 設定を構築
         config = {
@@ -68,9 +62,7 @@ class InteractiveSetup:
         }
 
         # 設定を保存するか確認
-        save_config = (
-            input("設定をファイルに保存しますか？ (y/n): ").strip().lower() == "y"
-        )
+        save_config = input("設定をファイルに保存しますか？ (y/n): ").strip().lower() == "y"
         if save_config:
             config_file = Path("config.local.json")
             with open(config_file, "w", encoding="utf-8") as f:
@@ -170,11 +162,7 @@ class SetupWizard:
             print("⚠️  推奨パッケージマネージャーが見つかりません")
             self._show_package_manager_help()
 
-            response = (
-                input("\\n手動でインストールしましたか? 続行しますか? (y/N): ")
-                .strip()
-                .lower()
-            )
+            response = input("\\n手動でインストールしましたか? 続行しますか? (y/N): ").strip().lower()
             return response in ["y", "yes", "はい"]
 
         print("✅ 利用可能なパッケージマネージャー:")
@@ -190,9 +178,7 @@ class SetupWizard:
         if self.platform_info.name == "windows":
             print("\\n🪟 Windows - Scoop (推奨):")
             print("  PowerShellで実行:")
-            print(
-                "  Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser"
-            )
+            print("  Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser")
             print("  Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression")
             print("\\n  または Winget (Windows 10/11標準):")
             print("  既にインストール済みの場合があります")
@@ -203,9 +189,7 @@ class SetupWizard:
 
         elif self.platform_info.name == "macos":
             print("\\n🍎 macOS - Homebrew:")
-            print(
-                '  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"'
-            )
+            print('  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"')
 
     def install_tools(self) -> bool:
         """必要ツールのインストール"""
@@ -220,11 +204,7 @@ class SetupWizard:
         gh_installed = self._check_tool("gh")
         if not gh_installed:
             print("⚠️  GitHub CLI が見つかりません（オプション）")
-            response = (
-                input("GitHub CLI をインストールしますか? 認証が簡単になります (Y/n): ")
-                .strip()
-                .lower()
-            )
+            response = input("GitHub CLI をインストールしますか? 認証が簡単になります (Y/n): ").strip().lower()
             if response not in ["n", "no", "いいえ"]:
                 self._install_gh()
 
@@ -233,13 +213,7 @@ class SetupWizard:
     def _check_tool(self, tool: str) -> bool:
         """ツールの存在チェック"""
         try:
-            result = subprocess.run(
-                [tool, "--version"],
-                capture_output=True,
-                text=True,
-                check=True,
-                shell=False
-            )
+            result = subprocess.run([tool, "--version"], capture_output=True, text=True, check=True, shell=False)
             parts = result.stdout.strip().split()
             version = f"{parts[0]} {parts[1] if len(parts) > 1 else ''}"
             print(f"✅ {tool}: {version}")
@@ -264,6 +238,7 @@ class SetupWizard:
                     if manager == "curl":
                         # curl の場合は特別処理 - shell=Trueを避けてshlex.splitを使用
                         import shlex
+
                         # コマンドを安全に分割して実行
                         cmd_parts = shlex.split(cmd)
                         subprocess.run(cmd_parts, check=True, shell=False)
@@ -321,19 +296,13 @@ class SetupWizard:
         username = credentials["username"]
         if not username:
             print("\\n👤 GitHubユーザー名が検出されませんでした")
-            username_input = validate_user_input(
-                "GitHubユーザー名を入力してください: ", "string", required=True
-            )
+            username_input = validate_user_input("GitHubユーザー名を入力してください: ", "string", required=True)
 
             if username_input["valid"]:
                 username = username_input["value"]
                 # git config に設定
                 try:
-                    subprocess.run(
-                        ["git", "config", "--global", "user.name", username],
-                        check=True,
-                        shell=False
-                    )
+                    subprocess.run(["git", "config", "--global", "user.name", username], check=True, shell=False)
                     print(f"✅ Git設定にユーザー名を保存しました: {username}")
                 except subprocess.CalledProcessError:
                     print("⚠️  Git設定の保存に失敗しました")
@@ -395,13 +364,9 @@ class SetupWizard:
 
             if path_validation["valid"]:
                 if path_validation.get("created"):
-                    print(
-                        f"✅ ワークスペースディレクトリを作成しました: {workspace_path}"
-                    )
+                    print(f"✅ ワークスペースディレクトリを作成しました: {workspace_path}")
                 else:
-                    print(
-                        f"✅ ワークスペースディレクトリを確認しました: {workspace_path}"
-                    )
+                    print(f"✅ ワークスペースディレクトリを確認しました: {workspace_path}")
                 self.config["dest"] = str(path_validation["path"])
             else:
                 print(f"❌ {path_validation['error']}")
@@ -438,11 +403,7 @@ class SetupWizard:
             print("\\n📋 設定内容:")
             print(f"   👤 GitHubユーザー: {full_config['owner']}")
             print(f"   📁 ワークスペース: {full_config['dest']}")
-            token_status = (
-                "設定済み"
-                if full_config["github_token"] != "YOUR_GITHUB_TOKEN"
-                else "未設定"
-            )
+            token_status = "設定済み" if full_config["github_token"] != "YOUR_GITHUB_TOKEN" else "未設定"
             print(f"   🔑 トークン: {token_status}")
 
         except OSError as e:

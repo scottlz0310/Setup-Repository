@@ -28,9 +28,7 @@ class TestEnsureUv:
     @patch("subprocess.run")
     @patch("shutil.which")
     @patch("builtins.print")
-    def test_ensure_uv_install_with_pipx_success(
-        self, mock_print, mock_which, mock_run
-    ):
+    def test_ensure_uv_install_with_pipx_success(self, mock_print, mock_which, mock_run):
         """pipxでのuvインストール成功のテスト"""
         # Arrange
         mock_which.side_effect = lambda cmd: {
@@ -44,18 +42,14 @@ class TestEnsureUv:
 
         # Assert
         assert result is True
-        mock_run.assert_called_once_with(
-            ["pipx", "install", "uv"], check=True, capture_output=True
-        )
+        mock_run.assert_called_once_with(["pipx", "install", "uv"], check=True, capture_output=True)
         print_calls = [call[0][0] for call in mock_print.call_args_list]
         assert any("pipx で uv をインストールしました" in call for call in print_calls)
 
     @patch("subprocess.run")
     @patch("shutil.which")
     @patch("builtins.print")
-    def test_ensure_uv_install_with_pipx_failure_fallback_to_pip(
-        self, mock_print, mock_which, mock_run
-    ):
+    def test_ensure_uv_install_with_pipx_failure_fallback_to_pip(self, mock_print, mock_which, mock_run):
         """pipx失敗後pipでのインストール成功のテスト"""
         # Arrange
         mock_which.side_effect = lambda cmd: {
@@ -75,9 +69,7 @@ class TestEnsureUv:
         assert result is True
         assert mock_run.call_count == 2
         # pipxの呼び出し
-        mock_run.assert_any_call(
-            ["pipx", "install", "uv"], check=True, capture_output=True
-        )
+        mock_run.assert_any_call(["pipx", "install", "uv"], check=True, capture_output=True)
         # pipの呼び出し
         mock_run.assert_any_call(
             ["/usr/bin/python3", "-m", "pip", "install", "--user", "uv"],
@@ -85,19 +77,13 @@ class TestEnsureUv:
             capture_output=True,
         )
         print_calls = [call[0][0] for call in mock_print.call_args_list]
-        assert any(
-            "pipx インストール失敗、pip を試します" in call for call in print_calls
-        )
-        assert any(
-            "pip --user で uv をインストールしました" in call for call in print_calls
-        )
+        assert any("pipx インストール失敗、pip を試します" in call for call in print_calls)
+        assert any("pip --user で uv をインストールしました" in call for call in print_calls)
 
     @patch("subprocess.run")
     @patch("shutil.which")
     @patch("builtins.print")
-    def test_ensure_uv_install_with_pip_python_fallback(
-        self, mock_print, mock_which, mock_run
-    ):
+    def test_ensure_uv_install_with_pip_python_fallback(self, mock_print, mock_which, mock_run):
         """python3がない場合のpythonフォールバックのテスト"""
         # Arrange
         mock_which.side_effect = lambda cmd: {
@@ -119,9 +105,7 @@ class TestEnsureUv:
             capture_output=True,
         )
         print_calls = [call[0][0] for call in mock_print.call_args_list]
-        assert any(
-            "pip --user で uv をインストールしました" in call for call in print_calls
-        )
+        assert any("pip --user で uv をインストールしました" in call for call in print_calls)
 
     @patch("subprocess.run")
     @patch("shutil.which")
@@ -147,9 +131,7 @@ class TestEnsureUv:
             capture_output=True,
         )
         print_calls = [call[0][0] for call in mock_print.call_args_list]
-        assert any(
-            "pip --user で uv をインストールしました" in call for call in print_calls
-        )
+        assert any("pip --user で uv をインストールしました" in call for call in print_calls)
 
     @patch("subprocess.run")
     @patch("shutil.which")
@@ -174,9 +156,7 @@ class TestEnsureUv:
         assert result is False
         assert mock_run.call_count == 2
         print_calls = [call[0][0] for call in mock_print.call_args_list]
-        assert any(
-            "uv の自動インストールに失敗しました" in call for call in print_calls
-        )
+        assert any("uv の自動インストールに失敗しました" in call for call in print_calls)
 
     @patch("shutil.which")
     @patch("builtins.print")
@@ -196,9 +176,7 @@ class TestEnsureUv:
         # Assert
         assert result is False
         print_calls = [call[0][0] for call in mock_print.call_args_list]
-        assert any(
-            "uv の自動インストールに失敗しました" in call for call in print_calls
-        )
+        assert any("uv の自動インストールに失敗しました" in call for call in print_calls)
 
     @patch("subprocess.run")
     @patch("shutil.which")
@@ -224,9 +202,7 @@ class TestEnsureUv:
             capture_output=True,
         )
         print_calls = [call[0][0] for call in mock_print.call_args_list]
-        assert any(
-            "uv の自動インストールに失敗しました" in call for call in print_calls
-        )
+        assert any("uv の自動インストールに失敗しました" in call for call in print_calls)
 
 
 class TestEnsureUvEdgeCases:
@@ -235,9 +211,7 @@ class TestEnsureUvEdgeCases:
     @patch("subprocess.run")
     @patch("shutil.which")
     @patch("builtins.print")
-    def test_ensure_uv_pipx_exists_but_fails_no_python(
-        self, mock_print, mock_which, mock_run
-    ):
+    def test_ensure_uv_pipx_exists_but_fails_no_python(self, mock_print, mock_which, mock_run):
         """pipxは存在するが失敗し、Pythonも存在しない場合のテスト"""
         # Arrange
         mock_which.side_effect = lambda cmd: {
@@ -253,16 +227,10 @@ class TestEnsureUvEdgeCases:
 
         # Assert
         assert result is False
-        mock_run.assert_called_once_with(
-            ["pipx", "install", "uv"], check=True, capture_output=True
-        )
+        mock_run.assert_called_once_with(["pipx", "install", "uv"], check=True, capture_output=True)
         print_calls = [call[0][0] for call in mock_print.call_args_list]
-        assert any(
-            "pipx インストール失敗、pip を試します" in call for call in print_calls
-        )
-        assert any(
-            "uv の自動インストールに失敗しました" in call for call in print_calls
-        )
+        assert any("pipx インストール失敗、pip を試します" in call for call in print_calls)
+        assert any("uv の自動インストールに失敗しました" in call for call in print_calls)
 
     @patch("subprocess.run")
     @patch("shutil.which")

@@ -35,9 +35,7 @@ def run_interactive_setup() -> bool:
     return wizard.run()
 
 
-def setup_repository_environment(
-    config_path: Optional[str] = None, dry_run: bool = False
-) -> dict[str, Any]:
+def setup_repository_environment(config_path: Optional[str] = None, dry_run: bool = False) -> dict[str, Any]:
     """リポジトリ環境のセットアップ"""
     # 設定を読み込み
     if config_path:
@@ -71,9 +69,7 @@ def setup_repository_environment(
         result["platform"] = platform
 
         # GitHub API接続テスト
-        github_api = GitHubAPI(
-            token=config["github_token"], username=config["github_username"]
-        )
+        github_api = GitHubAPI(token=config["github_token"], username=config["github_username"])
         user_info = github_api.get_user_info()
         result["github_user_info"] = user_info
 

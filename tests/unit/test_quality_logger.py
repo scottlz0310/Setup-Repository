@@ -103,9 +103,7 @@ class TestQualityLogger:
         with tempfile.TemporaryDirectory() as temp_dir:
             log_file = Path(temp_dir) / "test.log"
 
-            logger = QualityLogger(
-                name="test_file_logger", log_file=log_file, enable_console=False
-            )
+            logger = QualityLogger(name="test_file_logger", log_file=log_file, enable_console=False)
 
             logger.info("テストメッセージ")
 
@@ -175,9 +173,7 @@ class TestQualityLogger:
         """コンテキスト付きエラーログのテスト"""
         logger = QualityLogger(enable_console=False)
 
-        error = QualityCheckError(
-            "コンテキストテストエラー", "TEST_ERROR", {"key": "value"}
-        )
+        error = QualityCheckError("コンテキストテストエラー", "TEST_ERROR", {"key": "value"})
         context = {"stage": "test", "attempt": 1}
 
         logger.log_error_with_context(error, context, include_traceback=False)
@@ -235,9 +231,7 @@ class TestQualityLoggerSingleton:
     @patch("setup_repo.quality_logger._default_logger", None)
     def test_get_quality_logger_with_params(self):
         """パラメータ付きロガー取得のテスト"""
-        logger = get_quality_logger(
-            name="test_singleton", log_level=LogLevel.DEBUG, enable_json_format=True
-        )
+        logger = get_quality_logger(name="test_singleton", log_level=LogLevel.DEBUG, enable_json_format=True)
 
         assert logger.name == "test_singleton"
         assert logger.log_level == LogLevel.DEBUG

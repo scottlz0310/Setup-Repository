@@ -45,9 +45,7 @@ class TestQualityIntegration:
             assert report_data["quality_score"] > 0
 
             # 3. トレンドデータに追加
-            trend_manager = QualityTrendManager(
-                project_root / "quality-trends" / "trend-data.json"
-            )
+            trend_manager = QualityTrendManager(project_root / "quality-trends" / "trend-data.json")
             trend_manager.add_data_point(metrics)
 
             # トレンドデータが保存されたことを確認
@@ -113,10 +111,7 @@ class TestQualityIntegration:
             # 最新の状態では問題が解決されているはず
             recent_issues = analysis.recent_issues
             # 最新のデータでは品質が向上しているので、問題は少ないはず
-            assert (
-                len([issue for issue in recent_issues if "セキュリティ脆弱性" in issue])
-                == 0
-            )
+            assert len([issue for issue in recent_issues if "セキュリティ脆弱性" in issue]) == 0
 
     @patch("subprocess.run")
     def test_real_metrics_collection_simulation(self, mock_run):

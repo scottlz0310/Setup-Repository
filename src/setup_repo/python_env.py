@@ -45,46 +45,18 @@ def _setup_with_uv(repo_path: Path) -> bool:
     try:
         if (repo_path / "pyproject.toml").exists():
             if not (repo_path / "uv.lock").exists():
-                subprocess.run(
-                    ["uv", "lock"],
-                    cwd=repo_path,
-                    check=True,
-                    capture_output=True,
-                    shell=False,
-                    timeout=300
-                )
-            subprocess.run(
-                ["uv", "venv"],
-                cwd=repo_path,
-                check=True,
-                capture_output=True,
-                shell=False,
-                timeout=300
-            )
-            subprocess.run(
-                ["uv", "sync"],
-                cwd=repo_path,
-                check=True,
-                capture_output=True,
-                shell=False,
-                timeout=300
-            )
+                subprocess.run(["uv", "lock"], cwd=repo_path, check=True, capture_output=True, shell=False, timeout=300)
+            subprocess.run(["uv", "venv"], cwd=repo_path, check=True, capture_output=True, shell=False, timeout=300)
+            subprocess.run(["uv", "sync"], cwd=repo_path, check=True, capture_output=True, shell=False, timeout=300)
         elif (repo_path / "requirements.txt").exists():
-            subprocess.run(
-                ["uv", "venv"],
-                cwd=repo_path,
-                check=True,
-                capture_output=True,
-                shell=False,
-                timeout=300
-            )
+            subprocess.run(["uv", "venv"], cwd=repo_path, check=True, capture_output=True, shell=False, timeout=300)
             subprocess.run(
                 ["uv", "pip", "install", "-r", "requirements.txt"],
                 cwd=repo_path,
                 check=True,
                 capture_output=True,
                 shell=False,
-                timeout=300
+                timeout=300,
             )
 
         print(f"   ✅ {repo_name}: uv環境セットアップ完了")
@@ -101,11 +73,7 @@ def _setup_with_venv(repo_path: Path) -> bool:
     try:
         venv_path = repo_path / ".venv"
         subprocess.run(
-            ["python3", "-m", "venv", str(venv_path)],
-            check=True,
-            capture_output=True,
-            shell=False,
-            timeout=300
+            ["python3", "-m", "venv", str(venv_path)], check=True, capture_output=True, shell=False, timeout=300
         )
 
         pip_path = venv_path / "bin" / "pip"
@@ -113,11 +81,7 @@ def _setup_with_venv(repo_path: Path) -> bool:
             pip_path = venv_path / "Scripts" / "pip.exe"
 
         subprocess.run(
-            [str(pip_path), "install", "--upgrade", "pip"],
-            check=True,
-            capture_output=True,
-            shell=False,
-            timeout=300
+            [str(pip_path), "install", "--upgrade", "pip"], check=True, capture_output=True, shell=False, timeout=300
         )
 
         if (repo_path / "requirements.txt").exists():
@@ -126,7 +90,7 @@ def _setup_with_venv(repo_path: Path) -> bool:
                 check=True,
                 capture_output=True,
                 shell=False,
-                timeout=300
+                timeout=300,
             )
 
         print(f"   ✅ {repo_name}: venv環境セットアップ完了")

@@ -77,18 +77,14 @@ class CIErrorHandler:
         from .platform_detector import detect_platform
 
         platform_info = detect_platform()
-        enhanced_error_message = create_platform_specific_error_message(
-            error, platform_info.name, context
-        )
+        enhanced_error_message = create_platform_specific_error_message(error, platform_info.name, context)
 
         # ログに記録
         self.logger.log_ci_stage_failure(stage, error, duration)
 
         # GitHub Actionsアノテーションを出力（プラットフォーム情報付き）
         if self.enable_github_annotations and self._is_github_actions():
-            annotation_message = (
-                f"[{platform_info.display_name}] Stage '{stage}' failed: {str(error)}"
-            )
+            annotation_message = f"[{platform_info.display_name}] Stage '{stage}' failed: {str(error)}"
             self._output_github_annotation("error", annotation_message)
 
         # 詳細なエラー情報をログ（プラットフォーム情報を含む）
@@ -123,19 +119,14 @@ class CIErrorHandler:
 
         platform_info = detect_platform()
         context = {"check_type": check_type, "metrics": metrics}
-        enhanced_error_message = create_platform_specific_error_message(
-            error, platform_info.name, context
-        )
+        enhanced_error_message = create_platform_specific_error_message(error, platform_info.name, context)
 
         # ログに記録
         self.logger.log_quality_check_failure(check_type, error, metrics)
 
         # GitHub Actionsアノテーションを出力（プラットフォーム情報付き）
         if self.enable_github_annotations and self._is_github_actions():
-            annotation_message = (
-                f"[{platform_info.display_name}] Quality check '{check_type}' "
-                f"failed: {str(error)}"
-            )
+            annotation_message = f"[{platform_info.display_name}] Quality check '{check_type}' failed: {str(error)}"
             self._output_github_annotation("error", annotation_message)
 
         # プラットフォーム固有の詳細情報をログに追加
@@ -154,9 +145,7 @@ class CIErrorHandler:
         if hasattr(error, "details") and error.details:
             self._handle_quality_check_details(check_type, error.details)
 
-    def _handle_quality_check_details(
-        self, check_type: str, details: dict[str, Any]
-    ) -> None:
+    def _handle_quality_check_details(self, check_type: str, details: dict[str, Any]) -> None:
         """品質チェックの詳細情報を処理"""
         if check_type.lower() == "ruff" and "issues" in details:
             for issue in details["issues"][:5]:  # 最初の5つのみ表示
@@ -230,9 +219,7 @@ class CIErrorHandler:
 
         # GitHub Actionsの場合、アーティファクトとしてアップロード可能にする
         if self._is_github_actions():
-            self._output_github_annotation(
-                "notice", f"Error report saved: {output_file}"
-            )
+            self._output_github_annotation("notice", f"Error report saved: {output_file}")
 
         return output_file
 
@@ -251,21 +238,17 @@ class CIErrorHandler:
             f"## CI/CD失敗サマリー ({len(self.errors)}件のエラー)",
             "",
             f"**実行時刻:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
-            f"**プラットフォーム:** {platform_info.display_name} "
-            f"({platform_info.name})",
+            f"**プラットフォーム:** {platform_info.display_name} ({platform_info.name})",
             f"**リポジトリ:** {self.ci_info.get('github_repository', 'unknown')}",
-            f"**ブランチ:** "
-            f"{self.system_info.get('git_info', {}).get('branch', 'unknown')}",
-            f"**コミット:** "
-            f"{self.system_info.get('git_info', {}).get('commit', 'unknown')[:8]}",
+            f"**ブランチ:** {self.system_info.get('git_info', {}).get('branch', 'unknown')}",
+            f"**コミット:** {self.system_info.get('git_info', {}).get('commit', 'unknown')[:8]}",
             "",
             "### プラットフォーム情報:",
             f"- **シェル:** {platform_info.shell}",
             f"- **Pythonコマンド:** {platform_info.python_cmd}",
             f"- **システム:** {platform_debug_info['system']['platform_system']} "
             f"{platform_debug_info['system']['platform_release']}",
-            f"- **アーキテクチャ:** "
-            f"{platform_debug_info['system']['platform_machine']}",
+            f"- **アーキテクチャ:** {platform_debug_info['system']['platform_machine']}",
             "",
             "### エラー詳細:",
             "",
@@ -279,22 +262,14 @@ class CIErrorHandler:
                 summary_lines.append(f"   - エラーコード: {error.error_code}")
 
             if hasattr(error, "details") and error.details:
-                summary_lines.append(
-                    f"   - 詳細: {json.dumps(error.details, ensure_ascii=False)}"
-                )
+                summary_lines.append(f"   - 詳細: {json.dumps(error.details, ensure_ascii=False)}")
 
             # プラットフォーム固有の推奨事項を追加
             if "fcntl" in str(error).lower() and platform_info.name == "windows":
-                summary_lines.append(
-                    "   - **推奨事項:** Windows環境では msvcrt モジュールを"
-                    "使用してください"
-                )
+                summary_lines.append("   - **推奨事項:** Windows環境では msvcrt モジュールを使用してください")
             elif "command not found" in str(error).lower():
                 if platform_info.name == "macos":
-                    summary_lines.append(
-                        "   - **推奨事項:** `brew install <tool>` で"
-                        "ツールをインストールしてください"
-                    )
+                    summary_lines.append("   - **推奨事項:** `brew install <tool>` でツールをインストールしてください")
                 elif platform_info.name in ["linux", "wsl"]:
                     summary_lines.append(
                         "   - **推奨事項:** `sudo apt install <tool>` または "
@@ -362,9 +337,7 @@ class CIErrorHandler:
             # GitHub Step Summaryに出力
             self.output_github_step_summary()
 
-            self.logger.critical(
-                f"CI/CDパイプラインが失敗しました。終了コード: {exit_code}"
-            )
+            self.logger.critical(f"CI/CDパイプラインが失敗しました。終了コード: {exit_code}")
 
         sys.exit(exit_code)
 

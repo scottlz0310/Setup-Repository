@@ -44,9 +44,7 @@ class VersionManager:
     def validate_version(self, version: str) -> bool:
         """セマンティックバージョンの形式をチェック"""
         # セマンティックバージョンの正規表現
-        pattern = (
-            r"^(\d+)\.(\d+)\.(\d+)(?:-([a-zA-Z0-9\-\.]+))?(?:\+([a-zA-Z0-9\-\.]+))?$"
-        )
+        pattern = r"^(\d+)\.(\d+)\.(\d+)(?:-([a-zA-Z0-9\-\.]+))?(?:\+([a-zA-Z0-9\-\.]+))?$"
         return bool(re.match(pattern, version))
 
     def _update_pyproject_toml(self, version: str) -> bool:
@@ -86,10 +84,7 @@ class VersionManager:
             updated_content = re.sub(pattern, replacement, content)
 
             if updated_content == content and "__version__" not in content:
-                updated_content = (
-                    f'"""セットアップリポジトリパッケージ"""\n\n'
-                    f'__version__ = "{version}"\n'
-                )
+                updated_content = f'"""セットアップリポジトリパッケージ"""\n\n__version__ = "{version}"\n'
 
             init_path.write_text(updated_content, encoding="utf-8")
             print(f"✅ __init__.py: {version}")
@@ -102,10 +97,7 @@ class VersionManager:
         """全ファイルのバージョンを更新"""
         if not self.validate_version(new_version):
             print(f"❌ 無効なバージョン形式: {new_version}")
-            print(
-                "セマンティックバージョン形式を使用してください "
-                "(例: 1.0.0, 1.2.3-beta.1)"
-            )
+            print("セマンティックバージョン形式を使用してください (例: 1.0.0, 1.2.3-beta.1)")
             return False
 
         current_version = self.get_current_version()
@@ -174,9 +166,7 @@ class VersionManager:
             return None
 
         # セマンティックバージョンを解析
-        match = re.match(
-            r"^(\d+)\.(\d+)\.(\d+)(?:-([a-zA-Z0-9\-\.]+))?", current_version
-        )
+        match = re.match(r"^(\d+)\.(\d+)\.(\d+)(?:-([a-zA-Z0-9\-\.]+))?", current_version)
         if not match:
             print(f"❌ 現在のバージョンが解析できません: {current_version}")
             return None
@@ -273,21 +263,15 @@ def main():
         """,
     )
 
-    parser.add_argument(
-        "--check", action="store_true", help="バージョンの一貫性をチェック"
-    )
-    parser.add_argument(
-        "--set", metavar="VERSION", help="バージョンを手動設定 (例: 1.2.0)"
-    )
+    parser.add_argument("--check", action="store_true", help="バージョンの一貫性をチェック")
+    parser.add_argument("--set", metavar="VERSION", help="バージョンを手動設定 (例: 1.2.0)")
     parser.add_argument(
         "--bump",
         choices=["major", "minor", "patch", "prerelease"],
         help="バージョンを自動インクリメント",
     )
     parser.add_argument("--tag", action="store_true", help="Gitタグを作成")
-    parser.add_argument(
-        "--push", action="store_true", help="タグをリモートにプッシュ (--tagと併用)"
-    )
+    parser.add_argument("--push", action="store_true", help="タグをリモートにプッシュ (--tagと併用)")
 
     args = parser.parse_args()
 

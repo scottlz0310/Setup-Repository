@@ -472,15 +472,11 @@ class TestFullWorkflow:
         ]
 
         for i, invalid_config in enumerate(invalid_configs):
-            with patch(
-                "setup_repo.sync.get_repositories", side_effect=Exception("設定エラー")
-            ):
+            with patch("setup_repo.sync.get_repositories", side_effect=Exception("設定エラー")):
                 result = sync_repositories(invalid_config, dry_run=True)
 
                 # 無効な設定では失敗することを確認
-                assert not result.success, (
-                    f"設定{i}で失敗すべきでした: {invalid_config}"
-                )
+                assert not result.success, f"設定{i}で失敗すべきでした: {invalid_config}"
                 assert result.errors
 
         # 有効な設定のテスト

@@ -93,9 +93,7 @@ def main():
                             "test_coverage": metrics.test_coverage,
                             "ruff_issues": metrics.ruff_issues,
                             "mypy_errors": metrics.mypy_errors,
-                            "security_vulnerabilities": (
-                                metrics.security_vulnerabilities
-                            ),
+                            "security_vulnerabilities": (metrics.security_vulnerabilities),
                             "test_passed": metrics.test_passed,
                             "test_failed": metrics.test_failed,
                         },
@@ -112,14 +110,8 @@ def main():
             print(f"::set-output name=coverage::{metrics.test_coverage:.1f}")
             print(f"::set-output name=ruff_issues::{metrics.ruff_issues}")
             print(f"::set-output name=mypy_errors::{metrics.mypy_errors}")
-            print(
-                "::set-output name=security_vulnerabilities::"
-                f"{metrics.security_vulnerabilities}"
-            )
-            print(
-                "::set-output name=passing::"
-                f"{'true' if metrics.is_passing(args.min_coverage) else 'false'}"
-            )
+            print(f"::set-output name=security_vulnerabilities::{metrics.security_vulnerabilities}")
+            print(f"::set-output name=passing::{'true' if metrics.is_passing(args.min_coverage) else 'false'}")
 
         else:  # text format
             print("\n" + "=" * 60)
@@ -149,16 +141,11 @@ def main():
                 if metrics.mypy_errors > 0:
                     issues.append(f"MyPyエラー: {metrics.mypy_errors}件")
                 if metrics.test_coverage < args.min_coverage:
-                    issues.append(
-                        "カバレッジ不足: "
-                        f"{metrics.test_coverage:.1f}% < {args.min_coverage}%"
-                    )
+                    issues.append(f"カバレッジ不足: {metrics.test_coverage:.1f}% < {args.min_coverage}%")
                 if metrics.test_failed > 0:
                     issues.append(f"テスト失敗: {metrics.test_failed}件")
                 if metrics.security_vulnerabilities > 0:
-                    issues.append(
-                        f"セキュリティ脆弱性: {metrics.security_vulnerabilities}件"
-                    )
+                    issues.append(f"セキュリティ脆弱性: {metrics.security_vulnerabilities}件")
 
                 print("\n問題:")
                 for issue in issues:

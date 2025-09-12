@@ -25,9 +25,7 @@ def run_command(cmd: list[str], cwd: Optional[Path] = None) -> bool:
     """
     try:
         print(f"実行中: {' '.join(cmd)}")
-        result = subprocess.run(
-            cmd, cwd=cwd, check=True, capture_output=True, text=True
-        )
+        result = subprocess.run(cmd, cwd=cwd, check=True, capture_output=True, text=True)
         if result.stdout:
             print(result.stdout)
         return True
@@ -155,9 +153,7 @@ def main() -> int:
     if not check_uv_available():
         print("エラー: uvコマンドが見つかりません")
         print("uvをインストールしてから再実行してください")
-        print(
-            "インストール方法: https://docs.astral.sh/uv/getting-started/installation/"
-        )
+        print("インストール方法: https://docs.astral.sh/uv/getting-started/installation/")
         return 1
 
     # pre-commit設定ファイルの存在チェック

@@ -102,9 +102,7 @@ class QualityMonitor:
         if not logger.handlers:
             # コンソールハンドラー
             console_handler = logging.StreamHandler()
-            console_formatter = logging.Formatter(
-                "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-            )
+            console_formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
             console_handler.setFormatter(console_formatter)
             logger.addHandler(console_handler)
 
@@ -112,9 +110,7 @@ class QualityMonitor:
             log_file = self.project_root / "logs" / "quality.log"
             log_file.parent.mkdir(exist_ok=True)
             file_handler = logging.FileHandler(log_file, encoding="utf-8")
-            file_formatter = logging.Formatter(
-                "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-            )
+            file_formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
             file_handler.setFormatter(file_formatter)
             logger.addHandler(file_handler)
 
@@ -233,9 +229,7 @@ class QualityMonitor:
                 self.logger.warning(f"MyPyレポートの解析に失敗: {e}")
 
             # 品質スコアを計算
-            quality_score = self._calculate_quality_score(
-                test_coverage, ruff_issues, mypy_errors, test_failed
-            )
+            quality_score = self._calculate_quality_score(test_coverage, ruff_issues, mypy_errors, test_failed)
 
             metrics = QualityMetrics(
                 timestamp=datetime.now(),
@@ -258,9 +252,7 @@ class QualityMonitor:
             self.logger.error(f"品質メトリクスの収集中にエラーが発生しました: {e}")
             return None
 
-    def _calculate_quality_score(
-        self, coverage: float, ruff_issues: int, mypy_errors: int, test_failed: int
-    ) -> float:
+    def _calculate_quality_score(self, coverage: float, ruff_issues: int, mypy_errors: int, test_failed: int) -> float:
         """
         品質スコアを計算
 
@@ -346,9 +338,7 @@ class QualityMonitor:
                 historical_data.append(metrics)
 
             except Exception as e:
-                self.logger.warning(
-                    f"メトリクスファイルの読み込みに失敗: {metric_file} - {e}"
-                )
+                self.logger.warning(f"メトリクスファイルの読み込みに失敗: {metric_file} - {e}")
 
         return historical_data
 
@@ -377,9 +367,7 @@ class QualityMonitor:
             "coverage_avg": statistics.mean(coverages) if coverages else 0,
             "ruff_issues_avg": statistics.mean(ruff_issues) if ruff_issues else 0,
             "mypy_errors_avg": statistics.mean(mypy_errors) if mypy_errors else 0,
-            "quality_score_avg": statistics.mean(quality_scores)
-            if quality_scores
-            else 0,
+            "quality_score_avg": statistics.mean(quality_scores) if quality_scores else 0,
         }
 
         comparison = {
@@ -414,9 +402,7 @@ class QualityMonitor:
         monthly_summary = self._calculate_monthly_summary(historical_data)
 
         # 品質改善提案を生成
-        improvement_suggestions = self._generate_improvement_suggestions(
-            historical_data
-        )
+        improvement_suggestions = self._generate_improvement_suggestions(historical_data)
 
         report = {
             "generated_at": datetime.now().isoformat(),
@@ -428,10 +414,7 @@ class QualityMonitor:
         }
 
         # レポートファイルを保存
-        report_file = (
-            self.reports_dir
-            / f"quality_trend_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-        )
+        report_file = self.reports_dir / f"quality_trend_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
         with open(report_file, "w", encoding="utf-8") as f:
             json.dump(report, f, indent=2, ensure_ascii=False)
 
@@ -439,9 +422,7 @@ class QualityMonitor:
 
         return report
 
-    def _calculate_weekly_trends(
-        self, historical_data: list[QualityMetrics]
-    ) -> dict[str, Any]:
+    def _calculate_weekly_trends(self, historical_data: list[QualityMetrics]) -> dict[str, Any]:
         """週次トレンドを計算"""
         if len(historical_data) < 14:
             return {"error": "週次トレンド計算には最低14日分のデータが必要です"}
@@ -466,29 +447,22 @@ class QualityMonitor:
 
         trends = {
             "coverage_trend": recent_avg["coverage"] - previous_avg["coverage"],
-            "ruff_issues_trend": recent_avg["ruff_issues"]
-            - previous_avg["ruff_issues"],
-            "mypy_errors_trend": recent_avg["mypy_errors"]
-            - previous_avg["mypy_errors"],
-            "quality_score_trend": recent_avg["quality_score"]
-            - previous_avg["quality_score"],
+            "ruff_issues_trend": recent_avg["ruff_issues"] - previous_avg["ruff_issues"],
+            "mypy_errors_trend": recent_avg["mypy_errors"] - previous_avg["mypy_errors"],
+            "quality_score_trend": recent_avg["quality_score"] - previous_avg["quality_score"],
             "recent_week": recent_avg,
             "previous_week": previous_avg,
         }
 
         return trends
 
-    def _calculate_monthly_summary(
-        self, historical_data: list[QualityMetrics]
-    ) -> dict[str, Any]:
+    def _calculate_monthly_summary(self, historical_data: list[QualityMetrics]) -> dict[str, Any]:
         """月次サマリーを計算"""
         if not historical_data:
             return {"error": "データが不足しています"}
 
         # 最新30日間のデータを使用
-        monthly_data = (
-            historical_data[:30] if len(historical_data) >= 30 else historical_data
-        )
+        monthly_data = historical_data[:30] if len(historical_data) >= 30 else historical_data
 
         summary = {
             "period_days": len(monthly_data),
@@ -496,9 +470,7 @@ class QualityMonitor:
                 "avg": statistics.mean([m.test_coverage for m in monthly_data]),
                 "min": min([m.test_coverage for m in monthly_data]),
                 "max": max([m.test_coverage for m in monthly_data]),
-                "std": statistics.stdev([m.test_coverage for m in monthly_data])
-                if len(monthly_data) > 1
-                else 0,
+                "std": statistics.stdev([m.test_coverage for m in monthly_data]) if len(monthly_data) > 1 else 0,
             },
             "ruff_issues": {
                 "avg": statistics.mean([m.ruff_issues for m in monthly_data]),
@@ -514,17 +486,13 @@ class QualityMonitor:
                 "avg": statistics.mean([m.quality_score for m in monthly_data]),
                 "min": min([m.quality_score for m in monthly_data]),
                 "max": max([m.quality_score for m in monthly_data]),
-                "std": statistics.stdev([m.quality_score for m in monthly_data])
-                if len(monthly_data) > 1
-                else 0,
+                "std": statistics.stdev([m.quality_score for m in monthly_data]) if len(monthly_data) > 1 else 0,
             },
         }
 
         return summary
 
-    def _generate_improvement_suggestions(
-        self, historical_data: list[QualityMetrics]
-    ) -> list[str]:
+    def _generate_improvement_suggestions(self, historical_data: list[QualityMetrics]) -> list[str]:
         """品質改善提案を生成"""
         suggestions = []
 
@@ -571,9 +539,7 @@ class QualityMonitor:
             if len(recent_scores) > 1:
                 trend = recent_scores[0] - recent_scores[-1]
                 if trend < -5:
-                    suggestions.append(
-                        "品質スコアが低下傾向にあります。継続的な品質監視と改善活動を強化してください。"
-                    )
+                    suggestions.append("品質スコアが低下傾向にあります。継続的な品質監視と改善活動を強化してください。")
 
         return suggestions
 
@@ -594,8 +560,7 @@ class QualityMonitor:
         # カバレッジチェック
         if metrics.test_coverage < self.thresholds.min_coverage:
             warnings.append(
-                f"カバレッジが目標値を下回っています: "
-                f"{metrics.test_coverage:.2f}% < {self.thresholds.min_coverage}%"
+                f"カバレッジが目標値を下回っています: {metrics.test_coverage:.2f}% < {self.thresholds.min_coverage}%"
             )
             passed = False
 
@@ -607,8 +572,7 @@ class QualityMonitor:
         # 品質スコアチェック
         if metrics.quality_score < self.thresholds.min_quality_score:
             warnings.append(
-                f"品質スコアが目標値を下回っています: "
-                f"{metrics.quality_score:.1f} < {self.thresholds.min_quality_score}"
+                f"品質スコアが目標値を下回っています: {metrics.quality_score:.1f} < {self.thresholds.min_quality_score}"
             )
             passed = False
 
@@ -666,13 +630,7 @@ class QualityMonitor:
                     content = f.read()
 
                 # 簡単な関数カウント（def で始まる行）
-                function_count = len(
-                    [
-                        line
-                        for line in content.split("\n")
-                        if line.strip().startswith("def ")
-                    ]
-                )
+                function_count = len([line for line in content.split("\n") if line.strip().startswith("def ")])
 
                 # ファイルサイズ
                 file_size = len(content.split("\n"))
@@ -686,9 +644,7 @@ class QualityMonitor:
                         "function_count": function_count,
                         "file_size": file_size,
                         "last_modified": last_modified.isoformat(),
-                        "complexity_score": min(
-                            100, max(0, 100 - (function_count * 5) - (file_size / 10))
-                        ),
+                        "complexity_score": min(100, max(0, 100 - (function_count * 5) - (file_size / 10))),
                     }
                 )
 
@@ -727,21 +683,11 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(description="品質監視システム")
-    parser.add_argument(
-        "--collect-metrics", action="store_true", help="品質メトリクスを収集"
-    )
-    parser.add_argument(
-        "--check-gates", action="store_true", help="品質ゲートをチェック"
-    )
-    parser.add_argument(
-        "--generate-trend-report", action="store_true", help="トレンドレポートを生成"
-    )
-    parser.add_argument(
-        "--analyze-responsibility", action="store_true", help="責任分離を分析"
-    )
-    parser.add_argument(
-        "--project-root", type=Path, help="プロジェクトルートディレクトリ"
-    )
+    parser.add_argument("--collect-metrics", action="store_true", help="品質メトリクスを収集")
+    parser.add_argument("--check-gates", action="store_true", help="品質ゲートをチェック")
+    parser.add_argument("--generate-trend-report", action="store_true", help="トレンドレポートを生成")
+    parser.add_argument("--analyze-responsibility", action="store_true", help="責任分離を分析")
+    parser.add_argument("--project-root", type=Path, help="プロジェクトルートディレクトリ")
 
     args = parser.parse_args()
 

@@ -21,8 +21,7 @@ def _deprecated_import(old_module: str, new_module: str, function_name: str) -> 
         新しいモジュールからインポートされた関数
     """
     warnings.warn(
-        f"{old_module}.{function_name} is deprecated. "
-        f"Use {new_module}.{function_name} instead.",
+        f"{old_module}.{function_name} is deprecated. Use {new_module}.{function_name} instead.",
         DeprecationWarning,
         stacklevel=3,
     )

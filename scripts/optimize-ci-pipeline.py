@@ -39,9 +39,7 @@ class CIPipelineOptimizer:
             "build_cache": ["dist/", "build/"],
         }
 
-    def measure_stage(
-        self, stage_name: str, command: list[str], parallel_workers: int = 1
-    ) -> PipelineMetrics:
+    def measure_stage(self, stage_name: str, command: list[str], parallel_workers: int = 1) -> PipelineMetrics:
         """ステージの実行時間を測定"""
         print(f"🔧 実行中: {stage_name}")
 
@@ -103,9 +101,7 @@ class CIPipelineOptimizer:
                         cache_info["sizes"].append(size)
                         cache_info["total_size_mb"] += size / 1024 / 1024
                     elif path_obj.is_dir():
-                        total_size = sum(
-                            f.stat().st_size for f in path_obj.rglob("*") if f.is_file()
-                        )
+                        total_size = sum(f.stat().st_size for f in path_obj.rglob("*") if f.is_file())
                         cache_info["sizes"].append(total_size)
                         cache_info["total_size_mb"] += total_size / 1024 / 1024
 
@@ -122,8 +118,7 @@ class CIPipelineOptimizer:
 
         analysis = {
             "parallel_stages": len(parallel_stages),
-            "average_workers": sum(m.parallel_workers for m in parallel_stages)
-            / len(parallel_stages),
+            "average_workers": sum(m.parallel_workers for m in parallel_stages) / len(parallel_stages),
             "total_parallel_time": sum(m.duration for m in parallel_stages),
             "recommendations": [],
         }
@@ -131,13 +126,9 @@ class CIPipelineOptimizer:
         # 並列処理の効率性をチェック
         for stage in parallel_stages:
             if stage.duration > 300:  # 5分以上
-                analysis["recommendations"].append(
-                    f"{stage.stage_name}: 実行時間が長いため、より多くのワーカーを検討"
-                )
+                analysis["recommendations"].append(f"{stage.stage_name}: 実行時間が長いため、より多くのワーカーを検討")
             elif stage.parallel_workers > 8:
-                analysis["recommendations"].append(
-                    f"{stage.stage_name}: ワーカー数が多すぎる可能性があります"
-                )
+                analysis["recommendations"].append(f"{stage.stage_name}: ワーカー数が多すぎる可能性があります")
 
         return analysis
 
@@ -148,9 +139,7 @@ class CIPipelineOptimizer:
         failed_stages = [m for m in self.metrics if not m.success]
 
         # 最も時間のかかるステージを特定
-        slowest_stages = sorted(self.metrics, key=lambda x: x.duration, reverse=True)[
-            :3
-        ]
+        slowest_stages = sorted(self.metrics, key=lambda x: x.duration, reverse=True)[:3]
 
         cache_analysis = self.check_cache_effectiveness()
         parallel_analysis = self.analyze_parallel_efficiency()
@@ -184,17 +173,12 @@ class CIPipelineOptimizer:
         # 実行時間ベースの推奨事項
         long_stages = [m for m in self.metrics if m.duration > 180]  # 3分以上
         if long_stages:
-            recommendations.append(
-                f"長時間実行ステージ ({len(long_stages)}個) の並列化を検討してください"
-            )
+            recommendations.append(f"長時間実行ステージ ({len(long_stages)}個) の並列化を検討してください")
 
         # 失敗ステージの推奨事項
         failed_stages = [m for m in self.metrics if not m.success]
         if failed_stages:
-            recommendations.append(
-                f"失敗ステージ ({len(failed_stages)}個) の"
-                "エラーハンドリングを改善してください"
-            )
+            recommendations.append(f"失敗ステージ ({len(failed_stages)}個) のエラーハンドリングを改善してください")
 
         # キャッシュの推奨事項
         cache_analysis = self.check_cache_effectiveness()
@@ -202,10 +186,7 @@ class CIPipelineOptimizer:
             if not info["exists"]:
                 recommendations.append(f"{cache_type} キャッシュが設定されていません")
             elif info["total_size_mb"] > 1000:  # 1GB以上
-                recommendations.append(
-                    f"{cache_type} キャッシュサイズが大きすぎます "
-                    f"({info['total_size_mb']:.1f}MB)"
-                )
+                recommendations.append(f"{cache_type} キャッシュサイズが大きすぎます ({info['total_size_mb']:.1f}MB)")
 
         return recommendations
 
@@ -295,10 +276,7 @@ def run_optimized_pipeline():
 
     print("\n最も時間のかかるステージ:")
     for stage in report["slowest_stages"]:
-        print(
-            f"  - {stage['name']}: {stage['duration']:.2f}秒 "
-            f"(ワーカー数: {stage['workers']})"
-        )
+        print(f"  - {stage['name']}: {stage['duration']:.2f}秒 (ワーカー数: {stage['workers']})")
 
     # 失敗があった場合は終了コード1を返す
     if summary["failed_stages"] > 0:

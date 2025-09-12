@@ -75,12 +75,8 @@ class CoverageError(QualityCheckError):
 class SecurityScanError(QualityCheckError):
     """セキュリティスキャンエラー"""
 
-    def __init__(
-        self, message: str, vulnerabilities: Optional[list[dict[str, Any]]] = None
-    ):
-        super().__init__(
-            message, "SECURITY_ERROR", {"vulnerabilities": vulnerabilities or []}
-        )
+    def __init__(self, message: str, vulnerabilities: Optional[list[dict[str, Any]]] = None):
+        super().__init__(message, "SECURITY_ERROR", {"vulnerabilities": vulnerabilities or []})
 
 
 class CIError(Exception):
@@ -129,9 +125,7 @@ class ErrorReporter:
         """レポートファイルのパスを取得"""
         return self.report_dir / filename
 
-    def create_error_report(
-        self, errors: list[Exception], context: Optional[dict[str, Any]] = None
-    ) -> dict[str, Any]:
+    def create_error_report(self, errors: list[Exception], context: Optional[dict[str, Any]] = None) -> dict[str, Any]:
         """詳細なエラーレポートを作成"""
         report: dict[str, Any] = {
             "timestamp": datetime.now().isoformat(),

@@ -41,9 +41,7 @@ class TestCrossPlatform:
                 "setup_repo.platform_detector.platform.release",
                 return_value="5.4.0-generic",
             ),  # 非WSLリリース
-            patch(
-                "setup_repo.platform_detector.os.path.exists", return_value=False
-            ),  # WSL検出を無効化
+            patch("setup_repo.platform_detector.os.path.exists", return_value=False),  # WSL検出を無効化
             patch("setup_repo.platform_detector.os.environ") as mock_env,
             patch(
                 "setup_repo.platform_detector.os.name",
@@ -96,9 +94,7 @@ class TestCrossPlatform:
 
             with (
                 patch("setup_repo.sync.get_repositories", return_value=mock_repos),
-                patch(
-                    "setup_repo.sync.sync_repository_with_retries", return_value=True
-                ),
+                patch("setup_repo.sync.sync_repository_with_retries", return_value=True),
             ):
                 result = sync_repositories(sample_config, dry_run=True)
 
@@ -118,9 +114,7 @@ class TestCrossPlatform:
             shell="bash",
             python_cmd="python3",
         )
-        with patch(
-            "setup_repo.platform_detector.detect_platform", return_value=linux_platform
-        ):
+        with patch("setup_repo.platform_detector.detect_platform", return_value=linux_platform):
             # Linuxスタイルのパスを設定
             linux_path = temp_dir / "repos"
             sample_config["clone_destination"] = str(linux_path)
@@ -139,9 +133,7 @@ class TestCrossPlatform:
 
             with (
                 patch("setup_repo.sync.get_repositories", return_value=mock_repos),
-                patch(
-                    "setup_repo.sync.sync_repository_with_retries", return_value=True
-                ),
+                patch("setup_repo.sync.sync_repository_with_retries", return_value=True),
             ):
                 result = sync_repositories(sample_config, dry_run=True)
 
@@ -161,9 +153,7 @@ class TestCrossPlatform:
             shell="zsh",
             python_cmd="python3",
         )
-        with patch(
-            "setup_repo.platform_detector.detect_platform", return_value=macos_platform
-        ):
+        with patch("setup_repo.platform_detector.detect_platform", return_value=macos_platform):
             # macOSスタイルのパスを設定
             macos_path = temp_dir / "repos"
             sample_config["clone_destination"] = str(macos_path)
@@ -182,9 +172,7 @@ class TestCrossPlatform:
 
             with (
                 patch("setup_repo.sync.get_repositories", return_value=mock_repos),
-                patch(
-                    "setup_repo.sync.sync_repository_with_retries", return_value=True
-                ),
+                patch("setup_repo.sync.sync_repository_with_retries", return_value=True),
             ):
                 result = sync_repositories(sample_config, dry_run=True)
 
@@ -234,9 +222,7 @@ class TestCrossPlatform:
 
             with (
                 patch("setup_repo.sync.get_repositories", return_value=mock_repos),
-                patch(
-                    "setup_repo.sync.sync_repository_with_retries", return_value=True
-                ),
+                patch("setup_repo.sync.sync_repository_with_retries", return_value=True),
             ):
                 result = sync_repositories(sample_config, dry_run=True)
 
@@ -295,17 +281,9 @@ class TestCrossPlatform:
                     mock_repos = [
                         {
                             "name": f"{platform_name}-env-repo",
-                            "full_name": (
-                                f"{platform_name}_user/{platform_name}-env-repo"
-                            ),
-                            "clone_url": (
-                                f"https://github.com/{platform_name}_user/"
-                                f"{platform_name}-env-repo.git"
-                            ),
-                            "ssh_url": (
-                                f"git@github.com:{platform_name}_user/"
-                                f"{platform_name}-env-repo.git"
-                            ),
+                            "full_name": (f"{platform_name}_user/{platform_name}-env-repo"),
+                            "clone_url": (f"https://github.com/{platform_name}_user/{platform_name}-env-repo.git"),
+                            "ssh_url": (f"git@github.com:{platform_name}_user/{platform_name}-env-repo.git"),
                             "description": f"{platform_name}環境変数テスト用リポジトリ",
                             "private": False,
                             "default_branch": "main",
@@ -313,9 +291,7 @@ class TestCrossPlatform:
                     ]
 
                     with (
-                        patch(
-                            "setup_repo.sync.get_repositories", return_value=mock_repos
-                        ),
+                        patch("setup_repo.sync.get_repositories", return_value=mock_repos),
                         patch(
                             "setup_repo.sync.sync_repository_with_retries",
                             return_value=True,
@@ -500,9 +476,7 @@ class TestCrossPlatform:
 
             with (
                 patch("setup_repo.sync.get_repositories", return_value=mock_repos),
-                patch(
-                    "setup_repo.sync.sync_repository_with_retries", return_value=True
-                ),
+                patch("setup_repo.sync.sync_repository_with_retries", return_value=True),
             ):
                 result = sync_repositories(sample_config, dry_run=True)
 
@@ -595,14 +569,8 @@ class TestCrossPlatform:
                     {
                         "name": f"{platform_name}-permission-repo",
                         "full_name": f"test_user/{platform_name}-permission-repo",
-                        "clone_url": (
-                            f"https://github.com/test_user/"
-                            f"{platform_name}-permission-repo.git"
-                        ),
-                        "ssh_url": (
-                            f"git@github.com:test_user/"
-                            f"{platform_name}-permission-repo.git"
-                        ),
+                        "clone_url": (f"https://github.com/test_user/{platform_name}-permission-repo.git"),
+                        "ssh_url": (f"git@github.com:test_user/{platform_name}-permission-repo.git"),
                         "description": f"{platform_name}権限テスト用リポジトリ",
                         "private": False,
                         "default_branch": "main",
@@ -673,14 +641,8 @@ class TestCrossPlatform:
                     {
                         "name": f"{platform_name}-lineending-repo",
                         "full_name": f"test_user/{platform_name}-lineending-repo",
-                        "clone_url": (
-                            f"https://github.com/test_user/"
-                            f"{platform_name}-lineending-repo.git"
-                        ),
-                        "ssh_url": (
-                            f"git@github.com:test_user/"
-                            f"{platform_name}-lineending-repo.git"
-                        ),
+                        "clone_url": (f"https://github.com/test_user/{platform_name}-lineending-repo.git"),
+                        "ssh_url": (f"git@github.com:test_user/{platform_name}-lineending-repo.git"),
                         "description": f"{platform_name}改行コードテスト用リポジトリ",
                         "private": False,
                         "default_branch": "main",
@@ -745,17 +707,9 @@ class TestCrossPlatform:
                     {
                         "name": f"{platform_name}-perf-repo-{i}",
                         "full_name": f"test_user/{platform_name}-perf-repo-{i}",
-                        "clone_url": (
-                            f"https://github.com/test_user/"
-                            f"{platform_name}-perf-repo-{i}.git"
-                        ),
-                        "ssh_url": (
-                            f"git@github.com:test_user/"
-                            f"{platform_name}-perf-repo-{i}.git"
-                        ),
-                        "description": (
-                            f"{platform_name}パフォーマンステスト用リポジトリ{i}"
-                        ),
+                        "clone_url": (f"https://github.com/test_user/{platform_name}-perf-repo-{i}.git"),
+                        "ssh_url": (f"git@github.com:test_user/{platform_name}-perf-repo-{i}.git"),
+                        "description": (f"{platform_name}パフォーマンステスト用リポジトリ{i}"),
                         "private": False,
                         "default_branch": "main",
                     }
@@ -776,8 +730,6 @@ class TestCrossPlatform:
                 execution_time = time.time() - start_time
 
                 # プラットフォーム別パフォーマンス要件: 10リポジトリが5秒以内
-                assert execution_time < 5.0, (
-                    f"{platform_name}で実行時間が長すぎます: {execution_time}秒"
-                )
+                assert execution_time < 5.0, f"{platform_name}で実行時間が長すぎます: {execution_time}秒"
                 assert result.success
                 assert len(result.synced_repos) == 10

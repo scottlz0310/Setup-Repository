@@ -44,9 +44,7 @@ class TestSyncIntegration:
         # sync機能を実行（with統合）
         repos_data = mock_github_api.get_user_repos.return_value
         with (
-            patch(
-                "setup_repo.sync.get_repositories", return_value=repos_data
-            ) as mock_get_repos,
+            patch("setup_repo.sync.get_repositories", return_value=repos_data) as mock_get_repos,
             patch(
                 "setup_repo.sync.sync_repository_with_retries",
                 return_value=True,
@@ -176,9 +174,7 @@ class TestSyncIntegration:
 
         # GitHub APIでネットワークエラーをシミュレート
         mock_github_api_error = Mock()
-        mock_github_api_error.get_user_repos.side_effect = Exception(
-            "ネットワークエラー"
-        )
+        mock_github_api_error.get_user_repos.side_effect = Exception("ネットワークエラー")
 
         error = Exception("ネットワークエラー")
         with (

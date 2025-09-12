@@ -157,9 +157,7 @@ class TestSetupPythonEnvironment:
     @patch("src.setup_repo.python_env.ensure_uv")
     @patch("src.setup_repo.python_env.has_python_project")
     @patch("builtins.print")
-    def test_setup_python_environment_with_uv(
-        self, mock_print, mock_has_python, mock_ensure_uv, mock_setup_uv
-    ):
+    def test_setup_python_environment_with_uv(self, mock_print, mock_has_python, mock_ensure_uv, mock_setup_uv):
         """uvを使用したセットアップのテスト"""
         # Arrange
         repo_path = Path("/test/repo")
@@ -179,9 +177,7 @@ class TestSetupPythonEnvironment:
     @patch("src.setup_repo.python_env.ensure_uv")
     @patch("src.setup_repo.python_env.has_python_project")
     @patch("builtins.print")
-    def test_setup_python_environment_with_venv(
-        self, mock_print, mock_has_python, mock_ensure_uv, mock_setup_venv
-    ):
+    def test_setup_python_environment_with_venv(self, mock_print, mock_has_python, mock_ensure_uv, mock_setup_venv):
         """venvを使用したセットアップのテスト"""
         # Arrange
         repo_path = Path("/test/repo")
@@ -204,9 +200,7 @@ class TestSetupWithUv:
     @patch("subprocess.run")
     @patch("pathlib.Path.exists")
     @patch("builtins.print")
-    def test_setup_with_uv_pyproject_toml_with_lock(
-        self, mock_print, mock_exists, mock_run
-    ):
+    def test_setup_with_uv_pyproject_toml_with_lock(self, mock_print, mock_exists, mock_run):
         """pyproject.tomlとuv.lockがある場合のテスト"""
         # Arrange
         repo_path = Path("/test/repo")
@@ -231,9 +225,7 @@ class TestSetupWithUv:
     @patch("subprocess.run")
     @patch("pathlib.Path.exists")
     @patch("builtins.print")
-    def test_setup_with_uv_pyproject_toml_without_lock(
-        self, mock_print, mock_exists, mock_run
-    ):
+    def test_setup_with_uv_pyproject_toml_without_lock(self, mock_print, mock_exists, mock_run):
         """pyproject.tomlがあるがuv.lockがない場合のテスト"""
         # Arrange
         repo_path = Path("/test/repo")
@@ -287,9 +279,7 @@ class TestSetupWithUv:
     @patch("src.setup_repo.python_env._setup_with_venv")
     @patch("subprocess.run")
     @patch("pathlib.Path.exists")
-    def test_setup_with_uv_failure_fallback_to_venv(
-        self, mock_exists, mock_run, mock_setup_venv
-    ):
+    def test_setup_with_uv_failure_fallback_to_venv(self, mock_exists, mock_run, mock_setup_venv):
         """uv失敗時のvenvフォールバックのテスト"""
         # Arrange
         repo_path = Path("/test/repo")
@@ -412,9 +402,7 @@ class TestEdgeCases:
         """Pathオブジェクトでのhas_python_projectのテスト"""
         # Arrange
         repo_path = Path("/test/repo")
-        mock_exists.side_effect = lambda: str(repo_path / "pyproject.toml").endswith(
-            "pyproject.toml"
-        )
+        mock_exists.side_effect = lambda: str(repo_path / "pyproject.toml").endswith("pyproject.toml")
 
         # Act
         result = has_python_project(repo_path)

@@ -52,9 +52,7 @@ def sync_repositories(config: dict, dry_run: bool = False) -> SyncResult:
     print(f"   📱 プラットフォーム: {platform}")
     print(f"   👤 オーナー: {owner or '❌ 検出されませんでした'}")
     print(f"   📁 保存先: {dest}")
-    token_status = (
-        "✅ 検出されました" if config.get("github_token") else "❌ 見つかりません"
-    )
+    token_status = "✅ 検出されました" if config.get("github_token") else "❌ 見つかりません"
     print(f"   🔑 GitHubトークン: {token_status}")
 
     if not owner:
@@ -179,6 +177,4 @@ def sync_repositories(config: dict, dry_run: bool = False) -> SyncResult:
     logger.close()
 
     # 結果を返す
-    return SyncResult(
-        success=len(errors) == 0, synced_repos=synced_repos, errors=errors
-    )
+    return SyncResult(success=len(errors) == 0, synced_repos=synced_repos, errors=errors)

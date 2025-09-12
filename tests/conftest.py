@@ -87,10 +87,7 @@ class PlatformMocker:
             platform: モックするプラットフォーム名
         """
         if platform not in self.SUPPORTED_PLATFORMS:
-            raise ValueError(
-                f"Unsupported platform: {platform}. "
-                f"Supported: {self.SUPPORTED_PLATFORMS}"
-            )
+            raise ValueError(f"Unsupported platform: {platform}. Supported: {self.SUPPORTED_PLATFORMS}")
 
         self.platform = platform
         self.config = self.PLATFORM_CONFIGS[platform]
@@ -115,15 +112,11 @@ class PlatformMocker:
             os_name_patch.start()
 
         # モジュール可用性フラグのモック
-        fcntl_patch = patch(
-            "src.setup_repo.utils.FCNTL_AVAILABLE", self.config["fcntl_available"]
-        )
+        fcntl_patch = patch("src.setup_repo.utils.FCNTL_AVAILABLE", self.config["fcntl_available"])
         self.patches.append(fcntl_patch)
         fcntl_patch.start()
 
-        msvcrt_patch = patch(
-            "src.setup_repo.utils.MSVCRT_AVAILABLE", self.config["msvcrt_available"]
-        )
+        msvcrt_patch = patch("src.setup_repo.utils.MSVCRT_AVAILABLE", self.config["msvcrt_available"])
         self.patches.append(msvcrt_patch)
         msvcrt_patch.start()
 
@@ -132,8 +125,7 @@ class PlatformMocker:
         if proc_version_exists:
             # WSLの場合、/proc/versionファイルが存在し、適切な内容を返すようにモック
             proc_version_content = (
-                "Linux version 5.4.0-microsoft-standard-WSL2 (Microsoft) "
-                "#1 SMP Wed Mar 2 00:56:28 UTC 2021"
+                "Linux version 5.4.0-microsoft-standard-WSL2 (Microsoft) #1 SMP Wed Mar 2 00:56:28 UTC 2021"
             )
 
             # 元のopen関数を保存
@@ -156,9 +148,7 @@ class PlatformMocker:
 
             exists_patch = patch(
                 "os.path.exists",
-                side_effect=lambda path: (
-                    path == "/proc/version" or original_exists(path)
-                ),
+                side_effect=lambda path: (path == "/proc/version" or original_exists(path)),
             )
             self.patches.append(exists_patch)
             exists_patch.start()
@@ -170,9 +160,7 @@ class PlatformMocker:
 
             exists_patch = patch(
                 "os.path.exists",
-                side_effect=lambda path: (
-                    False if path == "/proc/version" else original_exists(path)
-                ),
+                side_effect=lambda path: (False if path == "/proc/version" else original_exists(path)),
             )
             self.patches.append(exists_patch)
             exists_patch.start()
@@ -235,15 +223,11 @@ class ModuleAvailabilityMocker:
     def __enter__(self):
         """コンテキストマネージャーの開始"""
         # モジュール可用性フラグのモック
-        fcntl_patch = patch(
-            "src.setup_repo.utils.FCNTL_AVAILABLE", self.fcntl_available
-        )
+        fcntl_patch = patch("src.setup_repo.utils.FCNTL_AVAILABLE", self.fcntl_available)
         self.patches.append(fcntl_patch)
         fcntl_patch.start()
 
-        msvcrt_patch = patch(
-            "src.setup_repo.utils.MSVCRT_AVAILABLE", self.msvcrt_available
-        )
+        msvcrt_patch = patch("src.setup_repo.utils.MSVCRT_AVAILABLE", self.msvcrt_available)
         self.patches.append(msvcrt_patch)
         msvcrt_patch.start()
 
@@ -273,9 +257,7 @@ class ModuleAvailabilityMocker:
 def module_availability_mocker():
     """モジュール可用性モッカーのファクトリフィクスチャ"""
 
-    def _create_mocker(
-        fcntl_available: bool = True, msvcrt_available: bool = True
-    ) -> ModuleAvailabilityMocker:
+    def _create_mocker(fcntl_available: bool = True, msvcrt_available: bool = True) -> ModuleAvailabilityMocker:
         return ModuleAvailabilityMocker(fcntl_available, msvcrt_available)
 
     return _create_mocker
@@ -306,9 +288,7 @@ class CrossPlatformTestHelper:
         return results
 
     @staticmethod
-    def assert_consistent_behavior(
-        results: dict[str, dict[str, Any]], expected_behavior: str = "success"
-    ):
+    def assert_consistent_behavior(results: dict[str, dict[str, Any]], expected_behavior: str = "success"):
         """
         全プラットフォームで一貫した動作を確認
 
@@ -318,14 +298,9 @@ class CrossPlatformTestHelper:
         """
         for platform, result in results.items():
             if expected_behavior == "success":
-                assert result["success"], (
-                    f"Platform {platform} failed: "
-                    f"{result.get('error', 'Unknown error')}"
-                )
+                assert result["success"], f"Platform {platform} failed: {result.get('error', 'Unknown error')}"
             elif expected_behavior == "failure":
-                assert not result["success"], (
-                    f"Platform {platform} should have failed but succeeded"
-                )
+                assert not result["success"], f"Platform {platform} should have failed but succeeded"
 
 
 @pytest.fixture
@@ -340,9 +315,7 @@ pytest.mark.linux = pytest.mark.parametrize("platform", ["linux"])
 pytest.mark.macos = pytest.mark.parametrize("platform", ["macos"])
 pytest.mark.wsl = pytest.mark.parametrize("platform", ["wsl"])
 pytest.mark.unix_like = pytest.mark.parametrize("platform", ["linux", "macos", "wsl"])
-pytest.mark.all_platforms = pytest.mark.parametrize(
-    "platform", PlatformMocker.SUPPORTED_PLATFORMS
-)
+pytest.mark.all_platforms = pytest.mark.parametrize("platform", PlatformMocker.SUPPORTED_PLATFORMS)
 
 
 # テスト環境の設定
@@ -374,7 +347,6 @@ def sample_config() -> dict[str, Any]:
         },
         "platform": {"detected": "linux", "package_manager": "apt"},
         "logging": {"level": "INFO", "file": "/tmp/test.log"},
-
         # 後方互換性のための古い構造
         "github_token": "test_token_123",
         "github_username": "test_user",
@@ -477,6 +449,7 @@ def test_lock():
     except Exception as e:
         # クリーンアップエラーをログに記録
         import logging
+
         logging.getLogger(__name__).warning(f"テストロッククリーンアップエラー: {e}")
 
 

@@ -87,9 +87,7 @@ class CoverageMonitor:
 
         if not logger.handlers:
             handler = logging.StreamHandler()
-            formatter = logging.Formatter(
-                "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-            )
+            formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
             handler.setFormatter(formatter)
             logger.addHandler(handler)
 
@@ -170,11 +168,7 @@ class CoverageMonitor:
 
                     # モジュール名を生成
                     if filename.startswith("src/setup_repo/"):
-                        module_name = (
-                            filename.replace("src/", "")
-                            .replace("/", ".")
-                            .replace(".py", "")
-                        )
+                        module_name = filename.replace("src/", "").replace("/", ".").replace(".py", "")
                         module_coverage[module_name] = line_rate
 
                         # 欠落行を取得
@@ -223,11 +217,7 @@ class CoverageMonitor:
             files = data.get("files", {})
             for filepath, file_data in files.items():
                 if filepath.startswith("src/setup_repo/"):
-                    module_name = (
-                        filepath.replace("src/", "")
-                        .replace("/", ".")
-                        .replace(".py", "")
-                    )
+                    module_name = filepath.replace("src/", "").replace("/", ".").replace(".py", "")
                     summary = file_data.get("summary", {})
                     module_coverage[module_name] = summary.get("percent_covered", 0)
 
@@ -245,9 +235,7 @@ class CoverageMonitor:
             self.logger.error(f"coverage.jsonの解析中にエラーが発生しました: {e}")
             return None
 
-    def check_coverage_requirements(
-        self, report: CoverageReport
-    ) -> tuple[bool, list[str]]:
+    def check_coverage_requirements(self, report: CoverageReport) -> tuple[bool, list[str]]:
         """
         カバレッジ要件をチェック
 
@@ -263,8 +251,7 @@ class CoverageMonitor:
         # 全体カバレッジのチェック
         if report.total_coverage < self.targets.total_target:
             warnings.append(
-                f"全体カバレッジが目標を下回っています: "
-                f"{report.total_coverage:.2f}% < {self.targets.total_target}%"
+                f"全体カバレッジが目標を下回っています: {report.total_coverage:.2f}% < {self.targets.total_target}%"
             )
             passed = False
 
@@ -278,8 +265,7 @@ class CoverageMonitor:
 
             if coverage < target:
                 warnings.append(
-                    f"モジュール '{module}' のカバレッジが目標を下回っています: "
-                    f"{coverage:.2f}% < {target}%"
+                    f"モジュール '{module}' のカバレッジが目標を下回っています: {coverage:.2f}% < {target}%"
                 )
                 if module in self.targets.critical_modules:
                     passed = False
@@ -319,24 +305,18 @@ class CoverageMonitor:
             "summary": {
                 "total_modules": len(report.module_coverage),
                 "modules_above_target": sum(
-                    1
-                    for coverage in report.module_coverage.values()
-                    if coverage >= self.targets.module_target
+                    1 for coverage in report.module_coverage.values() if coverage >= self.targets.module_target
                 ),
                 "critical_modules_above_target": sum(
                     1
                     for module, coverage in report.module_coverage.items()
-                    if module in self.targets.critical_modules
-                    and coverage >= self.targets.critical_module_target
+                    if module in self.targets.critical_modules and coverage >= self.targets.critical_module_target
                 ),
             },
         }
 
         # レポートファイルを保存
-        report_file = (
-            self.reports_dir
-            / f"coverage_report_{datetime.now(tz=None).strftime('%Y%m%d_%H%M%S')}.json"
-        )
+        report_file = self.reports_dir / f"coverage_report_{datetime.now(tz=None).strftime('%Y%m%d_%H%M%S')}.json"
         with open(report_file, "w", encoding="utf-8") as f:
             json.dump(report_data, f, indent=2, ensure_ascii=False)
 
@@ -432,9 +412,7 @@ class CoverageMonitor:
                     data = json.load(f)
                 historical_data.append(data)
             except Exception as e:
-                self.logger.warning(
-                    f"レポートファイルの読み込みに失敗: {report_file} - {e}"
-                )
+                self.logger.warning(f"レポートファイルの読み込みに失敗: {report_file} - {e}")
 
         return historical_data
 
@@ -464,11 +442,7 @@ class CoverageMonitor:
             "latest_coverage": latest_coverage,
             "oldest_coverage": oldest_coverage,
             "trend": trend,
-            "trend_direction": "improving"
-            if trend > 0
-            else "declining"
-            if trend < 0
-            else "stable",
+            "trend_direction": "improving" if trend > 0 else "declining" if trend < 0 else "stable",
             "data_points": len(historical_data),
         }
 
@@ -478,18 +452,10 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(description="カバレッジ監視システム")
-    parser.add_argument(
-        "--generate-report", action="store_true", help="カバレッジレポートを生成"
-    )
-    parser.add_argument(
-        "--check-requirements", action="store_true", help="カバレッジ要件をチェック"
-    )
-    parser.add_argument(
-        "--analyze-trends", action="store_true", help="カバレッジトレンドを分析"
-    )
-    parser.add_argument(
-        "--project-root", type=Path, help="プロジェクトルートディレクトリ"
-    )
+    parser.add_argument("--generate-report", action="store_true", help="カバレッジレポートを生成")
+    parser.add_argument("--check-requirements", action="store_true", help="カバレッジ要件をチェック")
+    parser.add_argument("--analyze-trends", action="store_true", help="カバレッジトレンドを分析")
+    parser.add_argument("--project-root", type=Path, help="プロジェクトルートディレクトリ")
 
     args = parser.parse_args()
 
@@ -508,9 +474,7 @@ def main():
                     print(f"  - {warning}")
 
                 # アラートを送信
-                monitor.send_coverage_alert(
-                    report_data["coverage"]["total_coverage"], req_check["warnings"]
-                )
+                monitor.send_coverage_alert(report_data["coverage"]["total_coverage"], req_check["warnings"])
                 sys.exit(1)
             else:
                 print("✅ カバレッジ要件を満たしています")

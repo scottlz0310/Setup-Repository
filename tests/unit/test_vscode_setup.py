@@ -124,9 +124,7 @@ class TestApplyVscodeTemplate:
     @patch("src.setup_repo.vscode_setup.shutil.move")
     @patch("src.setup_repo.vscode_setup.shutil.copytree")
     @patch("src.setup_repo.vscode_setup.time.time")
-    def test_existing_vscode_directory_backup(
-        self, mock_time, mock_copytree, mock_move, capsys
-    ):
+    def test_existing_vscode_directory_backup(self, mock_time, mock_copytree, mock_move, capsys):
         """既存の.vscodeディレクトリがある場合のバックアップテスト"""
         repo_path = Path("/test/repo")
         platform = "linux"
@@ -146,9 +144,7 @@ class TestApplyVscodeTemplate:
 
         assert result is True
         expected_backup_path = str(repo_path / ".vscode.bak.1234567890")
-        mock_move.assert_called_once_with(
-            str(repo_path / ".vscode"), expected_backup_path
-        )
+        mock_move.assert_called_once_with(str(repo_path / ".vscode"), expected_backup_path)
         mock_copytree.assert_called_once()
         captured = capsys.readouterr()
         assert "既存設定をバックアップ" in captured.out
@@ -274,9 +270,7 @@ class TestApplyVscodeTemplate:
     @patch("src.setup_repo.vscode_setup.shutil.move")
     @patch("src.setup_repo.vscode_setup.shutil.copytree")
     @patch("src.setup_repo.vscode_setup.time.time")
-    def test_multiple_backup_scenarios(
-        self, mock_time, mock_copytree, mock_move, capsys
-    ):
+    def test_multiple_backup_scenarios(self, mock_time, mock_copytree, mock_move, capsys):
         """複数のバックアップシナリオのテスト"""
         repo_path = Path("/test/repo")
         platform = "linux"
@@ -300,9 +294,7 @@ class TestApplyVscodeTemplate:
                 assert result is True
 
                 expected_backup_path = str(repo_path / f".vscode.bak.{timestamp}")
-                mock_move.assert_called_with(
-                    str(repo_path / ".vscode"), expected_backup_path
-                )
+                mock_move.assert_called_with(str(repo_path / ".vscode"), expected_backup_path)
 
     def test_edge_case_empty_repo_name(self):
         """エッジケース: 空のリポジトリ名"""
@@ -405,12 +397,7 @@ class TestApplyVscodeTemplate:
             path_str = str(self)
 
             # 最初の呼び出し（unknown_platform）はFalse
-            if (
-                call_count == 1
-                and "unknown_platform" in path_str
-                or call_count == 2
-                and "linux" in path_str
-            ):
+            if call_count == 1 and "unknown_platform" in path_str or call_count == 2 and "linux" in path_str:
                 return False
             return False
 

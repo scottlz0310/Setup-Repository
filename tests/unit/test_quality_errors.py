@@ -165,9 +165,7 @@ class TestErrorReporter:
         reporter = ErrorReporter()
 
         # QualityCheckErrorの場合
-        quality_error = QualityCheckError(
-            "品質エラー", "QUALITY_001", {"detail": "詳細"}
-        )
+        quality_error = QualityCheckError("品質エラー", "QUALITY_001", {"detail": "詳細"})
         formatted = reporter.format_error_message(quality_error)
         assert "[QUALITY_001]" in formatted
         assert "品質エラー" in formatted

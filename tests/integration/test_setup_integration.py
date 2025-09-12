@@ -60,16 +60,12 @@ class TestSetupIntegration:
         ):
             # GitHub APIのモックレスポンスを設定
             mock_response = Mock()
-            mock_response.read.return_value = json.dumps({"login": "test_user"}).encode(
-                "utf-8"
-            )
+            mock_response.read.return_value = json.dumps({"login": "test_user"}).encode("utf-8")
             mock_response.__enter__ = Mock(return_value=mock_response)
             mock_response.__exit__ = Mock(return_value=None)
             mock_urlopen.return_value = mock_response
             # setup機能を実行
-            result = setup_repository_environment(
-                config_path=str(config_file), dry_run=True
-            )
+            result = setup_repository_environment(config_path=str(config_file), dry_run=True)
 
         # 結果を検証
         assert result is not None
@@ -214,15 +210,11 @@ class TestSetupIntegration:
         ):
             # GitHub APIのモックレスポンスを設定
             mock_response = Mock()
-            mock_response.read.return_value = json.dumps({"login": "test_user"}).encode(
-                "utf-8"
-            )
+            mock_response.read.return_value = json.dumps({"login": "test_user"}).encode("utf-8")
             mock_response.__enter__ = Mock(return_value=mock_response)
             mock_response.__exit__ = Mock(return_value=None)
             mock_urlopen.return_value = mock_response
-            result = setup_repository_environment(
-                config_path=str(config_file), dry_run=True
-            )
+            result = setup_repository_environment(config_path=str(config_file), dry_run=True)
 
         # ドライランモードでは実際の変更が行われないことを確認
         assert result is not None
@@ -234,9 +226,7 @@ class TestSetupIntegration:
             # ドライランモードでは新しいリポジトリは作成されない
             existing_repos = list(repos_dir.iterdir())
             # テスト環境では既存のリポジトリのみが存在する
-            assert not existing_repos or all(
-                repo.name.startswith("test-") for repo in existing_repos
-            )
+            assert not existing_repos or all(repo.name.startswith("test-") for repo in existing_repos)
 
     @pytest.mark.slow
     def test_setup_with_file_system_operations(
@@ -264,9 +254,7 @@ class TestSetupIntegration:
                 return_value=mock_platform_detector,
             ),
         ):
-            result = setup_repository_environment(
-                config_path=str(config_file), dry_run=False
-            )
+            result = setup_repository_environment(config_path=str(config_file), dry_run=False)
 
         # 結果を検証
         assert result is not None

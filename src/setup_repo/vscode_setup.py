@@ -6,9 +6,7 @@ import time
 from pathlib import Path
 
 
-def apply_vscode_template(
-    repo_path: Path, platform: str, dry_run: bool = False
-) -> bool:
+def apply_vscode_template(repo_path: Path, platform: str, dry_run: bool = False) -> bool:
     """VS Code設定テンプレートを適用"""
     repo_name = repo_path.name
     script_dir = Path(__file__).parent

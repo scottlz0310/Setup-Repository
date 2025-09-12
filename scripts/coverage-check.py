@@ -44,9 +44,7 @@ class CoverageChecker:
         ]
 
         try:
-            result = subprocess.run(
-                cmd, cwd=self.project_root, capture_output=True, text=True, check=False
-            )
+            result = subprocess.run(cmd, cwd=self.project_root, capture_output=True, text=True, check=False)
 
             print(result.stdout)
             if result.stderr:
@@ -165,18 +163,14 @@ class CoverageChecker:
 
         # 低カバレッジファイルの特定
         low_coverage_files = [
-            (path, data)
-            for path, data in analysis["files"].items()
-            if data["coverage"] < self.min_coverage
+            (path, data) for path, data in analysis["files"].items() if data["coverage"] < self.min_coverage
         ]
 
         if low_coverage_files:
             suggestions.append("🎯 改善提案:")
             suggestions.append("")
 
-            for file_path, file_data in sorted(
-                low_coverage_files, key=lambda x: x[1]["coverage"]
-            ):
+            for file_path, file_data in sorted(low_coverage_files, key=lambda x: x[1]["coverage"]):
                 file_name = Path(file_path).name
                 coverage = file_data["coverage"]
                 missing_count = len(file_data["missing_lines"])
@@ -234,9 +228,7 @@ def main():
         default=80.0,
         help="最低カバレッジ要件 (デフォルト: 80.0)",
     )
-    parser.add_argument(
-        "--previous-coverage", type=float, help="前回のカバレッジ（トレンド分析用）"
-    )
+    parser.add_argument("--previous-coverage", type=float, help="前回のカバレッジ（トレンド分析用）")
     parser.add_argument(
         "--report-only",
         action="store_true",

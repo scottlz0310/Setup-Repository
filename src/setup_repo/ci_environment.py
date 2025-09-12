@@ -92,11 +92,7 @@ class CIEnvironmentInfo:
     def get_system_info() -> dict[str, Any]:
         """システム情報を取得"""
         try:
-            python_version = (
-                f"{sys.version_info.major}."
-                f"{sys.version_info.minor}."
-                f"{sys.version_info.micro}"
-            )
+            python_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
 
             # Git情報を取得
             git_info = {}
@@ -119,9 +115,7 @@ class CIEnvironmentInfo:
             return {
                 "python_version": python_version,
                 "platform": sys.platform,
-                "architecture": (
-                    os.uname().machine if hasattr(os, "uname") else "unknown"
-                ),
+                "architecture": (os.uname().machine if hasattr(os, "uname") else "unknown"),
                 "working_directory": os.getcwd(),
                 "git_info": git_info,
                 "environment_variables": CIEnvironmentInfo.collect_environment_vars(),
@@ -137,9 +131,7 @@ class CIEnvironmentInfo:
             # uv環境情報
             uv_info = {}
             try:
-                uv_version = subprocess.check_output(
-                    ["uv", "--version"], text=True, stderr=subprocess.DEVNULL
-                ).strip()
+                uv_version = subprocess.check_output(["uv", "--version"], text=True, stderr=subprocess.DEVNULL).strip()
                 uv_info["version"] = uv_version
 
                 # 仮想環境情報

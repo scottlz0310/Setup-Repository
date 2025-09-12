@@ -97,6 +97,7 @@ def get_repositories(owner: str, token: Optional[str] = None) -> list[dict]:
 
     if not token:
         import logging
+
         logger = logging.getLogger(__name__)
         logger.warning("GitHubトークンが設定されていません。プライベートリポジトリは取得できません。")
         url = f"https://api.github.com/users/{owner}/repos?per_page=100"
@@ -110,6 +111,7 @@ def get_repositories(owner: str, token: Optional[str] = None) -> list[dict]:
             # 自分のリポジトリの場合は /user/repos を使用
             url = "https://api.github.com/user/repos?per_page=100&affiliation=owner,collaborator,organization_member"
             import logging
+
             logger = logging.getLogger(__name__)
             logger.info(f"認証ユーザー '{auth_user}' としてプライベートリポジトリを取得中...")
         else:
@@ -117,6 +119,7 @@ def get_repositories(owner: str, token: Optional[str] = None) -> list[dict]:
             url = f"https://api.github.com/users/{owner}/repos?per_page=100"
             if auth_user:
                 import logging
+
                 logger = logging.getLogger(__name__)
                 logger.info(f"認証ユーザー '{auth_user}' で '{owner}' のパブリックリポジトリを取得中...")
 
@@ -133,6 +136,7 @@ def get_repositories(owner: str, token: Optional[str] = None) -> list[dict]:
                 raise ValueError("HTTPS URLのみ許可されています")
 
             import ssl
+
             context = ssl.create_default_context()
             with urllib.request.urlopen(req, context=context) as response:
                 page_repos = json.loads(response.read().decode())
@@ -146,12 +150,14 @@ def get_repositories(owner: str, token: Optional[str] = None) -> list[dict]:
         except urllib.error.HTTPError as e:
             if page == 1:  # 最初のページでエラーの場合のみ表示
                 import logging
+
                 logger = logging.getLogger(__name__)
                 logger.error(f"GitHub API エラー: {e.code} {e.reason}")
             break
         except Exception as e:
             if page == 1:
                 import logging
+
                 logger = logging.getLogger(__name__)
                 logger.error(f"リポジトリ取得エラー: {e}")
             break
@@ -167,6 +173,7 @@ def _get_authenticated_user(token: str) -> Optional[str]:
 
         # HTTPS URLのみ許可してセキュリティを確保
         import ssl
+
         context = ssl.create_default_context()
         with urllib.request.urlopen(req, context=context) as response:
             user_data = json.loads(response.read().decode())

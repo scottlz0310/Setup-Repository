@@ -42,9 +42,7 @@ class ReleaseSystemTester:
         """バージョン一貫性チェックのテスト"""
         print("🔍 バージョン一貫性チェックをテスト中...")
 
-        result = self.run_command(
-            ["uv", "run", "python", "scripts/version-manager.py", "--check"]
-        )
+        result = self.run_command(["uv", "run", "python", "scripts/version-manager.py", "--check"])
 
         success = result["success"]
         self.test_results.append(
@@ -96,10 +94,7 @@ class ReleaseSystemTester:
                 new_version = new_data["project"]["version"]
 
             if new_version != original_version:
-                print(
-                    "✅ バージョン自動インクリメント: 成功 ("
-                    f"{original_version} → {new_version})"
-                )
+                print(f"✅ バージョン自動インクリメント: 成功 ({original_version} → {new_version})")
 
                 # 元のバージョンに戻す
                 restore_result = self.run_command(
@@ -114,10 +109,7 @@ class ReleaseSystemTester:
                 )
 
                 if restore_result["success"]:
-                    print(
-                        "🔄 バージョンを元に戻しました: "
-                        f"{new_version} → {original_version}"
-                    )
+                    print(f"🔄 バージョンを元に戻しました: {new_version} → {original_version}")
                 else:
                     print(f"⚠️ バージョンの復元に失敗: {restore_result['stderr']}")
             else:
@@ -218,9 +210,7 @@ if __name__ == "__main__":
             test_script.chmod(0o755)
 
             # テストスクリプトを実行
-            result = self.run_command(
-                ["uv", "run", "python", "scripts/test-changelog-update.py"]
-            )
+            result = self.run_command(["uv", "run", "python", "scripts/test-changelog-update.py"])
 
             success = result["success"]
 
@@ -318,9 +308,7 @@ if __name__ == "__main__":
         mypy_result = self.run_command(["uv", "run", "mypy", "src/"])
 
         # テスト実行
-        test_result = self.run_command(
-            ["uv", "run", "pytest", "tests/", "-x", "--tb=short"]
-        )
+        test_result = self.run_command(["uv", "run", "pytest", "tests/", "-x", "--tb=short"])
 
         ruff_success = ruff_result["success"]
         mypy_success = mypy_result["success"]

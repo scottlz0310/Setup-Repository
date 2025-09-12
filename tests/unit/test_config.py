@@ -386,9 +386,7 @@ class TestConfigIntegration:
     def test_full_config_loading_workflow(self, temp_dir: Path) -> None:
         """完全な設定読み込みワークフローのテスト"""
         # 環境変数とファイル設定を組み合わせたテスト
-        with patch.dict(
-            os.environ, {"GITHUB_TOKEN": "env_token", "GITHUB_USER": "env_user"}
-        ):
+        with patch.dict(os.environ, {"GITHUB_TOKEN": "env_token", "GITHUB_USER": "env_user"}):
             # 設定ファイルを作成
             file_config = {"dest": "/custom/destination", "use_https": True}
 

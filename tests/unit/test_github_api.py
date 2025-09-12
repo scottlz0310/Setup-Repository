@@ -45,9 +45,7 @@ class TestGitHubAPI:
         """ユーザー情報取得成功のテスト"""
         # Arrange
         mock_response = Mock()
-        mock_response.read.return_value = json.dumps(
-            {"login": "test_user", "id": 123}
-        ).encode()
+        mock_response.read.return_value = json.dumps({"login": "test_user", "id": 123}).encode()
         mock_urlopen.return_value.__enter__.return_value = mock_response
 
         api = GitHubAPI("test_token", "test_user")
@@ -63,9 +61,7 @@ class TestGitHubAPI:
     def test_get_user_info_401_error(self, mock_urlopen):
         """認証エラー(401)のテスト"""
         # Arrange
-        mock_urlopen.side_effect = urllib.error.HTTPError(
-            url="", code=401, msg="Unauthorized", hdrs=None, fp=None
-        )
+        mock_urlopen.side_effect = urllib.error.HTTPError(url="", code=401, msg="Unauthorized", hdrs=None, fp=None)
 
         api = GitHubAPI("invalid_token", "test_user")
 
@@ -77,9 +73,7 @@ class TestGitHubAPI:
     def test_get_user_info_403_error(self, mock_urlopen):
         """レート制限エラー(403)のテスト"""
         # Arrange
-        mock_urlopen.side_effect = urllib.error.HTTPError(
-            url="", code=403, msg="Forbidden", hdrs=None, fp=None
-        )
+        mock_urlopen.side_effect = urllib.error.HTTPError(url="", code=403, msg="Forbidden", hdrs=None, fp=None)
 
         api = GitHubAPI("test_token", "test_user")
 
@@ -91,9 +85,7 @@ class TestGitHubAPI:
     def test_get_user_info_404_error(self, mock_urlopen):
         """ユーザー未発見エラー(404)のテスト"""
         # Arrange
-        mock_urlopen.side_effect = urllib.error.HTTPError(
-            url="", code=404, msg="Not Found", hdrs=None, fp=None
-        )
+        mock_urlopen.side_effect = urllib.error.HTTPError(url="", code=404, msg="Not Found", hdrs=None, fp=None)
 
         api = GitHubAPI("test_token", "test_user")
 
@@ -145,9 +137,7 @@ class TestGitHubAPI:
     def test_get_user_repos_http_error(self, mock_urlopen):
         """リポジトリ取得時のHTTPエラーのテスト"""
         # Arrange
-        mock_urlopen.side_effect = urllib.error.HTTPError(
-            url="", code=401, msg="Unauthorized", hdrs=None, fp=None
-        )
+        mock_urlopen.side_effect = urllib.error.HTTPError(url="", code=401, msg="Unauthorized", hdrs=None, fp=None)
 
         api = GitHubAPI("test_token", "test_user")
 
@@ -173,9 +163,7 @@ class TestGetRepositories:
 
     @patch("setup_repo.github_api._get_authenticated_user")
     @patch("urllib.request.urlopen")
-    def test_get_repositories_no_token(
-        self, mock_urlopen, mock_get_auth_user
-    ):
+    def test_get_repositories_no_token(self, mock_urlopen, mock_get_auth_user):
         """トークンなしでのリポジトリ取得のテスト"""
         # Arrange
         repos_page1 = [{"name": "public_repo", "id": 1}]
@@ -193,7 +181,7 @@ class TestGetRepositories:
         ]
 
         # Act
-        with patch('logging.getLogger') as mock_logger:
+        with patch("logging.getLogger") as mock_logger:
             result = get_repositories("test_owner")
 
         # Assert
@@ -204,9 +192,7 @@ class TestGetRepositories:
 
     @patch("setup_repo.github_api._get_authenticated_user")
     @patch("urllib.request.urlopen")
-    def test_get_repositories_with_token_same_user(
-        self, mock_urlopen, mock_get_auth_user
-    ):
+    def test_get_repositories_with_token_same_user(self, mock_urlopen, mock_get_auth_user):
         """トークンありで同じユーザーのリポジトリ取得のテスト"""
         # Arrange
         mock_get_auth_user.return_value = "test_owner"
@@ -233,9 +219,7 @@ class TestGetRepositories:
 
     @patch("setup_repo.github_api._get_authenticated_user")
     @patch("urllib.request.urlopen")
-    def test_get_repositories_with_token_different_user(
-        self, mock_urlopen, mock_get_auth_user
-    ):
+    def test_get_repositories_with_token_different_user(self, mock_urlopen, mock_get_auth_user):
         """トークンありで異なるユーザーのリポジトリ取得のテスト"""
         # Arrange
         mock_get_auth_user.return_value = "auth_user"
@@ -264,12 +248,10 @@ class TestGetRepositories:
     def test_get_repositories_http_error(self, mock_urlopen):
         """HTTPエラー時のテスト"""
         # Arrange
-        mock_urlopen.side_effect = urllib.error.HTTPError(
-            url="", code=404, msg="Not Found", hdrs=None, fp=None
-        )
+        mock_urlopen.side_effect = urllib.error.HTTPError(url="", code=404, msg="Not Found", hdrs=None, fp=None)
 
         # Act
-        with patch('logging.getLogger') as mock_logger:
+        with patch("logging.getLogger") as mock_logger:
             result = get_repositories("nonexistent_owner")
 
         # Assert
@@ -284,7 +266,7 @@ class TestGetRepositories:
         mock_urlopen.side_effect = ConnectionError("Network error")
 
         # Act
-        with patch('logging.getLogger') as mock_logger:
+        with patch("logging.getLogger") as mock_logger:
             result = get_repositories("test_owner")
 
         # Assert
@@ -338,9 +320,7 @@ class TestGetAuthenticatedUser:
     def test_get_authenticated_user_http_error(self, mock_urlopen):
         """HTTPエラー時のテスト"""
         # Arrange
-        mock_urlopen.side_effect = urllib.error.HTTPError(
-            url="", code=401, msg="Unauthorized", hdrs=None, fp=None
-        )
+        mock_urlopen.side_effect = urllib.error.HTTPError(url="", code=401, msg="Unauthorized", hdrs=None, fp=None)
 
         # Act
         result = _get_authenticated_user("invalid_token")
@@ -473,9 +453,7 @@ class TestEdgeCases:
     def test_get_user_repos_403_rate_limit(self, mock_urlopen):
         """リポジトリ取得時のレート制限エラーのテスト"""
         # Arrange
-        mock_urlopen.side_effect = urllib.error.HTTPError(
-            url="", code=403, msg="Forbidden", hdrs=None, fp=None
-        )
+        mock_urlopen.side_effect = urllib.error.HTTPError(url="", code=403, msg="Forbidden", hdrs=None, fp=None)
 
         api = GitHubAPI("test_token", "test_user")
 
@@ -539,9 +517,7 @@ class TestGetRepositoriesAdvanced:
 
     @patch("setup_repo.github_api._get_authenticated_user")
     @patch("urllib.request.urlopen")
-    def test_get_repositories_auth_user_none(
-        self, mock_urlopen, mock_get_auth_user
-    ):
+    def test_get_repositories_auth_user_none(self, mock_urlopen, mock_get_auth_user):
         """認証ユーザーがNoneの場合のテスト"""
         # Arrange
         mock_get_auth_user.return_value = None
@@ -568,9 +544,7 @@ class TestGetRepositoriesAdvanced:
 
     @patch("setup_repo.github_api._get_authenticated_user")
     @patch("urllib.request.urlopen")
-    def test_get_repositories_case_insensitive_user_match(
-        self, mock_urlopen, mock_get_auth_user
-    ):
+    def test_get_repositories_case_insensitive_user_match(self, mock_urlopen, mock_get_auth_user):
         """大文字小文字を区別しないユーザーマッチのテスト"""
         # Arrange
         mock_get_auth_user.return_value = "TEST_OWNER"  # 大文字
@@ -604,7 +578,7 @@ class TestGetRepositoriesAdvanced:
         mock_urlopen.return_value.__enter__.return_value = mock_response
 
         # Act
-        with patch('logging.getLogger') as mock_logger:
+        with patch("logging.getLogger") as mock_logger:
             result = get_repositories("test_owner")
 
         # Assert
@@ -624,9 +598,7 @@ class TestGetRepositoriesAdvanced:
         # 2ページ目でエラー
         mock_urlopen.return_value.__enter__.side_effect = [
             mock_response1,
-            urllib.error.HTTPError(
-                url="", code=500, msg="Server Error", hdrs=None, fp=None
-            ),
+            urllib.error.HTTPError(url="", code=500, msg="Server Error", hdrs=None, fp=None),
         ]
 
         # Act

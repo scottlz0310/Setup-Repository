@@ -90,12 +90,7 @@ def run_parallel_tests(
         workers = calculate_optimal_workers(test_count, cpu_count)
 
         if verbose:
-            print(
-                "🔧 自動設定: "
-                f"CPUコア数={cpu_count}, "
-                f"テスト数≈{test_count}, "
-                f"ワーカー数={workers}"
-            )
+            print(f"🔧 自動設定: CPUコア数={cpu_count}, テスト数≈{test_count}, ワーカー数={workers}")
 
     # pytest コマンドを構築
     cmd = ["uv", "run", "pytest"]
@@ -185,27 +180,19 @@ def main():
         """,
     )
 
-    parser.add_argument(
-        "paths", nargs="*", default=["tests/"], help="テストパス (デフォルト: tests/)"
-    )
+    parser.add_argument("paths", nargs="*", default=["tests/"], help="テストパス (デフォルト: tests/)")
 
-    parser.add_argument(
-        "-w", "--workers", type=int, help="ワーカー数 (0またはautoで自動設定)"
-    )
+    parser.add_argument("-w", "--workers", type=int, help="ワーカー数 (0またはautoで自動設定)")
 
     parser.add_argument("-m", "--markers", help="テストマーカー (例: 'not slow')")
 
-    parser.add_argument(
-        "--no-coverage", action="store_true", help="カバレッジ測定を無効化"
-    )
+    parser.add_argument("--no-coverage", action="store_true", help="カバレッジ測定を無効化")
 
     parser.add_argument("-v", "--verbose", action="store_true", help="詳細出力")
 
     parser.add_argument("--junit-xml", help="JUnit XML出力ファイル")
 
-    parser.add_argument(
-        "--timeout", type=int, default=1800, help="タイムアウト時間（秒）"
-    )
+    parser.add_argument("--timeout", type=int, default=1800, help="タイムアウト時間（秒）")
 
     args = parser.parse_args()
 

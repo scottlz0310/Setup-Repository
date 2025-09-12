@@ -55,9 +55,7 @@ class TestCreatePersonalConfig:
     @patch("setup_repo.setup.SetupWizard")
     @patch("pathlib.Path.exists")
     @patch("builtins.print")
-    def test_create_personal_config_existing_file(
-        self, mock_print, mock_exists, mock_wizard_class
-    ):
+    def test_create_personal_config_existing_file(self, mock_print, mock_exists, mock_wizard_class):
         """既存の設定ファイルがある場合のテスト"""
         # Arrange
         mock_exists.return_value = True
@@ -168,9 +166,7 @@ class TestSetupRepositoryEnvironment:
         mock_load_config.return_value = config
 
         # Act & Assert
-        with pytest.raises(
-            ValueError, match="必須フィールドが不足しています: github_token"
-        ):
+        with pytest.raises(ValueError, match="必須フィールドが不足しています: github_token"):
             setup_repository_environment()
 
     @patch("setup_repo.setup.load_config")
@@ -184,9 +180,7 @@ class TestSetupRepositoryEnvironment:
         mock_load_config.return_value = config
 
         # Act & Assert
-        with pytest.raises(
-            ValueError, match="必須フィールドが不足しています: github_username"
-        ):
+        with pytest.raises(ValueError, match="必須フィールドが不足しています: github_username"):
             setup_repository_environment()
 
     @patch("setup_repo.setup.GitHubAPI")
@@ -271,9 +265,7 @@ class TestSetupRepositoryEnvironment:
         mock_load_config.return_value = config
 
         mock_platform_detector = Mock()
-        mock_platform_detector.detect_platform.side_effect = Exception(
-            "Platform detection failed"
-        )
+        mock_platform_detector.detect_platform.side_effect = Exception("Platform detection failed")
         mock_platform_detector_class.return_value = mock_platform_detector
 
         # Act & Assert
@@ -369,9 +361,7 @@ class TestEdgeCases:
         mock_load_config.return_value = config
 
         # Act & Assert
-        with pytest.raises(
-            ValueError, match="必須フィールドが不足しています: github_token"
-        ):
+        with pytest.raises(ValueError, match="必須フィールドが不足しています: github_token"):
             setup_repository_environment()
 
     @patch("setup_repo.setup.GitHubAPI")
@@ -389,9 +379,7 @@ class TestEdgeCases:
         mock_load_config.return_value = config
 
         # Act & Assert
-        with pytest.raises(
-            ValueError, match="必須フィールドが不足しています: github_token"
-        ):
+        with pytest.raises(ValueError, match="必須フィールドが不足しています: github_token"):
             setup_repository_environment()
 
     @patch("setup_repo.setup.GitHubAPI")
@@ -480,9 +468,7 @@ class TestSetupRepositoryEnvironmentAdvanced:
         mock_platform_detector_class.return_value = mock_platform_detector
 
         # GitHub API初期化時にエラー
-        mock_github_api_class.side_effect = Exception(
-            "GitHub API initialization failed"
-        )
+        mock_github_api_class.side_effect = Exception("GitHub API initialization failed")
 
         # Act & Assert
         with pytest.raises(Exception, match="GitHub API initialization failed"):
@@ -551,9 +537,7 @@ class TestSetupRepositoryEnvironmentAdvanced:
             setup_repository_environment(config_path="/invalid/config.json")
 
     @patch("builtins.open")
-    def test_setup_repository_environment_custom_config_file_read_error(
-        self, mock_open
-    ):
+    def test_setup_repository_environment_custom_config_file_read_error(self, mock_open):
         """カスタム設定ファイル読み込みエラーのテスト"""
         # Arrange
         mock_open.side_effect = OSError("Permission denied")
@@ -577,9 +561,7 @@ class TestSetupRepositoryEnvironmentAdvanced:
         mock_load_config.return_value = config
 
         # Act & Assert
-        with pytest.raises(
-            ValueError, match="必須フィールドが不足しています: github_token"
-        ):
+        with pytest.raises(ValueError, match="必須フィールドが不足しています: github_token"):
             setup_repository_environment()
 
     @patch("setup_repo.setup.GitHubAPI")
@@ -659,9 +641,7 @@ class TestSetupFunctionsEdgeCases:
     @patch("setup_repo.setup.SetupWizard")
     @patch("pathlib.Path.exists")
     @patch("builtins.print")
-    def test_create_personal_config_wizard_exception(
-        self, mock_print, mock_exists, mock_wizard_class
-    ):
+    def test_create_personal_config_wizard_exception(self, mock_print, mock_exists, mock_wizard_class):
         """create_personal_configでSetupWizardが例外を発生させた場合のテスト"""
         # Arrange
         mock_exists.return_value = False
@@ -687,9 +667,7 @@ class TestSetupFunctionsEdgeCases:
 
     @patch("setup_repo.setup.SetupWizard")
     @patch("pathlib.Path.exists")
-    def test_create_personal_config_path_operations(
-        self, mock_exists, mock_wizard_class
-    ):
+    def test_create_personal_config_path_operations(self, mock_exists, mock_wizard_class):
         """create_personal_configのパス操作テスト"""
         # Arrange
         mock_exists.return_value = False

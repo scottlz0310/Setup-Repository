@@ -63,9 +63,7 @@ class TrendAnalysis:
 class QualityTrendManager:
     """品質トレンド管理クラス"""
 
-    def __init__(
-        self, trend_file: Optional[Path] = None, logger: Optional[QualityLogger] = None
-    ) -> None:
+    def __init__(self, trend_file: Optional[Path] = None, logger: Optional[QualityLogger] = None) -> None:
         self.trend_file = trend_file or Path("quality-trends/trend-data.json")
         self.logger = logger or get_quality_logger("setup_repo.quality_trends")
 
@@ -138,9 +136,7 @@ class QualityTrendManager:
                 best_quality_score=0.0,
                 worst_quality_score=0.0,
                 recent_issues=[],
-                recommendations=[
-                    "データが不足しています。品質メトリクスの収集を開始してください。"
-                ],
+                recommendations=["データが不足しています。品質メトリクスの収集を開始してください。"],
             )
 
         # 指定期間内のデータを抽出
@@ -148,8 +144,7 @@ class QualityTrendManager:
         recent_points = [
             point
             for point in data_points
-            if datetime.fromisoformat(point.timestamp.replace("Z", "+00:00"))
-            >= cutoff_date
+            if datetime.fromisoformat(point.timestamp.replace("Z", "+00:00")) >= cutoff_date
         ]
 
         if not recent_points:
@@ -172,9 +167,7 @@ class QualityTrendManager:
         recent_issues = self._identify_recent_issues(recent_points)
 
         # 推奨事項を生成
-        recommendations = self._generate_recommendations(
-            recent_points, avg_quality, avg_coverage
-        )
+        recommendations = self._generate_recommendations(recent_points, avg_quality, avg_coverage)
 
         return TrendAnalysis(
             period_days=days,
@@ -234,9 +227,7 @@ class QualityTrendManager:
             issues.append(f"MyPyエラーが{latest.mypy_errors}件あります")
 
         if latest.security_vulnerabilities > 0:
-            issues.append(
-                f"セキュリティ脆弱性が{latest.security_vulnerabilities}件あります"
-            )
+            issues.append(f"セキュリティ脆弱性が{latest.security_vulnerabilities}件あります")
 
         if latest.test_failed > 0:
             issues.append(f"テストが{latest.test_failed}件失敗しています")
@@ -262,9 +253,7 @@ class QualityTrendManager:
 
         # カバレッジ関連
         if avg_coverage < 80:
-            recommendations.append(
-                "テストカバレッジを向上させるため、新しいテストケースの追加を検討してください"
-            )
+            recommendations.append("テストカバレッジを向上させるため、新しいテストケースの追加を検討してください")
 
         # セキュリティ関連
         if latest.security_vulnerabilities > 0:
@@ -275,15 +264,11 @@ class QualityTrendManager:
         if len(quality_scores) >= 3:
             trend = self._analyze_trend_direction(quality_scores)
             if trend == "declining":
-                recommendations.append(
-                    "品質スコアが低下傾向にあります。コードレビューとテストの強化を検討してください"
-                )
+                recommendations.append("品質スコアが低下傾向にあります。コードレビューとテストの強化を検討してください")
 
         # 一般的な推奨事項
         if not recommendations:
-            recommendations.append(
-                "品質基準を維持できています。継続的な改善を心がけてください"
-            )
+            recommendations.append("品質基準を維持できています。継続的な改善を心がけてください")
 
         return recommendations
 
@@ -304,14 +289,10 @@ class QualityTrendManager:
         self.logger.info(f"HTMLレポートを生成しました: {output_file}")
         return output_file
 
-    def _generate_html_content(
-        self, data_points: list[TrendDataPoint], analysis: TrendAnalysis
-    ) -> str:
+    def _generate_html_content(self, data_points: list[TrendDataPoint], analysis: TrendAnalysis) -> str:
         """HTML内容を生成"""
         # データをJavaScript用に変換
-        chart_data = json.dumps(
-            [asdict(point) for point in data_points], ensure_ascii=False
-        )
+        chart_data = json.dumps([asdict(point) for point in data_points], ensure_ascii=False)
 
         return f"""<!DOCTYPE html>
 <html lang="ja">
@@ -451,10 +432,7 @@ class QualityTrendManager:
         <div class="issues-section">
             <h3>🚨 最近の問題</h3>
             {
-                "".join(
-                    f'<div class="issue-item">{issue}</div>'
-                    for issue in analysis.recent_issues
-                )
+                "".join(f'<div class="issue-item">{issue}</div>' for issue in analysis.recent_issues)
                 if analysis.recent_issues
                 else "<p>問題は検出されていません。</p>"
             }
@@ -466,12 +444,7 @@ class QualityTrendManager:
 
         <div class="recommendations-section">
             <h3>💡 推奨事項</h3>
-            {
-            "".join(
-                f'<div class="recommendation-item">{rec}</div>'
-                for rec in analysis.recommendations
-            )
-        }
+            {"".join(f'<div class="recommendation-item">{rec}</div>' for rec in analysis.recommendations)}
         </div>
     </div>
 

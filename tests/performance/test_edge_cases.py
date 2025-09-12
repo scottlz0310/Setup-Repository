@@ -152,9 +152,7 @@ class TestEmptyAndNullValues:
             result = sync_repositories(config, dry_run=True)
 
             # 空白文字のみの場合は失敗することを期待
-            assert not result.success, (
-                f"空白文字 '{repr(whitespace)}' で成功すべきではありません"
-            )
+            assert not result.success, f"空白文字 '{repr(whitespace)}' で成功すべきではありません"
             assert result.errors
 
 
@@ -185,9 +183,7 @@ class TestSpecialCharacters:
 
             with (
                 patch("setup_repo.sync.get_repositories", return_value=repos),
-                patch(
-                    "setup_repo.sync.sync_repository_with_retries", return_value=True
-                ),
+                patch("setup_repo.sync.sync_repository_with_retries", return_value=True),
             ):
                 result = sync_repositories(edge_case_config, dry_run=True)
 
@@ -232,9 +228,7 @@ class TestSpecialCharacters:
 
             with (
                 patch("setup_repo.sync.get_repositories", return_value=repos),
-                patch(
-                    "setup_repo.sync.sync_repository_with_retries", return_value=True
-                ),
+                patch("setup_repo.sync.sync_repository_with_retries", return_value=True),
             ):
                 result = sync_repositories(edge_case_config, dry_run=True)
 
@@ -274,9 +268,7 @@ class TestSpecialCharacters:
 
             with (
                 patch("setup_repo.sync.get_repositories", return_value=repos),
-                patch(
-                    "setup_repo.sync.sync_repository_with_retries", return_value=True
-                ),
+                patch("setup_repo.sync.sync_repository_with_retries", return_value=True),
             ):
                 result = sync_repositories(edge_case_config, dry_run=True)
 
@@ -429,9 +421,7 @@ class TestBoundaryValues:
 
             with (
                 patch("setup_repo.sync.get_repositories", return_value=repos),
-                patch(
-                    "setup_repo.sync.sync_repository_with_retries", return_value=True
-                ),
+                patch("setup_repo.sync.sync_repository_with_retries", return_value=True),
             ):
                 result = sync_repositories(test_config, dry_run=True)
 
@@ -479,12 +469,8 @@ class TestMalformedData:
 
         for malformed_repo in malformed_repos:
             with (
-                patch(
-                    "setup_repo.sync.get_repositories", return_value=[malformed_repo]
-                ),
-                patch(
-                    "setup_repo.sync.sync_repository_with_retries", return_value=True
-                ),
+                patch("setup_repo.sync.get_repositories", return_value=[malformed_repo]),
+                patch("setup_repo.sync.sync_repository_with_retries", return_value=True),
             ):
                 result = sync_repositories(edge_case_config, dry_run=True)
 

@@ -70,9 +70,7 @@ class TestQualityLoggerCompatibility:
 
         for func_name in error_functions:
             self.compat.__getattr__(func_name)
-            mock_deprecated_import.assert_called_with(
-                "quality_logger", "quality_errors", func_name
-            )
+            mock_deprecated_import.assert_called_with("quality_logger", "quality_errors", func_name)
 
     @patch("setup_repo.compatibility._deprecated_import")
     def test_formatter_function_routing(self, mock_deprecated_import):
@@ -90,9 +88,7 @@ class TestQualityLoggerCompatibility:
 
         for func_name in formatter_functions:
             self.compat.__getattr__(func_name)
-            mock_deprecated_import.assert_called_with(
-                "quality_logger", "quality_formatters", func_name
-            )
+            mock_deprecated_import.assert_called_with("quality_logger", "quality_formatters", func_name)
 
     @patch("setup_repo.compatibility._deprecated_import")
     def test_default_function_routing(self, mock_deprecated_import):
@@ -101,9 +97,7 @@ class TestQualityLoggerCompatibility:
 
         # 基本ログ機能をテスト
         self.compat.__getattr__("setup_quality_logging")
-        mock_deprecated_import.assert_called_with(
-            "quality_logger", "quality_logger", "setup_quality_logging"
-        )
+        mock_deprecated_import.assert_called_with("quality_logger", "quality_logger", "setup_quality_logging")
 
 
 class TestCIErrorHandlerCompatibility:
@@ -129,9 +123,7 @@ class TestCIErrorHandlerCompatibility:
 
         for func_name in environment_functions:
             self.compat.__getattr__(func_name)
-            mock_deprecated_import.assert_called_with(
-                "ci_error_handler", "ci_environment", func_name
-            )
+            mock_deprecated_import.assert_called_with("ci_error_handler", "ci_environment", func_name)
 
     @patch("setup_repo.compatibility._deprecated_import")
     def test_error_handler_function_routing(self, mock_deprecated_import):
@@ -140,9 +132,7 @@ class TestCIErrorHandlerCompatibility:
 
         # エラーハンドリング関数をテスト
         self.compat.__getattr__("handle_ci_error")
-        mock_deprecated_import.assert_called_with(
-            "ci_error_handler", "ci_error_handler", "handle_ci_error"
-        )
+        mock_deprecated_import.assert_called_with("ci_error_handler", "ci_error_handler", "handle_ci_error")
 
 
 class TestLoggingConfigCompatibility:
@@ -168,9 +158,7 @@ class TestLoggingConfigCompatibility:
 
         for func_name in handler_functions:
             self.compat.__getattr__(func_name)
-            mock_deprecated_import.assert_called_with(
-                "logging_config", "logging_handlers", func_name
-            )
+            mock_deprecated_import.assert_called_with("logging_config", "logging_handlers", func_name)
 
     @patch("setup_repo.compatibility._deprecated_import")
     def test_config_function_routing(self, mock_deprecated_import):
@@ -179,9 +167,7 @@ class TestLoggingConfigCompatibility:
 
         # 基本設定関数をテスト
         self.compat.__getattr__("setup_logging")
-        mock_deprecated_import.assert_called_with(
-            "logging_config", "logging_config", "setup_logging"
-        )
+        mock_deprecated_import.assert_called_with("logging_config", "logging_config", "setup_logging")
 
 
 class TestQualityMetricsCompatibility:
@@ -207,9 +193,7 @@ class TestQualityMetricsCompatibility:
 
         for func_name in collector_functions:
             self.compat.__getattr__(func_name)
-            mock_deprecated_import.assert_called_with(
-                "quality_metrics", "quality_collectors", func_name
-            )
+            mock_deprecated_import.assert_called_with("quality_metrics", "quality_collectors", func_name)
 
     @patch("setup_repo.compatibility._deprecated_import")
     def test_metrics_function_routing(self, mock_deprecated_import):
@@ -218,9 +202,7 @@ class TestQualityMetricsCompatibility:
 
         # メトリクス計算関数をテスト
         self.compat.__getattr__("calculate_quality_score")
-        mock_deprecated_import.assert_called_with(
-            "quality_metrics", "quality_metrics", "calculate_quality_score"
-        )
+        mock_deprecated_import.assert_called_with("quality_metrics", "quality_metrics", "calculate_quality_score")
 
 
 class TestInteractiveSetupCompatibility:
@@ -245,9 +227,7 @@ class TestInteractiveSetupCompatibility:
 
         for func_name in validator_functions:
             self.compat.__getattr__(func_name)
-            mock_deprecated_import.assert_called_with(
-                "interactive_setup", "setup_validators", func_name
-            )
+            mock_deprecated_import.assert_called_with("interactive_setup", "setup_validators", func_name)
 
     @patch("setup_repo.compatibility._deprecated_import")
     def test_setup_function_routing(self, mock_deprecated_import):
@@ -256,9 +236,7 @@ class TestInteractiveSetupCompatibility:
 
         # メインウィザード関数をテスト
         self.compat.__getattr__("run_interactive_setup")
-        mock_deprecated_import.assert_called_with(
-            "interactive_setup", "interactive_setup", "run_interactive_setup"
-        )
+        mock_deprecated_import.assert_called_with("interactive_setup", "interactive_setup", "run_interactive_setup")
 
 
 class TestCompatibilityAliases:
@@ -335,10 +313,7 @@ class TestDeprecatedImportCheck:
                 # 警告が発行されたことを確認
                 assert len(w) == 1
                 assert issubclass(w[0].category, DeprecationWarning)
-                assert (
-                    "非推奨モジュール quality_logger_legacy が使用されています"
-                    in str(w[0].message)
-                )
+                assert "非推奨モジュール quality_logger_legacy が使用されています" in str(w[0].message)
 
         finally:
             # sys.modulesを元の状態に戻す
@@ -354,9 +329,7 @@ class TestDeprecatedImportCheck:
             check_deprecated_imports()
 
             # 警告が発行されないことを確認
-            deprecated_warnings = [
-                warning for warning in w if "非推奨モジュール" in str(warning.message)
-            ]
+            deprecated_warnings = [warning for warning in w if "非推奨モジュール" in str(warning.message)]
             assert not deprecated_warnings
 
 
@@ -409,6 +382,4 @@ class TestCompatibilityIntegration:
 
         # エラー処理関数のインポートをシミュレート
         legacy_module.__getattr__("QualityError")
-        mock_deprecated_import.assert_called_with(
-            "quality_logger", "quality_errors", "QualityError"
-        )
+        mock_deprecated_import.assert_called_with("quality_logger", "quality_errors", "QualityError")

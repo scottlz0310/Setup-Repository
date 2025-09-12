@@ -43,9 +43,7 @@ class TestIntegrationSimplified:
     def test_sync_result_creation(self) -> None:
         """SyncResult作成テスト"""
         # 成功ケース
-        success_result = SyncResult(
-            success=True, synced_repos=["repo1", "repo2"], errors=[]
-        )
+        success_result = SyncResult(success=True, synced_repos=["repo1", "repo2"], errors=[])
 
         assert success_result.success is True
         assert len(success_result.synced_repos) == 2
@@ -53,9 +51,7 @@ class TestIntegrationSimplified:
         assert success_result.timestamp is not None
 
         # 失敗ケース
-        error_result = SyncResult(
-            success=False, synced_repos=[], errors=[Exception("テストエラー")]
-        )
+        error_result = SyncResult(success=False, synced_repos=[], errors=[Exception("テストエラー")])
 
         assert error_result.success is False
         assert not error_result.synced_repos
@@ -195,9 +191,7 @@ class TestIntegrationSimplified:
         test_username = "test_env_user"
 
         # 環境変数の設定
-        with patch.dict(
-            os.environ, {"GITHUB_TOKEN": test_token, "GITHUB_USERNAME": test_username}
-        ):
+        with patch.dict(os.environ, {"GITHUB_TOKEN": test_token, "GITHUB_USERNAME": test_username}):
             # 環境変数から値を取得
             token_from_env = os.getenv("GITHUB_TOKEN")
             username_from_env = os.getenv("GITHUB_USERNAME")

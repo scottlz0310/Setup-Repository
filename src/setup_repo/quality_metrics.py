@@ -250,9 +250,18 @@ class QualityMetricsCollector:
         has_vulnerabilities = vulnerability_count > 0
         no_tools_available = not any(tools_available.values())
 
-        # ツールが利用できない場合は警告として扱い、失敗とはしない
-        # CI環境では依存関係のインストールに失敗することがあるため、ツールが利用できない場合も成功とする
-        success = not has_critical_errors and (not has_vulnerabilities or no_tools_available)
+        # CI環境でのセキュリティツール利用可能性チェック
+        import os
+
+        is_ci = os.getenv("CI", "").lower() in ("true", "1")
+
+        # CI環境では依存関係のインストールに失敗することがあるため、より寛容な判定を行う
+        if is_ci and no_tools_available:
+            # CI環境でツールが利用できない場合は成功とする（警告付き）
+            success = not has_critical_errors
+        else:
+            # 通常環境では脆弱性がない場合のみ成功
+            success = not has_critical_errors and not has_vulnerabilities
 
         metrics_result = {
             "success": success,
@@ -262,16 +271,21 @@ class QualityMetricsCollector:
             "warnings": warnings,
             "tools_available": tools_available,
             "no_tools_available": no_tools_available,
+            "ci_environment": is_ci,
         }
 
         if success:
             if no_tools_available:
+                status_msg = "スキップ（セキュリティツールが利用できません）"
+                if is_ci:
+                    status_msg += " - CI環境では依存関係のインストールに失敗することがあります"
                 self.logger.log_quality_check_success(
                     "Security",
                     {
                         "vulnerability_count": vulnerability_count,
-                        "status": "スキップ（セキュリティツールが利用できません）",
+                        "status": status_msg,
                         "available_tools": [k for k, v in tools_available.items() if v],
+                        "ci_environment": is_ci,
                     },
                 )
             else:
@@ -280,18 +294,29 @@ class QualityMetricsCollector:
                     {
                         "vulnerability_count": vulnerability_count,
                         "available_tools": [k for k, v in tools_available.items() if v],
+                        "ci_environment": is_ci,
                     },
                 )
         else:
-            error = SecurityScanError(
-                f"{vulnerability_count}件のセキュリティ脆弱性が見つかりました",
-                vulnerabilities,
-            )
+            if has_vulnerabilities:
+                error = SecurityScanError(
+                    f"{vulnerability_count}件のセキュリティ脆弱性が見つかりました",
+                    vulnerabilities,
+                )
+            else:
+                error = SecurityScanError(
+                    "セキュリティスキャンでエラーが発生しました",
+                    [{"error": err} for err in errors],
+                )
             self.logger.log_quality_check_failure("Security", error)
 
         # 警告がある場合はログ出力
         for warning in warnings:
-            self.logger.warning(warning)
+            if is_ci:
+                # CI環境では警告レベルを下げる
+                self.logger.info(f"セキュリティスキャン警告: {warning}")
+            else:
+                self.logger.warning(warning)
 
         return metrics_result
 
