@@ -45,8 +45,10 @@ def check_unpushed_changes(repo_path: Path) -> tuple[bool, list[str]]:
         if result.stdout.strip():
             issues.append("stashがあります")
 
-    except subprocess.CalledProcessError:
-        pass
+    except subprocess.CalledProcessError as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.debug(f"Gitコマンド実行エラー: {e}")
 
     return len(issues) > 0, issues
 

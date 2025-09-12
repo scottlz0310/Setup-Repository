@@ -217,6 +217,7 @@ dev = [
     "psutil>=5.9.0", # パフォーマンス監視用
     "black>=25.1.0",
     "types-psutil>=7.0.0.20250822",
+    "types-requests>=2.32.4.20250809",
 ]
 security = [
     "safety>=3.0.0",

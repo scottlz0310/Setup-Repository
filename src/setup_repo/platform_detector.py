@@ -21,112 +21,122 @@ class PlatformInfo:
 def detect_platform() -> PlatformInfo:
     """現在のプラットフォームを詳細検出"""
     system = platform.system().lower()
-
-    # CI環境での追加チェック
     is_ci = os.environ.get("CI", "").lower() == "true"
     github_actions = os.environ.get("GITHUB_ACTIONS", "").lower() == "true"
     runner_os = os.environ.get("RUNNER_OS", "").lower()
 
-    # GitHub Actionsでの信頼性向上のため、RUNNER_OSも考慮
     if system == "windows" or os.name == "nt" or runner_os == "windows":
-        # Windows環境の詳細検出
-        shell = "powershell"
-        if github_actions:
-            # GitHub ActionsのWindows環境では特別な設定
-            shell = "powershell"
-            # Windows環境でのPATH設定確認
-            _log_windows_path_info()
-
-        return PlatformInfo(
-            name="windows",
-            display_name="Windows" + (" (GitHub Actions)" if github_actions else ""),
-            package_managers=["scoop", "winget", "chocolatey"],
-            shell=shell,
-            python_cmd="python",
-        )
+        return _detect_windows_platform(github_actions)
     elif system == "linux":
-        # Linux環境でWSLをチェック
-        is_wsl = False
-
-        # 方法1: platform.release()でMicrosoftをチェック
-        if "microsoft" in platform.release().lower():
-            is_wsl = True
-
-        # 方法2: /proc/versionファイルでWSLをチェック
-        if not is_wsl and os.path.exists("/proc/version"):
-            try:
-                with open("/proc/version", encoding="utf-8") as f:
-                    version_info = f.read().lower()
-                    if "microsoft" in version_info or "wsl" in version_info:
-                        is_wsl = True
-            except (FileNotFoundError, PermissionError, OSError):
-                pass
-
-        # 方法3: /proc/sys/kernel/osreleaseでチェック
-        if not is_wsl and os.path.exists("/proc/sys/kernel/osrelease"):
-            try:
-                with open("/proc/sys/kernel/osrelease", encoding="utf-8") as f:
-                    osrelease_info = f.read().lower()
-                    if "microsoft" in osrelease_info or "wsl" in osrelease_info:
-                        is_wsl = True
-            except (FileNotFoundError, PermissionError, OSError):
-                pass
-
-        # CI環境ではWSLをLinuxとして扱う
-        if is_wsl and is_ci:
-            return PlatformInfo(
-                name="linux",
-                display_name="Linux (WSL in CI)" + (" (GitHub Actions)" if github_actions else ""),
-                package_managers=["apt", "snap", "curl"],
-                shell="bash",
-                python_cmd="python3",
-            )
-        elif is_wsl:
-            return PlatformInfo(
-                name="wsl",
-                display_name="WSL (Windows Subsystem for Linux)",
-                package_managers=["apt", "snap", "curl"],
-                shell="bash",
-                python_cmd="python3",
-            )
-
-        # 通常のLinux環境として処理
-        if github_actions:
-            # GitHub ActionsのLinux環境での特別な設定
-            _log_linux_path_info()
-
-        return PlatformInfo(
-            name="linux",
-            display_name="Linux" + (" (GitHub Actions)" if github_actions else ""),
-            package_managers=["apt", "snap", "curl"],
-            shell="bash",
-            python_cmd="python3",
-        )
+        return _detect_linux_platform(is_ci, github_actions)
     elif system == "darwin" or runner_os == "macos":
-        if github_actions:
-            # GitHub ActionsのmacOS環境での特別な設定
-            _log_macos_path_info()
-
-        return PlatformInfo(
-            name="macos",
-            display_name="macOS" + (" (GitHub Actions)" if github_actions else ""),
-            package_managers=["brew", "curl"],
-            shell="zsh",
-            python_cmd="python3",
-        )
+        return _detect_macos_platform(github_actions)
     else:
-        # Linux環境（デフォルト）
-        if github_actions:
-            # GitHub ActionsのLinux環境での特別な設定
-            _log_linux_path_info()
+        return _detect_default_linux_platform(github_actions)
 
+
+def _detect_windows_platform(github_actions: bool) -> PlatformInfo:
+    """現在のプラットフォームを詳細検出"""
+    if github_actions:
+        _log_windows_path_info()
+
+    return PlatformInfo(
+        name="windows",
+        display_name="Windows" + (" (GitHub Actions)" if github_actions else ""),
+        package_managers=["scoop", "winget", "chocolatey"],
+        shell="powershell",
+        python_cmd="python",
+    )
+
+
+def _detect_linux_platform(is_ci: bool, github_actions: bool) -> PlatformInfo:
+    """現在のプラットフォームを詳細検出"""
+    is_wsl = _check_wsl_environment()
+
+    if is_wsl and is_ci:
         return PlatformInfo(
             name="linux",
-            display_name="Linux" + (" (GitHub Actions)" if github_actions else ""),
+            display_name="Linux (WSL in CI)" + (" (GitHub Actions)" if github_actions else ""),
             package_managers=["apt", "snap", "curl"],
             shell="bash",
             python_cmd="python3",
         )
+    elif is_wsl:
+        return PlatformInfo(
+            name="wsl",
+            display_name="WSL (Windows Subsystem for Linux)",
+            package_managers=["apt", "snap", "curl"],
+            shell="bash",
+            python_cmd="python3",
+        )
+
+    if github_actions:
+        _log_linux_path_info()
+
+    return PlatformInfo(
+        name="linux",
+        display_name="Linux" + (" (GitHub Actions)" if github_actions else ""),
+        package_managers=["apt", "snap", "curl"],
+        shell="bash",
+        python_cmd="python3",
+    )
+
+
+def _detect_macos_platform(github_actions: bool) -> PlatformInfo:
+    """現在のプラットフォームを詳細検出"""
+    if github_actions:
+        _log_macos_path_info()
+
+    return PlatformInfo(
+        name="macos",
+        display_name="macOS" + (" (GitHub Actions)" if github_actions else ""),
+        package_managers=["brew", "curl"],
+        shell="zsh",
+        python_cmd="python3",
+    )
+
+
+def _detect_default_linux_platform(github_actions: bool) -> PlatformInfo:
+    """現在のプラットフォームを詳細検出"""
+    if github_actions:
+        _log_linux_path_info()
+
+    return PlatformInfo(
+        name="linux",
+        display_name="Linux" + (" (GitHub Actions)" if github_actions else ""),
+        package_managers=["apt", "snap", "curl"],
+        shell="bash",
+        python_cmd="python3",
+    )
+
+
+def _check_wsl_environment() -> bool:
+    """現在のプラットフォームを詳細検出"""
+    # 方法1: platform.release()でMicrosoftをチェック
+    if "microsoft" in platform.release().lower():
+        return True
+
+    # 方法2: /proc/versionファイルでWSLをチェック
+    if os.path.exists("/proc/version"):
+        try:
+            with open("/proc/version", encoding="utf-8") as f:
+                version_info = f.read().lower()
+                if "microsoft" in version_info or "wsl" in version_info:
+                    return True
+        except (FileNotFoundError, PermissionError, OSError):
+            pass
+
+    # 方法3: /proc/sys/kernel/osreleaseでチェック
+    if os.path.exists("/proc/sys/kernel/osrelease"):
+        try:
+            with open("/proc/sys/kernel/osrelease", encoding="utf-8") as f:
+                osrelease_info = f.read().lower()
+                if "microsoft" in osrelease_info or "wsl" in osrelease_info:
+                    return True
+        except (FileNotFoundError, PermissionError, OSError):
+            pass
+
+    return False
 
 
 def check_package_manager(manager: str) -> bool:

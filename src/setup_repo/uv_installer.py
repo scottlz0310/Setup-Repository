@@ -19,8 +19,8 @@ def ensure_uv() -> bool:
             subprocess.run(["pipx", "install", "uv"], check=True, capture_output=True)
             print("✅ pipx で uv をインストールしました")
             return True
-        except subprocess.CalledProcessError:
-            print("⚠️  pipx インストール失敗、pip を試します")
+        except subprocess.CalledProcessError as e:
+            print(f"⚠️  pipx インストール失敗: {e}, pip を試します")
 
     # pip --userを試す
     python_cmd = shutil.which("python3") or shutil.which("python")
@@ -34,8 +34,8 @@ def ensure_uv() -> bool:
             print("✅ pip --user で uv をインストールしました")
             print("   ~/.local/bin を PATH に追加してください")
             return True
-        except subprocess.CalledProcessError:
-            pass
+        except subprocess.CalledProcessError as e:
+            print(f"⚠️  pip --user インストール失敗: {e}")
 
     print("❌ uv の自動インストールに失敗しました")
     return False

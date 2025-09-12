@@ -238,8 +238,9 @@ def collect_pytest_metrics(
                         if test.get("outcome") == "failed":
                             failed_tests.append(test.get("nodeid", "unknown"))
 
-            except (json.JSONDecodeError, KeyError):
-                pass
+            except (json.JSONDecodeError, KeyError) as e:
+                logger.warning(f"カバレッジデータ解析エラー: {e}")
+                coverage_percent = 0.0
 
         # CI環境ではカバレッジ闾値を緩和
         effective_threshold = coverage_threshold

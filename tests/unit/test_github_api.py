@@ -8,6 +8,7 @@ import urllib.request
 from unittest.mock import Mock, patch
 
 import pytest
+import requests
 
 from setup_repo.github_api import (
     GitHubAPI,
@@ -40,13 +41,14 @@ class TestGitHubAPI:
         with pytest.raises(GitHubAPIError, match="GitHubユーザー名が必要です"):
             GitHubAPI("test_token", "")
 
-    @patch("urllib.request.urlopen")
-    def test_get_user_info_success(self, mock_urlopen):
+    @patch("requests.get")
+    def test_get_user_info_success(self, mock_get):
         """ユーザー情報取得成功のテスト"""
         # Arrange
         mock_response = Mock()
-        mock_response.read.return_value = json.dumps({"login": "test_user", "id": 123}).encode()
-        mock_urlopen.return_value.__enter__.return_value = mock_response
+        mock_response.json.return_value = {"login": "test_user", "id": 123}
+        mock_response.raise_for_status.return_value = None
+        mock_get.return_value = mock_response
 
         api = GitHubAPI("test_token", "test_user")
 
@@ -57,11 +59,14 @@ class TestGitHubAPI:
         assert result["login"] == "test_user"
         assert result["id"] == 123
 
-    @patch("urllib.request.urlopen")
-    def test_get_user_info_401_error(self, mock_urlopen):
+    @patch("requests.get")
+    def test_get_user_info_401_error(self, mock_get):
         """認証エラー(401)のテスト"""
         # Arrange
-        mock_urlopen.side_effect = urllib.error.HTTPError(url="", code=401, msg="Unauthorized", hdrs=None, fp=None)
+        mock_response = Mock()
+        mock_response.status_code = 401
+        mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError(response=mock_response)
+        mock_get.return_value = mock_response
 
         api = GitHubAPI("invalid_token", "test_user")
 
