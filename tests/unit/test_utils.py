@@ -867,13 +867,17 @@ class TestDetectPlatform:
             detector = PlatformDetector()
             detected_platform = detector.detect_platform()
 
-            # WSL環境ではlinuxとwslの相互検出を許容
-            if platform in ["linux", "wsl"]:
-                assert detected_platform in ["linux", "wsl"]
-            elif detected_platform != platform:
+            # プラットフォームが一致しない場合はスキップ（WSL/Linuxの相互検出は許容）
+            if detected_platform != platform and not (
+                platform in ["linux", "wsl"] and detected_platform in ["linux", "wsl"]
+            ):
                 pytest.skip(
                     f"{platform}プラットフォームのテストをスキップ（実際のプラットフォーム: {detected_platform}）"
                 )
+
+            # テスト実行（WSL/Linuxの相互検出を許容）
+            if platform in ["linux", "wsl"]:
+                assert detected_platform in ["linux", "wsl"]
             else:
                 assert detected_platform == platform
         else:
