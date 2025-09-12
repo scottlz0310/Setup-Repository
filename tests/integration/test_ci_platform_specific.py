@@ -229,7 +229,11 @@ class TestCIPlatformSpecific:
         # プラットフォーム情報が正しく設定されていることを確認（CI環境ではWSLはlinux）
         platform_info = diagnosis["platform_info"]
         assert platform_info["name"] in ["windows", "linux", "macos"]
-        assert "GitHub Actions" in platform_info["display_name"]
+        # GitHub Actions環境でない場合は「CI」が含まれることを確認
+        if os.environ.get("GITHUB_ACTIONS", "").lower() == "true":
+            assert "GitHub Actions" in platform_info["display_name"]
+        else:
+            assert "CI" in platform_info["display_name"]
 
         # CI環境変数が含まれることを確認
         env_vars = diagnosis["environment_variables"]
