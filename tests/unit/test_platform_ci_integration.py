@@ -73,9 +73,7 @@ class TestCIPlatformDetection:
                 "src.setup_repo.platform_detector.platform.release",
                 return_value="21.0.0",
             ),
-            patch(
-                "src.setup_repo.platform_detector.os.path.exists", return_value=False
-            ),
+            patch("src.setup_repo.platform_detector.os.path.exists", return_value=False),
             patch("src.setup_repo.platform_detector.os.name", "posix"),
         ):
             mock_env.get.side_effect = lambda key, default="": {
@@ -104,10 +102,7 @@ class TestCIPlatformDetection:
 
             assert platform_info.name in ["linux", "wsl"]  # WSL環境も許可
             # CI環境の表示名をチェック（GitHub ActionsまたはCI）
-            assert (
-                "GitHub Actions" in platform_info.display_name
-                or "(CI)" in platform_info.display_name
-            )
+            assert "GitHub Actions" in platform_info.display_name or "(CI)" in platform_info.display_name
             assert platform_info.shell == "bash"
             assert platform_info.python_cmd == "python3"
 
@@ -126,19 +121,14 @@ class TestCIPlatformDetection:
 
         assert platform_info.name == "macos"
         # CI環境の表示名をチェック（GitHub ActionsまたはCI）
-        assert (
-            "GitHub Actions" in platform_info.display_name
-            or "(CI)" in platform_info.display_name
-        )
+        assert "GitHub Actions" in platform_info.display_name or "(CI)" in platform_info.display_name
         assert platform_info.shell == "zsh"
         assert platform_info.python_cmd == "python3"
 
     def test_runner_os_platform_mismatch_detection(self):
         """RUNNER_OSと検出プラットフォームの不一致検出テスト"""
         # このテストは現在の実装では期待通りに動作しないため、スキップする
-        pytest.skip(
-            "RUNNER_OSとplatform.system()の不一致検出は現在の実装では正しく動作しない"
-        )
+        pytest.skip("RUNNER_OSとplatform.system()の不一致検出は現在の実装では正しく動作しない")
 
 
 class TestCIModuleAvailability:
@@ -342,9 +332,7 @@ class TestCIDiagnostics:
                 "src.setup_repo.platform_detector.check_package_manager",
                 return_value=False,
             ),
-            patch(
-                "src.setup_repo.platform_detector._log_package_manager_check_failure"
-            ) as mock_log,
+            patch("src.setup_repo.platform_detector._log_package_manager_check_failure") as mock_log,
         ):
             diagnosis = diagnose_platform_issues()
 
@@ -353,12 +341,9 @@ class TestCIDiagnostics:
 
             # パッケージマネージャーまたはuvに関する推奨事項が含まれることを確認
             relevant_recommendation = any(
-                "パッケージマネージャー" in rec or "uv" in rec
-                for rec in diagnosis["recommendations"]
+                "パッケージマネージャー" in rec or "uv" in rec for rec in diagnosis["recommendations"]
             )
-            assert relevant_recommendation, (
-                f"関連する推奨事項が見つかりません: {diagnosis['recommendations']}"
-            )
+            assert relevant_recommendation, f"関連する推奨事項が見つかりません: {diagnosis['recommendations']}"
 
             # ログ関数が呼び出されていないことを確認（再帰回避）
             mock_log.assert_not_called()

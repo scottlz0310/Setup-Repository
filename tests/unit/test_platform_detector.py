@@ -166,9 +166,7 @@ class TestDetectPlatform:
                 "src.setup_repo.platform_detector.os.environ",
                 {"CI": "false", "GITHUB_ACTIONS": "false", "RUNNER_OS": "macos"},
             ),
-            patch(
-                "src.setup_repo.platform_detector.os.path.exists", return_value=False
-            ),
+            patch("src.setup_repo.platform_detector.os.path.exists", return_value=False),
         ):
             mock_system.return_value = "Darwin"
             mock_release.return_value = "21.0.0"  # macOS release
@@ -192,9 +190,7 @@ class TestDetectPlatform:
                 "src.setup_repo.platform_detector.os.environ",
                 {"CI": "false", "GITHUB_ACTIONS": "false", "RUNNER_OS": "linux"},
             ),
-            patch(
-                "src.setup_repo.platform_detector.os.path.exists", return_value=False
-            ),
+            patch("src.setup_repo.platform_detector.os.path.exists", return_value=False),
         ):
             mock_system.return_value = "Linux"
             mock_release.return_value = "5.4.0-generic"  # WSLではない
@@ -219,9 +215,7 @@ class TestDetectPlatform:
                 "src.setup_repo.platform_detector.os.environ",
                 {"CI": "false", "GITHUB_ACTIONS": "false", "RUNNER_OS": ""},
             ),
-            patch(
-                "src.setup_repo.platform_detector.os.path.exists", return_value=False
-            ),
+            patch("src.setup_repo.platform_detector.os.path.exists", return_value=False),
         ):
             mock_system.return_value = "FreeBSD"
             mock_release.return_value = "13.0-RELEASE"
@@ -266,7 +260,7 @@ class TestCheckPackageManager:
         """利用可能なパッケージマネージャーのテスト"""
         with (
             patch("subprocess.run") as mock_run,
-            patch("src.setup_repo.platform_detector._is_ci_environment", return_value=True)
+            patch("src.setup_repo.platform_detector._is_ci_environment", return_value=True),
         ):
             mock_run.return_value.returncode = 0
             mock_run.return_value.stdout = "apt version"
@@ -313,7 +307,7 @@ class TestCheckPackageManager:
         for manager, expected_cmd in managers_to_test.items():
             with (
                 patch("subprocess.run") as mock_run,
-                patch("src.setup_repo.platform_detector._is_ci_environment", return_value=True)
+                patch("src.setup_repo.platform_detector._is_ci_environment", return_value=True),
             ):
                 mock_run.return_value.returncode = 0
                 mock_run.return_value.stdout = f"{expected_cmd} version"
@@ -345,9 +339,7 @@ class TestGetAvailablePackageManagers:
             python_cmd="python3",
         )
 
-        with patch(
-            "src.setup_repo.platform_detector.check_package_manager"
-        ) as mock_check:
+        with patch("src.setup_repo.platform_detector.check_package_manager") as mock_check:
             mock_check.return_value = True
 
             available = get_available_package_managers(platform_info)
@@ -368,9 +360,7 @@ class TestGetAvailablePackageManagers:
         def mock_check_side_effect(manager: str) -> bool:
             return manager in ["apt", "curl"]  # snapは利用不可
 
-        with patch(
-            "src.setup_repo.platform_detector.check_package_manager"
-        ) as mock_check:
+        with patch("src.setup_repo.platform_detector.check_package_manager") as mock_check:
             mock_check.side_effect = mock_check_side_effect
 
             available = get_available_package_managers(platform_info)
@@ -388,9 +378,7 @@ class TestGetAvailablePackageManagers:
             python_cmd="python3",
         )
 
-        with patch(
-            "src.setup_repo.platform_detector.check_package_manager"
-        ) as mock_check:
+        with patch("src.setup_repo.platform_detector.check_package_manager") as mock_check:
             mock_check.return_value = False
 
             available = get_available_package_managers(platform_info)
@@ -407,9 +395,7 @@ class TestGetAvailablePackageManagers:
             python_cmd="python3",
         )
 
-        with patch(
-            "src.setup_repo.platform_detector.check_package_manager"
-        ) as mock_check:
+        with patch("src.setup_repo.platform_detector.check_package_manager") as mock_check:
             available = get_available_package_managers(platform_info)
 
             assert available == []
@@ -564,9 +550,7 @@ class TestPlatformDetectorIntegration:
             commands = get_install_commands(platform_info)
 
             # パッケージマネージャーチェック（モック）
-            with patch(
-                "src.setup_repo.platform_detector.check_package_manager"
-            ) as mock_check:
+            with patch("src.setup_repo.platform_detector.check_package_manager") as mock_check:
                 mock_check.return_value = True
                 available = get_available_package_managers(platform_info)
 
@@ -595,9 +579,7 @@ class TestPlatformDetectorIntegration:
             def mock_check_side_effect(manager: str) -> bool:
                 return manager in ["apt", "curl"]
 
-            with patch(
-                "src.setup_repo.platform_detector.check_package_manager"
-            ) as mock_check:
+            with patch("src.setup_repo.platform_detector.check_package_manager") as mock_check:
                 mock_check.side_effect = mock_check_side_effect
                 available = get_available_package_managers(platform_info)
 
@@ -714,9 +696,7 @@ class TestPlatformDetectorClass:
             # キャッシュをクリア
             detector._platform_info = None
 
-            with patch(
-                "src.setup_repo.platform_detector.get_available_package_managers"
-            ) as mock_get_available:
+            with patch("src.setup_repo.platform_detector.get_available_package_managers") as mock_get_available:
                 mock_get_available.return_value = ["apt", "snap"]
 
                 manager = detector.get_package_manager()
@@ -739,9 +719,7 @@ class TestPlatformDetectorClass:
             # キャッシュをクリア
             detector._platform_info = None
 
-            with patch(
-                "src.setup_repo.platform_detector.get_available_package_managers"
-            ) as mock_get_available:
+            with patch("src.setup_repo.platform_detector.get_available_package_managers") as mock_get_available:
                 mock_get_available.return_value = []
 
                 manager = detector.get_package_manager()
@@ -791,9 +769,7 @@ class TestEdgeCasesAndErrorHandling:
             python_cmd="python3",
         )
 
-        with patch(
-            "src.setup_repo.platform_detector.check_package_manager"
-        ) as mock_check:
+        with patch("src.setup_repo.platform_detector.check_package_manager") as mock_check:
             mock_check.return_value = False  # 例外の代わりにFalseを返す
 
             available = get_available_package_managers(platform_info)
@@ -809,20 +785,14 @@ class TestEdgeCasesAndErrorHandling:
 
         for system_value, expected_platform in test_cases:
             with (
-                patch(
-                    "src.setup_repo.platform_detector.platform.system"
-                ) as mock_system,
-                patch(
-                    "src.setup_repo.platform_detector.platform.release"
-                ) as mock_release,
+                patch("src.setup_repo.platform_detector.platform.system") as mock_system,
+                patch("src.setup_repo.platform_detector.platform.release") as mock_release,
                 patch("src.setup_repo.platform_detector.os.name", "posix"),
                 patch(
                     "src.setup_repo.platform_detector.os.environ",
                     {"CI": "false", "GITHUB_ACTIONS": "false", "RUNNER_OS": ""},
                 ),
-                patch(
-                    "src.setup_repo.platform_detector.os.path.exists", return_value=False
-                ),
+                patch("src.setup_repo.platform_detector.os.path.exists", return_value=False),
             ):
                 mock_system.return_value = system_value
                 mock_release.return_value = "1.0.0"
@@ -830,6 +800,7 @@ class TestEdgeCasesAndErrorHandling:
                 platform_info = detect_platform()
                 # 実際のプラットフォームがmacOSの場合はmacOSが検出される可能性がある
                 import platform as platform_module
+
                 actual_system = platform_module.system()
                 if actual_system == "Darwin":
                     assert platform_info.name in ["linux", "macos"]  # デフォルト値またはmacOS
@@ -847,12 +818,8 @@ class TestEdgeCasesAndErrorHandling:
 
         for release_string in wsl_release_strings:
             with (
-                patch(
-                    "src.setup_repo.platform_detector.platform.system"
-                ) as mock_system,
-                patch(
-                    "src.setup_repo.platform_detector.platform.release"
-                ) as mock_release,
+                patch("src.setup_repo.platform_detector.platform.system") as mock_system,
+                patch("src.setup_repo.platform_detector.platform.release") as mock_release,
                 patch("src.setup_repo.platform_detector.os.name", "posix"),
             ):
                 mock_system.return_value = "Linux"
@@ -872,12 +839,8 @@ class TestEdgeCasesAndErrorHandling:
 
         for release_string in non_wsl_release_strings:
             with (
-                patch(
-                    "src.setup_repo.platform_detector.platform.system"
-                ) as mock_system,
-                patch(
-                    "src.setup_repo.platform_detector.platform.release"
-                ) as mock_release,
+                patch("src.setup_repo.platform_detector.platform.system") as mock_system,
+                patch("src.setup_repo.platform_detector.platform.release") as mock_release,
                 patch("src.setup_repo.platform_detector.os.name", "posix"),
             ):
                 mock_system.return_value = "Linux"
