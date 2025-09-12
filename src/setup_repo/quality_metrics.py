@@ -184,7 +184,7 @@ class QualityMetricsCollector:
             )
             tools_available["bandit"] = result.returncode == 0
         except (subprocess.CalledProcessError, FileNotFoundError):
-            pass
+            self.logger.debug("Banditバージョンチェックに失敗しました")
 
         try:
             result = subprocess.run(
@@ -196,7 +196,7 @@ class QualityMetricsCollector:
             )
             tools_available["safety"] = result.returncode == 0
         except (subprocess.CalledProcessError, FileNotFoundError):
-            pass
+            self.logger.debug("Safetyバージョンチェックに失敗しました")
 
         # Banditセキュリティチェック
         if tools_available["bandit"]:

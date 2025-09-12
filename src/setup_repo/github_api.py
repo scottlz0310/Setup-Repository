@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """GitHub API操作モジュール"""
 
-import json
-import urllib.error
-import urllib.request
 from typing import Optional
+
+import requests
 
 
 class GitHubAPIError(Exception):
@@ -34,29 +33,19 @@ class GitHubAPI:
     def get_user_info(self) -> dict:
         """認証されたユーザーの情報を取得"""
         try:
-            import ssl
-            import urllib.request
-
-            # HTTPSのみ許可し、SSL検証を強制
-            url = "https://api.github.com/user"
-            if not url.startswith("https://"):
-                raise ValueError("HTTPS URLのみ許可されています")
-
-            req = urllib.request.Request(url, headers=self.headers)
-            # SSL検証を強制するコンテキストを作成
-            context = ssl.create_default_context()
-            with urllib.request.urlopen(req, context=context) as response:
-                return json.loads(response.read().decode())
-        except urllib.error.HTTPError as e:
-            error_msg = f"GitHub API エラー: {e.code} {e.reason}"
-            if e.code == 401:
+            response = requests.get("https://api.github.com/user", headers=self.headers, timeout=30)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.HTTPError as e:
+            error_msg = f"GitHub API エラー: {e.response.status_code}"
+            if e.response.status_code == 401:
                 error_msg += " - 認証に失敗しました。トークンを確認してください。"
-            elif e.code == 403:
+            elif e.response.status_code == 403:
                 error_msg += " - APIレート制限に達しました。"
-            elif e.code == 404:
+            elif e.response.status_code == 404:
                 error_msg += " - ユーザーが見つかりません。"
             raise GitHubAPIError(error_msg) from e
-        except Exception as e:
+        except requests.exceptions.RequestException as e:
             raise GitHubAPIError(f"ネットワークエラー: {e}") from e
 
     def get_user_repos(self) -> list[dict]:
@@ -66,26 +55,33 @@ class GitHubAPI:
 
         while True:
             try:
-                url = f"https://api.github.com/user/repos?per_page=100&page={page}&affiliation=owner,collaborator,organization_member"
-                req = urllib.request.Request(url, headers=self.headers)
+                response = requests.get(
+                    "https://api.github.com/user/repos",
+                    headers=self.headers,
+                    params={
+                        "per_page": "100",
+                        "page": str(page),
+                        "affiliation": "owner,collaborator,organization_member",
+                    },
+                    timeout=30,
+                )
+                response.raise_for_status()
+                page_repos = response.json()
 
-                with urllib.request.urlopen(req) as response:
-                    page_repos = json.loads(response.read().decode())
+                if not page_repos:
+                    break
 
-                    if not page_repos:
-                        break
+                repos.extend(page_repos)
+                page += 1
 
-                    repos.extend(page_repos)
-                    page += 1
-
-            except urllib.error.HTTPError as e:
-                error_msg = f"GitHub API エラー: {e.code} {e.reason}"
-                if e.code == 401:
+            except requests.exceptions.HTTPError as e:
+                error_msg = f"GitHub API エラー: {e.response.status_code}"
+                if e.response.status_code == 401:
                     error_msg += " - 認証に失敗しました。"
-                elif e.code == 403:
+                elif e.response.status_code == 403:
                     error_msg += " - APIレート制限に達しました。"
                 raise GitHubAPIError(error_msg) from e
-            except Exception as e:
+            except requests.exceptions.RequestException as e:
                 raise GitHubAPIError(f"ネットワークエラー: {e}") from e
 
         return repos
@@ -128,33 +124,24 @@ def get_repositories(owner: str, token: Optional[str] = None) -> list[dict]:
 
     while True:
         try:
-            page_url = f"{url}&page={page}"
-            req = urllib.request.Request(page_url, headers=headers)
+            response = requests.get(url, headers=headers, params={"page": str(page)}, timeout=30)
+            response.raise_for_status()
+            page_repos = response.json()
 
-            # HTTPS URLのみ許可してセキュリティを確保
-            if not page_url.startswith("https://"):
-                raise ValueError("HTTPS URLのみ許可されています")
+            if not page_repos:
+                break
 
-            import ssl
+            repos.extend(page_repos)
+            page += 1
 
-            context = ssl.create_default_context()
-            with urllib.request.urlopen(req, context=context) as response:
-                page_repos = json.loads(response.read().decode())
-
-                if not page_repos:
-                    break
-
-                repos.extend(page_repos)
-                page += 1
-
-        except urllib.error.HTTPError as e:
+        except requests.exceptions.HTTPError as e:
             if page == 1:  # 最初のページでエラーの場合のみ表示
                 import logging
 
                 logger = logging.getLogger(__name__)
-                logger.error(f"GitHub API エラー: {e.code} {e.reason}")
+                logger.error(f"GitHub API エラー: {e.response.status_code}")
             break
-        except Exception as e:
+        except requests.exceptions.RequestException as e:
             if page == 1:
                 import logging
 
@@ -169,15 +156,10 @@ def _get_authenticated_user(token: str) -> Optional[str]:
     """認証されたユーザー名を取得"""
     try:
         headers = {"User-Agent": "repo-sync/1.0", "Authorization": f"token {token}"}
-        req = urllib.request.Request("https://api.github.com/user", headers=headers)
+        response = requests.get("https://api.github.com/user", headers=headers, timeout=30)
+        response.raise_for_status()
+        user_data = response.json()
+        return user_data.get("login")
 
-        # HTTPS URLのみ許可してセキュリティを確保
-        import ssl
-
-        context = ssl.create_default_context()
-        with urllib.request.urlopen(req, context=context) as response:
-            user_data = json.loads(response.read().decode())
-            return user_data.get("login")
-
-    except (urllib.error.HTTPError, Exception):
+    except requests.exceptions.RequestException:
         return None
