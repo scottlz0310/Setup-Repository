@@ -3,6 +3,12 @@
 
 name: 🚀 Release Management
 
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  repository-projects: write
+
 on:
   push:
     tags:
