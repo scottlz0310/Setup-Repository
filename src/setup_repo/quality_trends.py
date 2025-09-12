@@ -291,8 +291,14 @@ class QualityTrendManager:
 
     def _generate_html_content(self, data_points: list[TrendDataPoint], analysis: TrendAnalysis) -> str:
         """HTML内容を生成"""
-        # データをJavaScript用に変換
+        import html
+
+        # データをJavaScript用に変換（HTMLエスケープ済み）
         chart_data = json.dumps([asdict(point) for point in data_points], ensure_ascii=False)
+
+        # 分析結果のHTMLエスケープ
+        escaped_issues = [html.escape(issue) for issue in analysis.recent_issues]
+        escaped_recommendations = [html.escape(rec) for rec in analysis.recommendations]
 
         return f"""<!DOCTYPE html>
 <html lang="ja">
@@ -432,11 +438,10 @@ class QualityTrendManager:
         <div class="issues-section">
             <h3>🚨 最近の問題</h3>
             {
-                "".join(f'<div class="issue-item">{issue}</div>' for issue in analysis.recent_issues)
-                if analysis.recent_issues
+                "".join(f'<div class="issue-item">{issue}</div>' for issue in escaped_issues)
+                if escaped_issues
                 else "<p>問題は検出されていません。</p>"
             }
-        </div>
         '''
             if analysis.recent_issues
             else ""
@@ -444,7 +449,7 @@ class QualityTrendManager:
 
         <div class="recommendations-section">
             <h3>💡 推奨事項</h3>
-            {"".join(f'<div class="recommendation-item">{rec}</div>' for rec in analysis.recommendations)}
+            {"".join(f'<div class="recommendation-item">{rec}</div>' for rec in escaped_recommendations)}
         </div>
     </div>
 
