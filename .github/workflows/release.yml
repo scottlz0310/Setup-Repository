@@ -45,7 +45,7 @@ jobs:
       - name: 📦 uvをインストール
         uses: astral-sh/setup-uv@v4
         with:
-          enable-cache: true
+          enable-cache: false
 
       - name: 📦 必要なパッケージをインストール
         run: |
@@ -355,7 +355,7 @@ jobs:
       - name: 📦 uvをインストール
         uses: astral-sh/setup-uv@v4
         with:
-          enable-cache: true
+          enable-cache: false
 
       - name: 🏗️ パッケージをビルド
         run: |
