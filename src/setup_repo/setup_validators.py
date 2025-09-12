@@ -209,7 +209,7 @@ def check_system_requirements() -> dict[str, Any]:
 
     # メモリ情報（可能な場合）
     try:
-        import psutil  # type: ignore[import-untyped]
+        import psutil
 
         memory = psutil.virtual_memory()
         system_info["memory"] = {
