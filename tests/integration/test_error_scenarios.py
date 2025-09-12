@@ -35,7 +35,14 @@ class TestErrorScenarios:
         # ネットワークエラーをシミュレート
         network_error = requests.exceptions.ConnectionError("ネットワークに接続できません")
 
-        with patch("setup_repo.sync.get_repositories", side_effect=network_error):
+        # ProcessLockのモック
+        mock_lock = Mock()
+        mock_lock.acquire.return_value = True
+
+        with (
+            patch("setup_repo.sync.get_repositories", side_effect=network_error),
+            patch("setup_repo.sync.ProcessLock", return_value=mock_lock),
+        ):
             result = sync_repositories(sample_config, dry_run=False)
 
         # エラーが適切に処理されることを確認
@@ -122,8 +129,13 @@ class TestErrorScenarios:
         # ファイルシステムエラーをシミュレート
         permission_error = PermissionError("Permission denied: cannot create directory")
 
+        # ProcessLockのモック
+        mock_lock = Mock()
+        mock_lock.acquire.return_value = True
+
         with (
             patch("setup_repo.sync.get_repositories", return_value=mock_repos),
+            patch("setup_repo.sync.ProcessLock", return_value=mock_lock),
             patch(
                 "setup_repo.sync.sync_repository_with_retries",
                 side_effect=permission_error,
@@ -159,8 +171,13 @@ class TestErrorScenarios:
         # ディスク容量不足エラーをシミュレート
         disk_error = OSError("No space left on device")
 
+        # ProcessLockのモック
+        mock_lock = Mock()
+        mock_lock.acquire.return_value = True
+
         with (
             patch("setup_repo.sync.get_repositories", return_value=mock_repos),
+            patch("setup_repo.sync.ProcessLock", return_value=mock_lock),
             patch("setup_repo.sync.sync_repository_with_retries", side_effect=disk_error),
         ):
             result = sync_repositories(sample_config, dry_run=False)
@@ -193,8 +210,13 @@ class TestErrorScenarios:
             # Gitクローンエラーをシミュレート
             raise RuntimeError("fatal: repository 'https://github.com/test_user/clone-error-repo.git' not found")
 
+        # ProcessLockのモック
+        mock_lock = Mock()
+        mock_lock.acquire.return_value = True
+
         with (
             patch("setup_repo.sync.get_repositories", return_value=mock_repos),
+            patch("setup_repo.sync.ProcessLock", return_value=mock_lock),
             patch(
                 "setup_repo.sync.sync_repository_with_retries",
                 side_effect=mock_sync_with_error,
@@ -236,8 +258,13 @@ class TestErrorScenarios:
             # Gitプルエラーをシミュレート
             raise RuntimeError("error: Your local changes to the following files would be overwritten by merge")
 
+        # ProcessLockのモック
+        mock_lock = Mock()
+        mock_lock.acquire.return_value = True
+
         with (
             patch("setup_repo.sync.get_repositories", return_value=mock_repos),
+            patch("setup_repo.sync.ProcessLock", return_value=mock_lock),
             patch(
                 "setup_repo.sync.sync_repository_with_retries",
                 side_effect=mock_sync_with_pull_error,
@@ -299,7 +326,14 @@ class TestErrorScenarios:
         # タイムアウトエラーをシミュレート
         timeout_error = requests.exceptions.Timeout("Request timed out")
 
-        with patch("setup_repo.sync.get_repositories", side_effect=timeout_error):
+        # ProcessLockのモック
+        mock_lock = Mock()
+        mock_lock.acquire.return_value = True
+
+        with (
+            patch("setup_repo.sync.get_repositories", side_effect=timeout_error),
+            patch("setup_repo.sync.ProcessLock", return_value=mock_lock),
+        ):
             result = sync_repositories(sample_config, dry_run=False)
 
         assert not result.success
@@ -318,7 +352,14 @@ class TestErrorScenarios:
         # SSL証明書エラーをシミュレート
         ssl_error = requests.exceptions.SSLError("SSL certificate verification failed")
 
-        with patch("setup_repo.sync.get_repositories", side_effect=ssl_error):
+        # ProcessLockのモック
+        mock_lock = Mock()
+        mock_lock.acquire.return_value = True
+
+        with (
+            patch("setup_repo.sync.get_repositories", side_effect=ssl_error),
+            patch("setup_repo.sync.ProcessLock", return_value=mock_lock),
+        ):
             result = sync_repositories(sample_config, dry_run=False)
 
         assert not result.success
@@ -369,8 +410,13 @@ class TestErrorScenarios:
                 raise RuntimeError("リポジトリ固有のエラー")
             return True
 
+        # ProcessLockのモック
+        mock_lock = Mock()
+        mock_lock.acquire.return_value = True
+
         with (
             patch("setup_repo.sync.get_repositories", return_value=mock_repos),
+            patch("setup_repo.sync.ProcessLock", return_value=mock_lock),
             patch(
                 "setup_repo.sync.sync_repository_with_retries",
                 side_effect=mock_sync_with_partial_error,
@@ -418,8 +464,13 @@ class TestErrorScenarios:
                 raise RuntimeError("一時的なエラー")
             return True
 
+        # ProcessLockのモック
+        mock_lock = Mock()
+        mock_lock.acquire.return_value = True
+
         with (
             patch("setup_repo.sync.get_repositories", return_value=mock_repos),
+            patch("setup_repo.sync.ProcessLock", return_value=mock_lock),
             patch(
                 "setup_repo.sync.sync_repository_with_retries",
                 side_effect=mock_sync_with_retry,
@@ -455,8 +506,13 @@ class TestErrorScenarios:
         # メモリエラーをシミュレート
         memory_error = MemoryError("Cannot allocate memory")
 
+        # ProcessLockのモック
+        mock_lock = Mock()
+        mock_lock.acquire.return_value = True
+
         with (
             patch("setup_repo.sync.get_repositories", return_value=mock_repos),
+            patch("setup_repo.sync.ProcessLock", return_value=mock_lock),
             patch("setup_repo.sync.sync_repository_with_retries", side_effect=memory_error),
         ):
             result = sync_repositories(sample_config, dry_run=False)
@@ -486,8 +542,13 @@ class TestErrorScenarios:
         ]
 
         # キーボード割り込みをシミュレート
+        # ProcessLockのモック
+        mock_lock = Mock()
+        mock_lock.acquire.return_value = True
+
         with (
             patch("setup_repo.sync.get_repositories", return_value=mock_repos),
+            patch("setup_repo.sync.ProcessLock", return_value=mock_lock),
             patch(
                 "setup_repo.sync.sync_repository_with_retries",
                 side_effect=KeyboardInterrupt,
@@ -522,8 +583,13 @@ class TestErrorScenarios:
         # エンコーディングエラーをシミュレート
         encoding_error = UnicodeEncodeError("ascii", "unicode-テスト-repo-🚀", 8, 11, "ordinal not in range(128)")
 
+        # ProcessLockのモック
+        mock_lock = Mock()
+        mock_lock.acquire.return_value = True
+
         with (
             patch("setup_repo.sync.get_repositories", return_value=mock_repos),
+            patch("setup_repo.sync.ProcessLock", return_value=mock_lock),
             patch(
                 "setup_repo.sync.sync_repository_with_retries",
                 side_effect=encoding_error,
@@ -558,8 +624,13 @@ class TestErrorScenarios:
         # ファイルロックエラーをシミュレート
         lock_error = OSError("Resource temporarily unavailable")
 
+        # ProcessLockのモック
+        mock_lock = Mock()
+        mock_lock.acquire.return_value = True
+
         with (
             patch("setup_repo.sync.get_repositories", return_value=mock_repos),
+            patch("setup_repo.sync.ProcessLock", return_value=mock_lock),
             patch("setup_repo.sync.sync_repository_with_retries", side_effect=lock_error),
         ):
             result = sync_repositories(sample_config, dry_run=False)
@@ -590,8 +661,13 @@ class TestErrorScenarios:
 
         test_error = RuntimeError("テスト用エラーメッセージ")
 
+        # ProcessLockのモック
+        mock_lock = Mock()
+        mock_lock.acquire.return_value = True
+
         with (
             patch("setup_repo.sync.get_repositories", return_value=mock_repos),
+            patch("setup_repo.sync.ProcessLock", return_value=mock_lock),
             patch("setup_repo.sync.sync_repository_with_retries", side_effect=test_error),
             patch("setup_repo.quality_logger.get_quality_logger"),
         ):

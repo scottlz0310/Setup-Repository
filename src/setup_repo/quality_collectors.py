@@ -160,8 +160,10 @@ def collect_pytest_metrics(
             "pytest",
             "--cov=src/setup_repo",
             "--cov-report=json",
+            "--cov-report=xml",  # XMLカバレッジレポートも生成
             "--json-report",
             "--json-report-file=test-report.json",
+            "--junit-xml=test-results.xml",  # JUnit XML形式のテスト結果を生成
             # 重い/外部依存のテストは品質ゲートから除外
             "-m",
             "not integration and not performance and not stress",

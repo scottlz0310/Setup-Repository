@@ -118,8 +118,11 @@ jobs:
           --cov-report=term-missing \
           --cov-report=xml \
           --cov-report=html \
+          --cov-report=json \
           --cov-fail-under=80 \
           --junit-xml=test-results.xml \
+          --json-report \
+          --json-report-file=test-report.json \
           -n auto \
           --dist=worksteal || true
         echo "::endgroup::"

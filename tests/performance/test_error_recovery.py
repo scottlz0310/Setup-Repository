@@ -228,8 +228,13 @@ class TestNetworkErrorRecovery:
                 metrics.record_failure("dns")
                 return False
 
+        # ProcessLockのモック
+        mock_lock = Mock()
+        mock_lock.acquire.return_value = True
+
         with (
             patch("setup_repo.sync.get_repositories", return_value=repositories),
+            patch("setup_repo.sync.ProcessLock", return_value=mock_lock),
             patch(
                 "setup_repo.sync.sync_repository_with_retries",
                 side_effect=mock_sync_with_dns_recovery,
@@ -273,8 +278,13 @@ class TestNetworkErrorRecovery:
                 metrics.record_failure("ssl")
                 return False
 
+        # ProcessLockのモック
+        mock_lock = Mock()
+        mock_lock.acquire.return_value = True
+
         with (
             patch("setup_repo.sync.get_repositories", return_value=repositories),
+            patch("setup_repo.sync.ProcessLock", return_value=mock_lock),
             patch(
                 "setup_repo.sync.sync_repository_with_retries",
                 side_effect=mock_sync_with_ssl_recovery,
@@ -321,8 +331,13 @@ class TestNetworkErrorRecovery:
                 metrics.record_failure("rate_limit")
                 return False
 
+        # ProcessLockのモック
+        mock_lock = Mock()
+        mock_lock.acquire.return_value = True
+
         with (
             patch("setup_repo.sync.get_repositories", return_value=repositories),
+            patch("setup_repo.sync.ProcessLock", return_value=mock_lock),
             patch(
                 "setup_repo.sync.sync_repository_with_retries",
                 side_effect=mock_sync_with_rate_limit_recovery,
@@ -371,8 +386,13 @@ class TestFileSystemErrorRecovery:
                 metrics.record_failure("permission")
                 return False
 
+        # ProcessLockのモック
+        mock_lock = Mock()
+        mock_lock.acquire.return_value = True
+
         with (
             patch("setup_repo.sync.get_repositories", return_value=repositories),
+            patch("setup_repo.sync.ProcessLock", return_value=mock_lock),
             patch(
                 "setup_repo.sync.sync_repository_with_retries",
                 side_effect=mock_sync_with_permission_recovery,
@@ -419,8 +439,13 @@ class TestFileSystemErrorRecovery:
                 metrics.record_failure("disk_space")
                 return False
 
+        # ProcessLockのモック
+        mock_lock = Mock()
+        mock_lock.acquire.return_value = True
+
         with (
             patch("setup_repo.sync.get_repositories", return_value=repositories),
+            patch("setup_repo.sync.ProcessLock", return_value=mock_lock),
             patch(
                 "setup_repo.sync.sync_repository_with_retries",
                 side_effect=mock_sync_with_disk_recovery,
@@ -466,8 +491,13 @@ class TestFileSystemErrorRecovery:
                 metrics.record_failure("file_lock")
                 return False
 
+        # ProcessLockのモック
+        mock_lock = Mock()
+        mock_lock.acquire.return_value = True
+
         with (
             patch("setup_repo.sync.get_repositories", return_value=repositories),
+            patch("setup_repo.sync.ProcessLock", return_value=mock_lock),
             patch(
                 "setup_repo.sync.sync_repository_with_retries",
                 side_effect=mock_sync_with_lock_recovery,
@@ -530,8 +560,13 @@ class TestMixedErrorRecovery:
                 metrics.record_failure(error_type)
                 return False
 
+        # ProcessLockのモック
+        mock_lock = Mock()
+        mock_lock.acquire.return_value = True
+
         with (
             patch("setup_repo.sync.get_repositories", return_value=repositories),
+            patch("setup_repo.sync.ProcessLock", return_value=mock_lock),
             patch(
                 "setup_repo.sync.sync_repository_with_retries",
                 side_effect=mock_sync_with_mixed_recovery,
@@ -575,8 +610,13 @@ class TestMixedErrorRecovery:
 
             return True
 
+        # ProcessLockのモック
+        mock_lock = Mock()
+        mock_lock.acquire.return_value = True
+
         with (
             patch("setup_repo.sync.get_repositories", return_value=repositories),
+            patch("setup_repo.sync.ProcessLock", return_value=mock_lock),
             patch(
                 "setup_repo.sync.sync_repository_with_retries",
                 side_effect=mock_sync_with_cascade,
@@ -638,8 +678,13 @@ class TestMixedErrorRecovery:
 
         start_time = time.time()
 
+        # ProcessLockのモック
+        mock_lock = Mock()
+        mock_lock.acquire.return_value = True
+
         with (
             patch("setup_repo.sync.get_repositories", return_value=repositories),
+            patch("setup_repo.sync.ProcessLock", return_value=mock_lock),
             patch(
                 "setup_repo.sync.sync_repository_with_retries",
                 side_effect=mock_sync_with_high_load_recovery,

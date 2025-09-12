@@ -67,7 +67,12 @@ class TestCIPlatformDetection:
 
         # CI環境の場合のみ表示名をチェック
         if self.is_ci_environment():
-            assert "CI" in platform_info.display_name
+            # GitHub Actions環境では「GitHub Actions」が含まれることを確認
+            if os.environ.get("GITHUB_ACTIONS", "").lower() == "true":
+                assert "GitHub Actions" in platform_info.display_name
+            else:
+                # その他のCI環境では「CI」が含まれることを確認
+                assert "CI" in platform_info.display_name
 
     def test_platform_detection_consistency_windows(self):
         """Windows CI環境でのプラットフォーム検出一貫性テスト"""
