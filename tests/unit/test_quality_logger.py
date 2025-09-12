@@ -107,6 +107,14 @@ class TestQualityLogger:
 
             logger.info("テストメッセージ")
 
+            # Windowsでのファイルアクセスエラーを回避するため、ロガーを適切にクローズ
+            if hasattr(logger, "close"):
+                logger.close()
+            elif hasattr(logger, "_logger") and hasattr(logger._logger, "handlers"):
+                for handler in logger._logger.handlers[:]:
+                    handler.close()
+                    logger._logger.removeHandler(handler)
+
             assert log_file.exists()
             content = log_file.read_text(encoding="utf-8")
             assert "テストメッセージ" in content
@@ -124,6 +132,14 @@ class TestQualityLogger:
             )
 
             logger.info("JSONテストメッセージ")
+
+            # Windowsでのファイルアクセスエラーを回避するため、ロガーを適切にクローズ
+            if hasattr(logger, "close"):
+                logger.close()
+            elif hasattr(logger, "_logger") and hasattr(logger._logger, "handlers"):
+                for handler in logger._logger.handlers[:]:
+                    handler.close()
+                    logger._logger.removeHandler(handler)
 
             assert log_file.exists()
             content = log_file.read_text(encoding="utf-8")

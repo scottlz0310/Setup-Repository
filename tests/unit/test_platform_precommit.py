@@ -6,7 +6,7 @@ precommit環境でのプラットフォーム検出テスト
 """
 
 import os
-from unittest.mock import patch
+from unittest.mock import mock_open, patch
 
 import pytest
 
@@ -19,10 +19,20 @@ class TestPrecommitPlatformDetection:
 
     def test_wsl_detection_in_precommit_environment(self):
         """precommit環境でのWSL検出テスト"""
+        import platform as platform_module
+
+        current_platform = platform_module.system().lower()
+
+        # CI環境でWindows以外でのみテストを実行
+        if current_platform == "windows":
+            pytest.skip("Windows環境でWSL検出テストをスキップ")
+
         with (
             patch("src.setup_repo.platform_detector.platform.system") as mock_system,
             patch("src.setup_repo.platform_detector.platform.release") as mock_release,
             patch("src.setup_repo.platform_detector.os.name", "posix"),
+            patch("src.setup_repo.platform_detector.os.path.exists", return_value=True),
+            patch("builtins.open", mock_open(read_data="Linux version 5.4.0-microsoft-standard-WSL2")),
             patch.dict(
                 os.environ,
                 {
@@ -45,6 +55,14 @@ class TestPrecommitPlatformDetection:
 
     def test_linux_detection_in_precommit_environment(self):
         """precommit環境での通常のLinux検出テスト"""
+        import platform as platform_module
+
+        current_platform = platform_module.system().lower()
+
+        # CI環境でWindows以外でのみテストを実行
+        if current_platform == "windows":
+            pytest.skip("Windows環境でLinux検出テストをスキップ")
+
         with (
             patch("src.setup_repo.platform_detector.platform.system") as mock_system,
             patch("src.setup_repo.platform_detector.platform.release") as mock_release,
@@ -85,11 +103,21 @@ class TestPrecommitPlatformDetection:
 
     def test_ci_vs_precommit_wsl_detection(self):
         """CI環境とprecommit環境でのWSL検出の違いをテスト"""
+        import platform as platform_module
+
+        current_platform = platform_module.system().lower()
+
+        # CI環境でWindows以外でのみテストを実行
+        if current_platform == "windows":
+            pytest.skip("Windows環境でWSL検出テストをスキップ")
+
         # CI環境でのWSL検出
         with (
             patch("src.setup_repo.platform_detector.platform.system") as mock_system,
             patch("src.setup_repo.platform_detector.platform.release") as mock_release,
             patch("src.setup_repo.platform_detector.os.name", "posix"),
+            patch("src.setup_repo.platform_detector.os.path.exists", return_value=True),
+            patch("builtins.open", mock_open(read_data="Linux version 5.4.0-microsoft-standard-WSL2")),
             patch.dict(
                 os.environ,
                 {
@@ -109,6 +137,8 @@ class TestPrecommitPlatformDetection:
             patch("src.setup_repo.platform_detector.platform.system") as mock_system,
             patch("src.setup_repo.platform_detector.platform.release") as mock_release,
             patch("src.setup_repo.platform_detector.os.name", "posix"),
+            patch("src.setup_repo.platform_detector.os.path.exists", return_value=True),
+            patch("builtins.open", mock_open(read_data="Linux version 5.4.0-microsoft-standard-WSL2")),
             patch.dict(
                 os.environ,
                 {

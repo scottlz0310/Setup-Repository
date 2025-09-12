@@ -119,6 +119,12 @@ class TestProcessLock:
 
     def test_acquire_lock_fcntl_error_handling(self, temp_dir: Path) -> None:
         """fcntlエラー発生時のハンドリングテスト"""
+        import platform as platform_module
+
+        # Windows環境ではfcntlモジュールが存在しないためスキップ
+        if platform_module.system().lower() == "windows":
+            pytest.skip("Windows環境でfcntlテストをスキップ")
+
         lock_file = temp_dir / "test.lock"
         lock = ProcessLock(str(lock_file))
 
