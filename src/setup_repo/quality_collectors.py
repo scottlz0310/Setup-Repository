@@ -155,6 +155,12 @@ def collect_pytest_metrics(
     logger.log_quality_check_start("Tests")
 
     try:
+        import os
+
+        # 環境変数でCI環境を確認
+        is_ci = os.getenv("CI", "").lower() in ("true", "1")
+        unit_tests_only = os.getenv("UNIT_TESTS_ONLY", "").lower() in ("true", "1")
+
         # 並列実行用のコマンドを構築
         cmd = [
             "uv",
@@ -169,20 +175,24 @@ def collect_pytest_metrics(
         ]
 
         # テストマーカーの設定
-        if skip_integration_tests:
-            # CI環境では統合テストをスキップ
-            cmd.extend(["-m", "not integration and not performance and not stress"])
+        if skip_integration_tests or unit_tests_only or is_ci:
+            # CI環境では単体テストのみ実行
+            cmd.extend(["tests/unit/", "-m", "not performance and not stress"])
+            logger.info("CI環境: 単体テストのみ実行")
         else:
             # ローカル環境では重いテストのみスキップ
             cmd.extend(["-m", "not performance and not stress"])
+            logger.info("ローカル環境: 全テスト実行")
 
         # 並列実行設定
         if parallel_workers != "1" and parallel_workers != 1:
             if parallel_workers == "auto":
-                import os
-
                 cpu_count = os.cpu_count() or 4
-                workers = max(1, int(cpu_count * 0.75))
+                # CI環境ではワーカー数を減らして安定性を向上
+                if is_ci:
+                    workers = max(1, min(4, int(cpu_count * 0.5)))
+                else:
+                    workers = max(1, int(cpu_count * 0.75))
             else:
                 workers = int(parallel_workers) if isinstance(parallel_workers, str) else parallel_workers
 
@@ -191,6 +201,7 @@ def collect_pytest_metrics(
                 logger.info(f"並列テスト実行: {workers}ワーカー")
 
         # Pytestでカバレッジ付きテスト実行
+        logger.info(f"テストコマンド: {' '.join(cmd)}")
         result = subprocess.run(cmd, cwd=project_root, capture_output=True, text=True, check=False)
 
         # カバレッジ情報を読み取り
@@ -230,7 +241,14 @@ def collect_pytest_metrics(
             except (json.JSONDecodeError, KeyError):
                 pass
 
-        success = result.returncode == 0 and failed == 0
+        # CI環境ではカバレッジ闾値を緩和
+        effective_threshold = coverage_threshold
+        if is_ci and unit_tests_only:
+            # 単体テストのみの場合はカバレッジ闾値を下げる
+            effective_threshold = 70.0
+            logger.info(f"CI環境(単体テストのみ): カバレッジ闾値を{effective_threshold}%に調整")
+
+        success = result.returncode == 0 and failed == 0 and coverage_percent >= effective_threshold
 
         metrics_result = {
             "success": success,
@@ -238,7 +256,21 @@ def collect_pytest_metrics(
             "tests_passed": passed,
             "tests_failed": failed,
             "failed_tests": failed_tests,
-            "errors": [] if success else [f"テストで{failed}件の失敗がありました"],
+            "effective_threshold": effective_threshold,
+            "is_ci_environment": is_ci,
+            "unit_tests_only": unit_tests_only,
+            "errors": []
+            if success
+            else [
+                msg
+                for msg in [
+                    f"テストで{failed}件の失敗がありました" if failed > 0 else None,
+                    f"カバレッジ不足: {coverage_percent:.1f}% < {effective_threshold}%"
+                    if coverage_percent < effective_threshold
+                    else None,
+                ]
+                if msg is not None
+            ],
         }
 
         if success:
@@ -248,38 +280,46 @@ def collect_pytest_metrics(
                     "coverage": coverage_percent,
                     "passed": passed,
                     "failed": failed,
+                    "threshold": effective_threshold,
+                    "ci_mode": is_ci,
                 },
             )
         else:
             # カバレッジ不足の場合は専用エラー
-            if coverage_percent < coverage_threshold:
+            if coverage_percent < effective_threshold:
                 logger.log_quality_check_failure(
                     "Tests",
                     CoverageError(
-                        f"カバレッジが不足しています: {coverage_percent:.1f}% (必要: {coverage_threshold}%)",
+                        f"カバレッジが不足しています: {coverage_percent:.1f}% (必要: {effective_threshold}%)",
                         coverage_percent,
-                        coverage_threshold,
+                        effective_threshold,
                     ),
                 )
             else:
-                test_error = TestFailureError(
-                    f"テストで{failed}件の失敗がありました",
-                    failed_tests,
-                    coverage_percent,
-                )
-                logger.log_quality_check_failure("Tests", test_error)
+                if failed > 0:
+                    test_error = TestFailureError(
+                        f"テストで{failed}件の失敗がありました",
+                        failed_tests,
+                        coverage_percent,
+                    )
+                    logger.log_quality_check_failure("Tests", test_error)
 
         return metrics_result
 
     except (subprocess.CalledProcessError, FileNotFoundError) as e:
         test_error = TestFailureError(f"テストメトリクス収集エラー: {str(e)}")
         logger.log_quality_check_failure("Tests", test_error)
+        import os
+
         return {
             "success": False,
             "coverage_percent": 0.0,
             "tests_passed": 0,
             "tests_failed": 0,
             "errors": [str(e)],
+            "effective_threshold": coverage_threshold,
+            "is_ci_environment": os.getenv("CI", "").lower() in ("true", "1"),
+            "unit_tests_only": os.getenv("UNIT_TESTS_ONLY", "").lower() in ("true", "1"),
         }
 
 

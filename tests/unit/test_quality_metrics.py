@@ -356,8 +356,11 @@ class TestQualityMetricsCollector:
             assert report_file.parent.exists()  # ディレクトリが作成されている
 
     @patch("subprocess.run")
-    def test_collect_security_metrics_with_vulnerabilities(self, mock_run):
+    @patch("os.getenv")
+    def test_collect_security_metrics_with_vulnerabilities(self, mock_getenv, mock_run):
         """セキュリティ脆弱性が見つかった場合のテスト"""
+        # CI環境ではない場合をシミュレート
+        mock_getenv.side_effect = lambda key, default="": "false" if key == "CI" else default
 
         def mock_subprocess_side_effect(*args, **kwargs):
             mock_result = type("MockResult", (), {})()
@@ -388,7 +391,7 @@ class TestQualityMetricsCollector:
         collector = QualityMetricsCollector()
         result = collector.collect_security_metrics()
 
-        # 脆弱性が見つかった場合は失敗となる
+        # ローカル環境では脆弱性が見つかった場合は失敗となる
         assert result["success"] is False
         assert "vulnerability_count" in result
         assert result["vulnerability_count"] >= 1

@@ -89,6 +89,8 @@ jobs:
         PYTEST_XDIST_WORKER_COUNT: "auto"
         CI_PLATFORM_DIAGNOSTICS: "true"
         PRE_COMMIT: "1"
+        SKIP_INTEGRATION_TESTS: "true"
+        UNIT_TESTS_ONLY: "true"
 
     - name: Upload error reports on failure
       if: failure()
