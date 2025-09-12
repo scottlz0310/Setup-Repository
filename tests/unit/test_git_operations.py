@@ -91,16 +91,17 @@ class TestGitOperations:
         # Arrange
         git_ops = GitOperations()
         mock_run.return_value = Mock()
+        dest_path = "/test/dest"
 
         # Act
-        result = git_ops.clone_repository(
-            "https://github.com/user/repo.git", "/test/dest"
-        )
+        result = git_ops.clone_repository("https://github.com/user/repo.git", dest_path)
 
         # Assert
         assert result is True
+        # プラットフォーム固有のパス変換を考慮
+        expected_path = str(Path(dest_path))
         mock_run.assert_called_once_with(
-            ["git", "clone", "https://github.com/user/repo.git", "/test/dest"],
+            ["git", "clone", "https://github.com/user/repo.git", expected_path],
             capture_output=True,
             text=True,
             check=True,
@@ -114,9 +115,7 @@ class TestGitOperations:
         mock_run.side_effect = subprocess.CalledProcessError(1, "git")
 
         # Act
-        result = git_ops.clone_repository(
-            "https://github.com/user/repo.git", "/test/dest"
-        )
+        result = git_ops.clone_repository("https://github.com/user/repo.git", "/test/dest")
 
         # Assert
         assert result is False
@@ -384,9 +383,7 @@ class TestSyncRepositoryWithRetries:
 
     @patch("src.setup_repo.git_operations._sync_repository_once")
     @patch("builtins.print")
-    def test_sync_repository_with_retries_success_first_try(
-        self, mock_print, mock_sync_once
-    ):
+    def test_sync_repository_with_retries_success_first_try(self, mock_print, mock_sync_once):
         """初回試行で成功のテスト"""
         # Arrange
         repo = {"name": "test_repo"}
@@ -405,9 +402,7 @@ class TestSyncRepositoryWithRetries:
     @patch("shutil.rmtree")
     @patch("time.sleep")
     @patch("builtins.print")
-    def test_sync_repository_with_retries_success_second_try(
-        self, mock_print, mock_sleep, mock_rmtree, mock_sync_once
-    ):
+    def test_sync_repository_with_retries_success_second_try(self, mock_print, mock_sleep, mock_rmtree, mock_sync_once):
         """2回目の試行で成功のテスト"""
         # Arrange
         repo = {"name": "test_repo"}
@@ -429,9 +424,7 @@ class TestSyncRepositoryWithRetries:
     @patch("shutil.rmtree")
     @patch("time.sleep")
     @patch("builtins.print")
-    def test_sync_repository_with_retries_all_fail(
-        self, mock_print, mock_sleep, mock_rmtree, mock_sync_once
-    ):
+    def test_sync_repository_with_retries_all_fail(self, mock_print, mock_sleep, mock_rmtree, mock_sync_once):
         """全ての試行が失敗のテスト"""
         # Arrange
         repo = {"name": "test_repo"}
@@ -451,9 +444,7 @@ class TestSyncRepositoryWithRetries:
 
     @patch("src.setup_repo.git_operations._sync_repository_once")
     @patch("builtins.print")
-    def test_sync_repository_with_retries_default_max_retries(
-        self, mock_print, mock_sync_once
-    ):
+    def test_sync_repository_with_retries_default_max_retries(self, mock_print, mock_sync_once):
         """デフォルトのmax_retriesのテスト"""
         # Arrange
         repo = {"name": "test_repo"}
@@ -473,9 +464,7 @@ class TestSyncRepositoryWithRetries:
     @patch("shutil.rmtree")
     @patch("time.sleep")
     @patch("builtins.print")
-    def test_sync_repository_with_retries_dry_run_no_rmtree(
-        self, mock_print, mock_sleep, mock_rmtree, mock_sync_once
-    ):
+    def test_sync_repository_with_retries_dry_run_no_rmtree(self, mock_print, mock_sleep, mock_rmtree, mock_sync_once):
         """ドライランモード時はrmtreeしないテスト"""
         # Arrange
         repo = {"name": "test_repo"}
@@ -612,9 +601,7 @@ class TestUpdateRepository:
     @patch("src.setup_repo.git_operations._auto_pop_stash")
     @patch("subprocess.run")
     @patch("builtins.print")
-    def test_update_repository_with_auto_stash(
-        self, mock_print, mock_run, mock_pop_stash, mock_stash_changes
-    ):
+    def test_update_repository_with_auto_stash(self, mock_print, mock_run, mock_pop_stash, mock_stash_changes):
         """auto_stash有効での更新のテスト"""
         # Arrange
         repo_name = "test_repo"
@@ -635,18 +622,14 @@ class TestUpdateRepository:
     @patch("src.setup_repo.git_operations._auto_pop_stash")
     @patch("subprocess.run")
     @patch("builtins.print")
-    def test_update_repository_failure_with_stash(
-        self, mock_print, mock_run, mock_pop_stash, mock_stash_changes
-    ):
+    def test_update_repository_failure_with_stash(self, mock_print, mock_run, mock_pop_stash, mock_stash_changes):
         """stash有りでの更新失敗のテスト"""
         # Arrange
         repo_name = "test_repo"
         repo_path = Path("/test/repo")
         config = {"auto_stash": True}
         mock_stash_changes.return_value = True
-        mock_run.side_effect = subprocess.CalledProcessError(
-            1, "git", stderr="error message"
-        )
+        mock_run.side_effect = subprocess.CalledProcessError(1, "git", stderr="error message")
 
         # Act
         result = _update_repository(repo_name, repo_path, config)
@@ -664,9 +647,7 @@ class TestUpdateRepository:
         repo_name = "test_repo"
         repo_path = Path("/test/repo")
         config = {}
-        mock_run.side_effect = subprocess.CalledProcessError(
-            1, "git", stderr="error message"
-        )
+        mock_run.side_effect = subprocess.CalledProcessError(1, "git", stderr="error message")
 
         # Act
         result = _update_repository(repo_name, repo_path, config)
@@ -726,9 +707,7 @@ class TestCloneRepository:
         repo_name = "test_repo"
         repo_url = "https://github.com/user/test_repo.git"
         repo_path = Path("/test/repo")
-        mock_run.side_effect = subprocess.CalledProcessError(
-            1, "git", stderr="error message"
-        )
+        mock_run.side_effect = subprocess.CalledProcessError(1, "git", stderr="error message")
 
         # Act
         result = _clone_repository(repo_name, repo_url, repo_path, dry_run=False)

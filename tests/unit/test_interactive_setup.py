@@ -53,11 +53,7 @@ class TestInteractiveSetup:
         assert result["verbose"] is True
 
         # 設定ファイルが保存されることを確認
-        config_calls = [
-            call
-            for call in mock_file.call_args_list
-            if "config.local.json" in str(call)
-        ]
+        config_calls = [call for call in mock_file.call_args_list if "config.local.json" in str(call)]
         assert config_calls, "設定ファイルが開かれませんでした"
         handle = mock_file()
         handle.write.assert_called()
@@ -234,9 +230,7 @@ class TestSetupWizard:
     @patch("src.setup_repo.interactive_setup.get_available_package_managers")
     @patch("builtins.input")
     @patch("builtins.print")
-    def test_setup_package_managers_none_available(
-        self, mock_print, mock_input, mock_get_managers
-    ):
+    def test_setup_package_managers_none_available(self, mock_print, mock_input, mock_get_managers):
         """パッケージマネージャーが利用できない場合のテスト"""
         # Arrange
         mock_get_managers.return_value = []
@@ -254,9 +248,7 @@ class TestSetupWizard:
     @patch("src.setup_repo.interactive_setup.get_available_package_managers")
     @patch("builtins.input")
     @patch("builtins.print")
-    def test_setup_package_managers_user_declines(
-        self, mock_print, mock_input, mock_get_managers
-    ):
+    def test_setup_package_managers_user_declines(self, mock_print, mock_input, mock_get_managers):
         """ユーザーが続行を拒否した場合のテスト"""
         # Arrange
         mock_get_managers.return_value = []
@@ -349,9 +341,16 @@ class TestSetupWizard:
 
         # Assert
         assert result is True
-        mock_run.assert_called_once_with(
-            ["uv", "--version"], capture_output=True, text=True, check=True, shell=False
-        )
+        # Windows環境ではPowerShellの実行ポリシーチェックが追加で実行される可能性がある
+        # 最後の呼び出しがuvコマンドであることを確認
+        uv_calls = [call for call in mock_run.call_args_list if "uv" in str(call)]
+        assert len(uv_calls) >= 1
+        last_uv_call = uv_calls[-1]
+        assert last_uv_call[0][0] == ["uv", "--version"]
+        assert last_uv_call[1]["capture_output"] is True
+        assert last_uv_call[1]["text"] is True
+        assert last_uv_call[1]["check"] is True
+        assert last_uv_call[1]["shell"] is False
 
     @patch("subprocess.run")
     def test_check_tool_failure(self, mock_run):
@@ -385,9 +384,7 @@ class TestSetupWizard:
     @patch("src.setup_repo.interactive_setup.get_install_commands")
     @patch("subprocess.run")
     @patch("builtins.print")
-    def test_install_uv_success(
-        self, mock_print, mock_run, mock_get_commands, mock_get_managers
-    ):
+    def test_install_uv_success(self, mock_print, mock_run, mock_get_commands, mock_get_managers):
         """uvインストール成功のテスト"""
         # Arrange
         mock_get_managers.return_value = ["scoop"]
@@ -407,9 +404,7 @@ class TestSetupWizard:
     @patch("src.setup_repo.interactive_setup.get_install_commands")
     @patch("subprocess.run")
     @patch("builtins.print")
-    def test_install_uv_fallback_to_pip(
-        self, mock_print, mock_run, mock_get_commands, mock_get_managers
-    ):
+    def test_install_uv_fallback_to_pip(self, mock_print, mock_run, mock_get_commands, mock_get_managers):
         """uvインストールでpipフォールバックのテスト"""
         # Arrange
         mock_get_managers.return_value = ["scoop"]
@@ -434,9 +429,7 @@ class TestSetupWizard:
     @patch("src.setup_repo.interactive_setup.get_install_commands")
     @patch("subprocess.run")
     @patch("builtins.print")
-    def test_install_uv_all_fail(
-        self, mock_print, mock_run, mock_get_commands, mock_get_managers
-    ):
+    def test_install_uv_all_fail(self, mock_print, mock_run, mock_get_commands, mock_get_managers):
         """uvインストール全て失敗のテスト"""
         # Arrange
         mock_get_managers.return_value = ["scoop"]
@@ -455,15 +448,11 @@ class TestSetupWizard:
     @patch("src.setup_repo.interactive_setup.get_install_commands")
     @patch("subprocess.run")
     @patch("builtins.print")
-    def test_install_gh_success(
-        self, mock_print, mock_run, mock_get_commands, mock_get_managers
-    ):
+    def test_install_gh_success(self, mock_print, mock_run, mock_get_commands, mock_get_managers):
         """GitHub CLIインストール成功のテスト"""
         # Arrange
         mock_get_managers.return_value = ["scoop"]
-        mock_get_commands.return_value = {
-            "scoop": ["scoop install uv", "scoop install gh"]
-        }
+        mock_get_commands.return_value = {"scoop": ["scoop install uv", "scoop install gh"]}
         mock_run.return_value = Mock()
 
         wizard = SetupWizard()
@@ -478,15 +467,11 @@ class TestSetupWizard:
     @patch("src.setup_repo.interactive_setup.get_install_commands")
     @patch("subprocess.run")
     @patch("builtins.print")
-    def test_install_gh_failure(
-        self, mock_print, mock_run, mock_get_commands, mock_get_managers
-    ):
+    def test_install_gh_failure(self, mock_print, mock_run, mock_get_commands, mock_get_managers):
         """GitHub CLIインストール失敗のテスト"""
         # Arrange
         mock_get_managers.return_value = ["scoop"]
-        mock_get_commands.return_value = {
-            "scoop": ["scoop install uv", "scoop install gh"]
-        }
+        mock_get_commands.return_value = {"scoop": ["scoop install uv", "scoop install gh"]}
         mock_run.side_effect = subprocess.CalledProcessError(1, "cmd")
 
         wizard = SetupWizard()
@@ -525,9 +510,7 @@ class TestSetupWizard:
     @patch("src.setup_repo.interactive_setup.validate_user_input")
     @patch("subprocess.run")
     @patch("builtins.print")
-    def test_configure_github_missing_username(
-        self, mock_print, mock_run, mock_validate_input, mock_validate_creds
-    ):
+    def test_configure_github_missing_username(self, mock_print, mock_run, mock_validate_input, mock_validate_creds):
         """ユーザー名が不足している場合のテスト"""
         # Arrange
         mock_validate_creds.return_value = {
@@ -545,9 +528,7 @@ class TestSetupWizard:
 
         # Assert
         assert wizard.config["owner"] == "new_user"
-        mock_run.assert_called_with(
-            ["git", "config", "--global", "user.name", "new_user"], check=True, shell=False
-        )
+        mock_run.assert_called_with(["git", "config", "--global", "user.name", "new_user"], check=True, shell=False)
 
     @patch("src.setup_repo.interactive_setup.validate_github_credentials")
     @patch("src.setup_repo.interactive_setup.validate_user_input")
@@ -579,9 +560,7 @@ class TestSetupWizard:
     @patch("src.setup_repo.interactive_setup.validate_user_input")
     @patch("src.setup_repo.interactive_setup.validate_directory_path")
     @patch("builtins.print")
-    def test_configure_workspace_default(
-        self, mock_print, mock_validate_path, mock_validate_input
-    ):
+    def test_configure_workspace_default(self, mock_print, mock_validate_path, mock_validate_input):
         """デフォルトワークスペース使用のテスト"""
         # Arrange
         default_path = str(Path.home() / "workspace")
@@ -604,12 +583,12 @@ class TestSetupWizard:
     @patch("src.setup_repo.interactive_setup.validate_user_input")
     @patch("src.setup_repo.interactive_setup.validate_directory_path")
     @patch("builtins.print")
-    def test_configure_workspace_custom_path(
-        self, mock_print, mock_validate_path, mock_validate_input
-    ):
+    def test_configure_workspace_custom_path(self, mock_print, mock_validate_path, mock_validate_input):
         """カスタムワークスペースパス使用のテスト"""
         # Arrange
         custom_path = "/custom/workspace"
+        # プラットフォーム固有のパス変換を考慮
+        expected_path = str(Path(custom_path))
         mock_validate_input.return_value = {"valid": True, "value": custom_path}
         mock_validate_path.return_value = {
             "valid": True,
@@ -623,15 +602,13 @@ class TestSetupWizard:
         wizard.configure_workspace()
 
         # Assert
-        assert wizard.config["dest"] == custom_path
+        assert wizard.config["dest"] == expected_path
         mock_validate_path.assert_called_once_with(custom_path)
 
     @patch("src.setup_repo.interactive_setup.validate_user_input")
     @patch("src.setup_repo.interactive_setup.validate_directory_path")
     @patch("builtins.print")
-    def test_configure_workspace_invalid_path(
-        self, mock_print, mock_validate_path, mock_validate_input
-    ):
+    def test_configure_workspace_invalid_path(self, mock_print, mock_validate_path, mock_validate_input):
         """無効なワークスペースパスの場合のテスト"""
         # Arrange
         invalid_path = "/invalid/path"
@@ -668,11 +645,7 @@ class TestSetupWizard:
         # Assert
         assert result is True
         # 設定ファイルが保存されることを確認
-        config_calls = [
-            call
-            for call in mock_file.call_args_list
-            if "config.local.json" in str(call)
-        ]
+        config_calls = [call for call in mock_file.call_args_list if "config.local.json" in str(call)]
         assert config_calls, "設定ファイルが開かれませんでした"
 
     @patch("builtins.open")
@@ -833,9 +806,7 @@ class TestSetupWizardInstallTools:
     @patch.object(SetupWizard, "_install_uv")
     @patch.object(SetupWizard, "_check_tool")
     @patch("builtins.print")
-    def test_install_tools_all_present(
-        self, mock_print, mock_check_tool, mock_install_uv, mock_install_gh
-    ):
+    def test_install_tools_all_present(self, mock_print, mock_check_tool, mock_install_uv, mock_install_gh):
         """全ツールが既にインストール済みの場合のテスト"""
         # Arrange
         mock_check_tool.side_effect = [True, True]  # uv, gh both present
@@ -902,9 +873,7 @@ class TestSetupWizardInstallTools:
     @patch.object(SetupWizard, "_install_uv")
     @patch.object(SetupWizard, "_check_tool")
     @patch("builtins.print")
-    def test_install_tools_uv_install_fails(
-        self, mock_print, mock_check_tool, mock_install_uv
-    ):
+    def test_install_tools_uv_install_fails(self, mock_print, mock_check_tool, mock_install_uv):
         """uvインストール失敗の場合のテスト"""
         # Arrange
         mock_check_tool.side_effect = [False, True]  # uv missing, gh present

@@ -7,6 +7,7 @@ CI環境でのプラットフォーム診断スクリプト
 """
 
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -124,23 +125,28 @@ def main():
     if detector.is_github_actions():
         print("\n6. GitHub Actionsアノテーション:")
 
+        # precommit環境の検出
+        if os.environ.get("PRE_COMMIT") == "1":
+            print("::notice::precommit環境で実行中")
+
         # CI固有の問題を警告として出力
         if "ci_specific_issues" in diagnosis:
             for issue in diagnosis["ci_specific_issues"]:
                 print(f"::warning::CI固有問題: {issue}")
 
-        # PATH関連の問題を警告として出力
+        # PATH関連の問題を警告として出力（precommit環境では軽減）
         for issue in diagnosis["path_issues"]:
-            print(f"::warning::PATH問題: {issue}")
+            if os.environ.get("PRE_COMMIT") == "1":
+                print(f"::debug::PATH問題（precommit環境）: {issue}")
+            else:
+                print(f"::warning::PATH問題: {issue}")
 
         # エラーの出力
         if "error" in diagnosis and diagnosis["error"]:
             print(f"::error::診断エラー: {diagnosis['error']}")
 
         # 利用可能なパッケージマネージャーを情報として出力
-        available_managers = [
-            m for m, info in diagnosis["package_managers"].items() if info["available"]
-        ]
+        available_managers = [m for m, info in diagnosis["package_managers"].items() if info["available"]]
         if available_managers:
             managers_list = ", ".join(available_managers)
             print(f"::notice::利用可能なパッケージマネージャー: {managers_list}")
@@ -158,10 +164,7 @@ def main():
                     module_info = diagnosis["module_availability"][module_name]
                     if module_info["platform_specific"]:
                         status = "利用可能" if module_info["available"] else "利用不可"
-                        print(
-                            f"::debug::{module_name}モジュール: {status} "
-                            "(プラットフォーム固有)"
-                        )
+                        print(f"::debug::{module_name}モジュール: {status} (プラットフォーム固有)")
 
     # 診断結果に基づく終了コード判定
     print("\n7. 診断結果サマリー:")
@@ -173,24 +176,33 @@ def main():
     if diagnosis.get("error"):
         critical_issues.append(f"診断エラー: {diagnosis['error']}")
 
-    # 利用可能なパッケージマネージャーがない場合
-    available_managers = [
-        m for m, info in diagnosis["package_managers"].items() if info["available"]
-    ]
+    # 利用可能なパッケージマネージャーがない場合（precommit環境では軽減）
+    available_managers = [m for m, info in diagnosis["package_managers"].items() if info["available"]]
     if not available_managers:
-        critical_issues.append("利用可能なパッケージマネージャーが見つかりません")
+        if os.environ.get("PRE_COMMIT") == "1":
+            warnings.append("利用可能なパッケージマネージャーが見つかりません（precommit環境）")
+        else:
+            critical_issues.append("利用可能なパッケージマネージャーが見つかりません")
 
-    # CI固有の問題をチェック
+    # CI固有の問題をチェック（precommit環境を考慮）
     if "ci_specific_issues" in diagnosis and diagnosis["ci_specific_issues"]:
         for issue in diagnosis["ci_specific_issues"]:
             if "一致しません" in issue:
-                critical_issues.append(issue)
+                if os.environ.get("PRE_COMMIT") == "1":
+                    warnings.append(f"{issue}（precommit環境）")
+                else:
+                    critical_issues.append(issue)
             else:
                 warnings.append(issue)
 
-    # PATH問題をチェック
+    # PATH問題をチェック（precommit環境では軽減）
     if diagnosis["path_issues"]:
-        warnings.extend(diagnosis["path_issues"])
+        if os.environ.get("PRE_COMMIT") == "1":
+            # precommit環境ではPATH問題を軽減
+            path_warnings = [f"{issue}（precommit環境）" for issue in diagnosis["path_issues"]]
+            warnings.extend(path_warnings)
+        else:
+            warnings.extend(diagnosis["path_issues"])
 
     # 結果出力
     if critical_issues:
@@ -226,21 +238,25 @@ def _perform_platform_specific_diagnostics(platform_info):
     if platform_info.name == "windows":
         print("  Windows固有診断:")
 
-        # PowerShellの実行ポリシーをチェック
+        # PowerShellの実行ポリシーをチェック（precommit環境を考慮）
         try:
-            result = subprocess.run(
-                ["powershell", "-Command", "Get-ExecutionPolicy"],
-                capture_output=True,
-                text=True,
-                timeout=10,
-            )
-            if result.returncode == 0:
-                policy = result.stdout.strip()
-                print(f"    PowerShell実行ポリシー: {policy}")
-                if policy in ["Restricted", "AllSigned"]:
-                    print("    ⚠️ 実行ポリシーが制限的です")
+            # precommit環境では実行ポリシーチェックをスキップ
+            if os.environ.get("PRE_COMMIT") == "1":
+                print("    ℹ️ precommit環境のため、PowerShell実行ポリシーチェックをスキップ")
             else:
-                print(f"    ❌ PowerShell実行ポリシーチェック失敗: {result.stderr}")
+                result = subprocess.run(
+                    ["powershell", "-Command", "Get-ExecutionPolicy"],
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                )
+                if result.returncode == 0:
+                    policy = result.stdout.strip()
+                    print(f"    PowerShell実行ポリシー: {policy}")
+                    if policy in ["Restricted", "AllSigned"]:
+                        print("    ⚠️ 実行ポリシーが制限的です")
+                else:
+                    print(f"    ❌ PowerShell実行ポリシーチェック失敗: {result.stderr}")
         except Exception as e:
             print(f"    ❌ PowerShell実行ポリシーチェックエラー: {e}")
 

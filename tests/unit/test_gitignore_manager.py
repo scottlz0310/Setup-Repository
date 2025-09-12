@@ -346,18 +346,14 @@ __pycache__/
         templates_dir = temp_dir / "templates"
         templates_dir.mkdir()
 
-        # 読み取り不可能なファイルを作成
-        template_file = templates_dir / "python.gitignore"
-        template_file.write_text("content")
-        template_file.chmod(0o000)
-
+        # 存在しないテンプレートでエラーを発生させる
         manager = GitignoreManager(temp_dir, templates_dir)
-        content = manager.load_template("python")
+
+        # ファイル読み込みエラーをシミュレート
+        with patch("pathlib.Path.read_text", side_effect=OSError("Permission denied")):
+            content = manager.load_template("python")
 
         assert content == ""
-
-        # 権限を戻す（クリーンアップのため）
-        template_file.chmod(0o644)
 
     def test_get_available_templates_no_directory(self, temp_dir):
         """テンプレートディレクトリが存在しない場合のテスト"""
@@ -385,12 +381,11 @@ __pycache__/
         # テストテンプレートを作成
         (templates_dir / "python.gitignore").write_text("__pycache__/")
 
-        # 読み取り専用ディレクトリを作成
-        readonly_dir = temp_dir / "readonly"
-        readonly_dir.mkdir(mode=0o444)
+        manager = GitignoreManager(temp_dir, templates_dir)
 
-        manager = GitignoreManager(readonly_dir, templates_dir)
-        result = manager._create_new_gitignore(["python"])
+        # ファイル書き込みエラーをシミュレート
+        with patch("pathlib.Path.write_text", side_effect=OSError("Permission denied")):
+            result = manager._create_new_gitignore(["python"])
 
         assert result is False
 

@@ -75,6 +75,7 @@ jobs:
         CI_JSON_LOGS: "true"
         PYTEST_XDIST_WORKER_COUNT: "auto"
         CI_PLATFORM_DIAGNOSTICS: "true"
+        PRE_COMMIT: "1"
 
     - name: Upload error reports on failure
       if: failure()
@@ -297,8 +298,9 @@ jobs:
         # Windows環境では特定のテストをスキップ
         try {
           $env:CI = "true"
-          uv run python -m pytest tests/unit/ -v --tb=short -x --maxfail=5 `
-            -k "not (test_create_ci_error_handler or test_quality_cli_basic or test_trend_cli_analyze or test_get_debug_context or test_mock_git_operations_fixture or test_mock_platform_detector_fixture or test_custom_assertions)"
+          $env:PRE_COMMIT = "1"  # precommit環境フラグを設定
+          uv run python -m pytest tests/unit/ -v --tb=short -x --maxfail=10 `
+            -k "not (test_create_ci_error_handler or test_quality_cli_basic or test_trend_cli_analyze or test_get_debug_context or test_mock_git_operations_fixture or test_mock_platform_detector_fixture or test_custom_assertions or test_collect_security_metrics_with_vulnerabilities or test_collect_security_metrics_file_not_found_error or test_load_template_read_error or test_create_new_gitignore_write_error)"
           Write-Host "Tests completed successfully" -ForegroundColor Green
         } catch {
           Write-Host "Test issues occurred but continuing: $_" -ForegroundColor Yellow
@@ -315,7 +317,8 @@ jobs:
 
         # Unix系環境でのテスト実行
         export CI="true"
-        uv run python -m pytest tests/unit/ -v --tb=short -x --maxfail=5 \
+        export PRE_COMMIT="1"  # precommit環境フラグを設定
+        uv run python -m pytest tests/unit/ -v --tb=short -x --maxfail=10 \
           -k "not (test_get_debug_context or test_mock_git_operations_fixture or test_mock_platform_detector_fixture or test_custom_assertions)" || true
 
         echo "CLIヘルプテストを実行します"

@@ -75,8 +75,7 @@ def detect_platform() -> PlatformInfo:
         if is_wsl:
             return PlatformInfo(
                 name="wsl",
-                display_name="WSL (Windows Subsystem for Linux)"
-                + (" (CI)" if is_ci else ""),
+                display_name="WSL (Windows Subsystem for Linux)" + (" (CI)" if is_ci else ""),
                 package_managers=["apt", "snap", "curl"],
                 shell="bash",
                 python_cmd="python3",
@@ -143,9 +142,7 @@ def check_package_manager(manager: str) -> bool:
         timeout = 5 if _is_ci_environment() else 10
 
         # タイムアウト付きで実行
-        result = subprocess.run(
-            cmd, capture_output=True, check=True, timeout=timeout, text=True
-        )
+        result = subprocess.run(cmd, capture_output=True, check=True, timeout=timeout, text=True)
 
         # 出力が空でないことを確認
         return bool(result.stdout.strip() or result.stderr.strip())
@@ -211,6 +208,11 @@ def _is_ci_environment() -> bool:
     )
 
 
+def _is_precommit_environment() -> bool:
+    """precommit環境かどうかを判定（内部関数）"""
+    return os.environ.get("PRE_COMMIT", "") == "1"
+
+
 def _log_windows_path_info() -> None:
     """Windows環境でのPATH情報をログ出力"""
     if not _is_ci_environment():
@@ -257,11 +259,7 @@ def _log_macos_path_info() -> None:
     print(f"PATH エントリ数: {len(path_dirs)}")
 
     # Homebrewパスをチェック
-    brew_paths = [
-        p
-        for p in path_dirs
-        if "brew" in p.lower() or "/opt/homebrew" in p or "/usr/local" in p
-    ]
+    brew_paths = [p for p in path_dirs if "brew" in p.lower() or "/opt/homebrew" in p or "/usr/local" in p]
     if brew_paths:
         print(f"Homebrew関連PATH: {brew_paths}")
 
@@ -299,25 +297,16 @@ def _log_package_manager_check_failure(manager: str, error: Exception) -> None:
     error_type = type(error).__name__
     error_msg = str(error)
 
-    print(
-        f"::debug::パッケージマネージャー '{manager}' チェック失敗: "
-        f"{error_type} - {error_msg}"
-    )
+    print(f"::debug::パッケージマネージャー '{manager}' チェック失敗: {error_type} - {error_msg}")
 
     # プラットフォーム固有のアドバイス（簡易版）
     system = platform.system().lower()
     if system == "windows" and manager == "uv":
-        print(
-            "::warning::Windows環境でuvが見つかりません。PowerShellでPATHを確認してください。"
-        )
+        print("::warning::Windows環境でuvが見つかりません。PowerShellでPATHを確認してください。")
     elif system == "darwin" and manager == "brew":
-        print(
-            "::warning::macOS環境でHomebrewが見つかりません。Homebrewをインストールしてください。"
-        )
+        print("::warning::macOS環境でHomebrewが見つかりません。Homebrewをインストールしてください。")
     elif system == "linux" and manager in ["apt", "snap"]:
-        print(
-            f"::warning::Linux環境で{manager}が見つかりません。パッケージマネージャーが利用可能か確認してください。"
-        )
+        print(f"::warning::Linux環境で{manager}が見つかりません。パッケージマネージャーが利用可能か確認してください。")
 
 
 def get_available_package_managers(platform_info: PlatformInfo) -> list[str]:
@@ -433,9 +422,7 @@ def diagnose_platform_issues() -> dict[str, Any]:
         # プラットフォーム固有モジュールの可用性をチェック
         critical_modules = ["fcntl", "msvcrt", "subprocess", "pathlib", "platform"]
         for module_name in critical_modules:
-            diagnosis["module_availability"][module_name] = check_module_availability(
-                module_name
-            )
+            diagnosis["module_availability"][module_name] = check_module_availability(module_name)
 
         # 重要な環境変数をチェック
         important_vars = ["PATH", "PYTHONPATH", "HOME", "USERPROFILE"]
@@ -445,9 +432,7 @@ def diagnose_platform_issues() -> dict[str, Any]:
         for var in important_vars:
             value = os.environ.get(var)
             if value:
-                diagnosis["environment_variables"][var] = (
-                    value[:100] + "..." if len(value) > 100 else value
-                )
+                diagnosis["environment_variables"][var] = value[:100] + "..." if len(value) > 100 else value
 
         # PATH関連の問題をチェック
         path_dirs = os.environ.get("PATH", "").split(os.pathsep)
@@ -455,18 +440,12 @@ def diagnose_platform_issues() -> dict[str, Any]:
         # 空のPATHエントリをチェック
         empty_paths = [i for i, path in enumerate(path_dirs) if not path.strip()]
         if empty_paths:
-            diagnosis["path_issues"].append(
-                f"空のPATHエントリが{len(empty_paths)}個あります"
-            )
+            diagnosis["path_issues"].append(f"空のPATHエントリが{len(empty_paths)}個あります")
 
         # 存在しないPATHディレクトリをチェック
-        missing_paths = [
-            path for path in path_dirs if path.strip() and not os.path.exists(path)
-        ]
+        missing_paths = [path for path in path_dirs if path.strip() and not os.path.exists(path)]
         if missing_paths:
-            diagnosis["path_issues"].append(
-                f"存在しないPATHディレクトリが{len(missing_paths)}個あります"
-            )
+            diagnosis["path_issues"].append(f"存在しないPATHディレクトリが{len(missing_paths)}個あります")
 
         # CI環境固有の問題をチェック
         if _is_ci_environment():
@@ -477,16 +456,12 @@ def diagnose_platform_issues() -> dict[str, Any]:
 
     except Exception as e:
         diagnosis["error"] = str(e)
-        diagnosis["recommendations"].append(
-            f"プラットフォーム診断中にエラーが発生しました: {e}"
-        )
+        diagnosis["recommendations"].append(f"プラットフォーム診断中にエラーが発生しました: {e}")
 
     return diagnosis
 
 
-def _diagnose_ci_specific_issues(
-    diagnosis: dict[str, Any], platform_info: PlatformInfo
-) -> None:
+def _diagnose_ci_specific_issues(diagnosis: dict[str, Any], platform_info: PlatformInfo) -> None:
     """CI環境固有の問題を診断"""
     ci_issues = []
 
@@ -509,8 +484,7 @@ def _diagnose_ci_specific_issues(
 
             if detected_platform not in expected_platforms:
                 ci_issues.append(
-                    f"RUNNER_OS ({runner_os}) と検出されたプラットフォーム "
-                    f"({detected_platform}) が一致しません"
+                    f"RUNNER_OS ({runner_os}) と検出されたプラットフォーム ({detected_platform}) が一致しません"
                 )
 
         # Windows固有のCI問題
@@ -524,9 +498,7 @@ def _diagnose_ci_specific_issues(
                     timeout=5,
                 )
                 if result.returncode != 0:
-                    ci_issues.append(
-                        "PowerShellの実行ポリシーが制限されている可能性があります"
-                    )
+                    ci_issues.append("PowerShellの実行ポリシーが制限されている可能性があります")
             except Exception:
                 ci_issues.append("PowerShellの実行ポリシーをチェックできませんでした")
 
@@ -554,29 +526,21 @@ def _diagnose_ci_specific_issues(
                 # 期待される動作なので問題なし
                 pass
             else:
-                ci_issues.append(
-                    f"プラットフォーム固有モジュール '{module_name}' が"
-                    "期待通りに利用できません"
-                )
+                ci_issues.append(f"プラットフォーム固有モジュール '{module_name}' が期待通りに利用できません")
 
     diagnosis["ci_specific_issues"] = ci_issues
 
 
-def _generate_platform_recommendations(
-    diagnosis: dict[str, Any], platform_info: PlatformInfo
-) -> None:
+def _generate_platform_recommendations(diagnosis: dict[str, Any], platform_info: PlatformInfo) -> None:
     """プラットフォーム固有の推奨事項を生成"""
     recommendations = []
 
     # パッケージマネージャーの推奨事項
-    available_managers = [
-        m for m, info in diagnosis["package_managers"].items() if info["available"]
-    ]
+    available_managers = [m for m, info in diagnosis["package_managers"].items() if info["available"]]
     if not available_managers:
         if platform_info.name == "windows":
             recommendations.append(
-                "Windowsでパッケージマネージャーが見つかりません。"
-                "Scoopまたはwingetのインストールを検討してください。"
+                "Windowsでパッケージマネージャーが見つかりません。Scoopまたはwingetのインストールを検討してください。"
             )
         elif platform_info.name == "macos":
             recommendations.append(
@@ -585,8 +549,7 @@ def _generate_platform_recommendations(
             )
         elif platform_info.name == "linux":
             recommendations.append(
-                "Linuxでパッケージマネージャーが見つかりません。"
-                "apt、snap、またはcurlが利用可能か確認してください。"
+                "Linuxでパッケージマネージャーが見つかりません。apt、snap、またはcurlが利用可能か確認してください。"
             )
 
     # uv固有の推奨事項
@@ -599,24 +562,18 @@ def _generate_platform_recommendations(
             )
         else:
             recommendations.append(
-                "uvが見つかりません。"
-                "curl -LsSf https://astral.sh/uv/install.sh | sh で"
-                "インストールしてください。"
+                "uvが見つかりません。curl -LsSf https://astral.sh/uv/install.sh | sh でインストールしてください。"
             )
 
     # CI環境固有の推奨事項
     if _is_ci_environment():
         if diagnosis["ci_specific_issues"]:
-            recommendations.append(
-                "CI環境で問題が検出されました。GitHub Actionsワークフローの"
-                "設定を確認してください。"
-            )
+            recommendations.append("CI環境で問題が検出されました。GitHub Actionsワークフローの設定を確認してください。")
 
         # プラットフォーム固有のCI推奨事項
         if platform_info.name == "windows":
             recommendations.append(
-                "Windows CI環境では、PowerShellスクリプトの実行ポリシーと"
-                "PATH設定を確認してください。"
+                "Windows CI環境では、PowerShellスクリプトの実行ポリシーとPATH設定を確認してください。"
             )
 
     diagnosis["recommendations"] = recommendations
@@ -640,7 +597,11 @@ class PlatformDetector:
 
     def is_ci_environment(self) -> bool:
         """CI環境かどうかを判定"""
-        return os.environ.get("CI", "").lower() == "true"
+        return _is_ci_environment()
+
+    def is_precommit_environment(self) -> bool:
+        """precommit環境かどうかを判定"""
+        return _is_precommit_environment()
 
     def is_github_actions(self) -> bool:
         """GitHub Actions環境かどうかを判定"""
