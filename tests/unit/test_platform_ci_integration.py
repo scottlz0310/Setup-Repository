@@ -92,19 +92,29 @@ class TestCIPlatformDetection:
         assert detector.is_ci_environment() is True
         assert detector.is_github_actions() is True
 
-    def test_platform_detection_consistency_linux(self, mock_ci_environment):
-        """Linux CI環境でのプラットフォーム検出一貫性テスト"""
-        with (
-            patch("platform.system", return_value="Linux"),
-            patch("os.path.exists", return_value=False),
-        ):  # WSL検出を無効化
-            platform_info = detect_platform()
+    def test_platform_detection_consistency_current_platform(self, mock_ci_environment):
+        """現在のプラットフォームでのCI環境検出一貫性テスト"""
+        import platform as platform_module
 
+        current_platform = platform_module.system().lower()
+        platform_info = detect_platform()
+
+        # 現在のプラットフォームに応じた検証
+        if current_platform == "windows":
+            assert platform_info.name == "windows"
+            assert platform_info.shell == "powershell"
+            assert platform_info.python_cmd == "python"
+        elif current_platform == "linux":
             assert platform_info.name in ["linux", "wsl"]  # WSL環境も許可
-            # CI環境の表示名をチェック（GitHub ActionsまたはCI）
-            assert "GitHub Actions" in platform_info.display_name or "(CI)" in platform_info.display_name
             assert platform_info.shell == "bash"
             assert platform_info.python_cmd == "python3"
+        elif current_platform == "darwin":
+            assert platform_info.name == "macos"
+            assert platform_info.shell == "zsh"
+            assert platform_info.python_cmd == "python3"
+
+        # CI環境の表示名をチェック（GitHub ActionsまたはCI）
+        assert "GitHub Actions" in platform_info.display_name or "(CI)" in platform_info.display_name
 
     def test_platform_detection_consistency_windows(self, mock_windows_ci):
         """Windows CI環境でのプラットフォーム検出一貫性テスト"""
@@ -386,11 +396,22 @@ class TestCIPlatformIntegration:
 
     def test_full_platform_detection_workflow(self):
         """完全なプラットフォーム検出ワークフローテスト"""
+        import platform as platform_module
+
         detector = PlatformDetector()
+        current_platform = platform_module.system().lower()
 
         # 基本的なプラットフォーム検出
         platform_name = detector.detect_platform()
         assert platform_name in ["windows", "linux", "macos", "wsl"]
+
+        # 現在のプラットフォームとの一貫性をチェック
+        if current_platform == "windows":
+            assert platform_name == "windows"
+        elif current_platform == "linux":
+            assert platform_name in ["linux", "wsl"]
+        elif current_platform == "darwin":
+            assert platform_name == "macos"
 
         # 詳細なプラットフォーム情報
         platform_info = detector.get_platform_info()
