@@ -66,13 +66,19 @@ def sync_repositories(config: dict, dry_run: bool = False) -> SyncResult:
 
     # ロック取得
     if not dry_run:
+        import os
         import tempfile
 
-        default_lock_file = str(Path(tempfile.gettempdir()) / "repo-sync.lock")
-        lock_file = config.get("lock_file", default_lock_file)
-        lock = ProcessLock(lock_file)
+        # テスト環境では一意なロックファイルを使用
+        if os.environ.get("PYTEST_CURRENT_TEST"):
+            lock = ProcessLock.create_test_lock("sync")
+        else:
+            default_lock_file = str(Path(tempfile.gettempdir()) / "repo-sync.lock")
+            lock_file = config.get("lock_file", default_lock_file)
+            lock = ProcessLock(lock_file)
+
         if not lock.acquire():
-            print(f"❌ 別のプロセスが実行中です（ロック: {lock_file}）")
+            print(f"❌ 別のプロセスが実行中です（ロック: {lock.lock_file}）")
             sys.exit(1)
 
     # ログセットアップ

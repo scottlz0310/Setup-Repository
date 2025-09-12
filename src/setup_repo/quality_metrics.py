@@ -152,9 +152,16 @@ class QualityMetricsCollector:
         """MyPy型チェックメトリクスを収集"""
         return collect_mypy_metrics(self.project_root, self.logger)
 
-    def collect_test_metrics(self, parallel_workers: Union[str, int] = "auto") -> dict[str, Any]:
+    def collect_test_metrics(
+        self,
+        parallel_workers: Union[str, int] = "auto",
+        coverage_threshold: float = 80.0,
+        skip_integration_tests: bool = False,
+    ) -> dict[str, Any]:
         """テストメトリクスを収集（並列実行対応）"""
-        return collect_pytest_metrics(self.project_root, self.logger, parallel_workers)
+        return collect_pytest_metrics(
+            self.project_root, self.logger, parallel_workers, coverage_threshold, skip_integration_tests
+        )
 
     def collect_security_metrics(self) -> dict[str, Any]:
         """セキュリティメトリクスを収集"""

@@ -145,6 +145,8 @@ def collect_pytest_metrics(
     project_root: Optional[Path] = None,
     logger: Optional[QualityLogger] = None,
     parallel_workers: Union[str, int] = "auto",
+    coverage_threshold: float = 80.0,
+    skip_integration_tests: bool = False,
 ) -> dict[str, Any]:
     """テストメトリクスを収集（並列実行対応）"""
     project_root = project_root or Path.cwd()
@@ -164,10 +166,15 @@ def collect_pytest_metrics(
             "--json-report",
             "--json-report-file=test-report.json",
             "--junit-xml=test-results.xml",  # JUnit XML形式のテスト結果を生成
-            # 重い/外部依存のテストは品質ゲートから除外
-            "-m",
-            "not integration and not performance and not stress",
         ]
+
+        # テストマーカーの設定
+        if skip_integration_tests:
+            # CI環境では統合テストをスキップ
+            cmd.extend(["-m", "not integration and not performance and not stress"])
+        else:
+            # ローカル環境では重いテストのみスキップ
+            cmd.extend(["-m", "not performance and not stress"])
 
         # 並列実行設定
         if parallel_workers != "1" and parallel_workers != 1:
@@ -245,13 +252,13 @@ def collect_pytest_metrics(
             )
         else:
             # カバレッジ不足の場合は専用エラー
-            if coverage_percent < 80.0:
+            if coverage_percent < coverage_threshold:
                 logger.log_quality_check_failure(
                     "Tests",
                     CoverageError(
-                        f"カバレッジが不足しています: {coverage_percent:.1f}% (必要: 80.0%)",
+                        f"カバレッジが不足しています: {coverage_percent:.1f}% (必要: {coverage_threshold}%)",
                         coverage_percent,
-                        80.0,
+                        coverage_threshold,
                     ),
                 )
             else:

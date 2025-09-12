@@ -428,6 +428,23 @@ def mock_platform_detector():
 
 
 @pytest.fixture
+def mock_subprocess():
+    """subprocessのモックフィクスチャ"""
+    with patch("subprocess.run") as mock_run, patch("subprocess.Popen") as mock_popen:
+        # 成功ケースのデフォルト設定
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout="success",
+            stderr="",
+        )
+        mock_popen.return_value = MagicMock(
+            returncode=0,
+            communicate=lambda: ("success", ""),
+        )
+        yield {"run": mock_run, "popen": mock_popen}
+
+
+@pytest.fixture
 def test_lock():
     """テスト用の一意なプロセスロックフィクスチャ"""
     import uuid

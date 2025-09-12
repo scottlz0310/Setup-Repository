@@ -73,28 +73,19 @@ class LoggingConfig:
         log_dir = os.getenv("LOG_DIR", "logs")
         log_file = f"{log_name}.log"
 
-        # クロスプラットフォーム対応: os.path.joinを使用してプラットフォーム固有のパス区切り文字を処理
+        # クロスプラットフォーム対応: Pathクラスを直接使用
         try:
-            # 文字列パスを作成してからPathオブジェクトに変換
-            full_path = os.path.join(log_dir, log_file)
-            # プラットフォーム固有のPathクラスを使用（PurePath経由で安全に作成）
-            from pathlib import PurePath
-
-            return Path(PurePath(full_path))
+            # Pathクラスを使用してプラットフォーム固有のパス区切り文字を自動処理
+            return Path(log_dir) / log_file
         except (OSError, NotImplementedError) as e:
             # パス作成に失敗した場合は、現在のディレクトリを基準にする
             import logging
 
             logging.warning(f"ログパス作成に失敗、デフォルトパスを使用: {e}")
             try:
-                fallback_path = os.path.join(os.getcwd(), "logs", log_file)
-                from pathlib import PurePath
-
-                return Path(PurePath(fallback_path))
+                return Path.cwd() / "logs" / log_file
             except Exception:
                 # 最後の手段として現在のプラットフォーム用のPathを直接作成
-                import platform
-
                 if platform.system() == "Windows":
                     from pathlib import WindowsPath
 

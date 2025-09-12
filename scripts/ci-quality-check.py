@@ -78,6 +78,7 @@ def main():
 
         # CI環境変数を設定
         os.environ["CI"] = "true"
+        os.environ["PYTEST_CURRENT_TEST"] = "ci-quality-check"  # テスト環境フラグ
 
         # 各品質チェックを段階的に実行（並列実行対応）
         stages = [
@@ -85,7 +86,11 @@ def main():
             ("MyPy Type Check", collector.collect_mypy_metrics),
             (
                 "Test Execution",
-                lambda: collector.collect_test_metrics(parallel_workers=parallel_workers),
+                lambda: collector.collect_test_metrics(
+                    parallel_workers=parallel_workers,
+                    coverage_threshold=80.0,  # CI環境では80%を維持
+                    skip_integration_tests=True,  # CIでは統合テストをスキップ
+                ),
             ),
             ("Security Scan", collector.collect_security_metrics),
         ]
