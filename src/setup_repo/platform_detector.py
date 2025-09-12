@@ -72,10 +72,19 @@ def detect_platform() -> PlatformInfo:
             except (FileNotFoundError, PermissionError, OSError):
                 pass
 
-        if is_wsl:
+        # CI環境ではWSLをLinuxとして扱う
+        if is_wsl and is_ci:
+            return PlatformInfo(
+                name="linux",
+                display_name="Linux (WSL in CI)" + (" (GitHub Actions)" if github_actions else ""),
+                package_managers=["apt", "snap", "curl"],
+                shell="bash",
+                python_cmd="python3",
+            )
+        elif is_wsl:
             return PlatformInfo(
                 name="wsl",
-                display_name="WSL (Windows Subsystem for Linux)" + (" (CI)" if is_ci else ""),
+                display_name="WSL (Windows Subsystem for Linux)",
                 package_managers=["apt", "snap", "curl"],
                 shell="bash",
                 python_cmd="python3",

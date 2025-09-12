@@ -24,9 +24,7 @@ from src.setup_repo.platform_detector import (
 )
 
 
-@pytest.mark.skipif(
-    os.environ.get("CI", "").lower() != "true", reason="CI環境でのみ実行"
-)
+@pytest.mark.skipif(os.environ.get("CI", "").lower() != "true", reason="CI環境でのみ実行")
 class TestCIPlatformSpecific:
     """CI環境でのプラットフォーム固有テスト"""
 
@@ -52,23 +50,20 @@ class TestCIPlatformSpecific:
         platform_info = detect_platform()
         detected_platform = platform_info.name
 
-        # プラットフォームマッピングをチェック
+        # CI環境ではプラットフォームマッピングをチェック
         expected_mappings = {
             "windows": "windows",
-            "linux": "linux",
+            "linux": "linux",  # CI環境ではWSLもlinuxとして扱う
             "macos": "macos",
         }
 
         expected_platform = expected_mappings.get(runner_os)
         if expected_platform:
             assert detected_platform == expected_platform, (
-                f"RUNNER_OS ({runner_os}) と検出プラットフォーム "
-                f"({detected_platform}) が一致しません"
+                f"RUNNER_OS ({runner_os}) と検出プラットフォーム ({detected_platform}) が一致しません"
             )
 
-    @pytest.mark.skipif(
-        platform.system().lower() != "windows", reason="Windows固有テスト"
-    )
+    @pytest.mark.skipif(platform.system().lower() != "windows", reason="Windows固有テスト")
     def test_windows_specific_functionality(self):
         """Windows固有機能テスト"""
         platform_info = detect_platform()
@@ -96,7 +91,8 @@ class TestCIPlatformSpecific:
     def test_linux_specific_functionality(self):
         """Linux固有機能テスト"""
         platform_info = detect_platform()
-        assert platform_info.name in ["linux", "wsl"]
+        # CI環境ではWSLもlinuxとして検出される
+        assert platform_info.name == "linux"
         assert platform_info.shell == "bash"
         assert platform_info.python_cmd == "python3"
 
@@ -147,8 +143,7 @@ class TestCIPlatformSpecific:
         basic_available = [tool for tool in basic_tools if check_package_manager(tool)]
 
         assert available_managers or len(basic_available) > 0, (
-            f"利用可能なパッケージマネージャーが見つかりません。"
-            f"プラットフォーム: {platform_info.name}"
+            f"利用可能なパッケージマネージャーが見つかりません。プラットフォーム: {platform_info.name}"
         )
 
     def test_uv_availability_in_ci(self):
@@ -170,13 +165,9 @@ class TestCIPlatformSpecific:
             # プラットフォーム固有のアドバイスを提供
             platform_info = detect_platform()
             if platform_info.name == "windows":
-                pytest.skip(
-                    "Windows CI環境でuvが見つかりません。PATH設定を確認してください。"
-                )
+                pytest.skip("Windows CI環境でuvが見つかりません。PATH設定を確認してください。")
             else:
-                pytest.skip(
-                    "CI環境でuvが見つかりません。インストール状況を確認してください。"
-                )
+                pytest.skip("CI環境でuvが見つかりません。インストール状況を確認してください。")
 
         assert uv_available, "CI環境でuvが利用できません"
 
@@ -235,9 +226,9 @@ class TestCIPlatformSpecific:
         for key in required_keys:
             assert key in diagnosis, f"診断結果に {key} が含まれていません"
 
-        # プラットフォーム情報が正しく設定されていることを確認
+        # プラットフォーム情報が正しく設定されていることを確認（CI環境ではWSLはlinux）
         platform_info = diagnosis["platform_info"]
-        assert platform_info["name"] in ["windows", "linux", "macos", "wsl"]
+        assert platform_info["name"] in ["windows", "linux", "macos"]
         assert "GitHub Actions" in platform_info["display_name"]
 
         # CI環境変数が含まれることを確認
@@ -290,9 +281,7 @@ class TestCIPlatformSpecific:
 
 
 @pytest.mark.integration
-@pytest.mark.skipif(
-    os.environ.get("CI", "").lower() != "true", reason="CI環境でのみ実行"
-)
+@pytest.mark.skipif(os.environ.get("CI", "").lower() != "true", reason="CI環境でのみ実行")
 class TestCIIntegrationWorkflow:
     """CI環境での統合ワークフローテスト"""
 
@@ -310,15 +299,13 @@ class TestCIIntegrationWorkflow:
 
         # 4. エラーハンドリングテスト
         test_error = RuntimeError("Test error for CI workflow")
-        error_message = create_platform_specific_error_message(
-            test_error, platform_info.name
-        )
+        error_message = create_platform_specific_error_message(test_error, platform_info.name)
 
         # 5. ログ設定テスト
         logger = setup_ci_logging()
 
-        # 6. 結果検証
-        assert platform_info.name in ["windows", "linux", "macos", "wsl"]
+        # 6. 結果検証（CI環境ではWSLはlinuxとして検出）
+        assert platform_info.name in ["windows", "linux", "macos"]
         assert "error" not in diagnosis or diagnosis["error"] is None
         assert "CI環境" in error_message or "GitHub Actions" in error_message
         assert logger is not None
@@ -339,9 +326,7 @@ class TestCIIntegrationWorkflow:
 
         for scenario_name, error in error_scenarios:
             # エラーメッセージ生成
-            message = create_platform_specific_error_message(
-                error, platform_info.name, {"scenario": scenario_name}
-            )
+            message = create_platform_specific_error_message(error, platform_info.name, {"scenario": scenario_name})
 
             # GitHub Actions形式のアノテーションをテスト
             if detector.is_github_actions():

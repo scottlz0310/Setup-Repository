@@ -26,6 +26,7 @@ class TestMigrationCheckpoint:
         # 元のディレクトリを保存し、テスト用ディレクトリに移動
         self.original_cwd = Path.cwd()
         import os
+
         os.chdir(self.temp_dir)
 
         # ディレクトリ変更後にMigrationCheckpointを初期化
@@ -105,15 +106,18 @@ class TestMigrationCheckpoint:
 
     def test_list_checkpoints(self):
         """チェックポイント一覧取得テスト"""
-        # 複数のチェックポイントを作成
+        import time
+
+        # 複数のチェックポイントを作成（時間間隔をあけて順序を確実にする）
         checkpoint1 = self.checkpoint_manager.create_checkpoint("phase1", "フェーズ1")
+        time.sleep(0.01)  # 時間間隔をあける
         checkpoint2 = self.checkpoint_manager.create_checkpoint("phase2", "フェーズ2")
 
         checkpoints = self.checkpoint_manager.list_checkpoints()
 
         assert len(checkpoints) == 2
 
-        # 最新のものが最初に来ることを確認
+        # 最新のものが最初に来ることを確認（タイムスタンプ順でソート）
         assert checkpoints[0]["id"] == checkpoint2
         assert checkpoints[1]["id"] == checkpoint1
 
@@ -127,13 +131,15 @@ class TestMigrationCheckpoint:
 
     def test_cleanup_checkpoints(self):
         """チェックポイントクリーンアップテスト"""
-        # 6個のチェックポイントを作成
+        import time
+
+        # 6個のチェックポイントを作成（時間間隔をあけて順序を確実にする）
         checkpoint_ids = []
         for i in range(6):
-            checkpoint_id = self.checkpoint_manager.create_checkpoint(
-                f"phase{i}", f"フェーズ{i}"
-            )
+            checkpoint_id = self.checkpoint_manager.create_checkpoint(f"phase{i + 1}", f"フェーズ{i + 1}")
             checkpoint_ids.append(checkpoint_id)
+            # 時間間隔をあけてタイムスタンプの違いを確実にする
+            time.sleep(0.01)
 
         # 最新3個を保持してクリーンアップ
         self.checkpoint_manager.cleanup_checkpoints(keep_latest=3)
@@ -141,9 +147,13 @@ class TestMigrationCheckpoint:
         checkpoints = self.checkpoint_manager.list_checkpoints()
         assert len(checkpoints) == 3
 
-        # 最新3個が残っていることを確認
+        # 最新3個が残っていることを確認（タイムスタンプ順でソートされる）
         remaining_ids = [cp["id"] for cp in checkpoints]
-        assert checkpoint_ids[-3:] == remaining_ids[::-1]  # 逆順で返される
+        expected_remaining = checkpoint_ids[-3:]  # 最後の3個
+
+        # リストは最新順（逆順）で返されるので、期待値も逆順にする
+        expected_remaining.reverse()
+        assert remaining_ids == expected_remaining
 
     def test_get_checkpoint_info(self):
         """チェックポイント情報取得テスト"""
@@ -225,9 +235,7 @@ class TestMigrationErrorHandling:
     def test_handle_migration_error_rollback_failure(self, mock_checkpoint_class):
         """ロールバック失敗時のエラーハンドリングテスト"""
         mock_checkpoint = MagicMock()
-        mock_checkpoint.rollback_to_checkpoint.side_effect = Exception(
-            "ロールバックエラー"
-        )
+        mock_checkpoint.rollback_to_checkpoint.side_effect = Exception("ロールバックエラー")
         mock_checkpoint_class.return_value = mock_checkpoint
 
         test_error = ValueError("テストエラー")
@@ -247,6 +255,7 @@ class TestMigrationCheckpointIntegration:
         # 元のディレクトリを保存し、テスト用ディレクトリに移動
         self.original_cwd = Path.cwd()
         import os
+
         os.chdir(self.temp_dir)
 
         # ディレクトリ変更後にMigrationCheckpointを初期化
@@ -275,18 +284,14 @@ class TestMigrationCheckpointIntegration:
     def test_full_migration_workflow(self):
         """完全な移行ワークフローテスト"""
         # Phase 1: 初期チェックポイント作成
-        phase1_checkpoint = self.checkpoint_manager.create_checkpoint(
-            "phase1_start", "Phase 1開始前の状態"
-        )
+        phase1_checkpoint = self.checkpoint_manager.create_checkpoint("phase1_start", "Phase 1開始前の状態")
 
         # Phase 1: ファイル変更をシミュレート
         (self.test_src / "module1.py").write_text("# module1 phase1 modified")
         (self.test_src / "new_module.py").write_text("# new module in phase1")
 
         # Phase 1完了チェックポイント
-        phase1_complete = self.checkpoint_manager.create_checkpoint(
-            "phase1_complete", "Phase 1完了"
-        )
+        phase1_complete = self.checkpoint_manager.create_checkpoint("phase1_complete", "Phase 1完了")
 
         # Phase 2: さらなる変更
         (self.test_src / "module2.py").write_text("# module2 phase2 modified")
@@ -305,12 +310,8 @@ class TestMigrationCheckpointIntegration:
         # Phase 1完了時の状態が復元されていることを確認
         assert (self.test_src / "module1.py").read_text() == "# module1 phase1 modified"
         assert (self.test_src / "new_module.py").exists()
-        assert (
-            self.test_src / "module2.py"
-        ).read_text() == "# module2 original"  # Phase 2の変更は戻る
-        assert not (
-            self.test_tests / "test_new.py"
-        ).exists()  # Phase 2で追加されたファイルは削除
+        assert (self.test_src / "module2.py").read_text() == "# module2 original"  # Phase 2の変更は戻る
+        assert not (self.test_tests / "test_new.py").exists()  # Phase 2で追加されたファイルは削除
 
         # 初期状態にロールバック
         self.checkpoint_manager.rollback_to_checkpoint(phase1_checkpoint)

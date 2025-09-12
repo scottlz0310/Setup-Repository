@@ -315,9 +315,13 @@ class QualityLogger:
 
     def __del__(self) -> None:
         """デストラクタでハンドラーをクリーンアップ"""
+        # Pythonシャットダウン時のsys.meta_pathエラーを回避
+        if sys is None or sys.meta_path is None:
+            return
+
         import contextlib
 
-        with contextlib.suppress(Exception):
+        with contextlib.suppress(ImportError, AttributeError, TypeError):
             self._close_handlers()
 
 

@@ -73,21 +73,36 @@ class LoggingConfig:
         log_dir = os.getenv("LOG_DIR", "logs")
         log_file = f"{log_name}.log"
 
-        # クロスプラットフォーム対応: 現在のプラットフォームに適したPathオブジェクトを作成
+        # クロスプラットフォーム対応: os.path.joinを使用してプラットフォーム固有のパス区切り文字を処理
         try:
-            # os.path.joinを使用してプラットフォーム固有のパス区切り文字を処理
+            # 文字列パスを作成してからPathオブジェクトに変換
             full_path = os.path.join(log_dir, log_file)
-            return Path(full_path)
+            # プラットフォーム固有のPathクラスを使用（PurePath経由で安全に作成）
+            from pathlib import PurePath
+
+            return Path(PurePath(full_path))
         except (OSError, NotImplementedError) as e:
             # パス作成に失敗した場合は、現在のディレクトリを基準にする
             import logging
 
             logging.warning(f"ログパス作成に失敗、デフォルトパスを使用: {e}")
             try:
-                return Path(os.path.join(os.getcwd(), "logs", log_file))
+                fallback_path = os.path.join(os.getcwd(), "logs", log_file)
+                from pathlib import PurePath
+
+                return Path(PurePath(fallback_path))
             except Exception:
-                # 最後の手段として相対パスを使用
-                return Path(f"logs/{log_file}")
+                # 最後の手段として現在のプラットフォーム用のPathを直接作成
+                import platform
+
+                if platform.system() == "Windows":
+                    from pathlib import WindowsPath
+
+                    return WindowsPath("logs") / log_file
+                else:
+                    from pathlib import PosixPath
+
+                    return PosixPath("logs") / log_file
 
     @classmethod
     def configure_for_environment(cls, logger_name: str = "setup_repo.quality") -> QualityLogger:

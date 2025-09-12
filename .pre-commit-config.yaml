@@ -75,7 +75,7 @@ repos:
       - id: pytest-check
         name: "Pytest テスト実行"
         description: "Pytestによる単体テスト実行"
-        entry: bash -c 'export PRE_COMMIT=true && uv run pytest tests/unit/ -x --tb=short -k "not (test_mock_git_operations_fixture or test_mock_platform_detector_fixture)"'
+        entry: bash -c 'export PRE_COMMIT="1" && export CI="true" && uv run pytest tests/unit/ -x --tb=short -k "not (test_mock_git_operations_fixture or test_mock_platform_detector_fixture)"'
         language: system
         pass_filenames: false
         always_run: true
