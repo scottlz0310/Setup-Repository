@@ -14,7 +14,7 @@ from .logging_config import setup_project_logging
 
 # プラットフォーム固有のインポートとエラーハンドリング
 try:
-    import fcntl
+    import fcntl  # noqa: F401
 
     FCNTL_AVAILABLE = True
 except ImportError:
@@ -139,6 +139,7 @@ class UnixLockImplementation(LockImplementation):
 
         try:
             import fcntl as fcntl_module
+
             fcntl_module.flock(file_handle, fcntl_module.LOCK_EX | fcntl_module.LOCK_NB)
             logger.debug("Unix系システムでfcntlを使用してファイルロックを取得しました")
             return True
@@ -153,6 +154,7 @@ class UnixLockImplementation(LockImplementation):
 
         try:
             import fcntl as fcntl_module
+
             fcntl_module.flock(file_handle, fcntl_module.LOCK_UN)
             logger.debug("Unix系システムでfcntlを使用してファイルロックを解放しました")
         except (OSError, ImportError) as e:
