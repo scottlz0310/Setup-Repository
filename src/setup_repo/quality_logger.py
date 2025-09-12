@@ -307,6 +307,19 @@ class QualityLogger:
             self.info(f"エラーレポートを保存しました: {saved_path}")
             return saved_path
 
+    def _close_handlers(self) -> None:
+        """全てのハンドラーを閉じる（Windowsでのファイルロック問題対策）"""
+        for handler in self.logger.handlers[:]:
+            handler.close()
+            self.logger.removeHandler(handler)
+
+    def __del__(self) -> None:
+        """デストラクタでハンドラーをクリーンアップ"""
+        import contextlib
+
+        with contextlib.suppress(Exception):
+            self._close_handlers()
+
 
 # グローバルロガーインスタンス
 _default_logger: Optional[QualityLogger] = None

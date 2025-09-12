@@ -58,9 +58,7 @@ class TestCIEnvironmentInfo:
         # uvコマンドのモック
         mock_subprocess.side_effect = [
             "uv 0.1.0",  # uv --version
-            json.dumps(
-                [{"name": "pytest", "version": "7.0.0"}]
-            ),  # pip list --format=json
+            json.dumps([{"name": "pytest", "version": "7.0.0"}]),  # pip list --format=json
         ]
 
         info = CIEnvironmentInfo.get_dependency_info()
@@ -79,9 +77,7 @@ class TestCIErrorHandler:
         with tempfile.TemporaryDirectory() as temp_dir:
             error_report_dir = Path(temp_dir)
 
-            handler = CIErrorHandler(
-                enable_github_annotations=True, error_report_dir=error_report_dir
-            )
+            handler = CIErrorHandler(enable_github_annotations=True, error_report_dir=error_report_dir)
 
             assert handler.enable_github_annotations is True
             assert handler.error_report_dir == error_report_dir
@@ -151,9 +147,7 @@ class TestCIErrorHandler:
         """エラーレポート保存のテスト"""
         with tempfile.TemporaryDirectory() as temp_dir:
             error_report_dir = Path(temp_dir)
-            handler = CIErrorHandler(
-                enable_github_annotations=False, error_report_dir=error_report_dir
-            )
+            handler = CIErrorHandler(enable_github_annotations=False, error_report_dir=error_report_dir)
 
             # エラーを追加
             error = QualityCheckError("テストエラー")
@@ -189,9 +183,7 @@ class TestCIErrorHandler:
         assert "QualityCheckError" in summary
         assert "テストエラー" in summary
 
-    @patch.dict(
-        os.environ, {"GITHUB_ACTIONS": "true", "GITHUB_STEP_SUMMARY": "/tmp/summary"}
-    )
+    @patch.dict(os.environ, {"GITHUB_ACTIONS": "true", "GITHUB_STEP_SUMMARY": "/tmp/summary"})
     @patch("builtins.open", create=True)
     def test_github_step_summary_output(self, mock_open):
         """GitHub Step Summary出力のテスト"""
@@ -203,9 +195,7 @@ class TestCIErrorHandler:
         handler.output_github_step_summary()
 
         # GitHub Step Summaryファイルが開かれることを確認
-        summary_calls = [
-            call for call in mock_open.call_args_list if "/tmp/summary" in str(call)
-        ]
+        summary_calls = [call for call in mock_open.call_args_list if "/tmp/summary" in str(call)]
         assert summary_calls, "GitHub Step Summaryファイルが開かれませんでした"
 
     @patch.dict(os.environ, {"GITHUB_ACTIONS": "false"})
@@ -238,6 +228,10 @@ class TestCIErrorHandlerFactory:
             assert isinstance(handler, CIErrorHandler)
             assert handler.enable_github_annotations is True
             assert handler.error_report_dir == error_report_dir
+
+            # Windowsでのファイルロック問題を回避するため、ログファイルを明示的にクローズ
+            if hasattr(handler.logger, "_close_handlers"):
+                handler.logger._close_handlers()
 
     @patch.dict(os.environ, {"CI_JSON_LOGS": "true"})
     def test_create_ci_error_handler_with_json_logs(self):
@@ -369,9 +363,7 @@ class TestCIErrorHandlerAdvanced:
         """カスタムファイル名でのエラーレポート保存のテスト"""
         with tempfile.TemporaryDirectory() as temp_dir:
             error_report_dir = Path(temp_dir)
-            handler = CIErrorHandler(
-                enable_github_annotations=False, error_report_dir=error_report_dir
-            )
+            handler = CIErrorHandler(enable_github_annotations=False, error_report_dir=error_report_dir)
 
             # エラーを追加
             error = QualityCheckError("Test error")
@@ -397,9 +389,7 @@ class TestCIErrorHandlerAdvanced:
         """GitHub Actions環境でのエラーレポート保存通知のテスト"""
         with tempfile.TemporaryDirectory() as temp_dir:
             error_report_dir = Path(temp_dir)
-            handler = CIErrorHandler(
-                enable_github_annotations=True, error_report_dir=error_report_dir
-            )
+            handler = CIErrorHandler(enable_github_annotations=True, error_report_dir=error_report_dir)
 
             # エラーを追加
             error = QualityCheckError("Test error")
@@ -411,9 +401,7 @@ class TestCIErrorHandlerAdvanced:
             # GitHub Actionsアノテーションが出力されることを確認
             mock_print.assert_called()
             call_args = [call[0][0] for call in mock_print.call_args_list]
-            assert any(
-                "::notice" in arg and "Error report saved" in arg for arg in call_args
-            )
+            assert any("::notice" in arg and "Error report saved" in arg for arg in call_args)
 
     def test_generate_failure_summary_with_multiple_errors(self):
         """複数エラーでの失敗サマリー生成のテスト"""
@@ -436,9 +424,7 @@ class TestCIErrorHandlerAdvanced:
         assert "Second error" in summary
         assert "ERROR_001" in summary
 
-    @patch.dict(
-        os.environ, {"GITHUB_ACTIONS": "true", "GITHUB_STEP_SUMMARY": "/tmp/summary"}
-    )
+    @patch.dict(os.environ, {"GITHUB_ACTIONS": "true", "GITHUB_STEP_SUMMARY": "/tmp/summary"})
     @patch("builtins.open", create=True)
     def test_output_github_step_summary_with_errors(self, mock_open):
         """エラーありでのGitHub Step Summary出力のテスト"""
@@ -451,9 +437,7 @@ class TestCIErrorHandlerAdvanced:
         handler.output_github_step_summary()
 
         # GitHub Step Summaryファイルが開かれることを確認
-        summary_calls = [
-            call for call in mock_open.call_args_list if "/tmp/summary" in str(call)
-        ]
+        summary_calls = [call for call in mock_open.call_args_list if "/tmp/summary" in str(call)]
         assert summary_calls, "GitHub Step Summaryファイルが開かれませんでした"
 
     @patch.dict(os.environ, {"GITHUB_STEP_SUMMARY": ""})
@@ -486,9 +470,7 @@ class TestCIErrorHandlerAdvanced:
         """エラーありでの終了コード設定のテスト"""
         with tempfile.TemporaryDirectory() as temp_dir:
             error_report_dir = Path(temp_dir)
-            handler = CIErrorHandler(
-                enable_github_annotations=False, error_report_dir=error_report_dir
-            )
+            handler = CIErrorHandler(enable_github_annotations=False, error_report_dir=error_report_dir)
 
             # エラーを追加
             error = QualityCheckError("Test error")
@@ -519,9 +501,7 @@ class TestCIErrorHandlerAdvanced:
         ):
             handler._output_github_annotation("warning", "Test message", "test.py", 10)
 
-            mock_print.assert_called_once_with(
-                "::warning file=test.py,line=10::Test message"
-            )
+            mock_print.assert_called_once_with("::warning file=test.py,line=10::Test message")
 
     def test_output_github_annotation_with_file_only(self):
         """ファイルのみ指定のGitHub Actionsアノテーション出力のテスト"""
@@ -551,9 +531,7 @@ class TestCIErrorHandlerAdvanced:
         """ErrorReporterとの統合テスト"""
         with tempfile.TemporaryDirectory() as temp_dir:
             error_report_dir = Path(temp_dir)
-            handler = CIErrorHandler(
-                enable_github_annotations=False, error_report_dir=error_report_dir
-            )
+            handler = CIErrorHandler(enable_github_annotations=False, error_report_dir=error_report_dir)
 
             # ErrorReporterが正しく初期化されていることを確認
             assert handler.error_reporter is not None
@@ -677,9 +655,7 @@ class TestCIErrorHandlerEdgeCases:
         """ファイル名なしでのエラーレポート保存のテスト"""
         with tempfile.TemporaryDirectory() as temp_dir:
             error_report_dir = Path(temp_dir)
-            handler = CIErrorHandler(
-                enable_github_annotations=False, error_report_dir=error_report_dir
-            )
+            handler = CIErrorHandler(enable_github_annotations=False, error_report_dir=error_report_dir)
 
             error = QualityCheckError("Test error")
             handler.errors.append(error)
@@ -760,9 +736,7 @@ class TestCIErrorHandlerEdgeCases:
         """ErrorReporter統合の高度なテスト"""
         with tempfile.TemporaryDirectory() as temp_dir:
             error_report_dir = Path(temp_dir)
-            handler = CIErrorHandler(
-                enable_github_annotations=False, error_report_dir=error_report_dir
-            )
+            handler = CIErrorHandler(enable_github_annotations=False, error_report_dir=error_report_dir)
 
             # ErrorReporterのメソッドが正しく動作することを確認
             test_path = handler.error_reporter.get_report_path("test.json")
@@ -779,9 +753,7 @@ class TestCIErrorHandlerFactoryAdvanced:
 
         assert isinstance(handler, CIErrorHandler)
         assert handler.enable_github_annotations is True
-        assert handler.error_report_dir is None or handler.error_report_dir == Path(
-            "ci-error-reports"
-        )
+        assert handler.error_report_dir is None or handler.error_report_dir == Path("ci-error-reports")
 
     @patch.dict(os.environ, {"CI_JSON_LOGS": "false"})
     def test_create_ci_error_handler_json_logs_disabled(self):
@@ -817,19 +789,25 @@ class TestCIErrorHandlerFactoryAdvanced:
             assert handler.error_report_dir == error_report_dir
             assert handler.logger.log_level == LogLevel.DEBUG
 
+            # Windowsでのファイルロック問題を回避するため、ログファイルを明示的にクローズ
+            if hasattr(handler.logger, "_close_handlers"):
+                handler.logger._close_handlers()
+
     def test_create_ci_error_handler_logger_configuration(self):
         """ロガー設定の詳細テスト"""
         with tempfile.TemporaryDirectory() as temp_dir:
             error_report_dir = Path(temp_dir)
 
-            handler = create_ci_error_handler(
-                error_report_dir=error_report_dir, log_level=LogLevel.WARNING
-            )
+            handler = create_ci_error_handler(error_report_dir=error_report_dir, log_level=LogLevel.WARNING)
 
             # ロガーが正しく設定されていることを確認
             assert handler.logger.name == "setup_repo.ci"
             assert handler.logger.log_level == LogLevel.WARNING
             assert handler.logger.enable_console is True
+
+            # Windowsでのファイルロック問題を回避するため、ログファイルを明示的にクローズ
+            if hasattr(handler.logger, "_close_handlers"):
+                handler.logger._close_handlers()
 
 
 class TestCIEnvironmentInfoAdvanced:

@@ -17,9 +17,7 @@ from setup_repo.cli import quality_cli, setup_cli, sync_cli, trend_cli
 def main():
     """メインエントリーポイント"""
     parser = argparse.ArgumentParser(
-        description=(
-            "🚀 セットアップリポジトリ - GitHubリポジトリセットアップ・同期ツール"
-        ),
+        description=("セットアップリポジトリ - GitHubリポジトリセットアップ・同期ツール"),
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 使用例:
@@ -41,26 +39,16 @@ def main():
     sync_parser = subparsers.add_parser("sync", help="リポジトリ同期を実行")
     sync_parser.add_argument("--owner", help="GitHubオーナー名")
     sync_parser.add_argument("--dest", help="クローン先ディレクトリ")
-    sync_parser.add_argument(
-        "--dry-run", action="store_true", help="実行内容を表示のみ"
-    )
-    sync_parser.add_argument(
-        "--force", action="store_true", help="安全性チェックをスキップ"
-    )
-    sync_parser.add_argument(
-        "--use-https", action="store_true", help="SSHではなくHTTPSでクローン"
-    )
+    sync_parser.add_argument("--dry-run", action="store_true", help="実行内容を表示のみ")
+    sync_parser.add_argument("--force", action="store_true", help="安全性チェックをスキップ")
+    sync_parser.add_argument("--use-https", action="store_true", help="SSHではなくHTTPSでクローン")
     sync_parser.add_argument(
         "--sync-only",
         action="store_true",
         help="新規クローンを行わず、既存リポジトリのみ更新",
     )
-    sync_parser.add_argument(
-        "--auto-stash", action="store_true", help="ローカル変更を自動でstash"
-    )
-    sync_parser.add_argument(
-        "--skip-uv-install", action="store_true", help="uvの自動インストールをスキップ"
-    )
+    sync_parser.add_argument("--auto-stash", action="store_true", help="ローカル変更を自動でstash")
+    sync_parser.add_argument("--skip-uv-install", action="store_true", help="uvの自動インストールをスキップ")
     sync_parser.set_defaults(func=sync_cli)
 
     # qualityサブコマンド
@@ -69,19 +57,13 @@ def main():
         "--project-root",
         help="プロジェクトルートディレクトリ（デフォルト: カレントディレクトリ）",
     )
-    quality_parser.add_argument(
-        "--output", help="レポート出力ファイル（デフォルト: quality-report.json）"
-    )
-    quality_parser.add_argument(
-        "--save-trend", action="store_true", help="トレンドデータに結果を保存"
-    )
+    quality_parser.add_argument("--output", help="レポート出力ファイル（デフォルト: quality-report.json）")
+    quality_parser.add_argument("--save-trend", action="store_true", help="トレンドデータに結果を保存")
     quality_parser.set_defaults(func=quality_cli)
 
     # trendサブコマンド
     trend_parser = subparsers.add_parser("trend", help="品質トレンド分析を実行")
-    trend_parser.add_argument(
-        "action", choices=["analyze", "report", "clean"], help="実行するアクション"
-    )
+    trend_parser.add_argument("action", choices=["analyze", "report", "clean"], help="実行するアクション")
     trend_parser.add_argument(
         "--project-root",
         help="プロジェクトルートディレクトリ（デフォルト: カレントディレクトリ）",
@@ -90,16 +72,12 @@ def main():
         "--trend-file",
         help="トレンドデータファイル（デフォルト: quality-trends/trend-data.json）",
     )
-    trend_parser.add_argument(
-        "--days", type=int, default=30, help="分析期間（日数、デフォルト: 30）"
-    )
+    trend_parser.add_argument("--days", type=int, default=30, help="分析期間（日数、デフォルト: 30）")
     trend_parser.add_argument(
         "--output",
         help="レポート出力ファイル（デフォルト: quality-trends/trend-report.html）",
     )
-    trend_parser.add_argument(
-        "--keep-days", type=int, help="保持する日数（cleanアクション用）"
-    )
+    trend_parser.add_argument("--keep-days", type=int, help="保持する日数（cleanアクション用）")
     trend_parser.set_defaults(func=trend_cli)
 
     args = parser.parse_args()

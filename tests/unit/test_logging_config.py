@@ -155,9 +155,7 @@ class TestLoggingConfig:
             assert logger.enable_console is True
             assert logger.enable_json_format is False
 
-    @patch.dict(
-        os.environ, {"LOG_LEVEL": "DEBUG", "CI_JSON_LOGS": "true", "CI": "true"}
-    )
+    @patch.dict(os.environ, {"LOG_LEVEL": "DEBUG", "CI_JSON_LOGS": "true", "CI": "true"})
     def test_configure_for_environment_ci_debug(self):
         """CI環境でのデバッグ設定をテスト"""
         logger = LoggingConfig.configure_for_environment()
@@ -184,7 +182,9 @@ class TestLoggingConfig:
                 "DEBUG": "true",
                 "CI": "false",
                 "GITHUB_ACTIONS": "false",
+                "CI_JSON_LOGS": "false",
             },
+            clear=True,
         ):
             context = LoggingConfig.get_debug_context()
 
@@ -247,12 +247,8 @@ class TestLoggingSetupFunctions:
             logger = setup_project_logging()
             assert isinstance(logger, QualityLogger)
 
-    @pytest.mark.parametrize(
-        "platform_name", ["linux", "macos", "wsl"]
-    )  # Windowsは除外
-    def test_setup_project_logging_cross_platform(
-        self, platform_name: str, platform_mocker
-    ):
+    @pytest.mark.parametrize("platform_name", ["linux", "macos", "wsl"])  # Windowsは除外
+    def test_setup_project_logging_cross_platform(self, platform_name: str, platform_mocker):
         """Unix系プラットフォームでのプロジェクトロギングセットアップをテスト"""
         with (
             patch.dict(os.environ, {}, clear=True),
