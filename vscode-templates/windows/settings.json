@@ -4,6 +4,9 @@
   "editor.formatOnSave": true,
   "python.defaultInterpreterPath": "./.venv/Scripts/python.exe",
   "python.terminal.activateEnvironment": true,
+  "python.terminal.executeInFileDir": false,
+  "python.venvPath": ".",
+  "python.venvFolders": [".venv"],
   "python.analysis.autoImportCompletions": true,
   "python.analysis.typeCheckingMode": "basic",
 
@@ -67,6 +70,9 @@
     }
   },
   "terminal.integrated.defaultProfile.windows": "PowerShell",
+  "terminal.integrated.env.windows": {
+    "PYTHONIOENCODING": "utf-8"
+  },
 
   "extensions.recommendations": [
     "ms-python.python",

@@ -78,7 +78,7 @@ def load_config() -> dict:
                 config_path = Path(config_file)
 
         if config_path.exists():
-            with open(config_path) as f:
+            with open(config_path, encoding="utf-8") as f:
                 file_config = json.load(f)
                 config.update(file_config)
             break

@@ -94,6 +94,7 @@ def choose_clone_url(repo: dict, use_https: bool = False) -> str:
         except (subprocess.TimeoutExpired, subprocess.CalledProcessError) as e:
             # SSH接続失敗時はHTTPSにフォールバック
             import logging
+
             logger = logging.getLogger(__name__)
             logger.debug(f"SSH接続テスト失敗、HTTPSにフォールバック: {e}")
 
@@ -230,6 +231,7 @@ def _auto_stash_changes(repo_path: Path) -> bool:
             return True
     except subprocess.CalledProcessError as e:
         import logging
+
         logger = logging.getLogger(__name__)
         logger.debug(f"Git stash操作失敗: {e}")
 

@@ -138,10 +138,11 @@ class UnixLockImplementation(LockImplementation):
             return False
 
         try:
-            fcntl.flock(file_handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            import fcntl as fcntl_module
+            fcntl_module.flock(file_handle, fcntl_module.LOCK_EX | fcntl_module.LOCK_NB)
             logger.debug("Unix系システムでfcntlを使用してファイルロックを取得しました")
             return True
-        except OSError as e:
+        except (OSError, ImportError) as e:
             logger.debug(f"fcntlによるファイルロック取得に失敗しました: {e}")
             return False
 
@@ -151,9 +152,10 @@ class UnixLockImplementation(LockImplementation):
             return
 
         try:
-            fcntl.flock(file_handle, fcntl.LOCK_UN)
+            import fcntl as fcntl_module
+            fcntl_module.flock(file_handle, fcntl_module.LOCK_UN)
             logger.debug("Unix系システムでfcntlを使用してファイルロックを解放しました")
-        except OSError as e:
+        except (OSError, ImportError) as e:
             logger.warning(f"fcntlによるファイルロック解放に失敗しました: {e}")
 
     def is_available(self) -> bool:
