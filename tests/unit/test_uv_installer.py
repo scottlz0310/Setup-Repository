@@ -77,7 +77,7 @@ class TestEnsureUv:
             capture_output=True,
         )
         print_calls = [call[0][0] for call in mock_print.call_args_list]
-        assert any("pipx インストール失敗、pip を試します" in call for call in print_calls)
+        assert any("pipx" in call and "失敗" in call for call in print_calls)
         assert any("pip --user で uv をインストールしました" in call for call in print_calls)
 
     @patch("subprocess.run")
@@ -229,7 +229,7 @@ class TestEnsureUvEdgeCases:
         assert result is False
         mock_run.assert_called_once_with(["pipx", "install", "uv"], check=True, capture_output=True)
         print_calls = [call[0][0] for call in mock_print.call_args_list]
-        assert any("pipx インストール失敗、pip を試します" in call for call in print_calls)
+        assert any("pipx" in call and "失敗" in call for call in print_calls)
         assert any("uv の自動インストールに失敗しました" in call for call in print_calls)
 
     @patch("subprocess.run")

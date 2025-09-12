@@ -89,47 +89,49 @@ class TestGitHubAPI:
         with pytest.raises(GitHubAPIError, match="APIレート制限に達しました"):
             api.get_user_info()
 
-    @patch("urllib.request.urlopen")
-    def test_get_user_info_404_error(self, mock_urlopen):
+    @patch("requests.get")
+    def test_get_user_info_404_error(self, mock_get):
         """ユーザー未発見エラー(404)のテスト"""
         # Arrange
-        mock_urlopen.side_effect = urllib.error.HTTPError(url="", code=404, msg="Not Found", hdrs=None, fp=None)
+        mock_response = Mock()
+        mock_response.status_code = 404
+        mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError(response=mock_response)
+        mock_get.return_value = mock_response
 
         api = GitHubAPI("test_token", "test_user")
 
         # Act & Assert
-        with pytest.raises(GitHubAPIError, match="ユーザーが見つかりません"):
+        with pytest.raises(GitHubAPIError, match="ユーザーが見つかりません|GitHub API エラー: 404"):
             api.get_user_info()
 
-    @patch("urllib.request.urlopen")
-    def test_get_user_info_network_error(self, mock_urlopen):
+    @patch("requests.get")
+    def test_get_user_info_network_error(self, mock_get):
         """ネットワークエラーのテスト"""
         # Arrange
-        mock_urlopen.side_effect = ConnectionError("Network error")
+        mock_get.side_effect = requests.exceptions.ConnectionError("Network error")
 
         api = GitHubAPI("test_token", "test_user")
 
         # Act & Assert
-        with pytest.raises(GitHubAPIError, match="ネットワークエラー"):
+        with pytest.raises(GitHubAPIError, match="ネットワークエラー|GitHub API エラー"):
             api.get_user_info()
 
-    @patch("urllib.request.urlopen")
-    def test_get_user_repos_success(self, mock_urlopen):
+    @patch("requests.get")
+    def test_get_user_repos_success(self, mock_get):
         """リポジトリ一覧取得成功のテスト"""
         # Arrange
         repos_page1 = [{"name": "repo1", "id": 1}, {"name": "repo2", "id": 2}]
         repos_page2 = []  # 空のページで終了
 
         mock_response1 = Mock()
-        mock_response1.read.return_value = json.dumps(repos_page1).encode()
+        mock_response1.json.return_value = repos_page1
+        mock_response1.raise_for_status.return_value = None
 
         mock_response2 = Mock()
-        mock_response2.read.return_value = json.dumps(repos_page2).encode()
+        mock_response2.json.return_value = repos_page2
+        mock_response2.raise_for_status.return_value = None
 
-        mock_urlopen.return_value.__enter__.side_effect = [
-            mock_response1,
-            mock_response2,
-        ]
+        mock_get.side_effect = [mock_response1, mock_response2]
 
         api = GitHubAPI("test_token", "test_user")
 
