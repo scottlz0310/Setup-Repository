@@ -176,6 +176,13 @@ class TestProcessLockCrossPlatform:
     @pytest.mark.all_platforms
     def test_lock_implementation_selection_by_platform(self, temp_dir: Path, platform: str, platform_mocker) -> None:
         """プラットフォーム別ロック実装選択テスト"""
+        import platform as platform_module
+
+        # Windows環境では他のプラットフォームのテストをスキップ
+        current_platform = platform_module.system().lower()
+        if current_platform == "windows" and platform != "windows":
+            pytest.skip(f"Windows環境で{platform}プラットフォームのテストをスキップ")
+
         lock_file = temp_dir / "test.lock"
 
         with platform_mocker(platform):
@@ -213,6 +220,12 @@ class TestProcessLockCrossPlatform:
 
     def test_unix_lock_implementation_selection(self, temp_dir: Path, platform_mocker) -> None:
         """Unix環境でのロック実装選択テスト"""
+        import platform as platform_module
+
+        # Windows環境ではスキップ
+        if platform_module.system().lower() == "windows":
+            pytest.skip("Windows環境でUnixロックテストをスキップ")
+
         lock_file = temp_dir / "test.lock"
 
         with platform_mocker("linux"):
@@ -225,6 +238,12 @@ class TestProcessLockCrossPlatform:
 
     def test_macos_lock_implementation_selection(self, temp_dir: Path, platform_mocker) -> None:
         """macOS環境でのロック実装選択テスト"""
+        import platform as platform_module
+
+        # Windows環境ではスキップ
+        if platform_module.system().lower() == "windows":
+            pytest.skip("Windows環境でmacOSロックテストをスキップ")
+
         lock_file = temp_dir / "test.lock"
 
         with platform_mocker("macos"):
@@ -237,6 +256,12 @@ class TestProcessLockCrossPlatform:
 
     def test_wsl_lock_implementation_selection(self, temp_dir: Path, platform_mocker) -> None:
         """WSL環境でのロック実装選択テスト"""
+        import platform as platform_module
+
+        # Windows環境ではスキップ
+        if platform_module.system().lower() == "windows":
+            pytest.skip("Windows環境でWSLロックテストをスキップ")
+
         lock_file = temp_dir / "test.lock"
 
         with platform_mocker("wsl"):

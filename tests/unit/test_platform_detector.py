@@ -98,7 +98,14 @@ class TestDetectPlatform:
         platform_info = detect_platform()
 
         assert platform_info.name == "windows"
-        assert platform_info.display_name == "Windows"
+        # CI環境では表示名に"GitHub Actions"が含まれる
+        import os
+
+        if os.environ.get("GITHUB_ACTIONS", "").lower() == "true":
+            assert "Windows" in platform_info.display_name
+            assert "GitHub Actions" in platform_info.display_name
+        else:
+            assert platform_info.display_name == "Windows"
         assert "scoop" in platform_info.package_managers
         assert "winget" in platform_info.package_managers
         assert "chocolatey" in platform_info.package_managers
@@ -116,7 +123,12 @@ class TestDetectPlatform:
         platform_info = detect_platform()
 
         assert platform_info.name == "windows"
-        assert platform_info.display_name == "Windows"
+        # CI環境では表示名に"GitHub Actions"が含まれる
+        if os.environ.get("GITHUB_ACTIONS", "").lower() == "true":
+            assert "Windows" in platform_info.display_name
+            assert "GitHub Actions" in platform_info.display_name
+        else:
+            assert platform_info.display_name == "Windows"
 
     def test_detect_wsl_platform(self) -> None:
         """WSLプラットフォーム検出のテスト"""

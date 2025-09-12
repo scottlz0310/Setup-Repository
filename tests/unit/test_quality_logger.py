@@ -102,7 +102,11 @@ class TestQualityLogger:
     def test_logger_with_file_output(self):
         """ファイル出力付きロガーのテスト"""
         with tempfile.TemporaryDirectory() as temp_dir:
-            log_file = Path(temp_dir) / "test.log"
+            # Windows環境でのパス処理を改善
+            temp_path = Path(temp_dir)
+            log_file = temp_path / "test.log"
+            # 親ディレクトリが存在することを確認
+            log_file.parent.mkdir(parents=True, exist_ok=True)
 
             logger = QualityLogger(name="test_file_logger", log_file=log_file, enable_console=False)
 
@@ -133,7 +137,11 @@ class TestQualityLogger:
     def test_json_format_logging(self):
         """JSON形式ログのテスト"""
         with tempfile.TemporaryDirectory() as temp_dir:
-            log_file = Path(temp_dir) / "test.json"
+            # Windows環境でのパス処理を改善
+            temp_path = Path(temp_dir)
+            log_file = temp_path / "test.json"
+            # 親ディレクトリが存在することを確認
+            log_file.parent.mkdir(parents=True, exist_ok=True)
 
             logger = QualityLogger(
                 name="test_json_logger",
