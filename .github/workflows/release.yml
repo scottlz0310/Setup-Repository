@@ -47,6 +47,10 @@ jobs:
         with:
           enable-cache: true
 
+      - name: 📦 必要なパッケージをインストール
+        run: |
+          python -m pip install tomli
+
       - name: 🔍 バージョン情報を抽出
         id: extract-version
         run: |
@@ -78,7 +82,10 @@ jobs:
           import sys
           import re
           from pathlib import Path
-          import tomllib
+          try:
+              import tomllib
+          except ImportError:
+              import tomli as tomllib
 
           def check_version_consistency(expected_version: str) -> bool:
               """各ファイルのバージョン番号が一貫しているかチェック"""
