@@ -2,6 +2,7 @@
 品質ロガーのテスト
 """
 
+import contextlib
 import json
 import tempfile
 from pathlib import Path
@@ -105,19 +106,29 @@ class TestQualityLogger:
 
             logger = QualityLogger(name="test_file_logger", log_file=log_file, enable_console=False)
 
-            logger.info("テストメッセージ")
+            try:
+                logger.info("テストメッセージ")
 
-            # Windowsでのファイルアクセスエラーを回避するため、ロガーを適切にクローズ
-            if hasattr(logger, "close"):
-                logger.close()
-            elif hasattr(logger, "_logger") and hasattr(logger._logger, "handlers"):
-                for handler in logger._logger.handlers[:]:
-                    handler.close()
-                    logger._logger.removeHandler(handler)
+                # ログファイルの内容を確認する前にハンドラーを適切にクローズ
+                if hasattr(logger, "_logger") and hasattr(logger._logger, "handlers"):
+                    for handler in logger._logger.handlers[:]:
+                        if hasattr(handler, "flush"):
+                            handler.flush()
+                        if hasattr(handler, "close"):
+                            handler.close()
+                        logger._logger.removeHandler(handler)
 
-            assert log_file.exists()
-            content = log_file.read_text(encoding="utf-8")
-            assert "テストメッセージ" in content
+                assert log_file.exists()
+                content = log_file.read_text(encoding="utf-8")
+                assert "テストメッセージ" in content
+            finally:
+                # 確実にクリーンアップ
+                if hasattr(logger, "_logger") and hasattr(logger._logger, "handlers"):
+                    for handler in logger._logger.handlers[:]:
+                        with contextlib.suppress(Exception):
+                            handler.close()
+                        with contextlib.suppress(Exception):
+                            logger._logger.removeHandler(handler)
 
     def test_json_format_logging(self):
         """JSON形式ログのテスト"""
@@ -131,23 +142,33 @@ class TestQualityLogger:
                 enable_json_format=True,
             )
 
-            logger.info("JSONテストメッセージ")
+            try:
+                logger.info("JSONテストメッセージ")
 
-            # Windowsでのファイルアクセスエラーを回避するため、ロガーを適切にクローズ
-            if hasattr(logger, "close"):
-                logger.close()
-            elif hasattr(logger, "_logger") and hasattr(logger._logger, "handlers"):
-                for handler in logger._logger.handlers[:]:
-                    handler.close()
-                    logger._logger.removeHandler(handler)
+                # ログファイルの内容を確認する前にハンドラーを適切にクローズ
+                if hasattr(logger, "_logger") and hasattr(logger._logger, "handlers"):
+                    for handler in logger._logger.handlers[:]:
+                        if hasattr(handler, "flush"):
+                            handler.flush()
+                        if hasattr(handler, "close"):
+                            handler.close()
+                        logger._logger.removeHandler(handler)
 
-            assert log_file.exists()
-            content = log_file.read_text(encoding="utf-8")
+                assert log_file.exists()
+                content = log_file.read_text(encoding="utf-8")
 
-            # JSON形式であることを確認
-            log_entry = json.loads(content.strip())
-            assert log_entry["message"] == "JSONテストメッセージ"
-            assert log_entry["level"] == "INFO"
+                # JSON形式であることを確認
+                log_entry = json.loads(content.strip())
+                assert log_entry["message"] == "JSONテストメッセージ"
+                assert log_entry["level"] == "INFO"
+            finally:
+                # 確実にクリーンアップ
+                if hasattr(logger, "_logger") and hasattr(logger._logger, "handlers"):
+                    for handler in logger._logger.handlers[:]:
+                        with contextlib.suppress(Exception):
+                            handler.close()
+                        with contextlib.suppress(Exception):
+                            logger._logger.removeHandler(handler)
 
     def test_quality_check_logging(self):
         """品質チェックログのテスト"""
