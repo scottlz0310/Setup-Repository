@@ -42,7 +42,7 @@ class TestSetupIntegration:
         # 環境変数を設定 + モック適用してsetup機能を実行（with統合）
         with (
             patch.dict(os.environ, {"CONFIG_PATH": str(config_file)}),
-            patch("urllib.request.urlopen") as mock_urlopen,
+            patch("requests.get") as mock_get,
             patch(
                 "setup_repo.git_operations.sync_repository_with_retries",
                 return_value=True,
@@ -60,10 +60,9 @@ class TestSetupIntegration:
         ):
             # GitHub APIのモックレスポンスを設定
             mock_response = Mock()
-            mock_response.read.return_value = json.dumps({"login": "test_user"}).encode("utf-8")
-            mock_response.__enter__ = Mock(return_value=mock_response)
-            mock_response.__exit__ = Mock(return_value=None)
-            mock_urlopen.return_value = mock_response
+            mock_response.json.return_value = {"login": "test_user"}
+            mock_response.raise_for_status.return_value = None
+            mock_get.return_value = mock_response
             # setup機能を実行
             result = setup_repository_environment(config_path=str(config_file), dry_run=True)
 
@@ -72,7 +71,7 @@ class TestSetupIntegration:
         assert isinstance(result, dict)
 
         # モックが適切に呼び出されたことを確認
-        mock_urlopen.assert_called()
+        mock_get.assert_called()
 
     def test_interactive_setup_workflow(
         self,
@@ -192,7 +191,7 @@ class TestSetupIntegration:
         # ドライランモードでセットアップを実行
         with (
             patch.dict(os.environ, {"CONFIG_PATH": str(config_file)}),
-            patch("urllib.request.urlopen") as mock_urlopen,
+            patch("requests.get") as mock_get,
             patch(
                 "setup_repo.git_operations.sync_repository_with_retries",
                 return_value=True,
@@ -210,10 +209,9 @@ class TestSetupIntegration:
         ):
             # GitHub APIのモックレスポンスを設定
             mock_response = Mock()
-            mock_response.read.return_value = json.dumps({"login": "test_user"}).encode("utf-8")
-            mock_response.__enter__ = Mock(return_value=mock_response)
-            mock_response.__exit__ = Mock(return_value=None)
-            mock_urlopen.return_value = mock_response
+            mock_response.json.return_value = {"login": "test_user"}
+            mock_response.raise_for_status.return_value = None
+            mock_get.return_value = mock_response
             result = setup_repository_environment(config_path=str(config_file), dry_run=True)
 
         # ドライランモードでは実際の変更が行われないことを確認

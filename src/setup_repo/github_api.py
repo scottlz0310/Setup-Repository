@@ -45,6 +45,8 @@ class GitHubAPI:
             elif e.response.status_code == 404:
                 error_msg += " - ユーザーが見つかりません。"
             raise GitHubAPIError(error_msg) from e
+        except ValueError as e:
+            raise GitHubAPIError(f"レスポンスの解析に失敗しました: {e}") from e
         except requests.exceptions.RequestException as e:
             raise GitHubAPIError(f"ネットワークエラー: {e}") from e
 
@@ -81,6 +83,8 @@ class GitHubAPI:
                 elif e.response.status_code == 403:
                     error_msg += " - APIレート制限に達しました。"
                 raise GitHubAPIError(error_msg) from e
+            except ValueError as e:
+                raise GitHubAPIError(f"レスポンスの解析に失敗しました: {e}") from e
             except requests.exceptions.RequestException as e:
                 raise GitHubAPIError(f"ネットワークエラー: {e}") from e
 
@@ -141,6 +145,13 @@ def get_repositories(owner: str, token: Optional[str] = None) -> list[dict]:
                 logger = logging.getLogger(__name__)
                 logger.error(f"GitHub API エラー: {e.response.status_code}")
             break
+        except ValueError as e:
+            if page == 1:
+                import logging
+
+                logger = logging.getLogger(__name__)
+                logger.error(f"JSON解析エラー: {e}")
+            break
         except requests.exceptions.RequestException as e:
             if page == 1:
                 import logging
@@ -161,5 +172,5 @@ def _get_authenticated_user(token: str) -> Optional[str]:
         user_data = response.json()
         return user_data.get("login")
 
-    except requests.exceptions.RequestException:
+    except (requests.exceptions.RequestException, ValueError):
         return None
