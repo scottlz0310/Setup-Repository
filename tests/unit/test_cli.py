@@ -11,12 +11,10 @@ from unittest.mock import Mock, patch
 import pytest
 
 from setup_repo.cli import (
-    CLI,
-    config_command,
-    parse_arguments,
-    setup_command,
-    sync_command,
-    validate_command,
+    quality_cli,
+    setup_cli,
+    sync_cli,
+    trend_cli,
 )
 from tests.multiplatform.helpers import (
     get_platform_specific_config,
@@ -27,379 +25,117 @@ from tests.multiplatform.helpers import (
 class TestCLI:
     """CLI機能のテスト"""
 
-    def test_parse_arguments_setup(self):
-        """setupコマンドの引数解析テスト"""
+    def test_setup_cli_success(self):
+        """setupCLI実行成功テスト"""
         verify_current_platform()  # プラットフォーム検証
 
-        args = parse_arguments(["setup", "--config", "config.json"])
-        assert args.command == "setup"
-        assert args.config == "config.json"
+        args = Mock()
+        
+        with patch("setup_repo.cli.run_interactive_setup") as mock_setup:
+            setup_cli(args)
+            mock_setup.assert_called_once()
 
-    def test_parse_arguments_sync(self):
-        """syncコマンドの引数解析テスト"""
-        args = parse_arguments(["sync", "--dry-run", "--verbose"])
-        assert args.command == "sync"
-        assert args.dry_run is True
-        assert args.verbose is True
-
-    def test_parse_arguments_config(self):
-        """configコマンドの引数解析テスト"""
-        args = parse_arguments(["config", "--set", "github.token=test_token"])
-        assert args.command == "config"
-        assert args.set == "github.token=test_token"
-
-    def test_parse_arguments_validate(self):
-        """validateコマンドの引数解析テスト"""
-        args = parse_arguments(["validate", "--check-all"])
-        assert args.command == "validate"
-        assert args.check_all is True
-
-    def test_parse_arguments_help(self):
-        """ヘルプオプションのテスト"""
-        with pytest.raises(SystemExit):
-            parse_arguments(["--help"])
-
-    def test_parse_arguments_version(self):
-        """バージョンオプションのテスト"""
-        with pytest.raises(SystemExit):
-            parse_arguments(["--version"])
-
-    def test_parse_arguments_invalid_command(self):
-        """無効なコマンドのテスト"""
-        with pytest.raises(SystemExit):
-            parse_arguments(["invalid_command"])
-
-    def test_setup_command_success(self):
-        """setupコマンド実行成功テスト"""
+    def test_sync_cli_success(self):
+        """syncCLI実行成功テスト"""
         verify_current_platform()  # プラットフォーム検証
 
-        with tempfile.TemporaryDirectory() as temp_dir:
-            config_path = Path(temp_dir) / "config.json"
+        args = Mock()
+        args.owner = None
+        args.dest = None
+        args.dry_run = False
+        args.force = False
+        args.use_https = False
+        args.sync_only = False
+        args.auto_stash = False
+        args.skip_uv_install = False
+        
+        with patch("setup_repo.cli.load_config") as mock_load, \
+             patch("setup_repo.cli.sync_repositories") as mock_sync:
+            mock_load.return_value = {"use_https": False, "sync_only": False, "auto_stash": False, "skip_uv_install": False}
+            sync_cli(args)
+            mock_sync.assert_called_once()
 
-            with patch("setup_repo.setup.Setup") as mock_setup:
-                mock_instance = Mock()
-                mock_instance.run.return_value = {"success": True}
-                mock_setup.return_value = mock_instance
-
-                result = setup_command(str(config_path))
-                assert result["success"] is True
-
-    def test_setup_command_config_not_found(self):
-        """設定ファイルが見つからない場合のsetupコマンドテスト"""
-        with pytest.raises(FileNotFoundError):
-            setup_command("nonexistent_config.json")
-
-    def test_sync_command_success(self):
-        """syncコマンド実行成功テスト"""
+    def test_quality_cli_success(self):
+        """qualityCLI実行成功テスト"""
         verify_current_platform()  # プラットフォーム検証
 
-        with tempfile.TemporaryDirectory() as temp_dir:
-            config_path = Path(temp_dir) / "config.json"
+        args = Mock()
+        args.project_root = None
+        args.output = None
+        args.save_trend = False
+        
+        with patch("setup_repo.cli.QualityMetricsCollector") as mock_collector:
+            mock_instance = Mock()
+            mock_metrics = Mock()
+            mock_metrics.get_quality_score.return_value = 85.0
+            mock_metrics.test_coverage = 90.0
+            mock_metrics.ruff_issues = 2
+            mock_metrics.mypy_errors = 1
+            mock_metrics.security_vulnerabilities = 0
+            mock_metrics.is_passing.return_value = True
+            mock_instance.collect_all_metrics.return_value = mock_metrics
+            mock_instance.save_metrics_report.return_value = "report.json"
+            mock_collector.return_value = mock_instance
+            
+            with patch("builtins.print"):
+                quality_cli(args)
+            
+            mock_collector.assert_called_once()
+            mock_instance.collect_all_metrics.assert_called_once()
 
-            with patch("setup_repo.sync.Sync") as mock_sync:
-                mock_instance = Mock()
-                mock_instance.run.return_value = {"success": True, "synced": 3}
-                mock_sync.return_value = mock_instance
-
-                result = sync_command(str(config_path), dry_run=False)
-                assert result["success"] is True
-                assert result["synced"] == 3
-
-    def test_sync_command_dry_run(self):
-        """syncコマンドのドライランテスト"""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            config_path = Path(temp_dir) / "config.json"
-
-            with patch("setup_repo.sync.Sync") as mock_sync:
-                mock_instance = Mock()
-                mock_instance.dry_run.return_value = {"would_sync": 3, "changes": ["repo1", "repo2", "repo3"]}
-                mock_sync.return_value = mock_instance
-
-                result = sync_command(str(config_path), dry_run=True)
-                assert result["would_sync"] == 3
-                assert len(result["changes"]) == 3
-
-    def test_config_command_set(self):
-        """config setコマンドのテスト"""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            config_path = Path(temp_dir) / "config.json"
-
-            result = config_command(str(config_path), action="set", key_value="github.token=test_token")
-
-            assert result["success"] is True
-            assert config_path.exists()
-
-    def test_config_command_get(self):
-        """config getコマンドのテスト"""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            config_path = Path(temp_dir) / "config.json"
-
-            # 設定ファイルを作成
-            config_data = {"github": {"token": "test_token"}}
-            with open(config_path, "w") as f:
-                import json
-
-                json.dump(config_data, f)
-
-            result = config_command(str(config_path), action="get", key="github.token")
-
-            assert result["value"] == "test_token"
-
-    def test_config_command_list(self):
-        """config listコマンドのテスト"""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            config_path = Path(temp_dir) / "config.json"
-
-            # 設定ファイルを作成
-            config_data = {
-                "github": {"token": "test_token", "username": "testuser"},
-                "repositories": ["repo1", "repo2"],
-            }
-            with open(config_path, "w") as f:
-                import json
-
-                json.dump(config_data, f)
-
-            result = config_command(str(config_path), action="list")
-
-            assert "github.token" in result["config"]
-            assert "github.username" in result["config"]
-            assert "repositories" in result["config"]
-
-    def test_validate_command_success(self):
-        """validateコマンド実行成功テスト"""
-        verify_current_platform()  # プラットフォーム検証
-
-        with (
-            patch("setup_repo.setup_validators.validate_git_config") as mock_git,
-            patch("setup_repo.setup_validators.validate_python_environment") as mock_python,
-            patch("setup_repo.setup_validators.validate_uv_installation") as mock_uv,
-        ):
-            mock_git.return_value = {"valid": True}
-            mock_python.return_value = {"valid": True}
-            mock_uv.return_value = {"valid": True}
-
-            result = validate_command(check_all=True)
-
-            assert result["git"]["valid"] is True
-            assert result["python"]["valid"] is True
-            assert result["uv"]["valid"] is True
-
-    def test_validate_command_partial_failure(self):
-        """validateコマンドの部分的失敗テスト"""
-        with (
-            patch("setup_repo.setup_validators.validate_git_config") as mock_git,
-            patch("setup_repo.setup_validators.validate_python_environment") as mock_python,
-        ):
-            mock_git.return_value = {"valid": True}
-            mock_python.side_effect = Exception("Python not found")
-
-            result = validate_command(check_all=False)
-
-            assert result["git"]["valid"] is True
-            assert "error" in result["python"]
-
-    def test_cli_class_init(self):
-        """CLIクラスの初期化テスト"""
-        verify_current_platform()  # プラットフォーム検証
-
-        cli = CLI()
-        assert cli.platform == platform_info.name
-
-    def test_cli_class_run_setup(self):
-        """CLIクラスのsetup実行テスト"""
-        cli = CLI()
-
-        with patch("setup_repo.cli.setup_command") as mock_setup:
-            mock_setup.return_value = {"success": True}
-
-            args = Mock()
-            args.command = "setup"
-            args.config = "config.json"
-
-            result = cli.run(args)
-            assert result["success"] is True
-
-    def test_cli_class_run_sync(self):
-        """CLIクラスのsync実行テスト"""
-        cli = CLI()
-
-        with patch("setup_repo.cli.sync_command") as mock_sync:
-            mock_sync.return_value = {"success": True, "synced": 2}
-
-            args = Mock()
-            args.command = "sync"
-            args.config = "config.json"
-            args.dry_run = False
-            args.verbose = False
-
-            result = cli.run(args)
-            assert result["success"] is True
-            assert result["synced"] == 2
-
-    def test_cli_class_run_config(self):
-        """CLIクラスのconfig実行テスト"""
-        cli = CLI()
-
-        with patch("setup_repo.cli.config_command") as mock_config:
-            mock_config.return_value = {"success": True}
-
-            args = Mock()
-            args.command = "config"
-            args.config = "config.json"
-            args.action = "set"
-            args.set = "github.token=test"
-
-            result = cli.run(args)
-            assert result["success"] is True
-
-    def test_cli_class_run_validate(self):
-        """CLIクラスのvalidate実行テスト"""
-        cli = CLI()
-
-        with patch("setup_repo.cli.validate_command") as mock_validate:
-            mock_validate.return_value = {"git": {"valid": True}}
-
-            args = Mock()
-            args.command = "validate"
-            args.check_all = True
-
-            result = cli.run(args)
-            assert result["git"]["valid"] is True
-
-    def test_cli_error_handling(self):
-        """CLIエラーハンドリングのテスト"""
-        cli = CLI()
-
-        with patch("setup_repo.cli.setup_command") as mock_setup:
-            mock_setup.side_effect = Exception("Setup failed")
-
-            args = Mock()
-            args.command = "setup"
-            args.config = "config.json"
-
-            with pytest.raises(Exception, match="Setup failed"):
-                cli.run(args)
+    def test_trend_cli_analyze(self):
+        """trendCLI分析テスト"""
+        args = Mock()
+        args.project_root = None
+        args.trend_file = None
+        args.action = "analyze"
+        args.days = 30
+        
+        with patch("setup_repo.cli.QualityTrendManager") as mock_manager:
+            mock_instance = Mock()
+            mock_analysis = Mock()
+            mock_analysis.period_days = 30
+            mock_analysis.data_points = 10
+            mock_analysis.average_quality_score = 85.0
+            mock_analysis.average_coverage = 90.0
+            mock_analysis.quality_score_trend = "improving"
+            mock_analysis.coverage_trend = "stable"
+            mock_analysis.recent_issues = []
+            mock_analysis.recommendations = ["Keep up the good work"]
+            mock_instance.analyze_trend.return_value = mock_analysis
+            mock_manager.return_value = mock_instance
+            
+            with patch("builtins.print"):
+                trend_cli(args)
+            
+            mock_manager.assert_called_once()
+            mock_instance.analyze_trend.assert_called_once_with(30)
 
     @pytest.mark.integration
-    def test_cli_full_workflow(self):
-        """CLI完全ワークフローのテスト"""
-        verify_current_platform()  # プラットフォーム検証
-
-        with tempfile.TemporaryDirectory() as temp_dir:
-            config_path = Path(temp_dir) / "config.json"
-
-            cli = CLI()
-
-            # 1. 設定の作成
-            config_args = Mock()
-            config_args.command = "config"
-            config_args.config = str(config_path)
-            config_args.action = "set"
-            config_args.set = "github.token=test_token"
-
-            with patch("setup_repo.cli.config_command") as mock_config:
-                mock_config.return_value = {"success": True}
-                config_result = cli.run(config_args)
-
-            # 2. 検証の実行
-            validate_args = Mock()
-            validate_args.command = "validate"
-            validate_args.check_all = True
-
-            with patch("setup_repo.cli.validate_command") as mock_validate:
-                mock_validate.return_value = {"git": {"valid": True}}
-                validate_result = cli.run(validate_args)
-
-            # 3. セットアップの実行
-            setup_args = Mock()
-            setup_args.command = "setup"
-            setup_args.config = str(config_path)
-
-            with patch("setup_repo.cli.setup_command") as mock_setup:
-                mock_setup.return_value = {"success": True}
-                setup_result = cli.run(setup_args)
-
-            assert config_result["success"] is True
-            assert validate_result["git"]["valid"] is True
-            assert setup_result["success"] is True
-
-    @pytest.mark.slow
-    def test_cli_performance(self):
-        """CLI操作のパフォーマンステスト"""
-        import time
-
+    def test_cli_integration(self):
+        """CLI統合テスト"""
         verify_current_platform()  # プラットフォーム検証
         get_platform_specific_config()  # プラットフォーム設定取得
 
-        cli = CLI()
+        # セットアップコマンドのテスト
+        setup_args = Mock()
+        with patch("setup_repo.cli.run_interactive_setup") as mock_setup:
+            setup_cli(setup_args)
+            mock_setup.assert_called_once()
 
-        start_time = time.time()
-
-        # 複数のCLI操作を実行
-        for _ in range(5):
-            args = Mock()
-            args.command = "validate"
-            args.check_all = False
-
-            with patch("setup_repo.cli.validate_command") as mock_validate:
-                mock_validate.return_value = {"git": {"valid": True}}
-                cli.run(args)
-
-        elapsed = time.time() - start_time
-        assert elapsed < 3.0, f"CLI操作が遅すぎます: {elapsed}秒"
-
-    def test_cli_platform_specific_behavior(self):
-        """プラットフォーム固有のCLI動作テスト"""
-        verify_current_platform()  # プラットフォーム検証
-        get_platform_specific_config()  # プラットフォーム設定取得
-
-        cli = CLI()
-
-        # プラットフォーム固有の設定が適用されることを確認
-        assert cli.platform == platform_info.name
-
-        # プラットフォーム固有のコマンド実行
-        if platform_info.name == "windows":
-            # Windows固有のテスト
-            assert config["shell"] == "powershell"
-        else:
-            # Unix系固有のテスト
-            assert config["shell"] in ["bash", "zsh"]
-
-    def test_cli_verbose_output(self):
-        """CLI詳細出力のテスト"""
-        cli = CLI()
-
-        with patch("builtins.print") as mock_print:
-            args = Mock()
-            args.command = "sync"
-            args.config = "config.json"
-            args.dry_run = False
-            args.verbose = True
-
-            with patch("setup_repo.cli.sync_command") as mock_sync:
-                mock_sync.return_value = {"success": True, "synced": 2}
-                cli.run(args)
-
-            # 詳細出力が行われたことを確認
-            mock_print.assert_called()
-
-    def test_cli_quiet_mode(self):
-        """CLI静寂モードのテスト"""
-        cli = CLI()
-
-        with patch("builtins.print") as mock_print:
-            args = Mock()
-            args.command = "sync"
-            args.config = "config.json"
-            args.dry_run = False
-            args.verbose = False
-            args.quiet = True
-
-            with patch("setup_repo.cli.sync_command") as mock_sync:
-                mock_sync.return_value = {"success": True, "synced": 2}
-                cli.run(args)
-
-            # 出力が抑制されたことを確認
-            mock_print.assert_not_called()
+        # 同期コマンドのテスト
+        sync_args = Mock()
+        sync_args.owner = None
+        sync_args.dest = None
+        sync_args.dry_run = False
+        sync_args.force = False
+        sync_args.use_https = False
+        sync_args.sync_only = False
+        sync_args.auto_stash = False
+        sync_args.skip_uv_install = False
+        
+        with patch("setup_repo.cli.load_config") as mock_load, \
+             patch("setup_repo.cli.sync_repositories") as mock_sync:
+            mock_load.return_value = {"use_https": False, "sync_only": False, "auto_stash": False, "skip_uv_install": False}
+            sync_cli(sync_args)
+            mock_sync.assert_called_once()

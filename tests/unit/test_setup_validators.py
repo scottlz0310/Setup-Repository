@@ -11,11 +11,12 @@ from unittest.mock import Mock, patch
 import pytest
 
 from setup_repo.setup_validators import (
-    ValidationError,
-    validate_git_config,
-    validate_python_environment,
-    validate_uv_installation,
-    validate_vscode_config,
+    SetupValidator,
+    check_system_requirements,
+    validate_directory_path,
+    validate_github_credentials,
+    validate_setup_prerequisites,
+    validate_user_input,
 )
 from tests.multiplatform.helpers import (
     get_platform_specific_config,
@@ -27,131 +28,157 @@ from tests.multiplatform.helpers import (
 class TestSetupValidators:
     """セットアップ検証機能のテスト"""
 
-    def test_validate_git_config_success(self):
-        """Git設定の検証成功テスト"""
+    def test_setup_validator_init(self):
+        """セットアップ検証クラスの初期化テスト"""
         verify_current_platform()  # プラットフォーム検証
 
-        with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(returncode=0, stdout="user.name\nuser.email\n")
+        validator = SetupValidator()
+        
+        assert validator.platform_detector is not None
+        assert validator.platform_info is not None
+        assert isinstance(validator.errors, list)
+        assert len(validator.errors) == 0
 
-            result = validate_git_config()
+    def test_validate_github_credentials(self):
+        """GitHub認証情報検証テスト"""
+        with patch("setup_repo.setup_validators.get_github_user") as mock_user, \
+             patch("setup_repo.setup_validators.get_github_token") as mock_token:
+            
+            mock_user.return_value = "testuser"
+            mock_token.return_value = "test_token"
+            
+            result = validate_github_credentials()
+            
+            assert result["username"] == "testuser"
+            assert result["token"] == "test_token"
+            assert result["username_valid"] is True
+            assert result["token_valid"] is True
+
+    def test_validate_directory_path_valid(self):
+        """有効なディレクトリパス検証テスト"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            result = validate_directory_path(temp_dir)
+            
             assert result["valid"] is True
-            assert "user.name" in result["config"]
-            assert "user.email" in result["config"]
+            assert result["error"] is None
+            assert result["path"] == Path(temp_dir).resolve()
 
-    def test_validate_git_config_missing(self):
-        """Git設定の不足テスト"""
+    def test_validate_directory_path_invalid(self):
+        """無効なディレクトリパス検証テスト"""
+        result = validate_directory_path("")
+        
+        assert result["valid"] is False
+        assert "パスが空です" in result["error"]
+        assert result["path"] is None
+
+    def test_validate_setup_prerequisites(self):
+        """セットアップ前提条件検証テスト"""
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(returncode=1, stderr="fatal: not a git repository")
+            # Gitが利用可能な場合のモック
+            mock_run.return_value = Mock(returncode=0, stdout="git version 2.30.0")
+            
+            result = validate_setup_prerequisites()
+            
+            assert "valid" in result
+            assert "errors" in result
+            assert "warnings" in result
+            assert "python" in result
+            assert "git" in result
+            assert isinstance(result["errors"], list)
+            assert isinstance(result["warnings"], list)
 
-            with pytest.raises(ValidationError):
-                validate_git_config()
+    def test_check_system_requirements(self):
+        """システム要件チェックテスト"""
+        result = check_system_requirements()
+        
+        assert "platform" in result
+        assert "display_name" in result
+        assert "supported" in result
+        assert "disk_space" in result
+        
+        assert result["platform"] in ["windows", "linux", "wsl", "macos"]
+        assert result["supported"] is True
 
-    def test_validate_python_environment_success(self):
-        """Python環境の検証成功テスト"""
+    def test_validate_user_input_string(self):
+        """文字列入力検証テスト"""
+        with patch("builtins.input") as mock_input:
+            mock_input.return_value = "test_input"
+            
+            result = validate_user_input("入力してください: ", "string")
+            
+            assert result["valid"] is True
+            assert result["value"] == "test_input"
+            assert result["error"] is None
+
+    def test_validate_user_input_boolean(self):
+        """ブール入力検証テスト"""
+        with patch("builtins.input") as mock_input:
+            mock_input.return_value = "y"
+            
+            result = validate_user_input("はい/いいえ: ", "boolean")
+            
+            assert result["valid"] is True
+            assert result["value"] is True
+            assert result["error"] is None
+
+    def test_validate_user_input_path(self):
+        """パス入力検証テスト"""
+        with tempfile.TemporaryDirectory() as temp_dir, \
+             patch("builtins.input") as mock_input:
+            
+            mock_input.return_value = temp_dir
+            
+            result = validate_user_input("パスを入力: ", "path")
+            
+            assert result["valid"] is True
+            assert result["path"] == Path(temp_dir).resolve()
+
+    def test_setup_validator_error_handling(self):
+        """セットアップ検証エラーハンドリングテスト"""
+        validator = SetupValidator()
+        
+        # エラーを追加
+        validator.errors.append("テストエラー")
+        
+        errors = validator.get_errors()
+        assert len(errors) == 1
+        assert "テストエラー" in errors
+        
+        # エラーをクリア
+        validator.clear_errors()
+        assert len(validator.get_errors()) == 0
+
+    @pytest.mark.integration
+    def test_setup_validators_integration(self):
+        """セットアップ検証統合テスト"""
         verify_current_platform()  # プラットフォーム検証
         get_platform_specific_config()  # プラットフォーム設定取得
 
+        # セットアップ検証クラスのテスト
+        validator = SetupValidator()
+        assert validator.platform_info.name in ["windows", "linux", "wsl", "macos"]
+        
+        # GitHub認証情報検証
+        with patch("setup_repo.setup_validators.get_github_user") as mock_user, \
+             patch("setup_repo.setup_validators.get_github_token") as mock_token:
+            
+            mock_user.return_value = "testuser"
+            mock_token.return_value = "test_token"
+            
+            creds = validate_github_credentials()
+            assert creds["username_valid"] is True
+            assert creds["token_valid"] is True
+        
+        # システム要件チェック
+        sys_req = check_system_requirements()
+        assert sys_req["supported"] is True
+        
+        # セットアップ前提条件検証
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(returncode=0, stdout="3.9.0")
-
-            result = validate_python_environment()
-            assert result["valid"] is True
-            assert "version" in result
-            assert result["version"].startswith("3.")
-
-    def test_validate_python_environment_old_version(self):
-        """古いPythonバージョンのテスト"""
-        with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(returncode=0, stdout="2.7.18")
-
-            with pytest.raises(ValidationError, match="Python 3.8以上が必要"):
-                validate_python_environment()
-
-    @pytest.mark.windows
-    def test_validate_uv_installation_windows(self):
-        """Windows環境でのuv検証テスト"""
-        skip_if_not_platform("windows")
-
-        with patch("shutil.which") as mock_which:
-            mock_which.return_value = "C:\\Users\\test\\.cargo\\bin\\uv.exe"
-
-            result = validate_uv_installation()
-            assert result["valid"] is True
-            assert result["path"].endswith("uv.exe")
-
-    @pytest.mark.unix
-    def test_validate_uv_installation_unix(self):
-        """Unix系環境でのuv検証テスト"""
-        skip_if_not_platform("unix")
-
-        with patch("shutil.which") as mock_which:
-            mock_which.return_value = "/usr/local/bin/uv"
-
-            result = validate_uv_installation()
-            assert result["valid"] is True
-            assert result["path"] == "/usr/local/bin/uv"
-
-    def test_validate_uv_installation_not_found(self):
-        """uvが見つからない場合のテスト"""
-        with patch("shutil.which") as mock_which:
-            mock_which.return_value = None
-
-            with pytest.raises(ValidationError, match="uvが見つかりません"):
-                validate_uv_installation()
-
-    def test_validate_vscode_config_success(self):
-        """VS Code設定の検証成功テスト"""
-        verify_current_platform()  # プラットフォーム検証
-
-        with tempfile.TemporaryDirectory() as temp_dir:
-            vscode_dir = Path(temp_dir) / ".vscode"
-            vscode_dir.mkdir()
-
-            settings_file = vscode_dir / "settings.json"
-            settings_file.write_text('{"python.defaultInterpreter": "python"}')
-
-            result = validate_vscode_config(temp_dir)
-            assert result["valid"] is True
-            assert result["settings_exists"] is True
-
-    def test_validate_vscode_config_missing(self):
-        """VS Code設定が存在しない場合のテスト"""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            result = validate_vscode_config(temp_dir)
-            assert result["valid"] is False
-            assert result["settings_exists"] is False
-
-    def test_validate_vscode_config_invalid_json(self):
-        """無効なJSON設定のテスト"""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            vscode_dir = Path(temp_dir) / ".vscode"
-            vscode_dir.mkdir()
-
-            settings_file = vscode_dir / "settings.json"
-            settings_file.write_text('{"invalid": json}')
-
-            with pytest.raises(ValidationError, match="無効なJSON"):
-                validate_vscode_config(temp_dir)
-
-    @pytest.mark.integration
-    def test_full_validation_workflow(self):
-        """完全な検証ワークフローのテスト"""
-        verify_current_platform()  # プラットフォーム検証
-
-        with patch("subprocess.run") as mock_run, patch("shutil.which") as mock_which:
-            # Git設定のモック
-            mock_run.return_value = Mock(returncode=0, stdout="user.name\nuser.email\n")
-
-            # uv検証のモック
-            mock_which.return_value = "/usr/local/bin/uv"
-
-            # 各検証を実行
-            git_result = validate_git_config()
-            python_result = validate_python_environment()
-            uv_result = validate_uv_installation()
-
-            assert all([git_result["valid"], python_result["valid"], uv_result["valid"]])
+            mock_run.return_value = Mock(returncode=0, stdout="git version 2.30.0")
+            prereq = validate_setup_prerequisites()
+            assert "python" in prereq
+            assert "git" in prereq
 
     @pytest.mark.slow
     def test_validation_performance(self):
@@ -160,30 +187,21 @@ class TestSetupValidators:
 
         start_time = time.time()
 
-        with patch("subprocess.run") as mock_run, patch("shutil.which") as mock_which:
-            mock_run.return_value = Mock(returncode=0, stdout="test")
-            mock_which.return_value = "/usr/bin/uv"
+        with patch("subprocess.run") as mock_run, \
+             patch("setup_repo.setup_validators.get_github_user") as mock_user, \
+             patch("setup_repo.setup_validators.get_github_token") as mock_token:
+            
+            mock_run.return_value = Mock(returncode=0, stdout="git version 2.30.0")
+            mock_user.return_value = "testuser"
+            mock_token.return_value = "test_token"
 
             # 複数回実行してパフォーマンスを測定
             for _ in range(10):
-                validate_git_config()
-                validate_python_environment()
-                validate_uv_installation()
+                validate_github_credentials()
+                validate_setup_prerequisites()
+                check_system_requirements()
 
         elapsed = time.time() - start_time
         assert elapsed < 5.0, f"検証処理が遅すぎます: {elapsed}秒"
 
-    def test_validation_error_handling(self):
-        """検証エラーハンドリングのテスト"""
-        with patch("subprocess.run") as mock_run:
-            mock_run.side_effect = FileNotFoundError("Command not found")
 
-            with pytest.raises(ValidationError):
-                validate_git_config()
-
-    @pytest.mark.network
-    def test_network_dependent_validation(self):
-        """ネットワーク依存の検証テスト"""
-        # ネットワーク接続が必要な検証のテスト
-        # 実際の実装では外部サービスへの接続をテスト
-        pytest.skip("ネットワーク接続が必要なテスト")

@@ -170,7 +170,11 @@ def _get_authenticated_user(token: str) -> Optional[str]:
         response = requests.get("https://api.github.com/user", headers=headers, timeout=30)
         response.raise_for_status()
         user_data = response.json()
-        return user_data.get("login")
+        
+        # user_dataが辞書型であることを確認
+        if isinstance(user_data, dict):
+            return user_data.get("login")
+        return None
 
-    except (requests.exceptions.RequestException, ValueError):
+    except (requests.exceptions.RequestException, ValueError, AttributeError):
         return None

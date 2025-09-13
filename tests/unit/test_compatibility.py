@@ -389,8 +389,8 @@ class TestCompatibility:
         def generate_compatibility_report(checks):
             report = {
                 "timestamp": "2024-12-01T10:00:00Z",
-                "platform": self.platform_info["system"],
-                "python_version": self.platform_info["python_version"],
+                "platform": self.platform_info.name,
+                "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
                 "overall_compatible": True,
                 "checks": {},
                 "issues": [],
