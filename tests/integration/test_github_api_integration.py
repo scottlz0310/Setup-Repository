@@ -17,6 +17,10 @@ from setup_repo.github_api import GitHubAPI, GitHubAPIError
 
 
 @pytest.mark.integration
+@pytest.mark.skipif(
+    not os.environ.get("CI") and not os.environ.get("GITHUB_TOKEN"),
+    reason="GitHub APIテストはCI環境またはGITHUB_TOKEN設定時のみ実行",
+)
 class TestGitHubAPIIntegration:
     """GitHub API統合テストクラス"""
 

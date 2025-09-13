@@ -47,11 +47,22 @@ class TestSecurityFixes:
 
     def test_safe_path_join(self):
         """安全なパス結合テスト"""
-        base = Path("/safe/base")
-        result = SecurePathHandler.safe_join(base, "config.json")
+        import tempfile
 
-        assert str(result).startswith(str(base))
-        assert result.name == "config.json"
+        # 一時ディレクトリを使用してクロスプラットフォーム対応
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = Path(temp_dir) / "safe" / "base"
+            base.mkdir(parents=True, exist_ok=True)
+
+            result = SecurePathHandler.safe_join(base, "config.json")
+
+            # 結果パスがベースパス内にあることを確認
+            try:
+                result.resolve().relative_to(base.resolve())
+                assert result.name == "config.json"
+            except ValueError:
+                # パスがベース外にある場合は失敗
+                pytest.fail("結果パスがベースパス外にあります")
 
     def test_xss_prevention(self):
         """XSS対策テスト"""
@@ -102,30 +113,40 @@ class TestSecurityFixes:
 
     def test_config_path_validation(self):
         """設定ファイルパス検証のテスト"""
-        base_path = "/safe/config"
+        import tempfile
 
-        # 有効な設定ファイル
-        valid_configs = ["config.json", "settings.yaml", "app.toml"]
+        # 一時ディレクトリを使用してクロスプラットフォーム対応
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base_path = Path(temp_dir) / "safe" / "config"
+            base_path.mkdir(parents=True, exist_ok=True)
 
-        for config in valid_configs:
-            try:
-                result = SecurePathHandler.validate_config_path(base_path, config)
-                assert config in result
-            except ValueError:
-                # パスが存在しない場合はスキップ
-                pass
+            # 有効な設定ファイル
+            valid_configs = ["config.json", "settings.yaml", "app.toml"]
+
+            for config in valid_configs:
+                try:
+                    result = SecurePathHandler.validate_config_path(str(base_path), config)
+                    assert config in result
+                except ValueError:
+                    # パスが存在しない場合はスキップ
+                    pass
 
     def test_invalid_config_extensions(self):
         """無効な設定ファイル拡張子のテスト"""
-        base_path = "/safe/config"
+        import tempfile
 
-        invalid_configs = [
-            "malicious.exe",
-            "script.sh",
-            "config.txt",
-            "settings",  # 拡張子なし
-        ]
+        # 一時ディレクトリを使用してクロスプラットフォーム対応
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base_path = Path(temp_dir) / "safe" / "config"
+            base_path.mkdir(parents=True, exist_ok=True)
 
-        for config in invalid_configs:
-            with pytest.raises(ValueError):
-                SecurePathHandler.validate_config_path(base_path, config)
+            invalid_configs = [
+                "malicious.exe",
+                "script.sh",
+                "config.txt",
+                "settings",  # 拡張子なし
+            ]
+
+            for config in invalid_configs:
+                with pytest.raises(ValueError):
+                    SecurePathHandler.validate_config_path(str(base_path), config)

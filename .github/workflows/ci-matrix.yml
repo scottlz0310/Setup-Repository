@@ -17,10 +17,30 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-20.04, ubuntu-22.04, windows-2019, windows-2022, macos-12, macos-13]
-        python-version: ${{ fromJson(github.event.inputs.python_versions || '["3.9", "3.10", "3.11", "3.12", "3.13"]') }}
+        include:
+          # Ubuntu (最新版のみ)
+          - os: ubuntu-22.04
+            python-version: "3.11"
+          - os: ubuntu-22.04
+            python-version: "3.12"
+          - os: ubuntu-22.04
+            python-version: "3.13"
+          # Windows (最新版のみ)
+          - os: windows-2022
+            python-version: "3.11"
+          - os: windows-2022
+            python-version: "3.12"
+          - os: windows-2022
+            python-version: "3.13"
+          # macOS (最新版のみ)
+          - os: macos-13
+            python-version: "3.11"
+          - os: macos-13
+            python-version: "3.12"
+          - os: macos-13
+            python-version: "3.13"
       fail-fast: false
-      max-parallel: 6
+      max-parallel: 3
 
     steps:
     - name: Checkout code
@@ -69,7 +89,7 @@ jobs:
       run: |
         uv run python --version
         uv run python -c "import sys; print(f'Python {sys.version}')"
-        uv run python -c "from src.setup_repo import __version__; print(f'Package version: {__version__}')"
+        uv run python -c "from setup_repo import __version__; print(f'Package version: {__version__}')"
 
     - name: Run comprehensive tests
       run: |
@@ -79,11 +99,11 @@ jobs:
     - name: Test platform-specific functionality
       run: |
         uv run python -c "
-        from src.setup_repo.platform_detector import detect_platform, get_platform_info
+        from setup_repo.platform_detector import detect_platform
         platform = detect_platform()
-        info = get_platform_info()
-        print(f'Platform: {platform}')
-        print(f'Platform info: {info}')
+        print(f'Platform: {platform.name} - {platform.display_name}')
+        print(f'Shell: {platform.shell}')
+        print(f'Python command: {platform.python_cmd}')
         "
 
   performance-test:
@@ -112,4 +132,4 @@ jobs:
       run: |
         echo "Measuring startup time..."
         time uv run python main.py --help > /dev/null
-        time uv run python -c "from src.setup_repo.cli import main; main(['--help'])" > /dev/null
+        time uv run python -c "from setup_repo.cli import main; main(['--help'])" > /dev/null

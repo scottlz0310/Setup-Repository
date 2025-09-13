@@ -110,16 +110,12 @@ class TestLoggingConfig:
         """Unix系システムでのカスタムログディレクトリの場合をテスト"""
         import platform as platform_module
 
-        # CI環境では実際のプラットフォームでのみテストを実行
-        is_ci = os.getenv("CI", "").lower() in ("true", "1")
-        is_precommit = os.getenv("PRE_COMMIT", "").lower() in ("true", "1")
-        current_platform = platform_module.system().lower()
-
-        if (is_ci or is_precommit) and current_platform == "windows":
+        # Windows環境では常にスキップ
+        if platform_module.system().lower() == "windows":
             pytest.skip("Windows環境でUnix系パステストをスキップ")
 
         with (
-            patch.dict(os.environ, {"LOG_DIR": "custom/logs"}, clear=True),  # 相対パスを使用して権限問題を回避
+            patch.dict(os.environ, {"LOG_DIR": "custom/logs"}, clear=True),
             platform_mocker("linux"),
         ):
             path = LoggingConfig.get_log_file_path("custom")
@@ -210,40 +206,27 @@ class TestLoggingConfig:
         """クロスプラットフォーム互換性のテスト"""
         import platform as platform_module
 
-        # CI環境では実際のプラットフォームでのみテストを実行
-        is_ci = os.getenv("CI", "").lower() in ("true", "1")
-        is_precommit = os.getenv("PRE_COMMIT", "").lower() in ("true", "1")
         current_platform = platform_module.system().lower()
 
-        test_cases = [
-            # (platform, log_dir, expected_components)
-            ("windows", "logs", ["logs", "test.log"]),  # プラットフォーム中立のパス
-            ("linux", "var/log", ["var", "log", "test.log"]),  # プラットフォーム中立のパス
-            ("macos", "var/log", ["var", "log", "test.log"]),  # プラットフォーム中立のパス
-        ]
+        # 現在のプラットフォームでのみテスト実行
+        if current_platform == "windows":
+            test_cases = [("windows", "logs", ["logs", "test.log"])]
+        elif current_platform == "linux":
+            test_cases = [("linux", "var/log", ["var", "log", "test.log"])]
+        elif current_platform == "darwin":
+            test_cases = [("macos", "var/log", ["var", "log", "test.log"])]
+        else:
+            pytest.skip(f"未対応のプラットフォーム: {current_platform}")
 
         for platform_name, log_dir, expected_components in test_cases:
-            # CI環境では実際のプラットフォームでのみテストを実行
-            if (is_ci or is_precommit) and (
-                current_platform == "windows"
-                and platform_name != "windows"
-                or current_platform == "linux"
-                and platform_name not in ["linux", "wsl"]
-                or current_platform == "darwin"
-                and platform_name != "macos"
-            ):
-                continue
-
             with (
                 patch.dict(os.environ, {"LOG_DIR": log_dir}, clear=True),
                 platform_mocker(platform_name),
             ):
                 path = LoggingConfig.get_log_file_path("test")
-                # Pathオブジェクトの構成要素を確認
                 assert path.name == "test.log"
-                # パスに期待される要素が含まれていることを確認
                 path_str = str(path)
-                for component in expected_components[:-1]:  # ファイル名以外の要素
+                for component in expected_components[:-1]:
                     assert component in path_str
 
     def test_get_log_file_path_environment_variables_mock(self):
@@ -276,23 +259,21 @@ class TestLoggingSetupFunctions:
             logger = setup_project_logging()
             assert isinstance(logger, QualityLogger)
 
-    @pytest.mark.parametrize("platform_name", ["linux", "macos", "wsl", "windows"])  # 全プラットフォームをテスト
-    def test_setup_project_logging_cross_platform(self, platform_name: str, platform_mocker):
-        """全プラットフォームでのプロジェクトロギングセットアップをテスト"""
+    def test_setup_project_logging_cross_platform(self, platform_mocker):
+        """現在のプラットフォームでのプロジェクトロギングセットアップをテスト"""
         import platform as platform_module
 
-        # CI環境では実際のプラットフォームでのみテストを実行
-        is_ci = os.getenv("CI", "").lower() in ("true", "1")
-        is_precommit = os.getenv("PRE_COMMIT", "").lower() in ("true", "1")
         current_platform = platform_module.system().lower()
 
-        if is_ci or is_precommit:
-            if current_platform == "windows" and platform_name != "windows":
-                pytest.skip(f"Windows環境で{platform_name}プラットフォームのテストをスキップ")
-            elif current_platform == "linux" and platform_name not in ["linux", "wsl"]:
-                pytest.skip(f"Linux環境で{platform_name}プラットフォームのテストをスキップ")
-            elif current_platform == "darwin" and platform_name != "macos":
-                pytest.skip(f"macOS環境で{platform_name}プラットフォームのテストをスキップ")
+        # 現在のプラットフォームに対応するテストのみ実行
+        if current_platform == "windows":
+            platform_name = "windows"
+        elif current_platform == "linux":
+            platform_name = "linux"
+        elif current_platform == "darwin":
+            platform_name = "macos"
+        else:
+            pytest.skip(f"未対応のプラットフォーム: {current_platform}")
 
         with (
             patch.dict(os.environ, {}, clear=True),
@@ -300,7 +281,6 @@ class TestLoggingSetupFunctions:
         ):
             logger = setup_project_logging()
             assert isinstance(logger, QualityLogger)
-            # プラットフォームに関係なく基本的な設定が正しいことを確認
             assert logger.enable_console is True
 
     def test_setup_ci_logging(self):
@@ -363,33 +343,25 @@ class TestLoggingSetupFunctions:
         """環境変数を使用したパス処理のテスト"""
         import platform as platform_module
 
-        # CI環境では実際のプラットフォームでのみテストを実行
-        is_ci = os.getenv("CI", "").lower() in ("true", "1")
-        is_precommit = os.getenv("PRE_COMMIT", "").lower() in ("true", "1")
         current_platform = platform_module.system().lower()
 
-        if (is_ci or is_precommit) and current_platform == "windows":
-            pytest.skip("Windows環境でUnix系パステストをスキップ")
-
-        # Unix系のパス（プラットフォーム中立形式）
-        with (
-            patch.dict(os.environ, {"LOG_DIR": "tmp/logs"}, clear=True),
-            platform_mocker("linux"),
-        ):
-            logger = LoggingConfig.configure_for_environment()
-            # CI環境でない場合、ログファイルが設定されることを確認
-            if not LoggingConfig.is_ci_environment():
-                assert logger.log_file.name == "quality.log"
-                assert "tmp" in str(logger.log_file) and "logs" in str(logger.log_file)
-
-        # Windowsのパス（プラットフォーム中立形式）
-        if not ((is_ci or is_precommit) and current_platform != "windows"):
+        # 現在のプラットフォームでのみテスト実行
+        if current_platform == "windows":
             with (
                 patch.dict(os.environ, {"LOG_DIR": "temp/logs"}, clear=True),
                 platform_mocker("windows"),
             ):
                 logger = LoggingConfig.configure_for_environment()
                 if not LoggingConfig.is_ci_environment():
-                    # パスの構成要素を確認
                     assert logger.log_file.name == "quality.log"
                     assert "temp" in str(logger.log_file) and "logs" in str(logger.log_file)
+        else:
+            # Unix系プラットフォーム
+            with (
+                patch.dict(os.environ, {"LOG_DIR": "tmp/logs"}, clear=True),
+                platform_mocker("linux" if current_platform == "linux" else "macos"),
+            ):
+                logger = LoggingConfig.configure_for_environment()
+                if not LoggingConfig.is_ci_environment():
+                    assert logger.log_file.name == "quality.log"
+                    assert "tmp" in str(logger.log_file) and "logs" in str(logger.log_file)

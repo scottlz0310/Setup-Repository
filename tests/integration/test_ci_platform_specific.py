@@ -11,12 +11,12 @@ import subprocess
 
 import pytest
 
-from src.setup_repo.logging_config import (
+from setup_repo.logging_config import (
     LoggingConfig,
     create_platform_specific_error_message,
     setup_ci_logging,
 )
-from src.setup_repo.platform_detector import (
+from setup_repo.platform_detector import (
     PlatformDetector,
     check_package_manager,
     detect_platform,
