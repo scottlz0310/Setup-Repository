@@ -177,3 +177,68 @@ skip_if_not_github_actions = pytest.mark.skipif(
 skip_slow_tests = pytest.mark.skipif(
     not os.environ.get("RUN_SLOW_TESTS"), reason="低速テストは明示的に有効化された場合のみ実行"
 )
+
+
+@pytest.fixture(params=["windows", "linux", "macos", "wsl"])
+def platform(request):
+    """プラットフォーム名フィクスチャ"""
+    return request.param
+
+
+@pytest.fixture
+def platform_mocker(monkeypatch):
+    """プラットフォームモッカーフィクスチャ"""
+
+    def mock_platform(platform_name: str):
+        if platform_name == "windows":
+            monkeypatch.setattr("platform.system", lambda: "Windows")
+            monkeypatch.setattr("os.name", "nt")
+        elif platform_name == "linux":
+            monkeypatch.setattr("platform.system", lambda: "Linux")
+            monkeypatch.setattr("os.name", "posix")
+        elif platform_name == "macos":
+            monkeypatch.setattr("platform.system", lambda: "Darwin")
+            monkeypatch.setattr("os.name", "posix")
+        elif platform_name == "wsl":
+            monkeypatch.setattr("platform.system", lambda: "Linux")
+            monkeypatch.setattr("os.name", "posix")
+            monkeypatch.setenv("WSL_DISTRO_NAME", "Ubuntu")
+
+    return mock_platform
+
+
+@pytest.fixture
+def module_availability_mocker(monkeypatch):
+    """モジュール可用性モッカーフィクスチャ"""
+
+    def mock_module_availability(module_name: str, available: bool):
+        if available:
+            pass
+        else:
+
+            def mock_import(name, *args, **kwargs):
+                if name == module_name:
+                    raise ImportError(f"No module named '{module_name}'")
+                return __import__(name, *args, **kwargs)
+
+            monkeypatch.setattr("builtins.__import__", mock_import)
+
+    return mock_module_availability
+
+
+@pytest.fixture
+def cross_platform_helper():
+    """クロスプラットフォームヘルパーフィクスチャ"""
+
+    class CrossPlatformHelper:
+        def get_platform_specific_path(self, platform_name: str, base_path: str) -> str:
+            if platform_name == "windows":
+                return base_path.replace("/", "\\")
+            return base_path
+
+        def get_platform_specific_command(self, platform_name: str, command: str) -> str:
+            if platform_name == "windows":
+                return f"{command}.exe"
+            return command
+
+    return CrossPlatformHelper()

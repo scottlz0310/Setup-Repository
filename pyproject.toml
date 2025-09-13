@@ -133,6 +133,7 @@ markers = [
     "performance: marks tests as performance tests",
     "stress: marks tests as stress tests",
     "cross_platform: marks tests as cross-platform tests",
+    "all_platforms: marks tests that run on all platforms",
     "network: marks tests that require network access",
 ]
 filterwarnings = [
