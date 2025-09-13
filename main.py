@@ -5,8 +5,16 @@
 """
 
 import argparse
+import os
 import sys
 from pathlib import Path
+
+# Windows環境でのUnicodeエンコーディング問題を修正
+if os.name == "nt":
+    import codecs
+
+    sys.stdout = codecs.getwriter("utf-8")(sys.stdout.detach())
+    sys.stderr = codecs.getwriter("utf-8")(sys.stderr.detach())
 
 # srcディレクトリをパスに追加
 sys.path.insert(0, str(Path(__file__).parent / "src"))

@@ -248,7 +248,11 @@ class TestFullWorkflow:
         # 設定読み込みテスト（環境変数を設定）
         with (
             patch("setup_repo.config.Path.cwd", return_value=temp_dir),
-            patch.dict(os.environ, {"CONFIG_PATH": str(temp_dir)}, clear=True),
+            patch.dict(
+                os.environ,
+                {"CONFIG_PATH": str(temp_dir), "HOME": str(temp_dir), "USERPROFILE": str(temp_dir)},
+                clear=False,
+            ),
         ):
             loaded_config = load_config()
 
@@ -304,6 +308,8 @@ class TestFullWorkflow:
             "GITHUB_TOKEN": "env_token",
             "GITHUB_USERNAME": "env_user",
             "CLONE_DESTINATION": str(clone_destination),
+            "HOME": str(temp_dir),
+            "USERPROFILE": str(temp_dir),
         }
 
         mock_repos = [

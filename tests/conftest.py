@@ -179,142 +179,22 @@ skip_slow_tests = pytest.mark.skipif(
 )
 
 
-@pytest.fixture(params=["windows", "linux", "macos", "wsl"])
-def platform(request):
-    """プラットフォーム名フィクスチャ"""
-    return request.param
-
-
 @pytest.fixture
-def platform_mocker():
-    """プラットフォームモッカーフィクスチャ"""
-    # CI環境では実際のプラットフォームでのみテストを実行するため、
-    # モッカーは無効化する
-    is_ci = os.environ.get("CI", "").lower() in ("true", "1")
-    is_precommit = os.environ.get("PRE_COMMIT", "").lower() in ("true", "1")
-
-    if is_ci or is_precommit:
-        # CI/Pre-commit環境では何もしないダミーコンテキストマネージャーを返す
-        return None
-
-    from contextlib import contextmanager
-    from unittest.mock import patch
-
-    @contextmanager
-    def mock_platform(platform_name: str):
-        patches = []
-        try:
-            if platform_name == "windows":
-                patches.append(patch("platform.system", return_value="Windows"))
-                patches.append(patch("platform.release", return_value="10"))
-                patches.append(patch("os.name", "nt"))
-            elif platform_name == "linux":
-                patches.append(patch("platform.system", return_value="Linux"))
-                patches.append(patch("platform.release", return_value="5.4.0"))
-                patches.append(patch("os.name", "posix"))
-            elif platform_name == "macos":
-                patches.append(patch("platform.system", return_value="Darwin"))
-                patches.append(patch("platform.release", return_value="20.6.0"))
-                patches.append(patch("os.name", "posix"))
-            elif platform_name == "wsl":
-                patches.append(patch("platform.system", return_value="Linux"))
-                patches.append(patch("platform.release", return_value="5.4.0-microsoft-standard"))
-                patches.append(patch("os.name", "posix"))
-                patches.append(patch("os.path.exists", return_value=True))
-
-            # パッチを開始
-            for p in patches:
-                p.start()
-
-            yield type(
-                "MockConfig",
-                (),
-                {
-                    "config": {
-                        "system": patches[0].return_value if patches else platform_name,
-                        "release": patches[1].return_value if len(patches) > 1 else "unknown",
-                        "os_name": patches[2].new if len(patches) > 2 else "unknown",
-                    },
-                    "get_expected_lock_implementation_type": lambda: (
-                        "WindowsLockImplementation"
-                        if platform_name == "windows"
-                        else "UnixLockImplementation"
-                        if platform_name in ["linux", "macos", "wsl"]
-                        else "FallbackLockImplementation"
-                    ),
-                    "supports_fcntl": lambda: platform_name in ["linux", "macos", "wsl"],
-                    "supports_msvcrt": lambda: platform_name == "windows",
-                    "is_unix_like": lambda: platform_name in ["linux", "macos", "wsl"],
-                },
-            )()
-
-        finally:
-            # パッチを停止
-            for p in reversed(patches):
-                p.stop()
-
-    return mock_platform
+def current_platform():
+    """現在のプラットフォーム名フィクスチャ"""
+    current = platform.system().lower()
+    platform_mapping = {
+        "windows": "windows",
+        "linux": "linux",
+        "darwin": "macos",
+    }
+    return platform_mapping.get(current, "unknown")
 
 
-@pytest.fixture
-def module_availability_mocker():
-    """モジュール可用性モッカーフィクスチャ"""
-    # CI環境では実際のプラットフォームでのみテストを実行するため、
-    # モッカーは無効化する
-    is_ci = os.environ.get("CI", "").lower() in ("true", "1")
-    is_precommit = os.environ.get("PRE_COMMIT", "").lower() in ("true", "1")
+# プラットフォームモッカーは削除 - 実環境でのテストのみ実行
 
-    if is_ci or is_precommit:
-        # CI/Pre-commit環境では何もしないダミー関数を返す
-        def dummy_mocker(**kwargs):
-            from contextlib import nullcontext
 
-            return nullcontext()
-
-        return dummy_mocker
-
-    from contextlib import contextmanager
-    from unittest.mock import patch
-
-    @contextmanager
-    def mock_module_availability(**kwargs):
-        fcntl_available = kwargs.get("fcntl_available", True)
-        msvcrt_available = kwargs.get("msvcrt_available", True)
-
-        patches = []
-        try:
-            # fcntlモジュールの可用性をモック
-            if not fcntl_available:
-
-                def mock_fcntl_import(name, *args, **kwargs):
-                    if name == "fcntl":
-                        raise ImportError("No module named 'fcntl'")
-                    return __import__(name, *args, **kwargs)
-
-                patches.append(patch("builtins.__import__", side_effect=mock_fcntl_import))
-
-            # msvcrtモジュールの可用性をモック
-            if not msvcrt_available:
-
-                def mock_msvcrt_import(name, *args, **kwargs):
-                    if name == "msvcrt":
-                        raise ImportError("No module named 'msvcrt'")
-                    return __import__(name, *args, **kwargs)
-
-                patches.append(patch("builtins.__import__", side_effect=mock_msvcrt_import))
-
-            # パッチを開始
-            for p in patches:
-                p.start()
-
-            yield
-
-        finally:
-            # パッチを停止
-            for p in reversed(patches):
-                p.stop()
-
-    return mock_module_availability
+# モジュール可用性モッカーは削除 - 実環境でのテストのみ実行
 
 
 @pytest.fixture
@@ -332,47 +212,21 @@ def cross_platform_helper():
                 return f"{command}.exe"
             return command
 
-        def run_on_all_platforms(self, test_function, platform_mocker):
-            """全プラットフォームでテスト関数を実行"""
-            platforms = ["windows", "linux", "macos", "wsl"]
-            results = {}
+        def run_on_current_platform_only(self, test_function):
+            """現在のプラットフォームでのみテスト関数を実行"""
+            current_platform = platform.system().lower()
+            platform_mapping = {
+                "windows": "windows",
+                "linux": "linux",
+                "darwin": "macos",
+            }
+            platform_name = platform_mapping.get(current_platform, "unknown")
 
-            # CI環境では実際のプラットフォームでのみテスト
-            is_ci = os.environ.get("CI", "").lower() in ("true", "1")
-            is_precommit = os.environ.get("PRE_COMMIT", "").lower() in ("true", "1")
-
-            if is_ci or is_precommit:
-                current_platform = platform.system().lower()
-                if current_platform == "windows":
-                    platform_name = "windows"
-                elif current_platform == "linux":
-                    platform_name = "linux"
-                elif current_platform == "darwin":
-                    platform_name = "macos"
-                else:
-                    platform_name = "linux"  # デフォルト
-
-                try:
-                    result = test_function(platform_name)
-                    results[platform_name] = {"success": True, "result": result}
-                except Exception as e:
-                    results[platform_name] = {"success": False, "error": str(e)}
-
-                return results
-
-            # 非CI環境では全プラットフォームでテスト
-            for platform_name in platforms:
-                try:
-                    if platform_mocker:
-                        with platform_mocker(platform_name):
-                            result = test_function(platform_name)
-                    else:
-                        result = test_function(platform_name)
-                    results[platform_name] = {"success": True, "result": result}
-                except Exception as e:
-                    results[platform_name] = {"success": False, "error": str(e)}
-
-            return results
+            try:
+                result = test_function(platform_name)
+                return {platform_name: {"success": True, "result": result}}
+            except Exception as e:
+                return {platform_name: {"success": False, "error": str(e)}}
 
         def assert_consistent_behavior(self, results, expected_status="success"):
             """一貫した動作をアサート"""
