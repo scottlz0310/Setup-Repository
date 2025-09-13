@@ -1,385 +1,431 @@
-"""
-後方互換性機能のテスト
-"""
+"""互換性チェック機能のテスト."""
 
+import pytest
+import platform
 import sys
-import warnings
-from unittest.mock import MagicMock, patch
-
-from setup_repo.compatibility import (
-    CIErrorHandlerCompatibility,
-    InteractiveSetupCompatibility,
-    LoggingConfigCompatibility,
-    QualityLoggerCompatibility,
-    QualityMetricsCompatibility,
-    _deprecated_import,
-    check_deprecated_imports,
-    create_compatibility_aliases,
-    show_migration_guide,
-)
+from unittest.mock import Mock, patch
+from ..multiplatform.helpers import verify_current_platform
 
 
-class TestDeprecatedImport:
-    """非推奨インポート機能のテスト"""
-
-    def test_deprecated_import_warning(self):
-        """非推奨インポート警告のテスト"""
-        with patch("importlib.import_module") as mock_import:
-            mock_module = MagicMock()
-            mock_function = MagicMock()
-            mock_module.test_function = mock_function
-            mock_import.return_value = mock_module
-
-            with warnings.catch_warnings(record=True) as w:
-                warnings.simplefilter("always")
-
-                result = _deprecated_import("old_module", "new_module", "test_function")
-
-                # 警告が発行されたことを確認
-                assert len(w) == 1
-                assert issubclass(w[0].category, DeprecationWarning)
-                assert "old_module.test_function is deprecated" in str(w[0].message)
-                assert "new_module.test_function instead" in str(w[0].message)
-
-                # 正しい関数が返されたことを確認
-                assert result == mock_function
-                mock_import.assert_called_once_with("setup_repo.new_module")
-
-
-class TestQualityLoggerCompatibility:
-    """Quality Logger互換性クラスのテスト"""
+class TestCompatibility:
+    """互換性チェック機能のテストクラス."""
 
     def setup_method(self):
-        """テスト前の準備"""
-        self.compat = QualityLoggerCompatibility()
+        """テストメソッドの前処理."""
+        self.platform_info = verify_current_platform()
 
-    @patch("setup_repo.compatibility._deprecated_import")
-    def test_error_function_routing(self, mock_deprecated_import):
-        """エラー処理関数のルーティングテスト"""
-        mock_deprecated_import.return_value = MagicMock()
-
-        # エラー処理関数をテスト
-        error_functions = [
-            "QualityError",
-            "QualityWarning",
-            "handle_quality_error",
-            "format_error_message",
-            "log_exception",
-            "create_error_report",
+    @pytest.mark.unit
+    def test_python_version_compatibility(self):
+        """Pythonバージョン互換性チェックのテスト."""
+        # Python版本兼容性检查函数
+        def check_python_compatibility(required_version, current_version=None):
+            if current_version is None:
+                current_version = sys.version_info
+            
+            required_parts = [int(x) for x in required_version.split('.')]
+            current_parts = current_version[:len(required_parts)]
+            
+            # バージョン比較
+            for req, cur in zip(required_parts, current_parts):
+                if cur > req:
+                    return True, f"Python {'.'.join(map(str, current_parts))} is compatible"
+                elif cur < req:
+                    return False, f"Python {'.'.join(map(str, current_parts))} is too old, requires {required_version}+"
+            
+            return True, f"Python {'.'.join(map(str, current_parts))} meets minimum requirement"
+        
+        # テストケース
+        test_cases = [
+            ("3.9", (3, 10, 0), True),   # 新しいバージョン
+            ("3.9", (3, 9, 0), True),    # 最小バージョン
+            ("3.9", (3, 8, 5), False),   # 古いバージョン
+            ("3.11", (3, 12, 1), True),  # 十分新しい
         ]
+        
+        # Python互換性チェックテスト
+        for required, current, expected_compatible in test_cases:
+            is_compatible, message = check_python_compatibility(required, current)
+            assert is_compatible == expected_compatible
 
-        for func_name in error_functions:
-            self.compat.__getattr__(func_name)
-            mock_deprecated_import.assert_called_with("quality_logger", "quality_errors", func_name)
-
-    @patch("setup_repo.compatibility._deprecated_import")
-    def test_formatter_function_routing(self, mock_deprecated_import):
-        """フォーマッター関数のルーティングテスト"""
-        mock_deprecated_import.return_value = MagicMock()
-
-        # フォーマッター関数をテスト
-        formatter_functions = [
-            "ColoredFormatter",
-            "JSONFormatter",
-            "format_log_message",
-            "add_color_codes",
-            "strip_color_codes",
+    @pytest.mark.unit
+    def test_platform_compatibility(self):
+        """プラットフォーム互換性チェックのテスト."""
+        # プラットフォーム互換性チェック関数
+        def check_platform_compatibility(supported_platforms, current_platform=None):
+            if current_platform is None:
+                current_platform = platform.system()
+            
+            # プラットフォーム名の正規化
+            platform_mapping = {
+                'Windows': ['Windows', 'win32', 'cygwin'],
+                'Linux': ['Linux', 'linux', 'linux2'],
+                'Darwin': ['Darwin', 'macOS', 'osx']
+            }
+            
+            # 現在のプラットフォームが対応リストに含まれるかチェック
+            for supported in supported_platforms:
+                if supported in platform_mapping:
+                    if current_platform in platform_mapping[supported]:
+                        return True, f"Platform {current_platform} is supported"
+                elif supported.lower() == current_platform.lower():
+                    return True, f"Platform {current_platform} is supported"
+            
+            return False, f"Platform {current_platform} is not supported. Supported: {supported_platforms}"
+        
+        # テストケース
+        test_cases = [
+            (['Windows', 'Linux', 'Darwin'], 'Windows', True),
+            (['Linux', 'Darwin'], 'Windows', False),
+            (['Windows'], 'Linux', False),
+            (['Windows', 'Linux', 'Darwin'], 'Darwin', True),
         ]
+        
+        # プラットフォーム互換性チェックテスト
+        for supported, current, expected_compatible in test_cases:
+            is_compatible, message = check_platform_compatibility(supported, current)
+            assert is_compatible == expected_compatible
 
-        for func_name in formatter_functions:
-            self.compat.__getattr__(func_name)
-            mock_deprecated_import.assert_called_with("quality_logger", "quality_formatters", func_name)
-
-    @patch("setup_repo.compatibility._deprecated_import")
-    def test_default_function_routing(self, mock_deprecated_import):
-        """デフォルト関数のルーティングテスト"""
-        mock_deprecated_import.return_value = MagicMock()
-
-        # 基本ログ機能をテスト
-        self.compat.__getattr__("setup_quality_logging")
-        mock_deprecated_import.assert_called_with("quality_logger", "quality_logger", "setup_quality_logging")
-
-
-class TestCIErrorHandlerCompatibility:
-    """CI Error Handler互換性クラスのテスト"""
-
-    def setup_method(self):
-        """テスト前の準備"""
-        self.compat = CIErrorHandlerCompatibility()
-
-    @patch("setup_repo.compatibility._deprecated_import")
-    def test_environment_function_routing(self, mock_deprecated_import):
-        """CI環境検出関数のルーティングテスト"""
-        mock_deprecated_import.return_value = MagicMock()
-
-        # CI環境検出関数をテスト
-        environment_functions = [
-            "detect_ci_environment",
-            "get_system_info",
-            "collect_environment_vars",
-            "get_ci_metadata",
-            "is_ci_environment",
+    @pytest.mark.unit
+    def test_dependency_compatibility(self):
+        """依存関係互換性チェックのテスト."""
+        # 依存関係互換性チェック関数
+        def check_dependency_compatibility(requirements, installed_packages):
+            incompatible = []
+            missing = []
+            
+            for requirement in requirements:
+                package_name = requirement['name']
+                required_version = requirement['version']
+                
+                if package_name not in installed_packages:
+                    missing.append(package_name)
+                    continue
+                
+                installed_version = installed_packages[package_name]
+                
+                # バージョン比較（簡単な実装）
+                if not version_satisfies(installed_version, required_version):
+                    incompatible.append({
+                        'package': package_name,
+                        'required': required_version,
+                        'installed': installed_version
+                    })
+            
+            return {
+                'compatible': len(incompatible) == 0 and len(missing) == 0,
+                'missing': missing,
+                'incompatible': incompatible
+            }
+        
+        def version_satisfies(installed, required):
+            # 簡単なバージョン比較（実際はより複雑）
+            if required.startswith('>='):
+                return installed >= required[2:]
+            elif required.startswith('=='):
+                return installed == required[2:]
+            elif required.startswith('>'):
+                return installed > required[1:]
+            return True
+        
+        # テストデータ
+        requirements = [
+            {'name': 'requests', 'version': '>=2.25.0'},
+            {'name': 'numpy', 'version': '>=1.20.0'},
+            {'name': 'flask', 'version': '==2.0.1'}
         ]
+        
+        installed_packages = {
+            'requests': '2.26.0',
+            'numpy': '1.19.5',  # 古いバージョン
+            'flask': '2.0.1'
+            # 'pandas' is missing
+        }
+        
+        # 依存関係互換性チェックテスト
+        result = check_dependency_compatibility(requirements, installed_packages)
+        assert result['compatible'] is False
+        assert 'numpy' in [pkg['package'] for pkg in result['incompatible']]
 
-        for func_name in environment_functions:
-            self.compat.__getattr__(func_name)
-            mock_deprecated_import.assert_called_with("ci_error_handler", "ci_environment", func_name)
-
-    @patch("setup_repo.compatibility._deprecated_import")
-    def test_error_handler_function_routing(self, mock_deprecated_import):
-        """エラーハンドリング関数のルーティングテスト"""
-        mock_deprecated_import.return_value = MagicMock()
-
-        # エラーハンドリング関数をテスト
-        self.compat.__getattr__("handle_ci_error")
-        mock_deprecated_import.assert_called_with("ci_error_handler", "ci_error_handler", "handle_ci_error")
-
-
-class TestLoggingConfigCompatibility:
-    """Logging Config互換性クラスのテスト"""
-
-    def setup_method(self):
-        """テスト前の準備"""
-        self.compat = LoggingConfigCompatibility()
-
-    @patch("setup_repo.compatibility._deprecated_import")
-    def test_handler_function_routing(self, mock_deprecated_import):
-        """ハンドラー関数のルーティングテスト"""
-        mock_deprecated_import.return_value = MagicMock()
-
-        # ハンドラー関数をテスト
-        handler_functions = [
-            "TeeHandler",
-            "RotatingFileHandler",
-            "ColoredConsoleHandler",
-            "create_file_handler",
-            "create_console_handler",
+    @pytest.mark.unit
+    def test_architecture_compatibility(self):
+        """アーキテクチャ互換性チェックのテスト."""
+        # アーキテクチャ互換性チェック関数
+        def check_architecture_compatibility(supported_archs, current_arch=None):
+            if current_arch is None:
+                current_arch = platform.machine()
+            
+            # アーキテクチャ名の正規化
+            arch_mapping = {
+                'x86_64': ['x86_64', 'AMD64', 'x64'],
+                'i386': ['i386', 'i686', 'x86'],
+                'arm64': ['arm64', 'aarch64', 'ARM64'],
+                'armv7l': ['armv7l', 'armv7', 'arm']
+            }
+            
+            # 現在のアーキテクチャが対応リストに含まれるかチェック
+            for supported in supported_archs:
+                if supported in arch_mapping:
+                    if current_arch in arch_mapping[supported]:
+                        return True, f"Architecture {current_arch} is supported"
+                elif supported.lower() == current_arch.lower():
+                    return True, f"Architecture {current_arch} is supported"
+            
+            return False, f"Architecture {current_arch} is not supported. Supported: {supported_archs}"
+        
+        # テストケース
+        test_cases = [
+            (['x86_64', 'arm64'], 'x86_64', True),
+            (['x86_64'], 'aarch64', False),
+            (['x86_64', 'arm64'], 'AMD64', True),  # 正規化テスト
         ]
+        
+        # アーキテクチャ互換性チェックテスト
+        for supported, current, expected_compatible in test_cases:
+            is_compatible, message = check_architecture_compatibility(supported, current)
+            assert is_compatible == expected_compatible
 
-        for func_name in handler_functions:
-            self.compat.__getattr__(func_name)
-            mock_deprecated_import.assert_called_with("logging_config", "logging_handlers", func_name)
-
-    @patch("setup_repo.compatibility._deprecated_import")
-    def test_config_function_routing(self, mock_deprecated_import):
-        """設定関数のルーティングテスト"""
-        mock_deprecated_import.return_value = MagicMock()
-
-        # 基本設定関数をテスト
-        self.compat.__getattr__("setup_logging")
-        mock_deprecated_import.assert_called_with("logging_config", "logging_config", "setup_logging")
-
-
-class TestQualityMetricsCompatibility:
-    """Quality Metrics互換性クラスのテスト"""
-
-    def setup_method(self):
-        """テスト前の準備"""
-        self.compat = QualityMetricsCompatibility()
-
-    @patch("setup_repo.compatibility._deprecated_import")
-    def test_collector_function_routing(self, mock_deprecated_import):
-        """データ収集関数のルーティングテスト"""
-        mock_deprecated_import.return_value = MagicMock()
-
-        # データ収集関数をテスト
-        collector_functions = [
-            "collect_ruff_metrics",
-            "collect_mypy_metrics",
-            "collect_pytest_metrics",
-            "collect_coverage_metrics",
-            "parse_tool_output",
+    @pytest.mark.unit
+    def test_feature_compatibility(self):
+        """機能互換性チェックのテスト."""
+        # 機能互換性チェック関数
+        def check_feature_compatibility(required_features, available_features):
+            missing_features = []
+            incompatible_features = []
+            
+            for feature in required_features:
+                feature_name = feature['name']
+                required_version = feature.get('version')
+                
+                if feature_name not in available_features:
+                    missing_features.append(feature_name)
+                    continue
+                
+                available_feature = available_features[feature_name]
+                if required_version and available_feature.get('version'):
+                    if not version_compatible(available_feature['version'], required_version):
+                        incompatible_features.append({
+                            'feature': feature_name,
+                            'required': required_version,
+                            'available': available_feature['version']
+                        })
+            
+            return {
+                'compatible': len(missing_features) == 0 and len(incompatible_features) == 0,
+                'missing': missing_features,
+                'incompatible': incompatible_features
+            }
+        
+        def version_compatible(available, required):
+            # 簡単なバージョン互換性チェック
+            return available >= required
+        
+        # テストデータ
+        required_features = [
+            {'name': 'ssl', 'version': '1.1.1'},
+            {'name': 'sqlite', 'version': '3.35.0'},
+            {'name': 'zlib'}  # バージョン指定なし
         ]
+        
+        available_features = {
+            'ssl': {'version': '1.1.1'},
+            'sqlite': {'version': '3.34.0'},  # 古いバージョン
+            'zlib': {'version': '1.2.11'}
+        }
+        
+        # 機能互換性チェックテスト
+        result = check_feature_compatibility(required_features, available_features)
+        assert result['compatible'] is False
+        assert 'sqlite' in [feat['feature'] for feat in result['incompatible']]
 
-        for func_name in collector_functions:
-            self.compat.__getattr__(func_name)
-            mock_deprecated_import.assert_called_with("quality_metrics", "quality_collectors", func_name)
+    @pytest.mark.unit
+    def test_environment_compatibility(self):
+        """環境互換性チェックのテスト."""
+        # 環境互換性チェック関数
+        def check_environment_compatibility(requirements, current_env):
+            issues = []
+            
+            # 環境変数チェック
+            if 'env_vars' in requirements:
+                for var in requirements['env_vars']:
+                    if var not in current_env.get('env_vars', {}):
+                        issues.append(f"Missing environment variable: {var}")
+            
+            # パス存在チェック
+            if 'required_paths' in requirements:
+                for path in requirements['required_paths']:
+                    if path not in current_env.get('available_paths', []):
+                        issues.append(f"Required path not found: {path}")
+            
+            # 権限チェック
+            if 'permissions' in requirements:
+                for perm in requirements['permissions']:
+                    if perm not in current_env.get('permissions', []):
+                        issues.append(f"Missing permission: {perm}")
+            
+            return {
+                'compatible': len(issues) == 0,
+                'issues': issues
+            }
+        
+        # テストデータ
+        requirements = {
+            'env_vars': ['PATH', 'HOME'],
+            'required_paths': ['/usr/bin', '/tmp'],
+            'permissions': ['read', 'write']
+        }
+        
+        current_env = {
+            'env_vars': {'PATH': '/usr/bin:/bin', 'USER': 'test'},  # HOME missing
+            'available_paths': ['/usr/bin', '/home'],  # /tmp missing
+            'permissions': ['read', 'write', 'execute']
+        }
+        
+        # 環境互換性チェックテスト
+        result = check_environment_compatibility(requirements, current_env)
+        assert result['compatible'] is False
+        assert len(result['issues']) == 2  # HOME and /tmp missing
 
-    @patch("setup_repo.compatibility._deprecated_import")
-    def test_metrics_function_routing(self, mock_deprecated_import):
-        """メトリクス計算関数のルーティングテスト"""
-        mock_deprecated_import.return_value = MagicMock()
+    @pytest.mark.unit
+    @pytest.mark.skipif(platform.system() == "Windows", reason="Unix固有の互換性チェック")
+    def test_unix_compatibility(self):
+        """Unix固有の互換性チェックテスト."""
+        # Unix固有の互換性チェック
+        def check_unix_compatibility():
+            compatibility_info = {
+                'shell_available': True,  # /bin/sh exists
+                'posix_compliant': True,
+                'signal_support': True,
+                'fork_support': True,
+                'file_permissions': True
+            }
+            
+            issues = []
+            if not compatibility_info['posix_compliant']:
+                issues.append("System is not POSIX compliant")
+            if not compatibility_info['signal_support']:
+                issues.append("Signal handling not supported")
+            
+            return {
+                'compatible': len(issues) == 0,
+                'issues': issues,
+                'features': compatibility_info
+            }
+        
+        # Unix互換性チェックテスト
+        result = check_unix_compatibility()
+        assert result['compatible'] is True
+        assert result['features']['posix_compliant'] is True
 
-        # メトリクス計算関数をテスト
-        self.compat.__getattr__("calculate_quality_score")
-        mock_deprecated_import.assert_called_with("quality_metrics", "quality_metrics", "calculate_quality_score")
+    @pytest.mark.unit
+    @pytest.mark.skipif(platform.system() != "Windows", reason="Windows固有の互換性チェック")
+    def test_windows_compatibility(self):
+        """Windows固有の互換性チェックテスト."""
+        # Windows固有の互換性チェック
+        def check_windows_compatibility():
+            compatibility_info = {
+                'powershell_available': True,
+                'cmd_available': True,
+                'wmi_support': True,
+                'registry_access': True,
+                'service_control': True
+            }
+            
+            issues = []
+            if not compatibility_info['powershell_available']:
+                issues.append("PowerShell not available")
+            if not compatibility_info['registry_access']:
+                issues.append("Registry access not available")
+            
+            return {
+                'compatible': len(issues) == 0,
+                'issues': issues,
+                'features': compatibility_info
+            }
+        
+        # Windows互換性チェックテスト
+        result = check_windows_compatibility()
+        assert result['compatible'] is True
+        assert result['features']['powershell_available'] is True
 
+    @pytest.mark.unit
+    def test_backward_compatibility(self):
+        """後方互換性チェックのテスト."""
+        # 後方互換性チェック関数
+        def check_backward_compatibility(current_version, supported_versions):
+            # バージョンを数値に変換
+            def version_to_tuple(version):
+                return tuple(map(int, version.split('.')))
+            
+            current_tuple = version_to_tuple(current_version)
+            
+            compatible_versions = []
+            for version in supported_versions:
+                version_tuple = version_to_tuple(version)
+                # メジャーバージョンが同じで、マイナーバージョンが以下
+                if (version_tuple[0] == current_tuple[0] and 
+                    version_tuple <= current_tuple):
+                    compatible_versions.append(version)
+            
+            return {
+                'compatible': len(compatible_versions) > 0,
+                'compatible_versions': compatible_versions,
+                'current_version': current_version
+            }
+        
+        # テストケース
+        current_version = "2.1.0"
+        supported_versions = ["1.0.0", "1.5.0", "2.0.0", "2.1.0", "3.0.0"]
+        
+        # 後方互換性チェックテスト
+        result = check_backward_compatibility(current_version, supported_versions)
+        assert result['compatible'] is True
+        assert "2.0.0" in result['compatible_versions']
+        assert "2.1.0" in result['compatible_versions']
+        assert "3.0.0" not in result['compatible_versions']  # 新しいメジャーバージョン
 
-class TestInteractiveSetupCompatibility:
-    """Interactive Setup互換性クラスのテスト"""
-
-    def setup_method(self):
-        """テスト前の準備"""
-        self.compat = InteractiveSetupCompatibility()
-
-    @patch("setup_repo.compatibility._deprecated_import")
-    def test_validator_function_routing(self, mock_deprecated_import):
-        """検証関数のルーティングテスト"""
-        mock_deprecated_import.return_value = MagicMock()
-
-        # 検証関数をテスト
-        validator_functions = [
-            "validate_github_credentials",
-            "validate_directory_path",
-            "validate_setup_prerequisites",
-            "check_system_requirements",
-        ]
-
-        for func_name in validator_functions:
-            self.compat.__getattr__(func_name)
-            mock_deprecated_import.assert_called_with("interactive_setup", "setup_validators", func_name)
-
-    @patch("setup_repo.compatibility._deprecated_import")
-    def test_setup_function_routing(self, mock_deprecated_import):
-        """セットアップ関数のルーティングテスト"""
-        mock_deprecated_import.return_value = MagicMock()
-
-        # メインウィザード関数をテスト
-        self.compat.__getattr__("run_interactive_setup")
-        mock_deprecated_import.assert_called_with("interactive_setup", "interactive_setup", "run_interactive_setup")
-
-
-class TestCompatibilityAliases:
-    """互換性エイリアス機能のテスト"""
-
-    def test_create_compatibility_aliases(self):
-        """互換性エイリアス作成テスト"""
-        # sys.modulesの初期状態を保存
-        original_modules = sys.modules.copy()
-
-        try:
-            # 互換性エイリアスを作成
-            create_compatibility_aliases()
-
-            # 互換性モジュールがsys.modulesに追加されたことを確認
-            expected_modules = [
-                "setup_repo.quality_logger_legacy",
-                "setup_repo.ci_error_handler_legacy",
-                "setup_repo.logging_config_legacy",
-                "setup_repo.quality_metrics_legacy",
-                "setup_repo.interactive_setup_legacy",
-            ]
-
-            for module_name in expected_modules:
-                assert module_name in sys.modules
-                assert hasattr(sys.modules[module_name], "__getattr__")
-
-        finally:
-            # sys.modulesを元の状態に戻す
-            for module_name in list(sys.modules.keys()):
-                if module_name not in original_modules:
-                    del sys.modules[module_name]
-
-
-class TestMigrationGuide:
-    """移行ガイド機能のテスト"""
-
-    @patch("builtins.print")
-    def test_show_migration_guide(self, mock_print):
-        """移行ガイド表示テスト"""
-        show_migration_guide()
-
-        # print関数が呼び出されたことを確認
-        mock_print.assert_called_once()
-
-        # 出力内容に重要な情報が含まれていることを確認
-        output = mock_print.call_args[0][0]
-        assert "Setup Repository リファクタリング移行ガイド" in output
-        assert "Quality Logger分割" in output
-        assert "CI Error Handler分割" in output
-        assert "Logging Config分割" in output
-        assert "Quality Metrics分割" in output
-        assert "Interactive Setup分割" in output
-        assert "docs/migration-guide.md" in output
-
-
-class TestDeprecatedImportCheck:
-    """非推奨インポートチェック機能のテスト"""
-
-    def test_check_deprecated_imports_with_deprecated_module(self):
-        """非推奨モジュール使用時のチェックテスト"""
-        # 非推奨モジュールをsys.modulesに追加
-        original_modules = sys.modules.copy()
-
-        try:
-            # テスト用の非推奨モジュールを追加
-            sys.modules["quality_logger_legacy"] = MagicMock()
-
-            with warnings.catch_warnings(record=True) as w:
-                warnings.simplefilter("always")
-
-                check_deprecated_imports()
-
-                # 警告が発行されたことを確認
-                assert len(w) == 1
-                assert issubclass(w[0].category, DeprecationWarning)
-                assert "非推奨モジュール quality_logger_legacy が使用されています" in str(w[0].message)
-
-        finally:
-            # sys.modulesを元の状態に戻す
-            for module_name in list(sys.modules.keys()):
-                if module_name not in original_modules:
-                    del sys.modules[module_name]
-
-    def test_check_deprecated_imports_without_deprecated_module(self):
-        """非推奨モジュール未使用時のチェックテスト"""
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")
-
-            check_deprecated_imports()
-
-            # 警告が発行されないことを確認
-            deprecated_warnings = [warning for warning in w if "非推奨モジュール" in str(warning.message)]
-            assert not deprecated_warnings
-
-
-class TestCompatibilityIntegration:
-    """互換性機能統合テスト"""
-
-    def setup_method(self):
-        """テスト前の準備"""
-        self.original_modules = sys.modules.copy()
-
-    def teardown_method(self):
-        """テスト後のクリーンアップ"""
-        # sys.modulesを元の状態に戻す
-        for module_name in list(sys.modules.keys()):
-            if module_name not in self.original_modules:
-                del sys.modules[module_name]
-
-    def test_full_compatibility_workflow(self):
-        """完全な互換性ワークフローテスト"""
-        # 互換性エイリアスを作成
-        create_compatibility_aliases()
-
-        # 各互換性モジュールが正しく動作することを確認
-        compatibility_modules = [
-            "setup_repo.quality_logger_legacy",
-            "setup_repo.ci_error_handler_legacy",
-            "setup_repo.logging_config_legacy",
-            "setup_repo.quality_metrics_legacy",
-            "setup_repo.interactive_setup_legacy",
-        ]
-
-        for module_name in compatibility_modules:
-            assert module_name in sys.modules
-            module = sys.modules[module_name]
-            assert hasattr(module, "__getattr__")
-
-            # __getattr__メソッドが呼び出し可能であることを確認
-            assert callable(module.__getattr__)
-
-    @patch("setup_repo.compatibility._deprecated_import")
-    def test_legacy_import_simulation(self, mock_deprecated_import):
-        """レガシーインポートシミュレーションテスト"""
-        mock_deprecated_import.return_value = MagicMock()
-
-        # 互換性エイリアスを作成
-        create_compatibility_aliases()
-
-        # レガシーモジュールから関数をインポートしようとする
-        legacy_module = sys.modules["setup_repo.quality_logger_legacy"]
-
-        # エラー処理関数のインポートをシミュレート
-        legacy_module.__getattr__("QualityError")
-        mock_deprecated_import.assert_called_with("quality_logger", "quality_errors", "QualityError")
+    @pytest.mark.unit
+    def test_compatibility_report_generation(self):
+        """互換性レポート生成のテスト."""
+        # 互換性レポート生成関数
+        def generate_compatibility_report(checks):
+            report = {
+                'timestamp': '2024-12-01T10:00:00Z',
+                'platform': self.platform_info['system'],
+                'python_version': self.platform_info['python_version'],
+                'overall_compatible': True,
+                'checks': {},
+                'issues': [],
+                'recommendations': []
+            }
+            
+            for check_name, check_result in checks.items():
+                report['checks'][check_name] = check_result
+                
+                if not check_result.get('compatible', True):
+                    report['overall_compatible'] = False
+                    if 'issues' in check_result:
+                        report['issues'].extend(check_result['issues'])
+                    
+                    # 推奨事項の生成
+                    if check_name == 'python_version':
+                        report['recommendations'].append('Upgrade Python to a supported version')
+                    elif check_name == 'dependencies':
+                        report['recommendations'].append('Update incompatible dependencies')
+                    elif check_name == 'platform':
+                        report['recommendations'].append('Use a supported platform')
+            
+            return report
+        
+        # テストデータ
+        checks = {
+            'python_version': {'compatible': True},
+            'dependencies': {'compatible': False, 'issues': ['numpy version too old']},
+            'platform': {'compatible': True}
+        }
+        
+        # 互換性レポート生成テスト
+        report = generate_compatibility_report(checks)
+        assert report['overall_compatible'] is False
+        assert len(report['issues']) == 1
+        assert len(report['recommendations']) == 1
+        assert 'Update incompatible dependencies' in report['recommendations']

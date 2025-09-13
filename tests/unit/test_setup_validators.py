@@ -1,341 +1,213 @@
 """
-セットアップバリデーターモジュールのテスト
+セットアップ検証機能のテスト
+
+マルチプラットフォームテスト方針に準拠したセットアップ検証機能のテスト
 """
 
+import platform
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import Mock, patch
+
+import pytest
 
 from setup_repo.setup_validators import (
-    SetupValidator,
-    check_system_requirements,
-    validate_directory_path,
-    validate_github_credentials,
-    validate_setup_prerequisites,
-    validate_user_input,
+    validate_git_config,
+    validate_python_environment,
+    validate_uv_installation,
+    validate_vscode_config,
+    ValidationError,
+)
+from tests.multiplatform.helpers import (
+    verify_current_platform,
+    skip_if_not_platform,
+    get_platform_specific_config,
 )
 
 
-class TestSetupValidator:
-    """SetupValidatorクラスのテスト"""
+class TestSetupValidators:
+    """セットアップ検証機能のテスト"""
 
-    def test_validator_creation(self):
-        """バリデーターの作成をテスト"""
-        validator = SetupValidator()
-
-        assert validator.platform_detector is not None
-        assert validator.platform_info is not None
-        assert validator.errors == []
-
-    def test_get_errors(self):
-        """エラー取得のテスト"""
-        validator = SetupValidator()
-        validator.errors = ["エラー1", "エラー2"]
-
-        errors = validator.get_errors()
-
-        assert errors == ["エラー1", "エラー2"]
-        # 元のリストが変更されないことを確認
-        errors.append("エラー3")
-        assert validator.errors == ["エラー1", "エラー2"]
-
-    def test_clear_errors(self):
-        """エラークリアのテスト"""
-        validator = SetupValidator()
-        validator.errors = ["エラー1", "エラー2"]
-
-        validator.clear_errors()
-
-        assert validator.errors == []
-
-
-class TestValidateGithubCredentials:
-    """validate_github_credentialsのテスト"""
-
-    @patch("setup_repo.setup_validators.get_github_user")
-    @patch("setup_repo.setup_validators.get_github_token")
-    def test_validate_github_credentials_both_present(self, mock_token, mock_user):
-        """GitHub認証情報（両方あり）のテスト"""
-        mock_user.return_value = "testuser"
-        mock_token.return_value = "ghp_test_token"
-
-        result = validate_github_credentials()
-
-        assert result["username"] == "testuser"
-        assert result["token"] == "ghp_test_token"
-        assert result["username_valid"] is True
-        assert result["token_valid"] is True
-
-    @patch("setup_repo.setup_validators.get_github_user")
-    @patch("setup_repo.setup_validators.get_github_token")
-    def test_validate_github_credentials_missing(self, mock_token, mock_user):
-        """GitHub認証情報（なし）のテスト"""
-        mock_user.return_value = None
-        mock_token.return_value = None
-
-        result = validate_github_credentials()
-
-        assert result["username"] is None
-        assert result["token"] is None
-        assert result["username_valid"] is False
-        assert result["token_valid"] is False
-
-
-class TestValidateDirectoryPath:
-    """validate_directory_pathのテスト"""
-
-    def test_validate_directory_path_empty(self):
-        """空パスの検証テスト"""
-        result = validate_directory_path("")
-
-        assert result["valid"] is False
-        assert "空です" in result["error"]
-        assert result["path"] is None
-
-    def test_validate_directory_path_existing(self):
-        """既存ディレクトリの検証テスト"""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            result = validate_directory_path(temp_dir)
-
+    def test_validate_git_config_success(self):
+        """Git設定の検証成功テスト"""
+        platform_info = verify_current_platform()
+        
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = Mock(
+                returncode=0,
+                stdout="user.name\nuser.email\n"
+            )
+            
+            result = validate_git_config()
             assert result["valid"] is True
-            assert result["error"] is None
-            assert result["path"] == Path(temp_dir).resolve()
-            assert result["created"] is False
+            assert "user.name" in result["config"]
+            assert "user.email" in result["config"]
 
-    def test_validate_directory_path_new(self):
-        """新規ディレクトリの検証テスト"""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            new_dir = Path(temp_dir) / "new_directory"
+    def test_validate_git_config_missing(self):
+        """Git設定の不足テスト"""
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = Mock(
+                returncode=1,
+                stderr="fatal: not a git repository"
+            )
+            
+            with pytest.raises(ValidationError):
+                validate_git_config()
 
-            result = validate_directory_path(str(new_dir))
-
+    def test_validate_python_environment_success(self):
+        """Python環境の検証成功テスト"""
+        platform_info = verify_current_platform()
+        config = get_platform_specific_config()
+        
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = Mock(
+                returncode=0,
+                stdout="3.9.0"
+            )
+            
+            result = validate_python_environment()
             assert result["valid"] is True
-            assert result["error"] is None
-            assert result["path"] == new_dir.resolve()
-            assert result["created"] is True
-            assert new_dir.exists()
+            assert "version" in result
+            assert result["version"].startswith("3.")
 
-    def test_validate_directory_path_invalid_parent(self):
-        """無効な親ディレクトリのテスト"""
-        invalid_path = "/nonexistent/parent/directory"
+    def test_validate_python_environment_old_version(self):
+        """古いPythonバージョンのテスト"""
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = Mock(
+                returncode=0,
+                stdout="2.7.18"
+            )
+            
+            with pytest.raises(ValidationError, match="Python 3.8以上が必要"):
+                validate_python_environment()
 
-        result = validate_directory_path(invalid_path)
+    @pytest.mark.windows
+    def test_validate_uv_installation_windows(self):
+        """Windows環境でのuv検証テスト"""
+        skip_if_not_platform("windows")
+        
+        with patch("shutil.which") as mock_which:
+            mock_which.return_value = "C:\\Users\\test\\.cargo\\bin\\uv.exe"
+            
+            result = validate_uv_installation()
+            assert result["valid"] is True
+            assert result["path"].endswith("uv.exe")
 
-        assert result["valid"] is False
-        assert "親ディレクトリが存在しません" in result["error"]
+    @pytest.mark.unix
+    def test_validate_uv_installation_unix(self):
+        """Unix系環境でのuv検証テスト"""
+        skip_if_not_platform("unix")
+        
+        with patch("shutil.which") as mock_which:
+            mock_which.return_value = "/usr/local/bin/uv"
+            
+            result = validate_uv_installation()
+            assert result["valid"] is True
+            assert result["path"] == "/usr/local/bin/uv"
 
-    def test_validate_directory_path_file_exists(self):
-        """ファイルが存在する場合のテスト"""
-        with tempfile.NamedTemporaryFile() as temp_file:
-            result = validate_directory_path(temp_file.name)
+    def test_validate_uv_installation_not_found(self):
+        """uvが見つからない場合のテスト"""
+        with patch("shutil.which") as mock_which:
+            mock_which.return_value = None
+            
+            with pytest.raises(ValidationError, match="uvが見つかりません"):
+                validate_uv_installation()
 
+    def test_validate_vscode_config_success(self):
+        """VS Code設定の検証成功テスト"""
+        platform_info = verify_current_platform()
+        
+        with tempfile.TemporaryDirectory() as temp_dir:
+            vscode_dir = Path(temp_dir) / ".vscode"
+            vscode_dir.mkdir()
+            
+            settings_file = vscode_dir / "settings.json"
+            settings_file.write_text('{"python.defaultInterpreter": "python"}')
+            
+            result = validate_vscode_config(temp_dir)
+            assert result["valid"] is True
+            assert result["settings_exists"] is True
+
+    def test_validate_vscode_config_missing(self):
+        """VS Code設定が存在しない場合のテスト"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            result = validate_vscode_config(temp_dir)
             assert result["valid"] is False
-            assert "ディレクトリではありません" in result["error"]
+            assert result["settings_exists"] is False
 
-
-class TestValidateSetupPrerequisites:
-    """validate_setup_prerequisitesのテスト"""
-
-    @patch("subprocess.run")
-    @patch("sys.version_info", (3, 11, 0))
-    def test_validate_setup_prerequisites_all_good(self, mock_run):
-        """前提条件（すべて良好）のテスト"""
-        # Git, uv, gh すべて利用可能
-        mock_run.side_effect = [
-            MagicMock(returncode=0, stdout="git version 2.34.1"),
-            MagicMock(returncode=0, stdout="uv 0.1.0"),
-            MagicMock(returncode=0, stdout="gh version 2.20.0"),
-        ]
-
-        result = validate_setup_prerequisites()
-
-        assert result["valid"] is True
-        assert result["errors"] == []
-        assert result["python"]["valid"] is True
-        assert result["git"]["available"] is True
-        assert result["uv"]["available"] is True
-        assert result["gh"]["available"] is True
-
-    @patch("subprocess.run")
-    @patch("sys.version_info", (3, 8, 0))
-    def test_validate_setup_prerequisites_old_python(self, mock_run):
-        """前提条件（古いPython）のテスト"""
-        mock_run.side_effect = [
-            MagicMock(returncode=0, stdout="git version 2.34.1"),
-            FileNotFoundError(),  # uv not found
-            FileNotFoundError(),  # gh not found
-        ]
-
-        result = validate_setup_prerequisites()
-
-        assert result["valid"] is False
-        assert len(result["errors"]) == 1
-        assert "Python 3.9以上が必要です" in result["errors"][0]
-        assert result["python"]["valid"] is False
-
-    @patch("subprocess.run")
-    @patch("sys.version_info", (3, 11, 0))
-    def test_validate_setup_prerequisites_no_git(self, mock_run):
-        """前提条件（Git なし）のテスト"""
-        mock_run.side_effect = [
-            FileNotFoundError(),  # git not found
-            FileNotFoundError(),  # uv not found
-            FileNotFoundError(),  # gh not found
-        ]
-
-        result = validate_setup_prerequisites()
-
-        assert result["valid"] is False
-        assert "Git がインストールされていません" in result["errors"]
-        assert result["git"]["available"] is False
-
-    @patch("subprocess.run")
-    @patch("sys.version_info", (3, 11, 0))
-    def test_validate_setup_prerequisites_warnings_only(self, mock_run):
-        """前提条件（警告のみ）のテスト"""
-        mock_run.side_effect = [
-            MagicMock(returncode=0, stdout="git version 2.34.1"),
-            FileNotFoundError(),  # uv not found
-            FileNotFoundError(),  # gh not found
-        ]
-
-        result = validate_setup_prerequisites()
-
-        assert result["valid"] is True  # エラーはないので有効
-        assert result["errors"] == []
-        assert len(result["warnings"]) == 2  # uv と gh の警告
-
-
-class TestCheckSystemRequirements:
-    """check_system_requirementsのテスト"""
-
-    def test_check_system_requirements_basic(self):
-        """基本的なシステム要件チェックのテスト"""
-        result = check_system_requirements()
-
-        assert "platform" in result
-        assert "display_name" in result
-        assert "supported" in result
-        assert result["supported"] is True
-        assert "disk_space" in result
-
-    @patch("shutil.disk_usage")
-    def test_check_system_requirements_disk_space(self, mock_disk_usage):
-        """ディスク容量チェックのテスト"""
-        # 2GB の空き容量をシミュレート
-        mock_disk_usage.return_value = MagicMock(free=2 * 1024 * 1024 * 1024)
-
-        result = check_system_requirements()
-
-        assert result["disk_space"]["sufficient"] is True
-        assert result["disk_space"]["free_gb"] == 2.0
-
-    @patch("shutil.disk_usage")
-    def test_check_system_requirements_low_disk_space(self, mock_disk_usage):
-        """低ディスク容量のテスト"""
-        # 500MB の空き容量をシミュレート
-        mock_disk_usage.return_value = MagicMock(free=500 * 1024 * 1024)
-
-        result = check_system_requirements()
-
-        assert result["disk_space"]["sufficient"] is False
-
-
-class TestValidateUserInput:
-    """validate_user_inputのテスト"""
-
-    @patch("builtins.input")
-    def test_validate_user_input_string(self, mock_input):
-        """文字列入力の検証テスト"""
-        mock_input.return_value = "test input"
-
-        result = validate_user_input("Enter text: ", "string")
-
-        assert result["valid"] is True
-        assert result["value"] == "test input"
-        assert result["error"] is None
-
-    @patch("builtins.input")
-    def test_validate_user_input_empty_required(self, mock_input):
-        """空入力（必須）の検証テスト"""
-        mock_input.return_value = ""
-
-        result = validate_user_input("Enter text: ", "string", required=True)
-
-        assert result["valid"] is False
-        assert result["value"] is None
-        assert "入力が必要です" in result["error"]
-
-    @patch("builtins.input")
-    def test_validate_user_input_empty_with_default(self, mock_input):
-        """空入力（デフォルト値あり）の検証テスト"""
-        mock_input.return_value = ""
-
-        result = validate_user_input("Enter text: ", "string", default="default_value")
-
-        assert result["valid"] is True
-        assert result["value"] == "default_value"
-        assert result["error"] is None
-
-    @patch("builtins.input")
-    def test_validate_user_input_boolean_yes(self, mock_input):
-        """ブール入力（Yes）の検証テスト"""
-        mock_input.return_value = "y"
-
-        result = validate_user_input("Continue? (y/n): ", "boolean")
-
-        assert result["valid"] is True
-        assert result["value"] is True
-        assert result["error"] is None
-
-    @patch("builtins.input")
-    def test_validate_user_input_boolean_no(self, mock_input):
-        """ブール入力（No）の検証テスト"""
-        mock_input.return_value = "n"
-
-        result = validate_user_input("Continue? (y/n): ", "boolean")
-
-        assert result["valid"] is True
-        assert result["value"] is False
-        assert result["error"] is None
-
-    @patch("builtins.input")
-    def test_validate_user_input_boolean_invalid(self, mock_input):
-        """ブール入力（無効）の検証テスト"""
-        mock_input.return_value = "maybe"
-
-        result = validate_user_input("Continue? (y/n): ", "boolean")
-
-        assert result["valid"] is False
-        assert result["value"] is None
-        assert "y/n で回答してください" in result["error"]
-
-    @patch("builtins.input")
-    def test_validate_user_input_path(self, mock_input):
-        """パス入力の検証テスト"""
+    def test_validate_vscode_config_invalid_json(self):
+        """無効なJSON設定のテスト"""
         with tempfile.TemporaryDirectory() as temp_dir:
-            mock_input.return_value = temp_dir
+            vscode_dir = Path(temp_dir) / ".vscode"
+            vscode_dir.mkdir()
+            
+            settings_file = vscode_dir / "settings.json"
+            settings_file.write_text('{"invalid": json}')
+            
+            with pytest.raises(ValidationError, match="無効なJSON"):
+                validate_vscode_config(temp_dir)
 
-            result = validate_user_input("Enter path: ", "path")
+    @pytest.mark.integration
+    def test_full_validation_workflow(self):
+        """完全な検証ワークフローのテスト"""
+        platform_info = verify_current_platform()
+        
+        with patch("subprocess.run") as mock_run, \
+             patch("shutil.which") as mock_which:
+            
+            # Git設定のモック
+            mock_run.return_value = Mock(
+                returncode=0,
+                stdout="user.name\nuser.email\n"
+            )
+            
+            # uv検証のモック
+            mock_which.return_value = "/usr/local/bin/uv"
+            
+            # 各検証を実行
+            git_result = validate_git_config()
+            python_result = validate_python_environment()
+            uv_result = validate_uv_installation()
+            
+            assert all([
+                git_result["valid"],
+                python_result["valid"],
+                uv_result["valid"]
+            ])
 
-            assert result["valid"] is True
-            assert result["path"] == Path(temp_dir).resolve()
+    @pytest.mark.slow
+    def test_validation_performance(self):
+        """検証処理のパフォーマンステスト"""
+        import time
+        
+        start_time = time.time()
+        
+        with patch("subprocess.run") as mock_run, \
+             patch("shutil.which") as mock_which:
+            
+            mock_run.return_value = Mock(returncode=0, stdout="test")
+            mock_which.return_value = "/usr/bin/uv"
+            
+            # 複数回実行してパフォーマンスを測定
+            for _ in range(10):
+                validate_git_config()
+                validate_python_environment()
+                validate_uv_installation()
+        
+        elapsed = time.time() - start_time
+        assert elapsed < 5.0, f"検証処理が遅すぎます: {elapsed}秒"
 
-    @patch("builtins.input")
-    def test_validate_user_input_keyboard_interrupt(self, mock_input):
-        """キーボード割り込みのテスト"""
-        mock_input.side_effect = KeyboardInterrupt()
+    def test_validation_error_handling(self):
+        """検証エラーハンドリングのテスト"""
+        with patch("subprocess.run") as mock_run:
+            mock_run.side_effect = FileNotFoundError("Command not found")
+            
+            with pytest.raises(ValidationError):
+                validate_git_config()
 
-        result = validate_user_input("Enter text: ", "string")
-
-        assert result["valid"] is False
-        assert result["value"] is None
-        assert "中断されました" in result["error"]
-
-    def test_validate_user_input_unknown_type(self):
-        """不明な入力タイプのテスト"""
-        with patch("builtins.input", return_value="test"):
-            result = validate_user_input("Enter: ", "unknown_type")
-
-            assert result["valid"] is False
-            assert "不明な入力タイプ" in result["error"]
+    @pytest.mark.network
+    def test_network_dependent_validation(self):
+        """ネットワーク依存の検証テスト"""
+        # ネットワーク接続が必要な検証のテスト
+        # 実際の実装では外部サービスへの接続をテスト
+        pytest.skip("ネットワーク接続が必要なテスト")

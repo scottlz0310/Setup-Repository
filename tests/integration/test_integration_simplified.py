@@ -17,6 +17,8 @@ import pytest
 from setup_repo.github_api import GitHubAPI, GitHubAPIError
 from setup_repo.sync import SyncResult, sync_repositories
 
+from ..multiplatform.helpers import check_platform_modules, verify_current_platform
+
 
 @pytest.mark.integration
 class TestIntegrationSimplified:
@@ -27,6 +29,10 @@ class TestIntegrationSimplified:
         sample_config: dict[str, Any],
     ) -> None:
         """GitHub API基本機能テスト"""
+        # プラットフォーム検証を統合
+        platform_info = verify_current_platform()
+        check_platform_modules()
+
         # GitHubAPIクラスの初期化テスト
         api = GitHubAPI(
             token=sample_config["github_token"],
@@ -59,6 +65,9 @@ class TestIntegrationSimplified:
 
     def test_sync_with_invalid_config(self) -> None:
         """無効な設定での同期テスト"""
+        # プラットフォーム検証を統合
+        platform_info = verify_current_platform()
+
         # 空の設定
         empty_config = {}
         result = sync_repositories(empty_config, dry_run=True)
@@ -83,6 +92,9 @@ class TestIntegrationSimplified:
         sample_config: dict[str, Any],
     ) -> None:
         """ドライランモードでの同期テスト"""
+        # プラットフォーム検証を統合
+        platform_info = verify_current_platform()
+
         # GitHub APIをモック
         with patch("setup_repo.sync.get_repositories") as mock_get_repos:
             mock_get_repos.return_value = [
@@ -236,6 +248,10 @@ class TestIntegrationSimplified:
         sample_config: dict[str, Any],
     ) -> None:
         """基本的な統合ワークフローテスト"""
+        # プラットフォーム検証を統合
+        platform_info = verify_current_platform()
+        check_platform_modules()
+
         # 1. 設定ファイルの作成
         config_file = temp_dir / "config.json"
         with open(config_file, "w", encoding="utf-8") as f:

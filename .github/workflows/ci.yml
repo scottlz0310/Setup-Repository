@@ -234,6 +234,11 @@ jobs:
       fail-fast: false
 
     runs-on: ${{ matrix.os }}
+    
+    env:
+      CI: "true"
+      MULTIPLATFORM_TESTS: "true"
+      PLATFORM_SPECIFIC_TESTS: "true"
 
     steps:
     - name: Checkout code
@@ -307,39 +312,55 @@ jobs:
           fi
         done
 
-    - name: Run basic functionality tests (Windows)
+    - name: Run multiplatform tests (Windows)
       if: runner.os == 'Windows'
       shell: powershell
       run: |
-        Write-Host "Starting basic functionality tests (Windows environment)" -ForegroundColor Yellow
-        Write-Host "Running tests in Windows environment (skipping problematic tests)" -ForegroundColor Cyan
-
-        # Windows環境では特定のテストをスキップ
+        Write-Host "Starting multiplatform tests (Windows environment)" -ForegroundColor Yellow
+        
+        # Windows固有のマルチプラットフォームテスト
         try {
           $env:CI = "true"
-          $env:PRE_COMMIT = "1"  # precommit環境フラグを設定
-          uv run python -m pytest tests/unit/ -v --tb=short -x --maxfail=10 `
-            -k "not (test_create_ci_error_handler or test_quality_cli_basic or test_trend_cli_analyze or test_get_debug_context or test_mock_git_operations_fixture or test_mock_platform_detector_fixture or test_custom_assertions or test_collect_security_metrics_with_vulnerabilities or test_collect_security_metrics_file_not_found_error or test_load_template_read_error or test_create_new_gitignore_write_error)"
+          $env:MULTIPLATFORM_TESTS = "true"
+          $env:PRE_COMMIT = "1"
+          
+          # マルチプラットフォームテストを実行
+          Write-Host "Running multiplatform tests..." -ForegroundColor Cyan
+          uv run pytest tests/multiplatform/ -v --tb=short -k "windows"
+          
+          # 単体テストを実行
+          Write-Host "Running unit tests..." -ForegroundColor Cyan
+          uv run pytest tests/unit/ -v --tb=short -x --maxfail=10
+          
           Write-Host "Tests completed successfully" -ForegroundColor Green
         } catch {
           Write-Host "Test issues occurred but continuing: $_" -ForegroundColor Yellow
         }
 
-        Write-Host "Skipping CLI help tests in Windows environment (due to Unicode issues)" -ForegroundColor Yellow
-
-    - name: Run basic functionality tests (Unix)
+    - name: Run multiplatform tests (Unix)
       if: runner.os != 'Windows'
       shell: bash
       run: |
-        echo "基本機能テストを開始します（Unix系環境）"
-        echo "Unix系環境でのテスト実行"
-
-        # Unix系環境でのテスト実行
+        echo "マルチプラットフォームテストを開始します（Unix系環境）"
+        
+        # Unix系環境でのマルチプラットフォームテスト
         export CI="true"
-        export PRE_COMMIT="1"  # precommit環境フラグを設定
-        uv run python -m pytest tests/unit/ -v --tb=short -x --maxfail=10 \
-          -k "not (test_get_debug_context or test_mock_git_operations_fixture or test_mock_platform_detector_fixture or test_custom_assertions)" || true
-
+        export MULTIPLATFORM_TESTS="true"
+        export PRE_COMMIT="1"
+        
+        # プラットフォーム固有テストを実行
+        if [ "${{ runner.os }}" = "macOS" ]; then
+          echo "macOS固有テストを実行します"
+          uv run pytest tests/multiplatform/ -v --tb=short -k "macos" || true
+        else
+          echo "Linux/Unix固有テストを実行します"
+          uv run pytest tests/multiplatform/ -v --tb=short -k "unix" || true
+        fi
+        
+        # 単体テストを実行
+        echo "単体テストを実行します"
+        uv run pytest tests/unit/ -v --tb=short -x --maxfail=10 || true
+        
         echo "CLIヘルプテストを実行します"
         uv run python main.py --help || echo "CLIヘルプテストが失敗しましたが、続行します"
 

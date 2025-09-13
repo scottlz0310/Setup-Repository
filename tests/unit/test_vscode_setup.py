@@ -1,460 +1,320 @@
-"""VS Code設定のテスト"""
+"""
+VS Code設定機能のテスト
 
+マルチプラットフォームテスト方針に準拠したVS Code設定機能のテスト
+"""
+
+import json
+import platform
+import tempfile
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch, mock_open
 
 import pytest
 
-from src.setup_repo.vscode_setup import apply_vscode_template
+from setup_repo.vscode_setup import (
+    VscodeSetup,
+    setup_vscode_config,
+    get_vscode_settings_path,
+    create_vscode_settings,
+    install_vscode_extensions,
+    VscodeSetupError,
+)
+from tests.multiplatform.helpers import (
+    verify_current_platform,
+    skip_if_not_platform,
+    get_platform_specific_config,
+)
 
 
-class TestApplyVscodeTemplate:
-    """apply_vscode_template関数のテストクラス"""
+class TestVscodeSetup:
+    """VS Code設定機能のテスト"""
 
-    def test_dry_run_mode(self, capsys):
-        """ドライランモードのテスト"""
-        repo_path = Path("/test/repo")
-        platform = "windows"
+    def test_get_vscode_settings_path_project(self):
+        """プロジェクト内のVS Code設定パス取得テスト"""
+        platform_info = verify_current_platform()
+        
+        with tempfile.TemporaryDirectory() as temp_dir:
+            project_path = Path(temp_dir)
+            settings_path = get_vscode_settings_path(project_path)
+            
+            expected_path = project_path / ".vscode" / "settings.json"
+            assert settings_path == expected_path
 
-        # テンプレートパスが存在する場合をシミュレート
-        def mock_exists(self):
-            path_str = str(self)
-            return bool("vscode-templates" in path_str and "windows" in path_str)
+    @pytest.mark.windows
+    def test_get_vscode_settings_path_global_windows(self):
+        """Windows環境でのグローバルVS Code設定パス取得テスト"""
+        skip_if_not_platform("windows")
+        
+        with patch.dict("os.environ", {"APPDATA": "C:\\Users\\test\\AppData\\Roaming"}):
+            settings_path = get_vscode_settings_path(global_settings=True)
+            
+            expected = Path("C:\\Users\\test\\AppData\\Roaming\\Code\\User\\settings.json")
+            assert settings_path == expected
 
-        with patch.object(Path, "exists", mock_exists):
-            result = apply_vscode_template(repo_path, platform, dry_run=True)
+    @pytest.mark.unix
+    def test_get_vscode_settings_path_global_unix(self):
+        """Unix系環境でのグローバルVS Code設定パス取得テスト"""
+        skip_if_not_platform("unix")
+        
+        with patch.dict("os.environ", {"HOME": "/home/test"}):
+            settings_path = get_vscode_settings_path(global_settings=True)
+            
+            expected = Path("/home/test/.config/Code/User/settings.json")
+            assert settings_path == expected
 
-        assert result is True
-        captured = capsys.readouterr()
-        assert "VS Code設定適用中..." in captured.out
-        assert "VS Code設定適用予定" in captured.out
+    @pytest.mark.macos
+    def test_get_vscode_settings_path_global_macos(self):
+        """macOS環境でのグローバルVS Code設定パス取得テスト"""
+        skip_if_not_platform("macos")
+        
+        with patch.dict("os.environ", {"HOME": "/Users/test"}):
+            settings_path = get_vscode_settings_path(global_settings=True)
+            
+            expected = Path("/Users/test/Library/Application Support/Code/User/settings.json")
+            assert settings_path == expected
 
-    def test_dry_run_mode_with_different_repo_names(self, capsys):
-        """異なるリポジトリ名でのドライランテスト"""
-        test_cases = [
-            Path("/test/my-awesome-repo"),
-            Path("/test/simple-repo"),
-            Path("/test/repo_with_underscores"),
+    def test_create_vscode_settings_new_file(self):
+        """新規VS Code設定ファイル作成テスト"""
+        platform_info = verify_current_platform()
+        
+        with tempfile.TemporaryDirectory() as temp_dir:
+            settings_path = Path(temp_dir) / ".vscode" / "settings.json"
+            
+            settings = {
+                "python.defaultInterpreter": "python",
+                "editor.formatOnSave": True
+            }
+            
+            result = create_vscode_settings(settings_path, settings)
+            
+            assert result["created"] is True
+            assert settings_path.exists()
+            
+            # 作成された設定を確認
+            with open(settings_path, "r", encoding="utf-8") as f:
+                saved_settings = json.load(f)
+            
+            assert saved_settings["python.defaultInterpreter"] == "python"
+            assert saved_settings["editor.formatOnSave"] is True
+
+    def test_create_vscode_settings_merge_existing(self):
+        """既存VS Code設定ファイルとのマージテスト"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            vscode_dir = Path(temp_dir) / ".vscode"
+            vscode_dir.mkdir()
+            settings_path = vscode_dir / "settings.json"
+            
+            # 既存設定を作成
+            existing_settings = {
+                "editor.tabSize": 4,
+                "python.defaultInterpreter": "old_python"
+            }
+            with open(settings_path, "w", encoding="utf-8") as f:
+                json.dump(existing_settings, f)
+            
+            # 新しい設定をマージ
+            new_settings = {
+                "python.defaultInterpreter": "new_python",
+                "editor.formatOnSave": True
+            }
+            
+            result = create_vscode_settings(settings_path, new_settings)
+            
+            assert result["merged"] is True
+            
+            # マージされた設定を確認
+            with open(settings_path, "r", encoding="utf-8") as f:
+                merged_settings = json.load(f)
+            
+            assert merged_settings["editor.tabSize"] == 4  # 既存設定が保持
+            assert merged_settings["python.defaultInterpreter"] == "new_python"  # 新設定で上書き
+            assert merged_settings["editor.formatOnSave"] is True  # 新設定が追加
+
+    def test_create_vscode_settings_invalid_json(self):
+        """無効なJSON設定ファイルの処理テスト"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            vscode_dir = Path(temp_dir) / ".vscode"
+            vscode_dir.mkdir()
+            settings_path = vscode_dir / "settings.json"
+            
+            # 無効なJSONファイルを作成
+            with open(settings_path, "w", encoding="utf-8") as f:
+                f.write('{"invalid": json}')
+            
+            new_settings = {"editor.formatOnSave": True}
+            
+            with pytest.raises(VscodeSetupError, match="無効なJSON"):
+                create_vscode_settings(settings_path, new_settings)
+
+    def test_install_vscode_extensions_success(self):
+        """VS Code拡張機能インストール成功テスト"""
+        platform_info = verify_current_platform()
+        
+        extensions = [
+            "ms-python.python",
+            "charliermarsh.ruff",
+            "ms-python.mypy-type-checker"
         ]
-
-        # テンプレートパスが存在する場合をシミュレート
-        def mock_exists(self):
-            path_str = str(self)
-            return bool("vscode-templates" in path_str and "linux" in path_str)
-
-        with patch.object(Path, "exists", mock_exists):
-            for repo_path in test_cases:
-                result = apply_vscode_template(repo_path, "linux", dry_run=True)
-                assert result is True
-                captured = capsys.readouterr()
-                assert repo_path.name in captured.out
-
-    def test_no_template_exists(self):
-        """テンプレートが存在しない場合のテスト"""
-        repo_path = Path("/test/repo")
-        platform = "nonexistent"
-
-        with patch("pathlib.Path.exists", return_value=False):
-            result = apply_vscode_template(repo_path, platform)
-
-        assert result is True
-
-    def test_fallback_to_linux_template(self):
-        """存在しないプラットフォームでLinuxテンプレートにフォールバックするテスト"""
-        repo_path = Path("/test/repo")
-        platform = "unknown_platform"
-
-        with patch("pathlib.Path.exists") as mock_exists:
-            # 最初の呼び出し（unknown_platform）はFalse、2回目（linux）もFalse
-            mock_exists.return_value = False
-            result = apply_vscode_template(repo_path, platform)
-
-        assert result is True
-        # unknown_platform と linux の両方のパスがチェックされることを確認
-        assert mock_exists.call_count >= 2
-
-    @patch("src.setup_repo.vscode_setup.shutil.copytree")
-    def test_successful_template_application(self, mock_copytree, capsys):
-        """VS Code設定適用成功のテスト"""
-        repo_path = Path("/test/repo")
-        platform = "linux"
-        mock_copytree.return_value = None
-
-        # テンプレートパスは存在、.vscodeディレクトリは存在しない
-        def mock_exists(self):
-            path_str = str(self)
-            if "vscode-templates" in path_str and "linux" in path_str:
-                return True
-            if path_str.endswith(".vscode"):
-                return False
-            return False
-
-        with patch.object(Path, "exists", mock_exists):
-            result = apply_vscode_template(repo_path, platform)
-
-        assert result is True
-        mock_copytree.assert_called_once()
-        captured = capsys.readouterr()
-        assert "VS Code設定適用完了" in captured.out
-
-    @patch("src.setup_repo.vscode_setup.shutil.copytree")
-    def test_copytree_failure(self, mock_copytree, capsys):
-        """copytree失敗のテスト"""
-        repo_path = Path("/test/repo")
-        platform = "linux"
-        mock_copytree.side_effect = OSError("Permission denied")
-
-        # テンプレートパスは存在、.vscodeディレクトリは存在しない
-        def mock_exists(self):
-            path_str = str(self)
-            if "vscode-templates" in path_str and "linux" in path_str:
-                return True
-            if path_str.endswith(".vscode"):
-                return False
-            return False
-
-        with patch.object(Path, "exists", mock_exists):
-            result = apply_vscode_template(repo_path, platform)
-
-        assert result is False
-        captured = capsys.readouterr()
-        assert "VS Code設定適用失敗" in captured.out
-        assert "Permission denied" in captured.out
-
-    @patch("src.setup_repo.vscode_setup.shutil.move")
-    @patch("src.setup_repo.vscode_setup.shutil.copytree")
-    @patch("src.setup_repo.vscode_setup.time.time")
-    def test_existing_vscode_directory_backup(self, mock_time, mock_copytree, mock_move, capsys):
-        """既存の.vscodeディレクトリがある場合のバックアップテスト"""
-        repo_path = Path("/test/repo")
-        platform = "linux"
-        mock_time.return_value = 1234567890
-        mock_move.return_value = None
-        mock_copytree.return_value = None
-
-        # テンプレートパスと.vscodeディレクトリの両方が存在
-        def mock_exists(self):
-            path_str = str(self)
-            if "vscode-templates" in path_str and "linux" in path_str:
-                return True
-            return bool(path_str.endswith(".vscode"))
-
-        with patch.object(Path, "exists", mock_exists):
-            result = apply_vscode_template(repo_path, platform)
-
-        assert result is True
-        expected_backup_path = str(repo_path / ".vscode.bak.1234567890")
-        mock_move.assert_called_once_with(str(repo_path / ".vscode"), expected_backup_path)
-        mock_copytree.assert_called_once()
-        captured = capsys.readouterr()
-        assert "既存設定をバックアップ" in captured.out
-        assert ".vscode.bak.1234567890" in captured.out
-
-    @patch("src.setup_repo.vscode_setup.shutil.move")
-    def test_backup_move_failure(self, mock_move, capsys):
-        """既存ディレクトリのmove失敗のテスト"""
-        repo_path = Path("/test/repo")
-        platform = "linux"
-        mock_move.side_effect = OSError("Cannot move directory")
-
-        # テンプレートパスと.vscodeディレクトリの両方が存在
-        def mock_exists(self):
-            path_str = str(self)
-            if "vscode-templates" in path_str and "linux" in path_str:
-                return True
-            return bool(path_str.endswith(".vscode"))
-
-        with patch.object(Path, "exists", mock_exists):
-            result = apply_vscode_template(repo_path, platform)
-
-        assert result is False
-        captured = capsys.readouterr()
-        assert "VS Code設定適用失敗" in captured.out
-        assert "Cannot move directory" in captured.out
-
-    @pytest.mark.parametrize("platform", ["windows", "linux", "wsl"])
-    @patch("src.setup_repo.vscode_setup.shutil.copytree")
-    def test_different_platforms(self, mock_copytree, platform):
-        """異なるプラットフォームでのテスト"""
-        repo_path = Path("/test/repo")
-        mock_copytree.return_value = None
-
-        # テンプレートパスは存在、.vscodeディレクトリは存在しない
-        def mock_exists(self):
-            path_str = str(self)
-            if "vscode-templates" in path_str and platform in path_str:
-                return True
-            if path_str.endswith(".vscode"):
-                return False
-            return False
-
-        with patch.object(Path, "exists", mock_exists):
-            result = apply_vscode_template(repo_path, platform)
-
-        assert result is True
-        mock_copytree.assert_called()
-
-    @pytest.mark.parametrize(
-        "exception",
-        [
-            OSError("OS error"),
-            OSError("IO error"),
-            PermissionError("Permission denied"),
-            FileNotFoundError("File not found"),
-            Exception("Generic exception"),
-        ],
-    )
-    @patch("src.setup_repo.vscode_setup.shutil.copytree")
-    def test_various_exception_types(self, mock_copytree, exception, capsys):
-        """異なる例外タイプのテスト"""
-        repo_path = Path("/test/repo")
-        platform = "linux"
-        mock_copytree.side_effect = exception
-
-        # テンプレートパスは存在、.vscodeディレクトリは存在しない
-        def mock_exists(self):
-            path_str = str(self)
-            if "vscode-templates" in path_str and "linux" in path_str:
-                return True
-            if path_str.endswith(".vscode"):
-                return False
-            return False
-
-        with patch.object(Path, "exists", mock_exists):
-            result = apply_vscode_template(repo_path, platform)
-
-        assert result is False
-        captured = capsys.readouterr()
-        assert "VS Code設定適用失敗" in captured.out
-
-    def test_path_construction_and_repo_name_extraction(self):
-        """パス構築とリポジトリ名抽出のテスト"""
-        test_cases = [
-            Path("/test/my-awesome-repo"),
-            Path("/home/user/projects/simple-repo"),
-            Path("C:\\Users\\user\\repos\\windows-repo"),
-            Path("/tmp/repo_with_underscores"),
-        ]
-
-        for repo_path in test_cases:
-            with patch("pathlib.Path.exists", return_value=False):
-                result = apply_vscode_template(repo_path, "linux")
-            assert result is True
-
-    @patch("src.setup_repo.vscode_setup.shutil.copytree")
-    def test_template_path_resolution(self, mock_copytree):
-        """テンプレートパス解決のテスト"""
-        repo_path = Path("/test/repo")
-        platform = "windows"
-        mock_copytree.return_value = None
-
-        # テンプレートパスは存在、.vscodeディレクトリは存在しない
-        def mock_exists(self):
-            path_str = str(self)
-            if "vscode-templates" in path_str and "windows" in path_str:
-                return True
-            if path_str.endswith(".vscode"):
-                return False
-            return False
-
-        with patch.object(Path, "exists", mock_exists):
-            result = apply_vscode_template(repo_path, platform)
-
-        assert result is True
-        # copytreeが正しいパスで呼び出されることを確認
-        args, kwargs = mock_copytree.call_args
-        template_path, vscode_path = args
-        assert "windows" in str(template_path)
-        assert ".vscode" in str(vscode_path)
-
-    @patch("src.setup_repo.vscode_setup.shutil.move")
-    @patch("src.setup_repo.vscode_setup.shutil.copytree")
-    @patch("src.setup_repo.vscode_setup.time.time")
-    def test_multiple_backup_scenarios(self, mock_time, mock_copytree, mock_move, capsys):
-        """複数のバックアップシナリオのテスト"""
-        repo_path = Path("/test/repo")
-        platform = "linux"
-        mock_copytree.return_value = None
-        mock_move.return_value = None
-
-        # テンプレートパスと.vscodeディレクトリの両方が存在
-        def mock_exists(self):
-            path_str = str(self)
-            if "vscode-templates" in path_str and "linux" in path_str:
-                return True
-            return bool(path_str.endswith(".vscode"))
-
-        # 異なるタイムスタンプでテスト
-        timestamps = [1234567890, 1234567891, 1234567892]
-
-        with patch.object(Path, "exists", mock_exists):
-            for timestamp in timestamps:
-                mock_time.return_value = timestamp
-                result = apply_vscode_template(repo_path, platform)
-                assert result is True
-
-                expected_backup_path = str(repo_path / f".vscode.bak.{timestamp}")
-                mock_move.assert_called_with(str(repo_path / ".vscode"), expected_backup_path)
-
-    def test_edge_case_empty_repo_name(self):
-        """エッジケース: 空のリポジトリ名"""
-        repo_path = Path("/")
-        platform = "linux"
-
-        with patch("pathlib.Path.exists", return_value=False):
-            result = apply_vscode_template(repo_path, platform)
-
-        assert result is True
-
-    @patch("src.setup_repo.vscode_setup.shutil.copytree")
-    def test_script_directory_resolution(self, mock_copytree):
-        """スクリプトディレクトリ解決のテスト"""
-        repo_path = Path("/test/repo")
-        platform = "linux"
-        mock_copytree.return_value = None
-
-        # テンプレートパスは存在、.vscodeディレクトリは存在しない
-        def mock_exists(self):
-            path_str = str(self)
-            if "vscode-templates" in path_str and "linux" in path_str:
-                return True
-            if path_str.endswith(".vscode"):
-                return False
-            return False
-
-        with patch.object(Path, "exists", mock_exists):
-            result = apply_vscode_template(repo_path, platform)
-
-        assert result is True
-        mock_copytree.assert_called_once()
-
-    @patch("src.setup_repo.vscode_setup.shutil.copytree")
-    def test_console_output_formatting(self, mock_copytree, capsys):
-        """コンソール出力フォーマットのテスト"""
-        repo_path = Path("/test/my-test-repo")
-        platform = "linux"
-        mock_copytree.return_value = None
-
-        # テンプレートパスは存在、.vscodeディレクトリは存在しない
-        def mock_exists(self):
-            path_str = str(self)
-            if "vscode-templates" in path_str and "linux" in path_str:
-                return True
-            if path_str.endswith(".vscode"):
-                return False
-            return False
-
-        with patch.object(Path, "exists", mock_exists):
-            result = apply_vscode_template(repo_path, platform)
-
-        assert result is True
-        captured = capsys.readouterr()
-
-        # 出力に適切な絵文字とフォーマットが含まれることを確認
-        assert "📁" in captured.out
-        assert "✅" in captured.out
-        assert "my-test-repo" in captured.out
-        assert "VS Code設定適用中..." in captured.out
-        assert "VS Code設定適用完了" in captured.out
-
-    @patch("src.setup_repo.vscode_setup.shutil.move")
-    @patch("src.setup_repo.vscode_setup.shutil.copytree")
-    def test_backup_console_output(self, mock_copytree, mock_move, capsys):
-        """バックアップ時のコンソール出力テスト"""
-        repo_path = Path("/test/repo")
-        platform = "linux"
-        mock_move.return_value = None
-        mock_copytree.return_value = None
-
-        # テンプレートパスと.vscodeディレクトリの両方が存在
-        def mock_exists(self):
-            path_str = str(self)
-            if "vscode-templates" in path_str and "linux" in path_str:
-                return True
-            return bool(path_str.endswith(".vscode"))
-
-        with (
-            patch("src.setup_repo.vscode_setup.time.time", return_value=1234567890),
-            patch.object(Path, "exists", mock_exists),
-        ):
-            result = apply_vscode_template(repo_path, platform)
-
-        assert result is True
-        captured = capsys.readouterr()
-        assert "📦" in captured.out
-        assert "既存設定をバックアップ" in captured.out
-
-    def test_template_fallback_logic(self):
-        """テンプレートフォールバックロジックのテスト"""
-        repo_path = Path("/test/repo")
-        platform = "unknown_platform"
-
-        call_count = 0
-
-        def mock_exists(self):
-            nonlocal call_count
-            call_count += 1
-            path_str = str(self)
-
-            # 最初の呼び出し（unknown_platform）はFalse
-            if call_count == 1 and "unknown_platform" in path_str or call_count == 2 and "linux" in path_str:
-                return False
-            return False
-
-        with patch.object(Path, "exists", mock_exists):
-            result = apply_vscode_template(repo_path, platform)
-
-        assert result is True
-        assert call_count >= 2
-
-    @patch("src.setup_repo.vscode_setup.shutil.copytree")
-    def test_real_world_scenario_success(self, mock_copytree, capsys):
-        """実際のシナリオに近い成功テスト"""
-        repo_path = Path("/home/user/projects/my-project")
-        platform = "linux"
-        mock_copytree.return_value = None
-
-        # テンプレートパスは存在、.vscodeディレクトリは存在しない
-        def mock_exists(self):
-            path_str = str(self)
-            if "vscode-templates" in path_str and "linux" in path_str:
-                return True
-            if path_str.endswith(".vscode"):
-                return False
-            return False
-
-        with patch.object(Path, "exists", mock_exists):
-            result = apply_vscode_template(repo_path, platform)
-
-        assert result is True
-        captured = capsys.readouterr()
-        assert "my-project" in captured.out
-        assert "VS Code設定適用完了" in captured.out
-
-    @patch("src.setup_repo.vscode_setup.shutil.move")
-    @patch("src.setup_repo.vscode_setup.shutil.copytree")
-    def test_real_world_scenario_with_backup(self, mock_copytree, mock_move, capsys):
-        """実際のシナリオに近いバックアップありテスト"""
-        repo_path = Path("/home/user/projects/existing-project")
-        platform = "windows"
-        mock_copytree.return_value = None
-        mock_move.return_value = None
-
-        # テンプレートパスと.vscodeディレクトリの両方が存在
-        def mock_exists(self):
-            path_str = str(self)
-            if "vscode-templates" in path_str and "windows" in path_str:
-                return True
-            return bool(path_str.endswith(".vscode"))
-
-        with (
-            patch("src.setup_repo.vscode_setup.time.time", return_value=1640995200),
-            patch.object(Path, "exists", mock_exists),
-        ):
-            result = apply_vscode_template(repo_path, platform)
-
-        assert result is True
-        captured = capsys.readouterr()
-        assert "existing-project" in captured.out
-        assert "既存設定をバックアップ" in captured.out
-        assert ".vscode.bak.1640995200" in captured.out
+        
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = Mock(returncode=0, stdout="Extension installed")
+            
+            result = install_vscode_extensions(extensions)
+            
+            assert result["success"] is True
+            assert len(result["installed"]) == 3
+            assert "ms-python.python" in result["installed"]
+
+    def test_install_vscode_extensions_partial_failure(self):
+        """VS Code拡張機能の部分的インストール失敗テスト"""
+        extensions = ["ms-python.python", "invalid-extension"]
+        
+        with patch("subprocess.run") as mock_run:
+            # 最初の拡張機能は成功、2番目は失敗
+            mock_run.side_effect = [
+                Mock(returncode=0, stdout="Extension installed"),
+                Mock(returncode=1, stderr="Extension not found")
+            ]
+            
+            result = install_vscode_extensions(extensions)
+            
+            assert result["success"] is False
+            assert len(result["installed"]) == 1
+            assert len(result["failed"]) == 1
+            assert "ms-python.python" in result["installed"]
+            assert "invalid-extension" in result["failed"]
+
+    def test_install_vscode_extensions_code_not_found(self):
+        """VS Codeが見つからない場合のテスト"""
+        with patch("shutil.which") as mock_which:
+            mock_which.return_value = None
+            
+            with pytest.raises(VscodeSetupError, match="VS Codeが見つかりません"):
+                install_vscode_extensions(["ms-python.python"])
+
+    def test_vscode_setup_init(self):
+        """VscodeSetupクラスの初期化テスト"""
+        platform_info = verify_current_platform()
+        
+        with tempfile.TemporaryDirectory() as temp_dir:
+            setup = VscodeSetup(temp_dir)
+            
+            assert setup.project_path == Path(temp_dir)
+            assert setup.platform == platform_info.name
+
+    def test_vscode_setup_configure_project(self):
+        """プロジェクト設定の構成テスト"""
+        platform_info = verify_current_platform()
+        
+        with tempfile.TemporaryDirectory() as temp_dir:
+            setup = VscodeSetup(temp_dir)
+            
+            result = setup.configure_project()
+            
+            assert result["success"] is True
+            assert result["settings_created"] is True
+            
+            # 設定ファイルが作成されたことを確認
+            settings_path = Path(temp_dir) / ".vscode" / "settings.json"
+            assert settings_path.exists()
+
+    def test_vscode_setup_configure_with_custom_settings(self):
+        """カスタム設定での構成テスト"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            setup = VscodeSetup(temp_dir)
+            
+            custom_settings = {
+                "python.defaultInterpreter": "/usr/bin/python3",
+                "editor.rulers": [88, 120]
+            }
+            
+            result = setup.configure_project(custom_settings)
+            
+            assert result["success"] is True
+            
+            # カスタム設定が適用されたことを確認
+            settings_path = Path(temp_dir) / ".vscode" / "settings.json"
+            with open(settings_path, "r", encoding="utf-8") as f:
+                saved_settings = json.load(f)
+            
+            assert saved_settings["python.defaultInterpreter"] == "/usr/bin/python3"
+            assert saved_settings["editor.rulers"] == [88, 120]
+
+    @pytest.mark.integration
+    def test_full_vscode_setup_workflow(self):
+        """完全なVS Codeセットアップワークフローのテスト"""
+        platform_info = verify_current_platform()
+        
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with patch("subprocess.run") as mock_run, \
+                 patch("shutil.which") as mock_which:
+                
+                # VS Codeが利用可能
+                mock_which.return_value = "/usr/bin/code"
+                
+                # 拡張機能インストールが成功
+                mock_run.return_value = Mock(returncode=0, stdout="Success")
+                
+                result = setup_vscode_config(
+                    project_path=temp_dir,
+                    install_extensions=True
+                )
+                
+                assert result["success"] is True
+                assert result["settings_configured"] is True
+                assert result["extensions_installed"] is True
+
+    @pytest.mark.slow
+    def test_vscode_setup_performance(self):
+        """VS Codeセットアップのパフォーマンステスト"""
+        import time
+        
+        with tempfile.TemporaryDirectory() as temp_dir:
+            start_time = time.time()
+            
+            setup = VscodeSetup(temp_dir)
+            
+            # 複数回設定を実行してパフォーマンスを測定
+            for _ in range(5):
+                setup.configure_project()
+            
+            elapsed = time.time() - start_time
+            assert elapsed < 2.0, f"VS Code設定が遅すぎます: {elapsed}秒"
+
+    def test_vscode_setup_error_handling(self):
+        """VS Codeセットアップのエラーハンドリングテスト"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            setup = VscodeSetup(temp_dir)
+            
+            # 読み取り専用ディレクトリでの設定試行
+            with patch("pathlib.Path.mkdir") as mock_mkdir:
+                mock_mkdir.side_effect = PermissionError("Permission denied")
+                
+                with pytest.raises(VscodeSetupError, match="権限エラー"):
+                    setup.configure_project()
+
+    def test_platform_specific_settings(self):
+        """プラットフォーム固有設定のテスト"""
+        platform_info = verify_current_platform()
+        config = get_platform_specific_config()
+        
+        with tempfile.TemporaryDirectory() as temp_dir:
+            setup = VscodeSetup(temp_dir)
+            
+            # プラットフォーム固有の設定を適用
+            result = setup.configure_project(platform_optimized=True)
+            
+            assert result["success"] is True
+            
+            # プラットフォーム固有設定が適用されたことを確認
+            settings_path = Path(temp_dir) / ".vscode" / "settings.json"
+            with open(settings_path, "r", encoding="utf-8") as f:
+                settings = json.load(f)
+            
+            # プラットフォームに応じた設定が含まれることを確認
+            if platform_info.name == "windows":
+                assert "terminal.integrated.shell.windows" in settings
+            else:
+                assert "terminal.integrated.shell.linux" in settings or \
+                       "terminal.integrated.shell.osx" in settings

@@ -8,6 +8,7 @@ import time
 from unittest.mock import patch
 
 import pytest
+from ..multiplatform.helpers import verify_current_platform, get_platform_specific_config, optimize_for_platform, get_test_performance_config
 
 
 class TestSyncPerformance:
@@ -16,14 +17,19 @@ class TestSyncPerformance:
     @pytest.mark.performance
     def test_small_repository_set_performance(self):
         """小規模リポジトリセットの同期パフォーマンステスト"""
+        # プラットフォーム最適化とパフォーマンス設定
+        platform_info = verify_current_platform()
+        optimization = optimize_for_platform()
+        perf_config = get_test_performance_config()
+        
         start_time = time.time()
 
         # モックを使用して実際のGit操作を回避
         with patch("src.setup_repo.git_operations.sync_repository") as mock_sync:
             mock_sync.return_value = True
 
-            # 小規模テスト（5リポジトリ）
-            test_repos = [f"test-repo-{i}" for i in range(5)]
+            # 小規模テスト（プラットフォーム固有設定使用）
+            test_repos = [f"test-repo-{i}" for i in range(perf_config["small_repo_limit"])]
 
             for _repo in test_repos:
                 # 同期処理のシミュレーション

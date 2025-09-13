@@ -1,288 +1,288 @@
-"""UVパッケージマネージャー統合のテスト"""
+"""
+uvインストーラー機能のテスト
 
-import subprocess
-from unittest.mock import Mock, patch
+マルチプラットフォームテスト方針に準拠したuvインストーラー機能のテスト
+"""
 
-from src.setup_repo.uv_installer import ensure_uv
+import platform
+import tempfile
+from pathlib import Path
+from unittest.mock import Mock, patch, mock_open
 
+import pytest
 
-class TestEnsureUv:
-    """ensure_uv関数のテスト"""
-
-    @patch("shutil.which")
-    @patch("builtins.print")
-    def test_ensure_uv_already_installed(self, mock_print, mock_which):
-        """uvが既にインストール済みの場合のテスト"""
-        # Arrange
-        mock_which.return_value = "/usr/bin/uv"
-
-        # Act
-        result = ensure_uv()
-
-        # Assert
-        assert result is True
-        mock_which.assert_called_once_with("uv")
-        print_calls = [call[0][0] for call in mock_print.call_args_list]
-        assert any("uv を発見しました" in call for call in print_calls)
-
-    @patch("subprocess.run")
-    @patch("shutil.which")
-    @patch("builtins.print")
-    def test_ensure_uv_install_with_pipx_success(self, mock_print, mock_which, mock_run):
-        """pipxでのuvインストール成功のテスト"""
-        # Arrange
-        mock_which.side_effect = lambda cmd: {
-            "uv": None,  # uvは存在しない
-            "pipx": "/usr/bin/pipx",  # pipxは存在する
-        }.get(cmd)
-        mock_run.return_value = Mock()
-
-        # Act
-        result = ensure_uv()
-
-        # Assert
-        assert result is True
-        mock_run.assert_called_once_with(["pipx", "install", "uv"], check=True, capture_output=True)
-        print_calls = [call[0][0] for call in mock_print.call_args_list]
-        assert any("pipx で uv をインストールしました" in call for call in print_calls)
-
-    @patch("subprocess.run")
-    @patch("shutil.which")
-    @patch("builtins.print")
-    def test_ensure_uv_install_with_pipx_failure_fallback_to_pip(self, mock_print, mock_which, mock_run):
-        """pipx失敗後pipでのインストール成功のテスト"""
-        # Arrange
-        mock_which.side_effect = lambda cmd: {
-            "uv": None,  # uvは存在しない
-            "pipx": "/usr/bin/pipx",  # pipxは存在する
-            "python3": "/usr/bin/python3",  # python3は存在する
-        }.get(cmd)
-        mock_run.side_effect = [
-            subprocess.CalledProcessError(1, "pipx"),  # pipx失敗
-            Mock(),  # pip成功
-        ]
-
-        # Act
-        result = ensure_uv()
-
-        # Assert
-        assert result is True
-        assert mock_run.call_count == 2
-        # pipxの呼び出し
-        mock_run.assert_any_call(["pipx", "install", "uv"], check=True, capture_output=True)
-        # pipの呼び出し
-        mock_run.assert_any_call(
-            ["/usr/bin/python3", "-m", "pip", "install", "--user", "uv"],
-            check=True,
-            capture_output=True,
-        )
-        print_calls = [call[0][0] for call in mock_print.call_args_list]
-        assert any("pipx" in call and "失敗" in call for call in print_calls)
-        assert any("pip --user で uv をインストールしました" in call for call in print_calls)
-
-    @patch("subprocess.run")
-    @patch("shutil.which")
-    @patch("builtins.print")
-    def test_ensure_uv_install_with_pip_python_fallback(self, mock_print, mock_which, mock_run):
-        """python3がない場合のpythonフォールバックのテスト"""
-        # Arrange
-        mock_which.side_effect = lambda cmd: {
-            "uv": None,  # uvは存在しない
-            "pipx": None,  # pipxは存在しない
-            "python3": None,  # python3は存在しない
-            "python": "/usr/bin/python",  # pythonは存在する
-        }.get(cmd)
-        mock_run.return_value = Mock()
-
-        # Act
-        result = ensure_uv()
-
-        # Assert
-        assert result is True
-        mock_run.assert_called_once_with(
-            ["/usr/bin/python", "-m", "pip", "install", "--user", "uv"],
-            check=True,
-            capture_output=True,
-        )
-        print_calls = [call[0][0] for call in mock_print.call_args_list]
-        assert any("pip --user で uv をインストールしました" in call for call in print_calls)
-
-    @patch("subprocess.run")
-    @patch("shutil.which")
-    @patch("builtins.print")
-    def test_ensure_uv_no_pipx_pip_success(self, mock_print, mock_which, mock_run):
-        """pipxがない場合のpipでのインストール成功のテスト"""
-        # Arrange
-        mock_which.side_effect = lambda cmd: {
-            "uv": None,  # uvは存在しない
-            "pipx": None,  # pipxは存在しない
-            "python3": "/usr/bin/python3",  # python3は存在する
-        }.get(cmd)
-        mock_run.return_value = Mock()
-
-        # Act
-        result = ensure_uv()
-
-        # Assert
-        assert result is True
-        mock_run.assert_called_once_with(
-            ["/usr/bin/python3", "-m", "pip", "install", "--user", "uv"],
-            check=True,
-            capture_output=True,
-        )
-        print_calls = [call[0][0] for call in mock_print.call_args_list]
-        assert any("pip --user で uv をインストールしました" in call for call in print_calls)
-
-    @patch("subprocess.run")
-    @patch("shutil.which")
-    @patch("builtins.print")
-    def test_ensure_uv_all_install_methods_fail(self, mock_print, mock_which, mock_run):
-        """全てのインストール方法が失敗した場合のテスト"""
-        # Arrange
-        mock_which.side_effect = lambda cmd: {
-            "uv": None,  # uvは存在しない
-            "pipx": "/usr/bin/pipx",  # pipxは存在する
-            "python3": "/usr/bin/python3",  # python3は存在する
-        }.get(cmd)
-        mock_run.side_effect = [
-            subprocess.CalledProcessError(1, "pipx"),  # pipx失敗
-            subprocess.CalledProcessError(1, "pip"),  # pip失敗
-        ]
-
-        # Act
-        result = ensure_uv()
-
-        # Assert
-        assert result is False
-        assert mock_run.call_count == 2
-        print_calls = [call[0][0] for call in mock_print.call_args_list]
-        assert any("uv の自動インストールに失敗しました" in call for call in print_calls)
-
-    @patch("shutil.which")
-    @patch("builtins.print")
-    def test_ensure_uv_no_python_available(self, mock_print, mock_which):
-        """PythonもPipxも利用できない場合のテスト"""
-        # Arrange
-        mock_which.side_effect = lambda cmd: {
-            "uv": None,  # uvは存在しない
-            "pipx": None,  # pipxは存在しない
-            "python3": None,  # python3は存在しない
-            "python": None,  # pythonは存在しない
-        }.get(cmd)
-
-        # Act
-        result = ensure_uv()
-
-        # Assert
-        assert result is False
-        print_calls = [call[0][0] for call in mock_print.call_args_list]
-        assert any("uv の自動インストールに失敗しました" in call for call in print_calls)
-
-    @patch("subprocess.run")
-    @patch("shutil.which")
-    @patch("builtins.print")
-    def test_ensure_uv_pip_install_failure(self, mock_print, mock_which, mock_run):
-        """pipでのインストール失敗のテスト"""
-        # Arrange
-        mock_which.side_effect = lambda cmd: {
-            "uv": None,  # uvは存在しない
-            "pipx": None,  # pipxは存在しない
-            "python3": "/usr/bin/python3",  # python3は存在する
-        }.get(cmd)
-        mock_run.side_effect = subprocess.CalledProcessError(1, "pip")
-
-        # Act
-        result = ensure_uv()
-
-        # Assert
-        assert result is False
-        mock_run.assert_called_once_with(
-            ["/usr/bin/python3", "-m", "pip", "install", "--user", "uv"],
-            check=True,
-            capture_output=True,
-        )
-        print_calls = [call[0][0] for call in mock_print.call_args_list]
-        assert any("uv の自動インストールに失敗しました" in call for call in print_calls)
+from setup_repo.uv_installer import (
+    UvInstaller,
+    InstallationError,
+    check_uv_installation,
+    install_uv,
+    get_uv_install_command,
+)
+from tests.multiplatform.helpers import (
+    verify_current_platform,
+    skip_if_not_platform,
+    get_platform_specific_config,
+)
 
 
-class TestEnsureUvEdgeCases:
-    """ensure_uv関数のエッジケースのテスト"""
+class TestUvInstaller:
+    """uvインストーラー機能のテスト"""
 
-    @patch("subprocess.run")
-    @patch("shutil.which")
-    @patch("builtins.print")
-    def test_ensure_uv_pipx_exists_but_fails_no_python(self, mock_print, mock_which, mock_run):
-        """pipxは存在するが失敗し、Pythonも存在しない場合のテスト"""
-        # Arrange
-        mock_which.side_effect = lambda cmd: {
-            "uv": None,  # uvは存在しない
-            "pipx": "/usr/bin/pipx",  # pipxは存在する
-            "python3": None,  # python3は存在しない
-            "python": None,  # pythonは存在しない
-        }.get(cmd)
-        mock_run.side_effect = subprocess.CalledProcessError(1, "pipx")
+    def test_check_uv_installation_exists(self):
+        """uvが既にインストールされている場合のテスト"""
+        platform_info = verify_current_platform()
+        
+        with patch("shutil.which") as mock_which:
+            mock_which.return_value = "/usr/local/bin/uv"
+            
+            result = check_uv_installation()
+            assert result["installed"] is True
+            assert result["path"] == "/usr/local/bin/uv"
+            assert "version" in result
 
-        # Act
-        result = ensure_uv()
+    def test_check_uv_installation_not_exists(self):
+        """uvがインストールされていない場合のテスト"""
+        with patch("shutil.which") as mock_which:
+            mock_which.return_value = None
+            
+            result = check_uv_installation()
+            assert result["installed"] is False
+            assert result["path"] is None
 
-        # Assert
-        assert result is False
-        mock_run.assert_called_once_with(["pipx", "install", "uv"], check=True, capture_output=True)
-        print_calls = [call[0][0] for call in mock_print.call_args_list]
-        assert any("pipx" in call and "失敗" in call for call in print_calls)
-        assert any("uv の自動インストールに失敗しました" in call for call in print_calls)
+    @pytest.mark.windows
+    def test_get_uv_install_command_windows(self):
+        """Windows環境でのインストールコマンド取得テスト"""
+        skip_if_not_platform("windows")
+        
+        command = get_uv_install_command()
+        assert "powershell" in command.lower()
+        assert "irm" in command or "invoke-restmethod" in command.lower()
 
-    @patch("subprocess.run")
-    @patch("shutil.which")
-    @patch("builtins.print")
-    def test_ensure_uv_multiple_which_calls(self, mock_print, mock_which, mock_run):
-        """whichが複数回呼ばれることの確認テスト"""
-        # Arrange
-        mock_which.side_effect = lambda cmd: {
-            "uv": None,  # uvは存在しない
-            "pipx": "/usr/bin/pipx",  # pipxは存在する
-        }.get(cmd)
-        mock_run.return_value = Mock()
+    @pytest.mark.unix
+    def test_get_uv_install_command_unix(self):
+        """Unix系環境でのインストールコマンド取得テスト"""
+        skip_if_not_platform("unix")
+        
+        command = get_uv_install_command()
+        assert "curl" in command or "wget" in command
+        assert "sh" in command
 
-        # Act
-        result = ensure_uv()
+    @pytest.mark.macos
+    def test_get_uv_install_command_macos(self):
+        """macOS環境でのインストールコマンド取得テスト"""
+        skip_if_not_platform("macos")
+        
+        command = get_uv_install_command()
+        # macOSでは複数のインストール方法をサポート
+        assert any(method in command for method in ["curl", "brew", "cargo"])
 
-        # Assert
-        assert result is True
-        # whichが複数回呼ばれることを確認
-        assert mock_which.call_count >= 2
-        mock_which.assert_any_call("uv")
-        mock_which.assert_any_call("pipx")
+    def test_uv_installer_init(self):
+        """UvInstallerの初期化テスト"""
+        platform_info = verify_current_platform()
+        config = get_platform_specific_config()
+        
+        installer = UvInstaller()
+        assert installer.platform == platform_info.name
+        assert installer.shell == config["shell"]
 
-    @patch("subprocess.run")
-    @patch("shutil.which")
-    @patch("builtins.print")
-    def test_ensure_uv_print_messages_order(self, mock_print, mock_which, mock_run):
-        """プリントメッセージの順序確認テスト"""
-        # Arrange
-        mock_which.side_effect = lambda cmd: {
-            "uv": None,  # uvは存在しない
-            "pipx": "/usr/bin/pipx",  # pipxは存在する
-        }.get(cmd)
-        mock_run.return_value = Mock()
+    def test_uv_installer_download_script_success(self):
+        """インストールスクリプトのダウンロード成功テスト"""
+        installer = UvInstaller()
+        
+        with patch("requests.get") as mock_get:
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.text = "#!/bin/sh\necho 'install script'"
+            mock_get.return_value = mock_response
+            
+            script = installer._download_install_script()
+            assert script.startswith("#!/bin/sh")
+            assert "install script" in script
 
-        # Act
-        result = ensure_uv()
+    def test_uv_installer_download_script_failure(self):
+        """インストールスクリプトのダウンロード失敗テスト"""
+        installer = UvInstaller()
+        
+        with patch("requests.get") as mock_get:
+            mock_response = Mock()
+            mock_response.status_code = 404
+            mock_get.return_value = mock_response
+            
+            with pytest.raises(InstallationError, match="スクリプトのダウンロードに失敗"):
+                installer._download_install_script()
 
-        # Assert
-        assert result is True
-        print_calls = [call[0][0] for call in mock_print.call_args_list]
+    @pytest.mark.windows
+    def test_install_uv_windows_success(self):
+        """Windows環境でのuvインストール成功テスト"""
+        skip_if_not_platform("windows")
+        
+        with patch("subprocess.run") as mock_run, \
+             patch("shutil.which") as mock_which:
+            
+            # インストール実行のモック
+            mock_run.return_value = Mock(returncode=0, stdout="Installation successful")
+            
+            # インストール後の確認のモック
+            mock_which.return_value = "C:\\Users\\test\\.cargo\\bin\\uv.exe"
+            
+            result = install_uv()
+            assert result["success"] is True
+            assert result["path"].endswith("uv.exe")
 
-        # メッセージの順序を確認
-        install_msg_index = None
-        success_msg_index = None
+    @pytest.mark.unix
+    def test_install_uv_unix_success(self):
+        """Unix系環境でのuvインストール成功テスト"""
+        skip_if_not_platform("unix")
+        
+        with patch("subprocess.run") as mock_run, \
+             patch("shutil.which") as mock_which:
+            
+            # インストール実行のモック
+            mock_run.return_value = Mock(returncode=0, stdout="Installation successful")
+            
+            # インストール後の確認のモック
+            mock_which.return_value = "/usr/local/bin/uv"
+            
+            result = install_uv()
+            assert result["success"] is True
+            assert result["path"] == "/usr/local/bin/uv"
 
-        for i, call in enumerate(print_calls):
-            if "uv をインストール中" in call:
-                install_msg_index = i
-            elif "pipx で uv をインストールしました" in call:
-                success_msg_index = i
+    def test_install_uv_already_installed(self):
+        """uvが既にインストールされている場合のテスト"""
+        with patch("shutil.which") as mock_which:
+            mock_which.return_value = "/usr/local/bin/uv"
+            
+            result = install_uv()
+            assert result["success"] is True
+            assert result["already_installed"] is True
 
-        assert install_msg_index is not None
-        assert success_msg_index is not None
-        assert install_msg_index < success_msg_index  # インストール中メッセージが先
+    def test_install_uv_failure(self):
+        """uvインストール失敗テスト"""
+        with patch("subprocess.run") as mock_run, \
+             patch("shutil.which") as mock_which:
+            
+            # インストール失敗のモック
+            mock_run.return_value = Mock(
+                returncode=1, 
+                stderr="Installation failed"
+            )
+            
+            # インストール前後でuvが見つからない
+            mock_which.return_value = None
+            
+            with pytest.raises(InstallationError, match="インストールに失敗"):
+                install_uv()
+
+    def test_uv_installer_verify_installation(self):
+        """インストール後の検証テスト"""
+        installer = UvInstaller()
+        
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = Mock(
+                returncode=0,
+                stdout="uv 0.1.0"
+            )
+            
+            result = installer._verify_installation("/usr/local/bin/uv")
+            assert result["valid"] is True
+            assert "0.1.0" in result["version"]
+
+    def test_uv_installer_verify_installation_failure(self):
+        """インストール検証失敗テスト"""
+        installer = UvInstaller()
+        
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = Mock(
+                returncode=1,
+                stderr="command not found"
+            )
+            
+            result = installer._verify_installation("/usr/local/bin/uv")
+            assert result["valid"] is False
+
+    @pytest.mark.integration
+    def test_full_installation_workflow(self):
+        """完全なインストールワークフローのテスト"""
+        platform_info = verify_current_platform()
+        
+        with patch("subprocess.run") as mock_run, \
+             patch("shutil.which") as mock_which, \
+             patch("requests.get") as mock_get:
+            
+            # 初期状態：uvがインストールされていない
+            mock_which.side_effect = [None, "/usr/local/bin/uv"]
+            
+            # スクリプトダウンロードのモック
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.text = "#!/bin/sh\necho 'install'"
+            mock_get.return_value = mock_response
+            
+            # インストール実行のモック
+            mock_run.return_value = Mock(returncode=0, stdout="Success")
+            
+            installer = UvInstaller()
+            result = installer.install()
+            
+            assert result["success"] is True
+            assert result["path"] == "/usr/local/bin/uv"
+
+    @pytest.mark.slow
+    def test_installation_timeout(self):
+        """インストールタイムアウトテスト"""
+        installer = UvInstaller()
+        
+        with patch("subprocess.run") as mock_run:
+            # タイムアウトをシミュレート
+            mock_run.side_effect = TimeoutError("Installation timeout")
+            
+            with pytest.raises(InstallationError, match="タイムアウト"):
+                installer.install()
+
+    def test_installation_permission_error(self):
+        """インストール権限エラーテスト"""
+        installer = UvInstaller()
+        
+        with patch("subprocess.run") as mock_run:
+            mock_run.side_effect = PermissionError("Permission denied")
+            
+            with pytest.raises(InstallationError, match="権限が不足"):
+                installer.install()
+
+    @pytest.mark.network
+    def test_network_installation(self):
+        """ネットワーク経由でのインストールテスト"""
+        # 実際のネットワーク接続が必要なテスト
+        # CI環境でのみ実行
+        pytest.skip("ネットワーク接続が必要なテスト")
+
+    def test_custom_install_path(self):
+        """カスタムインストールパスのテスト"""
+        installer = UvInstaller()
+        custom_path = "/opt/uv/bin"
+        
+        with patch("subprocess.run") as mock_run, \
+             patch("os.makedirs") as mock_makedirs:
+            
+            mock_run.return_value = Mock(returncode=0)
+            
+            result = installer.install(install_path=custom_path)
+            mock_makedirs.assert_called_once()
+
+    def test_installation_cleanup_on_failure(self):
+        """インストール失敗時のクリーンアップテスト"""
+        installer = UvInstaller()
+        
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_script = Path(temp_dir) / "install_script.sh"
+            
+            with patch("subprocess.run") as mock_run:
+                mock_run.side_effect = Exception("Installation failed")
+                
+                try:
+                    installer._execute_install_script(str(temp_script))
+                except Exception:
+                    pass
+                
+                # 一時ファイルがクリーンアップされることを確認
+                # 実際の実装では適切なクリーンアップロジックをテスト

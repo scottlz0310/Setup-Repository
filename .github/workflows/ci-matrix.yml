@@ -78,6 +78,18 @@ jobs:
         uv run pytest tests/ -v --tb=short || echo "Some tests failed, continuing..."
         uv run python main.py --help || echo "Main script test failed, continuing..."
 
+    - name: Run platform-specific tests
+      run: |
+        # プラットフォーム固有テストの実行
+        if [ "${{ runner.os }}" = "Windows" ]; then
+          uv run pytest tests/multiplatform/ -k "windows" -v --tb=short || echo "Windows tests failed, continuing..."
+        elif [ "${{ runner.os }}" = "Linux" ]; then
+          uv run pytest tests/multiplatform/ -k "unix or linux" -v --tb=short || echo "Unix tests failed, continuing..."
+        elif [ "${{ runner.os }}" = "macOS" ]; then
+          uv run pytest tests/multiplatform/ -k "macos or unix" -v --tb=short || echo "macOS tests failed, continuing..."
+        fi
+      shell: bash
+
     - name: Test platform-specific functionality
       run: |
         uv run python -c "

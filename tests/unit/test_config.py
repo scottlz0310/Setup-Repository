@@ -1,425 +1,321 @@
 """
-config.pyモジュールの包括的な単体テスト
+設定管理機能のテスト
 
-設定管理機能のテスト：
-- GitHub認証情報の自動検出
-- 設定ファイルの読み込み
-- 自動検出フォールバック機能
+マルチプラットフォームテスト方針に準拠した設定管理機能のテスト
 """
 
 import json
-import os
-import subprocess
+import tempfile
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
-from src.setup_repo.config import (
-    auto_detect_config,
-    get_github_token,
-    get_github_user,
+from setup_repo.config import (
+    Config,
+    ConfigError,
     load_config,
+    save_config,
+    merge_configs,
+    validate_config,
+)
+from tests.multiplatform.helpers import (
+    verify_current_platform,
+    get_platform_specific_config,
 )
 
 
-@pytest.mark.unit
-class TestGetGithubToken:
-    """get_github_token関数のテスト"""
+class TestConfig:
+    """設定管理機能のテスト"""
 
-    def test_get_token_from_environment_variable(self) -> None:
-        """環境変数からGitHubトークンを取得するテスト"""
-        with patch.dict(os.environ, {"GITHUB_TOKEN": "env_token_123"}):
-            token = get_github_token()
-            assert token == "env_token_123"
+    def test_load_config_success(self):
+        """設定ファイル読み込み成功テスト"""
+        platform_info = verify_current_platform()
+        
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            config_data = {
+                "github": {
+                    "username": "testuser",
+                    "token": "test_token"
+                },
+                "repositories": ["repo1", "repo2"]
+            }
+            json.dump(config_data, f)
+            config_path = f.name
+        
+        try:
+            config = load_config(config_path)
+            assert config["github"]["username"] == "testuser"
+            assert len(config["repositories"]) == 2
+        finally:
+            Path(config_path).unlink()
 
-    def test_get_token_from_gh_cli(self) -> None:
-        """gh CLIからGitHubトークンを取得するテスト"""
-        with (
-            patch.dict(os.environ, {}, clear=True),
-            patch("subprocess.run") as mock_run,
-        ):
-            mock_run.return_value.stdout = "gh_cli_token_456\n"
-            mock_run.return_value.returncode = 0
+    def test_load_config_file_not_found(self):
+        """設定ファイルが見つからない場合のテスト"""
+        with pytest.raises(ConfigError, match="設定ファイルが見つかりません"):
+            load_config("nonexistent_config.json")
 
-            token = get_github_token()
-            assert token == "gh_cli_token_456"
+    def test_load_config_invalid_json(self):
+        """無効なJSON設定ファイルのテスト"""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            f.write('{"invalid": json}')
+            config_path = f.name
+        
+        try:
+            with pytest.raises(ConfigError, match="無効なJSON"):
+                load_config(config_path)
+        finally:
+            Path(config_path).unlink()
 
-            # gh CLIが正しく呼び出されることを確認
-            mock_run.assert_called_once_with(
-                ["gh", "auth", "token"],
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-
-    def test_get_token_environment_variable_priority(self) -> None:
-        """環境変数がgh CLIより優先されることをテスト"""
-        with (
-            patch.dict(os.environ, {"GITHUB_TOKEN": "env_priority_token"}),
-            patch("subprocess.run") as mock_run,
-        ):
-            mock_run.return_value.stdout = "gh_cli_token"
-
-            token = get_github_token()
-            assert token == "env_priority_token"
-
-            # gh CLIが呼び出されないことを確認
-            mock_run.assert_not_called()
-
-    def test_get_token_gh_cli_failure(self) -> None:
-        """gh CLIが失敗した場合のテスト"""
-        with (
-            patch.dict(os.environ, {}, clear=True),
-            patch("subprocess.run") as mock_run,
-        ):
-            mock_run.side_effect = subprocess.CalledProcessError(1, "gh")
-
-            token = get_github_token()
-            assert token is None
-
-    def test_get_token_gh_cli_not_found(self) -> None:
-        """gh CLIが見つからない場合のテスト"""
-        with (
-            patch.dict(os.environ, {}, clear=True),
-            patch("subprocess.run") as mock_run,
-        ):
-            mock_run.side_effect = FileNotFoundError()
-
-            token = get_github_token()
-            assert token is None
-
-    def test_get_token_no_sources_available(self) -> None:
-        """トークンソースが利用できない場合のテスト"""
-        with (
-            patch.dict(os.environ, {}, clear=True),
-            patch("subprocess.run") as mock_run,
-        ):
-            mock_run.side_effect = FileNotFoundError()
-
-            token = get_github_token()
-            assert token is None
-
-
-@pytest.mark.unit
-class TestGetGithubUser:
-    """get_github_user関数のテスト"""
-
-    def test_get_user_from_environment_variable(self) -> None:
-        """環境変数からGitHubユーザー名を取得するテスト"""
-        with patch.dict(os.environ, {"GITHUB_USER": "env_user"}):
-            user = get_github_user()
-            assert user == "env_user"
-
-    def test_get_user_from_git_config(self) -> None:
-        """git configからユーザー名を取得するテスト"""
-        with (
-            patch.dict(os.environ, {}, clear=True),
-            patch("subprocess.run") as mock_run,
-        ):
-            mock_run.return_value.stdout = "git_config_user\n"
-            mock_run.return_value.returncode = 0
-
-            user = get_github_user()
-            assert user == "git_config_user"
-
-            # git configが正しく呼び出されることを確認
-            mock_run.assert_called_once_with(
-                ["git", "config", "--global", "user.name"],
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-
-    def test_get_user_environment_variable_priority(self) -> None:
-        """環境変数がgit configより優先されることをテスト"""
-        with (
-            patch.dict(os.environ, {"GITHUB_USER": "env_priority_user"}),
-            patch("subprocess.run") as mock_run,
-        ):
-            mock_run.return_value.stdout = "git_config_user"
-
-            user = get_github_user()
-            assert user == "env_priority_user"
-
-            # git configが呼び出されないことを確認
-            mock_run.assert_not_called()
-
-    def test_get_user_git_config_failure(self) -> None:
-        """git configが失敗した場合のテスト"""
-        with (
-            patch.dict(os.environ, {}, clear=True),
-            patch("subprocess.run") as mock_run,
-        ):
-            mock_run.side_effect = subprocess.CalledProcessError(1, "git")
-
-            user = get_github_user()
-            assert user is None
-
-    def test_get_user_git_not_found(self) -> None:
-        """gitが見つからない場合のテスト"""
-        with (
-            patch.dict(os.environ, {}, clear=True),
-            patch("subprocess.run") as mock_run,
-        ):
-            mock_run.side_effect = FileNotFoundError()
-
-            user = get_github_user()
-            assert user is None
-
-
-@pytest.mark.unit
-class TestAutoDetectConfig:
-    """auto_detect_config関数のテスト"""
-
-    def test_auto_detect_config_with_all_values(self) -> None:
-        """すべての値が検出される場合のテスト"""
-        with (
-            patch("src.setup_repo.config.get_github_user") as mock_user,
-            patch("src.setup_repo.config.get_github_token") as mock_token,
-        ):
-            mock_user.return_value = "detected_user"
-            mock_token.return_value = "detected_token"
-
-            config = auto_detect_config()
-
-            assert config["owner"] == "detected_user"
-            assert config["github_token"] == "detected_token"
-            assert config["dest"] == str(Path.home() / "workspace")
-            assert config["use_https"] is False
-            assert config["max_retries"] == 2
-            assert config["skip_uv_install"] is False
-            assert config["auto_stash"] is False
-            assert config["sync_only"] is False
-            assert config["log_file"] == str(Path.home() / "logs" / "repo-sync.log")
-
-    def test_auto_detect_config_with_missing_values(self) -> None:
-        """一部の値が検出されない場合のテスト"""
-        with (
-            patch("src.setup_repo.config.get_github_user") as mock_user,
-            patch("src.setup_repo.config.get_github_token") as mock_token,
-        ):
-            mock_user.return_value = None
-            mock_token.return_value = None
-
-            config = auto_detect_config()
-
-            assert config["owner"] == ""
-            assert config["github_token"] is None
-            # その他のデフォルト値は変わらない
-            assert config["dest"] == str(Path.home() / "workspace")
-            assert config["use_https"] is False
-
-    def test_auto_detect_config_default_paths(self) -> None:
-        """デフォルトパスが正しく設定されることをテスト"""
-        with (
-            patch("src.setup_repo.config.get_github_user") as mock_user,
-            patch("src.setup_repo.config.get_github_token") as mock_token,
-        ):
-            mock_user.return_value = "test_user"
-            mock_token.return_value = "test_token"
-
-            config = auto_detect_config()
-
-            # パスがPath.home()を基準に設定されることを確認
-            expected_dest = str(Path.home() / "workspace")
-            expected_log = str(Path.home() / "logs" / "repo-sync.log")
-
-            assert config["dest"] == expected_dest
-            assert config["log_file"] == expected_log
-
-
-@pytest.mark.unit
-class TestLoadConfig:
-    """load_config関数のテスト"""
-
-    def test_load_config_with_local_config_file(self, temp_dir: Path) -> None:
-        """config.local.jsonが存在する場合のテスト"""
-        # テスト用設定ファイルを作成
-        local_config = {
-            "owner": "file_user",
-            "github_token": "file_token",
-            "dest": "/custom/path",
+    def test_save_config_success(self):
+        """設定ファイル保存成功テスト"""
+        platform_info = verify_current_platform()
+        
+        config_data = {
+            "github": {
+                "username": "testuser",
+                "token": "test_token"
+            },
+            "platform": platform_info.name
         }
-
-        config_file = temp_dir / "config.local.json"
-        with open(config_file, "w", encoding="utf-8") as f:
-            json.dump(local_config, f)
-
-        # カレントディレクトリを変更してテスト
-        original_cwd = os.getcwd()
+        
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            config_path = f.name
+        
         try:
-            os.chdir(temp_dir)
+            result = save_config(config_path, config_data)
+            assert result["success"] is True
+            
+            # 保存された設定を確認
+            with open(config_path, 'r', encoding='utf-8') as f:
+                saved_config = json.load(f)
+            
+            assert saved_config["github"]["username"] == "testuser"
+            assert saved_config["platform"] == platform_info.name
+        finally:
+            Path(config_path).unlink()
 
-            # 環境変数をクリアして実際の設定ファイルの影響を排除
-            with (
-                patch.dict(os.environ, {}, clear=True),
-                patch("src.setup_repo.config.auto_detect_config") as mock_auto,
-            ):
-                mock_auto.return_value = {
-                    "owner": "auto_user",
-                    "github_token": "auto_token",
-                    "dest": "/auto/path",
-                    "use_https": False,
+    def test_save_config_permission_error(self):
+        """設定ファイル保存権限エラーテスト"""
+        with patch("builtins.open", side_effect=PermissionError("Permission denied")):
+            with pytest.raises(ConfigError, match="権限エラー"):
+                save_config("/root/config.json", {})
+
+    def test_merge_configs_success(self):
+        """設定マージ成功テスト"""
+        base_config = {
+            "github": {
+                "username": "baseuser",
+                "token": "base_token"
+            },
+            "repositories": ["repo1"]
+        }
+        
+        override_config = {
+            "github": {
+                "token": "new_token"
+            },
+            "repositories": ["repo2", "repo3"],
+            "new_setting": "value"
+        }
+        
+        merged = merge_configs(base_config, override_config)
+        
+        assert merged["github"]["username"] == "baseuser"  # 保持
+        assert merged["github"]["token"] == "new_token"    # 上書き
+        assert merged["repositories"] == ["repo2", "repo3"]  # 上書き
+        assert merged["new_setting"] == "value"            # 追加
+
+    def test_merge_configs_deep_merge(self):
+        """深いネスト構造の設定マージテスト"""
+        base_config = {
+            "settings": {
+                "editor": {
+                    "tabSize": 4,
+                    "insertSpaces": True
+                },
+                "python": {
+                    "interpreter": "python3"
                 }
-
-                config = load_config()
-
-                # ファイル設定が自動検出設定を上書きすることを確認
-                assert config["owner"] == "file_user"
-                assert config["github_token"] == "file_token"
-                assert config["dest"] == "/custom/path"
-                # ファイルにない設定は自動検出値が使われる
-                assert config["use_https"] is False
-
-        finally:
-            os.chdir(original_cwd)
-
-    def test_load_config_with_global_config_file(self, temp_dir: Path) -> None:
-        """config.jsonが存在する場合のテスト"""
-        # テスト用設定ファイルを作成
-        global_config = {"owner": "global_user", "github_token": "global_token"}
-
-        config_file = temp_dir / "config.json"
-        with open(config_file, "w", encoding="utf-8") as f:
-            json.dump(global_config, f)
-
-        # カレントディレクトリを変更してテスト
-        original_cwd = os.getcwd()
-        try:
-            os.chdir(temp_dir)
-
-            # 環境変数をクリアして実際の設定ファイルの影響を排除
-            with (
-                patch.dict(os.environ, {}, clear=True),
-                patch("src.setup_repo.config.auto_detect_config") as mock_auto,
-            ):
-                mock_auto.return_value = {
-                    "owner": "auto_user",
-                    "github_token": "auto_token",
-                    "dest": "/auto/path",
+            }
+        }
+        
+        override_config = {
+            "settings": {
+                "editor": {
+                    "tabSize": 2
+                },
+                "linter": {
+                    "enabled": True
                 }
+            }
+        }
+        
+        merged = merge_configs(base_config, override_config)
+        
+        assert merged["settings"]["editor"]["tabSize"] == 2
+        assert merged["settings"]["editor"]["insertSpaces"] is True
+        assert merged["settings"]["python"]["interpreter"] == "python3"
+        assert merged["settings"]["linter"]["enabled"] is True
 
-                config = load_config()
+    def test_validate_config_success(self):
+        """設定検証成功テスト"""
+        valid_config = {
+            "github": {
+                "username": "testuser",
+                "token": "ghp_1234567890abcdef"
+            },
+            "repositories": ["repo1", "repo2"],
+            "sync_settings": {
+                "auto_sync": True,
+                "interval": 3600
+            }
+        }
+        
+        result = validate_config(valid_config)
+        assert result["valid"] is True
+        assert len(result["errors"]) == 0
 
-                # ファイル設定が自動検出設定を上書きすることを確認
-                assert config["owner"] == "global_user"
-                assert config["github_token"] == "global_token"
-                assert config["dest"] == "/auto/path"  # ファイルにない設定
+    def test_validate_config_missing_required(self):
+        """必須設定項目不足のテスト"""
+        invalid_config = {
+            "repositories": ["repo1"]
+            # github設定が不足
+        }
+        
+        result = validate_config(invalid_config)
+        assert result["valid"] is False
+        assert any("github" in error for error in result["errors"])
 
-        finally:
-            os.chdir(original_cwd)
+    def test_validate_config_invalid_token_format(self):
+        """無効なトークン形式のテスト"""
+        invalid_config = {
+            "github": {
+                "username": "testuser",
+                "token": "invalid_token"  # 正しい形式ではない
+            },
+            "repositories": ["repo1"]
+        }
+        
+        result = validate_config(invalid_config)
+        assert result["valid"] is False
+        assert any("token" in error for error in result["errors"])
 
-    def test_load_config_local_priority_over_global(self, temp_dir: Path) -> None:
-        """config.local.jsonがconfig.jsonより優先されることをテスト"""
-        # 両方の設定ファイルを作成
-        local_config = {"owner": "local_user"}
-        global_config = {"owner": "global_user"}
+    def test_config_class_init(self):
+        """Configクラスの初期化テスト"""
+        platform_info = verify_current_platform()
+        
+        config = Config()
+        assert config.platform == platform_info.name
+        assert isinstance(config.data, dict)
 
-        local_file = temp_dir / "config.local.json"
-        global_file = temp_dir / "config.json"
-
-        with open(local_file, "w") as f:
-            json.dump(local_config, f)
-        with open(global_file, "w") as f:
-            json.dump(global_config, f)
-
-        # カレントディレクトリを変更してテスト
-        original_cwd = os.getcwd()
-        try:
-            os.chdir(temp_dir)
-
-            with patch("src.setup_repo.config.auto_detect_config") as mock_auto:
-                mock_auto.return_value = {"owner": "auto_user"}
-
-                config = load_config()
-
-                # local設定が優先されることを確認
-                assert config["owner"] == "local_user"
-
-        finally:
-            os.chdir(original_cwd)
-
-    def test_load_config_no_config_files(self, temp_dir: Path) -> None:
-        """設定ファイルが存在しない場合のテスト"""
-        # カレントディレクトリを変更してテスト
-        original_cwd = os.getcwd()
-        try:
-            os.chdir(temp_dir)
-
-            with patch("src.setup_repo.config.auto_detect_config") as mock_auto:
-                expected_config = {
-                    "owner": "auto_user",
-                    "github_token": "auto_token",
-                    "dest": "/auto/path",
+    def test_config_class_load_from_file(self):
+        """Configクラスのファイル読み込みテスト"""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            config_data = {
+                "github": {
+                    "username": "testuser",
+                    "token": "test_token"
                 }
-                mock_auto.return_value = expected_config
-
-                config = load_config()
-
-                # 自動検出設定がそのまま返されることを確認
-                assert config == expected_config
-
-        finally:
-            os.chdir(original_cwd)
-
-    def test_load_config_invalid_json_file(self, temp_dir: Path) -> None:
-        """無効なJSONファイルが存在する場合のテスト"""
-        # 無効なJSONファイルを作成
-        config_file = temp_dir / "config.local.json"
-        with open(config_file, "w") as f:
-            f.write("invalid json content")
-
-        # カレントディレクトリを変更してテスト
-        original_cwd = os.getcwd()
+            }
+            json.dump(config_data, f)
+            config_path = f.name
+        
         try:
-            os.chdir(temp_dir)
-
-            with patch("src.setup_repo.config.auto_detect_config") as mock_auto:
-                expected_config = {"owner": "auto_user"}
-                mock_auto.return_value = expected_config
-
-                # JSONDecodeErrorが発生することを確認
-                with pytest.raises(json.JSONDecodeError):
-                    load_config()
-
+            config = Config()
+            config.load_from_file(config_path)
+            
+            assert config.get("github.username") == "testuser"
+            assert config.get("github.token") == "test_token"
         finally:
-            os.chdir(original_cwd)
+            Path(config_path).unlink()
 
+    def test_config_class_get_nested_value(self):
+        """Configクラスのネストした値取得テスト"""
+        config = Config()
+        config.data = {
+            "level1": {
+                "level2": {
+                    "value": "test"
+                }
+            }
+        }
+        
+        assert config.get("level1.level2.value") == "test"
+        assert config.get("level1.level2.nonexistent") is None
+        assert config.get("level1.level2.nonexistent", "default") == "default"
 
-@pytest.mark.unit
-class TestConfigIntegration:
-    """設定管理の統合テスト"""
+    def test_config_class_set_nested_value(self):
+        """Configクラスのネストした値設定テスト"""
+        config = Config()
+        
+        config.set("github.username", "testuser")
+        config.set("github.token", "test_token")
+        
+        assert config.data["github"]["username"] == "testuser"
+        assert config.data["github"]["token"] == "test_token"
 
-    def test_full_config_loading_workflow(self, temp_dir: Path) -> None:
-        """完全な設定読み込みワークフローのテスト"""
-        # 環境変数とファイル設定を組み合わせたテスト
-        with patch.dict(os.environ, {"GITHUB_TOKEN": "env_token", "GITHUB_USER": "env_user"}):
-            # 設定ファイルを作成
-            file_config = {"dest": "/custom/destination", "use_https": True}
+    def test_config_class_platform_specific_defaults(self):
+        """プラットフォーム固有のデフォルト設定テスト"""
+        platform_info = verify_current_platform()
+        platform_config = get_platform_specific_config()
+        
+        config = Config()
+        config.apply_platform_defaults()
+        
+        assert config.get("platform.name") == platform_info.name
+        assert config.get("platform.shell") == platform_config["shell"]
 
-            config_file = temp_dir / "config.local.json"
-            with open(config_file, "w") as f:
-                json.dump(file_config, f)
+    @pytest.mark.integration
+    def test_config_full_workflow(self):
+        """設定管理の完全ワークフローテスト"""
+        platform_info = verify_current_platform()
+        
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_path = Path(temp_dir) / "config.json"
+            
+            # 1. 新しい設定を作成
+            config = Config()
+            config.set("github.username", "testuser")
+            config.set("github.token", "test_token")
+            config.apply_platform_defaults()
+            
+            # 2. ファイルに保存
+            config.save_to_file(str(config_path))
+            assert config_path.exists()
+            
+            # 3. 新しいインスタンスで読み込み
+            new_config = Config()
+            new_config.load_from_file(str(config_path))
+            
+            # 4. 設定が正しく保存・読み込みされたことを確認
+            assert new_config.get("github.username") == "testuser"
+            assert new_config.get("platform.name") == platform_info.name
 
-            # カレントディレクトリを変更してテスト
-            original_cwd = os.getcwd()
-            try:
-                os.chdir(temp_dir)
+    def test_config_environment_variable_override(self):
+        """環境変数による設定上書きテスト"""
+        with patch.dict("os.environ", {
+            "GITHUB_TOKEN": "env_token",
+            "GITHUB_USERNAME": "env_user"
+        }):
+            config = Config()
+            config.load_from_environment()
+            
+            assert config.get("github.token") == "env_token"
+            assert config.get("github.username") == "env_user"
 
-                config = load_config()
-
-                # 環境変数からの値
-                assert config["github_token"] == "env_token"
-                assert config["owner"] == "env_user"
-
-                # ファイルからの値
-                assert config["dest"] == "/custom/destination"
-                assert config["use_https"] is True
-
-                # デフォルト値
-                assert config["max_retries"] == 2
-                assert config["skip_uv_install"] is False
-
-            finally:
-                os.chdir(original_cwd)
+    def test_config_backup_and_restore(self):
+        """設定のバックアップと復元テスト"""
+        config = Config()
+        config.set("test.value", "original")
+        
+        # バックアップ作成
+        backup = config.create_backup()
+        
+        # 設定を変更
+        config.set("test.value", "modified")
+        assert config.get("test.value") == "modified"
+        
+        # バックアップから復元
+        config.restore_from_backup(backup)
+        assert config.get("test.value") == "original"

@@ -17,6 +17,8 @@ import pytest
 from setup_repo.config import load_config
 from setup_repo.sync import SyncResult, sync_repositories
 
+from ..multiplatform.helpers import check_platform_modules, verify_current_platform
+
 
 @pytest.mark.integration
 @pytest.mark.skipif(
@@ -32,6 +34,10 @@ class TestFullWorkflow:
         sample_config: dict[str, Any],
     ) -> None:
         """セットアップから同期までの完全なワークフローテスト"""
+        # プラットフォーム検証を統合
+        platform_info = verify_current_platform()
+        check_platform_modules()
+
         # 1. 設定ファイルの準備
         config_file = temp_dir / "config.json"
         with open(config_file, "w", encoding="utf-8") as f:

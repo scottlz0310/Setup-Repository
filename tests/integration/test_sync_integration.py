@@ -15,6 +15,8 @@ import pytest
 
 from setup_repo.sync import SyncResult, sync_repositories
 
+from ..multiplatform.helpers import verify_current_platform
+
 
 @pytest.mark.integration
 class TestSyncIntegration:
@@ -28,6 +30,9 @@ class TestSyncIntegration:
         mock_git_operations: Mock,
     ) -> None:
         """完全な同期ワークフローのテスト"""
+        # プラットフォーム検証を統合
+        platform_info = verify_current_platform()
+
         # テスト用のクローン先ディレクトリを設定
         clone_destination = temp_dir / "repos"
         sample_config["clone_destination"] = str(clone_destination)

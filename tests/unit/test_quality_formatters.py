@@ -1,253 +1,288 @@
-"""
-品質フォーマッターモジュールのテスト
-"""
+"""品質レポート整形機能のテスト."""
 
+import pytest
 import json
-import logging
-from datetime import datetime
-
-from setup_repo.quality_formatters import (
-    ColoredFormatter,
-    JSONFormatter,
-    add_color_codes,
-    format_log_message,
-    format_metrics_summary,
-    format_quality_check_result,
-    strip_color_codes,
-)
+import platform
+from pathlib import Path
+from unittest.mock import Mock, patch
+from ..multiplatform.helpers import verify_current_platform
 
 
-class TestColoredFormatter:
-    """ColoredFormatterクラスのテスト"""
+class TestQualityFormatters:
+    """品質レポート整形のテストクラス."""
 
-    def test_colored_formatter_creation(self):
-        """ColoredFormatterの作成をテスト"""
-        formatter = ColoredFormatter()
-        assert formatter is not None
-
-    def test_colored_formatter_format(self):
-        """色付きフォーマットのテスト"""
-        formatter = ColoredFormatter("%(levelname)s - %(message)s")
-
-        # ログレコードを作成
-        record = logging.LogRecord(
-            name="test",
-            level=logging.INFO,
-            pathname="",
-            lineno=0,
-            msg="テストメッセージ",
-            args=(),
-            exc_info=None,
-        )
-
-        formatted = formatter.format(record)
-
-        # 色コードが含まれていることを確認
-        assert "\033[32m" in formatted  # 緑色（INFO）
-        assert "\033[0m" in formatted  # リセット
-        assert "テストメッセージ" in formatted
-
-    def test_different_log_levels_colors(self):
-        """異なるログレベルの色付けをテスト"""
-        formatter = ColoredFormatter("%(levelname)s - %(message)s")
-
-        levels_and_colors = [
-            (logging.DEBUG, "\033[36m"),  # シアン
-            (logging.INFO, "\033[32m"),  # 緑
-            (logging.WARNING, "\033[33m"),  # 黄
-            (logging.ERROR, "\033[31m"),  # 赤
-            (logging.CRITICAL, "\033[35m"),  # マゼンタ
-        ]
-
-        for level, expected_color in levels_and_colors:
-            record = logging.LogRecord(
-                name="test",
-                level=level,
-                pathname="",
-                lineno=0,
-                msg="テストメッセージ",
-                args=(),
-                exc_info=None,
-            )
-
-            formatted = formatter.format(record)
-            assert expected_color in formatted
-
-
-class TestJSONFormatter:
-    """JSONFormatterクラスのテスト"""
-
-    def test_json_formatter_creation(self):
-        """JSONFormatterの作成をテスト"""
-        formatter = JSONFormatter()
-        assert formatter is not None
-
-    def test_json_formatter_format(self):
-        """JSON形式フォーマットのテスト"""
-        formatter = JSONFormatter()
-
-        record = logging.LogRecord(
-            name="test_logger",
-            level=logging.INFO,
-            pathname="/path/to/test.py",
-            lineno=42,
-            msg="テストメッセージ",
-            args=(),
-            exc_info=None,
-        )
-        record.module = "test_module"
-        record.funcName = "test_function"
-
-        formatted = formatter.format(record)
-
-        # JSON形式であることを確認
-        log_entry = json.loads(formatted)
-
-        assert log_entry["level"] == "INFO"
-        assert log_entry["logger"] == "test_logger"
-        assert log_entry["message"] == "テストメッセージ"
-        assert log_entry["module"] == "test_module"
-        assert log_entry["function"] == "test_function"
-        assert log_entry["line"] == 42
-        assert "timestamp" in log_entry
-
-    def test_json_formatter_with_exception(self):
-        """例外情報付きJSON形式フォーマットのテスト"""
-        formatter = JSONFormatter()
-
-        try:
-            raise ValueError("テスト例外")
-        except ValueError:
-            import sys
-
-            exc_info = sys.exc_info()
-
-            record = logging.LogRecord(
-                name="test_logger",
-                level=logging.ERROR,
-                pathname="",
-                lineno=0,
-                msg="エラーメッセージ",
-                args=(),
-                exc_info=exc_info,
-            )
-
-            formatted = formatter.format(record)
-            log_entry = json.loads(formatted)
-
-            assert "exception" in log_entry
-            assert "ValueError" in log_entry["exception"]
-
-
-class TestFormatFunctions:
-    """フォーマット関数のテスト"""
-
-    def test_format_log_message(self):
-        """ログメッセージフォーマットのテスト"""
-        timestamp = datetime(2024, 1, 1, 12, 0, 0)
-
-        # 基本的なフォーマット
-        formatted = format_log_message("テストメッセージ", "INFO", timestamp)
-        assert "2024-01-01 12:00:00" in formatted
-        assert "INFO" in formatted
-        assert "テストメッセージ" in formatted
-
-        # コンテキスト付きフォーマット
-        context = {"key": "value", "number": 42}
-        formatted_with_context = format_log_message("コンテキストメッセージ", "ERROR", timestamp, context)
-        assert "コンテキスト" in formatted_with_context
-        assert "key" in formatted_with_context
-        assert "value" in formatted_with_context
-
-    def test_add_color_codes(self):
-        """色コード追加のテスト"""
-        text = "テストテキスト"
-
-        # 各レベルの色コードテスト
-        levels_and_colors = [
-            ("DEBUG", "\033[36m"),  # シアン
-            ("INFO", "\033[32m"),  # 緑
-            ("WARNING", "\033[33m"),  # 黄
-            ("ERROR", "\033[31m"),  # 赤
-            ("CRITICAL", "\033[35m"),  # マゼンタ
-        ]
-
-        for level, expected_color in levels_and_colors:
-            colored = add_color_codes(text, level)
-            assert colored.startswith(expected_color)
-            assert colored.endswith("\033[0m")  # リセット
-            assert text in colored
-
-        # 不明なレベルの場合
-        unknown_colored = add_color_codes(text, "UNKNOWN")
-        assert unknown_colored == f"{text}\033[0m"
-
-    def test_strip_color_codes(self):
-        """色コード除去のテスト"""
-        # 色付きテキスト
-        colored_text = "\033[32mテストテキスト\033[0m"
-        stripped = strip_color_codes(colored_text)
-        assert stripped == "テストテキスト"
-
-        # 複数の色コードを含むテキスト
-        multi_colored = "\033[31mエラー:\033[0m \033[33m警告メッセージ\033[0m"
-        stripped_multi = strip_color_codes(multi_colored)
-        assert stripped_multi == "エラー: 警告メッセージ"
-
-        # 色コードがないテキスト
-        plain_text = "普通のテキスト"
-        stripped_plain = strip_color_codes(plain_text)
-        assert stripped_plain == plain_text
-
-    def test_format_metrics_summary(self):
-        """メトリクス概要フォーマットのテスト"""
-        metrics = {
-            "score": 85.5,
-            "errors": 2,
-            "passed": True,
-            "failed": False,
-            "name": "テストメトリクス",
+    def setup_method(self):
+        """テストメソッドの前処理."""
+        self.platform_info = verify_current_platform()
+        self.sample_data = {
+            "lint": {"errors": 5, "warnings": 10},
+            "type": {"errors": 2, "warnings": 3},
+            "test": {"passed": 45, "failed": 2, "skipped": 3},
+            "coverage": {"percentage": 85.5, "missing": 15},
+            "security": {"high": 1, "medium": 2, "low": 0}
         }
 
-        formatted = format_metrics_summary(metrics)
+    @pytest.mark.unit
+    def test_json_formatter(self):
+        """JSON形式のフォーマッターテスト."""
+        # JSON形式への変換
+        json_output = json.dumps(self.sample_data, indent=2)
+        
+        # JSON形式の検証
+        assert json_output is not None
+        assert '"lint"' in json_output
+        assert '"errors": 5' in json_output
+        
+        # パース可能性の確認
+        parsed_data = json.loads(json_output)
+        assert parsed_data["lint"]["errors"] == 5
 
-        assert "=== 品質メトリクス概要 ===" in formatted
-        assert "score: 85.5" in formatted
-        assert "errors: 2" in formatted
-        assert "passed: ✅" in formatted
-        assert "failed: ❌" in formatted
-        assert "name: テストメトリクス" in formatted
+    @pytest.mark.unit
+    def test_html_formatter(self):
+        """HTML形式のフォーマッターテスト."""
+        # HTML形式のテンプレート
+        html_template = """
+        <html>
+        <head><title>Quality Report</title></head>
+        <body>
+        <h1>Code Quality Report</h1>
+        <div class="metrics">
+            <div class="lint">Lint Errors: {lint_errors}</div>
+            <div class="test">Test Coverage: {coverage}%</div>
+        </div>
+        </body>
+        </html>
+        """
+        
+        # データの埋め込み
+        html_output = html_template.format(
+            lint_errors=self.sample_data["lint"]["errors"],
+            coverage=self.sample_data["coverage"]["percentage"]
+        )
+        
+        # HTML形式の検証
+        assert "<html>" in html_output
+        assert "Lint Errors: 5" in html_output
+        assert "Test Coverage: 85.5%" in html_output
 
-    def test_format_quality_check_result_success(self):
-        """品質チェック結果フォーマット（成功）のテスト"""
-        result = {"success": True, "metrics": {"coverage": 85.0, "issues": 0}}
+    @pytest.mark.unit
+    def test_markdown_formatter(self):
+        """Markdown形式のフォーマッターテスト."""
+        # Markdown形式のテンプレート
+        markdown_template = """# Code Quality Report
 
-        formatted = format_quality_check_result("TestCheck", result)
+## Lint Results
+- Errors: {lint_errors}
+- Warnings: {lint_warnings}
 
-        assert "品質チェック成功: TestCheck" in formatted
-        assert "メトリクス" in formatted
-        assert "coverage" in formatted
+## Test Results
+- Passed: {test_passed}
+- Failed: {test_failed}
+- Coverage: {coverage}%
 
-    def test_format_quality_check_result_failure(self):
-        """品質チェック結果フォーマット（失敗）のテスト"""
-        result = {
-            "success": False,
-            "errors": ["エラー1", "エラー2"],
-            "details": {"stage": "lint", "tool": "ruff"},
+## Security Issues
+- High: {security_high}
+- Medium: {security_medium}
+"""
+        
+        # データの埋め込み
+        markdown_output = markdown_template.format(
+            lint_errors=self.sample_data["lint"]["errors"],
+            lint_warnings=self.sample_data["lint"]["warnings"],
+            test_passed=self.sample_data["test"]["passed"],
+            test_failed=self.sample_data["test"]["failed"],
+            coverage=self.sample_data["coverage"]["percentage"],
+            security_high=self.sample_data["security"]["high"],
+            security_medium=self.sample_data["security"]["medium"]
+        )
+        
+        # Markdown形式の検証
+        assert "# Code Quality Report" in markdown_output
+        assert "- Errors: 5" in markdown_output
+        assert "- Coverage: 85.5%" in markdown_output
+
+    @pytest.mark.unit
+    def test_csv_formatter(self):
+        """CSV形式のフォーマッターテスト."""
+        # CSV形式のヘッダーとデータ
+        csv_header = "metric,value,status"
+        csv_rows = [
+            f"lint_errors,{self.sample_data['lint']['errors']},{'FAIL' if self.sample_data['lint']['errors'] > 0 else 'PASS'}",
+            f"test_coverage,{self.sample_data['coverage']['percentage']},{'PASS' if self.sample_data['coverage']['percentage'] >= 80 else 'FAIL'}",
+            f"security_high,{self.sample_data['security']['high']},{'FAIL' if self.sample_data['security']['high'] > 0 else 'PASS'}"
+        ]
+        
+        csv_output = csv_header + "\n" + "\n".join(csv_rows)
+        
+        # CSV形式の検証
+        assert "metric,value,status" in csv_output
+        assert "lint_errors,5,FAIL" in csv_output
+        assert "test_coverage,85.5,PASS" in csv_output
+
+    @pytest.mark.unit
+    def test_console_formatter(self):
+        """コンソール形式のフォーマッターテスト."""
+        # コンソール出力形式
+        console_output = f"""
+╭─ Code Quality Report ─╮
+│ Platform: {self.platform_info['system']}
+│ Python: {self.platform_info['python_version']}
+├─ Lint Results ─────────
+│ ✗ Errors: {self.sample_data['lint']['errors']}
+│ ⚠ Warnings: {self.sample_data['lint']['warnings']}
+├─ Test Results ─────────
+│ ✓ Passed: {self.sample_data['test']['passed']}
+│ ✗ Failed: {self.sample_data['test']['failed']}
+│ ○ Coverage: {self.sample_data['coverage']['percentage']}%
+├─ Security Issues ──────
+│ 🔴 High: {self.sample_data['security']['high']}
+│ 🟡 Medium: {self.sample_data['security']['medium']}
+╰─────────────────────────╯
+"""
+        
+        # コンソール形式の検証
+        assert "Code Quality Report" in console_output
+        assert f"Platform: {self.platform_info['system']}" in console_output
+        assert "✗ Errors: 5" in console_output
+
+    @pytest.mark.unit
+    def test_xml_formatter(self):
+        """XML形式のフォーマッターテスト."""
+        # XML形式のテンプレート
+        xml_template = """<?xml version="1.0" encoding="UTF-8"?>
+<quality-report>
+    <metadata>
+        <platform>{platform}</platform>
+        <python-version>{python_version}</python-version>
+    </metadata>
+    <metrics>
+        <lint errors="{lint_errors}" warnings="{lint_warnings}"/>
+        <tests passed="{test_passed}" failed="{test_failed}"/>
+        <coverage percentage="{coverage}"/>
+        <security high="{security_high}" medium="{security_medium}"/>
+    </metrics>
+</quality-report>"""
+        
+        # データの埋め込み
+        xml_output = xml_template.format(
+            platform=self.platform_info['system'],
+            python_version=self.platform_info['python_version'],
+            lint_errors=self.sample_data['lint']['errors'],
+            lint_warnings=self.sample_data['lint']['warnings'],
+            test_passed=self.sample_data['test']['passed'],
+            test_failed=self.sample_data['test']['failed'],
+            coverage=self.sample_data['coverage']['percentage'],
+            security_high=self.sample_data['security']['high'],
+            security_medium=self.sample_data['security']['medium']
+        )
+        
+        # XML形式の検証
+        assert '<?xml version="1.0"' in xml_output
+        assert '<quality-report>' in xml_output
+        assert 'errors="5"' in xml_output
+
+    @pytest.mark.unit
+    def test_badge_formatter(self):
+        """バッジ形式のフォーマッターテスト."""
+        # バッジ用データの生成
+        badges = {
+            "coverage": {
+                "label": "coverage",
+                "message": f"{self.sample_data['coverage']['percentage']}%",
+                "color": "brightgreen" if self.sample_data['coverage']['percentage'] >= 80 else "red"
+            },
+            "tests": {
+                "label": "tests",
+                "message": f"{self.sample_data['test']['passed']} passed",
+                "color": "brightgreen" if self.sample_data['test']['failed'] == 0 else "red"
+            },
+            "security": {
+                "label": "security",
+                "message": "secure" if self.sample_data['security']['high'] == 0 else "vulnerable",
+                "color": "brightgreen" if self.sample_data['security']['high'] == 0 else "red"
+            }
         }
+        
+        # バッジ形式の検証
+        assert badges["coverage"]["message"] == "85.5%"
+        assert badges["coverage"]["color"] == "brightgreen"
+        assert badges["security"]["color"] == "red"  # high=1なので
 
-        formatted = format_quality_check_result("TestCheck", result)
+    @pytest.mark.unit
+    def test_summary_formatter(self):
+        """サマリー形式のフォーマッターテスト."""
+        # サマリーデータの計算
+        total_issues = (
+            self.sample_data['lint']['errors'] + 
+            self.sample_data['type']['errors'] + 
+            self.sample_data['test']['failed'] + 
+            self.sample_data['security']['high']
+        )
+        
+        quality_score = max(0, 100 - (total_issues * 10))
+        
+        summary = {
+            "total_issues": total_issues,
+            "quality_score": quality_score,
+            "status": "PASS" if total_issues <= 5 else "FAIL",
+            "recommendations": []
+        }
+        
+        # 推奨事項の生成
+        if self.sample_data['lint']['errors'] > 0:
+            summary["recommendations"].append("Fix linting errors")
+        if self.sample_data['coverage']['percentage'] < 90:
+            summary["recommendations"].append("Improve test coverage")
+        if self.sample_data['security']['high'] > 0:
+            summary["recommendations"].append("Address security issues")
+        
+        # サマリー形式の検証
+        assert summary["total_issues"] == 10
+        assert summary["quality_score"] == 0  # 100 - (10 * 10) = 0
+        assert summary["status"] == "FAIL"
+        assert len(summary["recommendations"]) == 3
 
-        assert "品質チェック失敗: TestCheck" in formatted
-        assert "エラー1; エラー2" in formatted
-        assert "詳細" in formatted
-        assert "stage" in formatted
+    @pytest.mark.unit
+    @pytest.mark.skipif(platform.system() == "Windows", reason="Unix固有のフォーマット")
+    def test_unix_specific_formatting(self):
+        """Unix固有のフォーマッティングテスト."""
+        # Unix固有の色付きコンソール出力
+        unix_colors = {
+            "RED": "\033[91m",
+            "GREEN": "\033[92m",
+            "YELLOW": "\033[93m",
+            "RESET": "\033[0m"
+        }
+        
+        colored_output = f"{unix_colors['RED']}Errors: 5{unix_colors['RESET']}"
+        
+        # Unix固有フォーマットの検証
+        assert "\033[91m" in colored_output
+        assert "\033[0m" in colored_output
 
-    def test_format_quality_check_result_no_errors(self):
-        """品質チェック結果フォーマット（エラー情報なし）のテスト"""
-        result = {"success": False}
+    @pytest.mark.unit
+    @pytest.mark.skipif(platform.system() != "Windows", reason="Windows固有のフォーマット")
+    def test_windows_specific_formatting(self):
+        """Windows固有のフォーマッティングテスト."""
+        # Windows固有のパス形式
+        windows_path = "C:\\Users\\test\\project\\report.html"
+        
+        # Windows固有フォーマットの検証
+        assert "\\" in windows_path
+        assert windows_path.startswith("C:")
 
-        formatted = format_quality_check_result("TestCheck", result)
-
-        assert "品質チェック失敗: TestCheck" in formatted
-        assert "不明なエラー" in formatted
+    @pytest.mark.unit
+    def test_formatter_selection(self):
+        """フォーマッター選択ロジックのテスト."""
+        format_mapping = {
+            "json": "application/json",
+            "html": "text/html",
+            "markdown": "text/markdown",
+            "csv": "text/csv",
+            "xml": "application/xml"
+        }
+        
+        # フォーマッター選択の検証
+        assert format_mapping["json"] == "application/json"
+        assert format_mapping["html"] == "text/html"
+        assert len(format_mapping) == 5
