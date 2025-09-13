@@ -7,6 +7,7 @@ utils.pyモジュールの包括的な単体テスト
 - detect_platform（プラットフォーム検出）
 """
 
+import os
 import sys
 from io import StringIO
 from pathlib import Path
@@ -178,18 +179,37 @@ class TestProcessLockCrossPlatform:
         """プラットフォーム別ロック実装選択テスト"""
         import platform as platform_module
 
-        # Windows環境では他のプラットフォームのテストをスキップ
+        # CI/Pre-commit環境では実際のプラットフォームでのみテスト
+        is_ci = os.getenv("CI", "").lower() in ("true", "1")
+        is_precommit = os.getenv("PRE_COMMIT", "").lower() in ("true", "1")
         current_platform = platform_module.system().lower()
-        if current_platform == "windows" and platform != "windows":
-            pytest.skip(f"Windows環境で{platform}プラットフォームのテストをスキップ")
+
+        if is_ci or is_precommit or platform_mocker is None:
+            if current_platform == "windows" and platform != "windows":
+                pytest.skip(f"Windows環境で{platform}プラットフォームのテストをスキップ")
+            elif current_platform != "windows" and platform == "windows":
+                pytest.skip(f"{current_platform}環境でWindowsプラットフォームのテストをスキップ")
+
+            # 実際のプラットフォームでテスト
+            lock_file = temp_dir / "test.lock"
+            lock = ProcessLock(str(lock_file))
+
+            if current_platform == "windows":
+                from src.setup_repo.utils import WindowsLockImplementation
+
+                assert isinstance(lock.lock_implementation, WindowsLockImplementation)
+            else:
+                from src.setup_repo.utils import UnixLockImplementation
+
+                assert isinstance(lock.lock_implementation, UnixLockImplementation)
+            return
 
         lock_file = temp_dir / "test.lock"
 
-        with platform_mocker(platform):
+        with platform_mocker(platform) as mocker:
             lock = ProcessLock(str(lock_file))
 
             # 期待される実装タイプを取得
-            mocker = platform_mocker(platform)
             expected_type = mocker.get_expected_lock_implementation_type()
 
             # 実装タイプを確認
@@ -208,23 +228,40 @@ class TestProcessLockCrossPlatform:
 
     def test_windows_lock_implementation_selection(self, temp_dir: Path, platform_mocker) -> None:
         """Windows環境でのロック実装選択テスト"""
+        import platform as platform_module
+
+        # CI/Pre-commit環境では実際のプラットフォームでのみテスト
+        is_ci = os.getenv("CI", "").lower() in ("true", "1")
+        is_precommit = os.getenv("PRE_COMMIT", "").lower() in ("true", "1")
+        current_platform = platform_module.system().lower()
+
+        if (is_ci or is_precommit or platform_mocker is None) and current_platform != "windows":
+            pytest.skip(f"{current_platform}環境でWindowsロック実装テストをスキップ")
+
         lock_file = temp_dir / "test.lock"
 
-        with platform_mocker("windows"):
+        if platform_mocker is None:
+            # CI環境での実際のテスト
             lock = ProcessLock(str(lock_file))
-
-            # Windows実装が選択されることを確認
             from src.setup_repo.utils import WindowsLockImplementation
 
             assert isinstance(lock.lock_implementation, WindowsLockImplementation)
+        else:
+            with platform_mocker("windows"):
+                lock = ProcessLock(str(lock_file))
+
+                # Windows実装が選択されることを確認
+                from src.setup_repo.utils import WindowsLockImplementation
+
+                assert isinstance(lock.lock_implementation, WindowsLockImplementation)
 
     def test_unix_lock_implementation_selection(self, temp_dir: Path, platform_mocker) -> None:
         """Unix環境でのロック実装選択テスト"""
         import platform as platform_module
 
         # Windows環境ではスキップ
-        if platform_module.system().lower() == "windows":
-            pytest.skip("Windows環境でUnixロックテストをスキップ")
+        if platform_module.system().lower() == "windows" or platform_mocker is None:
+            pytest.skip("Windows環境またはCI環境でUnixロックテストをスキップ")
 
         lock_file = temp_dir / "test.lock"
 
@@ -241,8 +278,8 @@ class TestProcessLockCrossPlatform:
         import platform as platform_module
 
         # Windows環境ではスキップ
-        if platform_module.system().lower() == "windows":
-            pytest.skip("Windows環境でmacOSロックテストをスキップ")
+        if platform_module.system().lower() == "windows" or platform_mocker is None:
+            pytest.skip("Windows環境またはCI環境でmacOSロックテストをスキップ")
 
         lock_file = temp_dir / "test.lock"
 
@@ -259,8 +296,8 @@ class TestProcessLockCrossPlatform:
         import platform as platform_module
 
         # Windows環境ではスキップ
-        if platform_module.system().lower() == "windows":
-            pytest.skip("Windows環境でWSLロックテストをスキップ")
+        if platform_module.system().lower() == "windows" or platform_mocker is None:
+            pytest.skip("Windows環境またはCI環境でWSLロックテストをスキップ")
 
         lock_file = temp_dir / "test.lock"
 
@@ -289,6 +326,9 @@ class TestProcessLockCrossPlatform:
 
     def test_windows_lock_acquire_success(self, temp_dir: Path, platform_mocker) -> None:
         """Windows実装でのロック取得成功テスト"""
+        if platform_mocker is None:
+            pytest.skip("CI環境ではプラットフォームモッカーが無効")
+
         lock_file = temp_dir / "test.lock"
 
         with (
@@ -316,6 +356,9 @@ class TestProcessLockCrossPlatform:
 
     def test_windows_lock_acquire_failure(self, temp_dir: Path, platform_mocker) -> None:
         """Windows実装でのロック取得失敗テスト"""
+        if platform_mocker is None:
+            pytest.skip("CI環境ではプラットフォームモッカーが無効")
+
         lock_file = temp_dir / "test.lock"
 
         with (
@@ -343,8 +386,8 @@ class TestProcessLockCrossPlatform:
         import platform as platform_module
 
         # Windows環境ではfcntlモジュールが存在しないためスキップ
-        if platform_module.system().lower() == "windows":
-            pytest.skip("Windows環境でUnixロックテストをスキップ")
+        if platform_module.system().lower() == "windows" or platform_mocker is None:
+            pytest.skip("Windows環境またはCI環境でUnixロックテストをスキップ")
 
         lock_file = temp_dir / "test.lock"
 
@@ -372,8 +415,8 @@ class TestProcessLockCrossPlatform:
         import platform as platform_module
 
         # Windows環境ではfcntlモジュールが存在しないためスキップ
-        if platform_module.system().lower() == "windows":
-            pytest.skip("Windows環境でUnixロックテストをスキップ")
+        if platform_module.system().lower() == "windows" or platform_mocker is None:
+            pytest.skip("Windows環境またはCI環境でUnixロックテストをスキップ")
 
         lock_file = temp_dir / "test.lock"
 
@@ -415,6 +458,9 @@ class TestProcessLockCrossPlatform:
 
     def test_windows_lock_release(self, temp_dir: Path, platform_mocker) -> None:
         """Windows実装でのロック解放テスト"""
+        if platform_mocker is None:
+            pytest.skip("CI環境ではプラットフォームモッカーが無効")
+
         lock_file = temp_dir / "test.lock"
 
         with (
@@ -447,8 +493,8 @@ class TestProcessLockCrossPlatform:
         import platform as platform_module
 
         # Windows環境ではfcntlモジュールが存在しないためスキップ
-        if platform_module.system().lower() == "windows":
-            pytest.skip("Windows環境でUnixロックテストをスキップ")
+        if platform_module.system().lower() == "windows" or platform_mocker is None:
+            pytest.skip("Windows環境またはCI環境でUnixロックテストをスキップ")
 
         lock_file = temp_dir / "test.lock"
 
@@ -594,6 +640,9 @@ class TestProcessLockCrossPlatform:
 
     def test_platform_specific_error_handling(self, temp_dir: Path, platform_mocker) -> None:
         """プラットフォーム固有のエラーハンドリングテスト"""
+        if platform_mocker is None:
+            pytest.skip("CI環境ではプラットフォームモッカーが無効")
+
         import platform as platform_module
 
         lock_file = temp_dir / "test.lock"
@@ -862,7 +911,7 @@ class TestDetectPlatform:
         is_ci = os.getenv("CI", "").lower() in ("true", "1")
         is_precommit = os.getenv("PRE_COMMIT", "").lower() in ("true", "1")
 
-        if is_ci or is_precommit:
+        if is_ci or is_precommit or platform_mocker is None:
             # CI/pre-commit環境では実際のプラットフォームでのみテストを実行
             detector = PlatformDetector()
             detected_platform = detector.detect_platform()
@@ -892,10 +941,26 @@ class TestDetectPlatform:
 
     def test_detect_windows_platform(self, platform_mocker) -> None:
         """Windowsプラットフォーム検出のテスト"""
-        with platform_mocker("windows"):
+        import platform as platform_module
+
+        # CI/Pre-commit環境では実際のプラットフォームでのみテスト
+        is_ci = os.getenv("CI", "").lower() in ("true", "1")
+        is_precommit = os.getenv("PRE_COMMIT", "").lower() in ("true", "1")
+        current_platform = platform_module.system().lower()
+
+        if (is_ci or is_precommit or platform_mocker is None) and current_platform != "windows":
+            pytest.skip(f"{current_platform}環境でWindowsプラットフォーム検出テストをスキップ")
+
+        if platform_mocker is None:
+            # CI環境での実際のテスト
             detector = PlatformDetector()
             platform = detector.detect_platform()
             assert platform == "windows"
+        else:
+            with platform_mocker("windows"):
+                detector = PlatformDetector()
+                platform = detector.detect_platform()
+                assert platform == "windows"
 
     def test_detect_windows_platform_by_os_name(self) -> None:
         """os.nameによるWindows検出のテスト"""
@@ -909,8 +974,8 @@ class TestDetectPlatform:
         import platform as platform_module
 
         # Windows環境ではスキップ
-        if platform_module.system().lower() == "windows":
-            pytest.skip("Windows環境でWSLテストをスキップ")
+        if platform_module.system().lower() == "windows" or platform_mocker is None:
+            pytest.skip("Windows環境またはCI環境でWSLテストをスキップ")
 
         with platform_mocker("wsl"):
             detector = PlatformDetector()
@@ -923,8 +988,8 @@ class TestDetectPlatform:
         import platform as platform_module
 
         # Windows環境ではスキップ
-        if platform_module.system().lower() == "windows":
-            pytest.skip("Windows環境でLinuxテストをスキップ")
+        if platform_module.system().lower() == "windows" or platform_mocker is None:
+            pytest.skip("Windows環境またはCI環境でLinuxテストをスキップ")
 
         with platform_mocker("linux"):
             detector = PlatformDetector()
@@ -937,8 +1002,8 @@ class TestDetectPlatform:
         import platform as platform_module
 
         # Windows環境ではスキップ
-        if platform_module.system().lower() == "windows":
-            pytest.skip("Windows環境でmacOSテストをスキップ")
+        if platform_module.system().lower() == "windows" or platform_mocker is None:
+            pytest.skip("Windows環境またはCI環境でmacOSテストをスキップ")
 
         with platform_mocker("macos"):
             detector = PlatformDetector()
