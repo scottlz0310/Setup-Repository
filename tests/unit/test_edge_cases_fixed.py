@@ -4,9 +4,10 @@
 実際のシステム呼び出しを避け、ロジックのみをテスト
 """
 
-import pytest
 from typing import Any
-from pathlib import Path
+
+import pytest
+
 from setup_repo.github_api import GitHubAPI, GitHubAPIError
 
 
@@ -23,14 +24,14 @@ class EdgeCaseValidator:
     @staticmethod
     def validate_special_characters(text: str) -> dict:
         """特殊文字の検証"""
-        special_chars = ['!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '<', '>', '?', ':', '"', '{', '}', '|']
+        special_chars = ["!", "@", "#", "$", "%", "^", "&", "*", "(", ")", "<", ">", "?", ":", '"', "{", "}", "|"]
         found_chars = [char for char in special_chars if char in text]
-        
+
         return {
             "has_special_chars": len(found_chars) > 0,
             "found_chars": found_chars,
             "is_safe": len(found_chars) == 0,
-            "sanitized": ''.join(char if char not in special_chars else '_' for char in text)
+            "sanitized": "".join(char if char not in special_chars else "_" for char in text),
         }
 
     @staticmethod
@@ -40,7 +41,7 @@ class EdgeCaseValidator:
             "length": len(text),
             "is_valid": len(text) <= max_length,
             "is_empty": len(text) == 0,
-            "truncated": text[:max_length] if len(text) > max_length else text
+            "truncated": text[:max_length] if len(text) > max_length else text,
         }
 
 
@@ -51,7 +52,7 @@ class TestEmptyAndNullValues:
     def test_empty_string_validation(self):
         """空文字列の検証テスト"""
         empty_values = ["", None, [], {}, 0, False]
-        
+
         for empty_value in empty_values:
             result = EdgeCaseValidator.validate_empty_values(empty_value)
             assert not result, f"空値 {empty_value} が有効と判定されました"
@@ -59,7 +60,7 @@ class TestEmptyAndNullValues:
     def test_valid_values(self):
         """有効な値の検証テスト"""
         valid_values = ["test", "valid_string", [1, 2, 3], {"key": "value"}, 1, True]
-        
+
         for valid_value in valid_values:
             result = EdgeCaseValidator.validate_empty_values(valid_value)
             assert result, f"有効な値 {valid_value} が無効と判定されました"
@@ -67,7 +68,7 @@ class TestEmptyAndNullValues:
     def test_whitespace_validation(self):
         """空白文字の検証テスト"""
         whitespace_values = [" ", "\t", "\n", "\r", "   "]
-        
+
         for whitespace in whitespace_values:
             # 空白文字は技術的には空ではないが、実用的には空として扱う
             is_effectively_empty = whitespace.strip() == ""
@@ -82,14 +83,14 @@ class TestSpecialCharacters:
         """特殊文字の検出テスト"""
         test_cases = [
             ("normal_text", False, []),
-            ("text_with_!@#", True, ['!', '@', '#']),
-            ("file<>name", True, ['<', '>']),
+            ("text_with_!@#", True, ["!", "@", "#"]),
+            ("file<>name", True, ["<", ">"]),
             ("path/to/file", False, []),  # スラッシュは特殊文字リストにない
         ]
-        
+
         for text, should_have_special, expected_chars in test_cases:
             result = EdgeCaseValidator.validate_special_characters(text)
-            
+
             assert result["has_special_chars"] == should_have_special
             for char in expected_chars:
                 assert char in result["found_chars"]
@@ -101,7 +102,7 @@ class TestSpecialCharacters:
             ("normal_repo", "normal_repo"),
             ("repo<>name", "repo__name"),
         ]
-        
+
         for input_text, expected_output in test_cases:
             result = EdgeCaseValidator.validate_special_characters(input_text)
             assert result["sanitized"] == expected_output
@@ -110,7 +111,7 @@ class TestSpecialCharacters:
         """Unicode文字の処理テスト"""
         unicode_strings = [
             "リポジトリ",
-            "测试仓库", 
+            "测试仓库",
             "🚀-rocket-repo",
             "café-münü-naïve",
         ]
@@ -118,14 +119,14 @@ class TestSpecialCharacters:
         for unicode_str in unicode_strings:
             # Unicode文字列の基本的な処理テスト
             try:
-                encoded = unicode_str.encode('utf-8')
-                decoded = encoded.decode('utf-8')
+                encoded = unicode_str.encode("utf-8")
+                decoded = encoded.decode("utf-8")
                 assert decoded == unicode_str
-                
+
                 # 特殊文字検証も実行
                 result = EdgeCaseValidator.validate_special_characters(unicode_str)
                 assert "sanitized" in result
-                
+
             except Exception as e:
                 pytest.fail(f"Unicode文字列 '{unicode_str}' の処理に失敗: {e}")
 
@@ -142,10 +143,10 @@ class TestBoundaryValues:
             ("a" * 255, 255, True, False),  # 最大長
             ("a" * 256, 256, False, False),  # 最大長超過
         ]
-        
+
         for text, expected_length, should_be_valid, should_be_empty in test_cases:
             result = EdgeCaseValidator.validate_string_length(text, max_length=255)
-            
+
             assert result["length"] == expected_length
             assert result["is_valid"] == should_be_valid
             assert result["is_empty"] == should_be_empty
@@ -154,9 +155,9 @@ class TestBoundaryValues:
         """文字列切り詰めテスト"""
         long_text = "a" * 300
         max_length = 100
-        
+
         result = EdgeCaseValidator.validate_string_length(long_text, max_length)
-        
+
         assert len(result["truncated"]) == max_length
         assert result["truncated"] == "a" * max_length
         assert not result["is_valid"]
@@ -166,10 +167,10 @@ class TestBoundaryValues:
         extreme_cases = [
             (0, "zero"),
             (2**31 - 1, "max_int_32"),
-            (-2**31, "min_int_32"),
+            (-(2**31), "min_int_32"),
             (1.7976931348623157e308, "max_float"),
         ]
-        
+
         for value, description in extreme_cases:
             # 極端な値の文字列変換テスト
             try:
@@ -189,9 +190,9 @@ class TestConfigurationValidation:
         valid_config = {
             "github_token": "valid_token",
             "github_username": "valid_user",
-            "clone_destination": "/valid/path"
+            "clone_destination": "/valid/path",
         }
-        
+
         # 各フィールドの検証
         for key, value in valid_config.items():
             assert EdgeCaseValidator.validate_empty_values(value), f"{key} が無効です"
@@ -204,27 +205,27 @@ class TestConfigurationValidation:
             {"github_token": "token", "github_username": "user", "clone_destination": ""},
             {"github_token": None, "github_username": "user", "clone_destination": "/path"},
         ]
-        
+
         for config in invalid_configs:
             has_invalid = False
             for key, value in config.items():
                 if not EdgeCaseValidator.validate_empty_values(value):
                     has_invalid = True
                     break
-            
+
             assert has_invalid, f"無効な設定が検出されませんでした: {config}"
 
     def test_timeout_validation(self):
         """タイムアウト値の検証テスト"""
         timeout_cases = [
-            (0, False),      # 無効
-            (-1, False),     # 無効
-            (0.001, True),   # 有効（最小値）
-            (1, True),       # 有効
-            (3600, True),    # 有効（1時間）
-            (86400, True),   # 有効（1日）
+            (0, False),  # 無効
+            (-1, False),  # 無効
+            (0.001, True),  # 有効（最小値）
+            (1, True),  # 有効
+            (3600, True),  # 有効（1時間）
+            (86400, True),  # 有効（1日）
         ]
-        
+
         for timeout_value, should_be_valid in timeout_cases:
             is_valid = timeout_value > 0
             assert is_valid == should_be_valid, f"タイムアウト値 {timeout_value} の検証が不正確です"
@@ -241,27 +242,28 @@ class TestActualCodeIntegration:
         assert api.token == "test_token"
         assert api.username == "test_user"
         assert "Authorization" in api.headers
-        
+
         # エラーケース
         with pytest.raises(GitHubAPIError):
             GitHubAPI("", "test_user")
-            
+
         with pytest.raises(GitHubAPIError):
             GitHubAPI("test_token", "")
 
     def test_platform_detection_import(self):
         """プラットフォーム検出モジュールのインポートテスト"""
         from setup_repo.platform_detector import detect_platform
-        
+
         # 実際の関数を呼び出してカバレッジを向上
         platform_info = detect_platform()
-        assert hasattr(platform_info, 'name')
-        assert hasattr(platform_info, 'shell')
+        assert hasattr(platform_info, "name")
+        assert hasattr(platform_info, "shell")
 
     def test_config_module_import(self):
         """設定モジュールのインポートテスト"""
         try:
             from setup_repo.config import load_config
+
             # 関数が存在することを確認
             assert callable(load_config)
         except ImportError:
@@ -282,11 +284,11 @@ class TestDataStructureValidation:
             "ssh_url": "git@github.com:user/test-repo.git",
             "description": "Test repository",
             "private": False,
-            "default_branch": "main"
+            "default_branch": "main",
         }
-        
+
         required_fields = ["name", "full_name", "clone_url"]
-        
+
         for field in required_fields:
             assert field in valid_repo, f"必須フィールド {field} が不足しています"
             assert EdgeCaseValidator.validate_empty_values(valid_repo[field]), f"{field} が空です"
@@ -297,18 +299,18 @@ class TestDataStructureValidation:
             {"name": "", "clone_url": "url"},  # 空の名前
             {"name": 123, "clone_url": "url"},  # 不正な型
         ]
-        
+
         for repo in malformed_repos:
             # 基本的な検証
             has_name = "name" in repo
             name_valid = has_name and EdgeCaseValidator.validate_empty_values(repo.get("name"))
             name_is_string = has_name and isinstance(repo.get("name"), str)
-            
+
             is_valid_repo = has_name and name_valid and name_is_string
-            
+
             # 少なくとも一つの問題があることを確認
             assert not is_valid_repo, f"不正形式データが有効と判定されました: {repo}"
-            
+
         # 有効なデータのテスト
         valid_repo = {"name": "test", "clone_url": "https://github.com/user/test.git"}
         has_name = "name" in valid_repo

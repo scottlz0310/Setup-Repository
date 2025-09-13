@@ -5,6 +5,7 @@ GitHub API機能の修正されたテスト
 """
 
 from unittest.mock import Mock, patch
+
 import pytest
 import requests
 
@@ -26,7 +27,7 @@ class TestGitHubAPI:
         """無効なパラメータでの初期化エラーテスト"""
         with pytest.raises(GitHubAPIError, match="GitHubトークンが必要です"):
             GitHubAPI("", "testuser")
-            
+
         with pytest.raises(GitHubAPIError, match="GitHubユーザー名が必要です"):
             GitHubAPI("test_token", "")
 
@@ -36,11 +37,7 @@ class TestGitHubAPI:
         # モックレスポンスの設定
         mock_response = Mock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "login": "testuser",
-            "name": "Test User",
-            "email": "test@example.com"
-        }
+        mock_response.json.return_value = {"login": "testuser", "name": "Test User", "email": "test@example.com"}
         mock_response.raise_for_status.return_value = None
         mock_get.return_value = mock_response
 
@@ -61,7 +58,7 @@ class TestGitHubAPI:
         mock_get.return_value = mock_response
 
         api = GitHubAPI("invalid_token", "testuser")
-        
+
         with pytest.raises(GitHubAPIError, match="認証に失敗"):
             api.get_user_info()
 
@@ -79,7 +76,7 @@ class TestGitHubAPI:
                 "clone_url": "https://github.com/testuser/repo1.git",
                 "ssh_url": "git@github.com:testuser/repo1.git",
                 "description": "Test repository",
-                "default_branch": "main"
+                "default_branch": "main",
             }
         ]
         mock_response.raise_for_status.return_value = None
@@ -106,7 +103,7 @@ class TestGitHubAPI:
                 "clone_url": "https://github.com/testuser/repo1.git",
                 "ssh_url": "git@github.com:testuser/repo1.git",
                 "description": "Test repository",
-                "default_branch": "main"
+                "default_branch": "main",
             }
         ]
         mock_response.raise_for_status.return_value = None
@@ -131,7 +128,7 @@ class TestGitHubAPI:
                 "clone_url": "https://github.com/testuser/public-repo.git",
                 "ssh_url": "git@github.com:testuser/public-repo.git",
                 "description": "Public repository",
-                "default_branch": "main"
+                "default_branch": "main",
             }
         ]
         mock_response.raise_for_status.return_value = None
@@ -150,23 +147,23 @@ class TestGitHubAPI:
         mock_get.side_effect = requests.exceptions.ConnectionError("Network error")
 
         api = GitHubAPI("test_token", "testuser")
-        
+
         with pytest.raises(GitHubAPIError, match="ネットワークエラー"):
             api.get_user_info()
 
     def test_headers_construction(self):
         """ヘッダー構築ロジックのテスト（外部依存なし）"""
         api = GitHubAPI("test_token", "testuser")
-        
+
         # 内部属性のテスト
         assert api.username == "testuser"
         assert api.token == "test_token"
-        
+
         # ヘッダー構築のテスト
         expected_headers = {
             "Authorization": "token test_token",
             "Accept": "application/vnd.github.v3+json",
-            "User-Agent": "setup-repo/1.0"
+            "User-Agent": "setup-repo/1.0",
         }
         for key, value in expected_headers.items():
             assert api.headers.get(key) == value

@@ -4,9 +4,9 @@
 実際のGit操作を避けて基本的なロジックのみをテストします。
 """
 
-import pytest
 from typing import Any
-from pathlib import Path
+
+import pytest
 
 
 class EdgeCaseGenerator:
@@ -37,10 +37,17 @@ class TestEmptyAndNullValues:
     def test_empty_string_validation(self) -> None:
         """空文字列の検証テスト"""
         empty_values = EdgeCaseGenerator.get_empty_values()
-        
+
         for empty_value in empty_values:
             # 空値の基本的な検証
-            if empty_value == "" or empty_value is None or empty_value == [] or empty_value == {} or empty_value == 0 or empty_value is False:
+            if (
+                empty_value == ""
+                or empty_value is None
+                or empty_value == []
+                or empty_value == {}
+                or empty_value == 0
+                or empty_value is False
+            ):
                 print(f"空値 {empty_value} を検出")
                 assert not bool(empty_value) or empty_value == 0
 
@@ -56,7 +63,7 @@ class TestEmptyAndNullValues:
         for key in base_config:
             test_config = base_config.copy()
             test_config[key] = None
-            
+
             # None値の基本的な検証
             assert test_config[key] is None
             print(f"{key}=None の設定を検証")
@@ -64,7 +71,7 @@ class TestEmptyAndNullValues:
     def test_whitespace_only_validation(self) -> None:
         """空白文字のみの入力検証テスト"""
         whitespace_values = [" ", "\t", "\n", "\r", "   "]
-        
+
         for whitespace in whitespace_values:
             # 空白文字の基本的な検証
             assert whitespace.strip() == ""
@@ -81,10 +88,10 @@ class TestSpecialCharacters:
 
         for special_char in special_chars:
             repo_name = f"test-repo-{special_char}"
-            
+
             # 特殊文字が含まれているかの基本チェック
             assert special_char in repo_name
-            
+
             # 特殊文字の処理可能性をテスト
             try:
                 # 基本的な文字列操作が可能かテスト
@@ -98,7 +105,7 @@ class TestSpecialCharacters:
         """Unicode文字の検証テスト"""
         unicode_strings = [
             "リポジトリ",
-            "测试仓库", 
+            "测试仓库",
             "🚀-rocket-repo",
             "café-münü-naïve",
         ]
@@ -106,8 +113,8 @@ class TestSpecialCharacters:
         for unicode_str in unicode_strings:
             # Unicode文字列の基本的な処理テスト
             try:
-                encoded = unicode_str.encode('utf-8')
-                decoded = encoded.decode('utf-8')
+                encoded = unicode_str.encode("utf-8")
+                decoded = encoded.decode("utf-8")
                 assert decoded == unicode_str
                 print(f"Unicode文字列 '{unicode_str}' での処理成功")
             except Exception as e:
@@ -121,7 +128,7 @@ class TestBoundaryValues:
     def test_long_string_validation(self) -> None:
         """長い文字列の検証テスト"""
         long_name = "x" * 100  # 100文字の文字列
-        
+
         # 長い名前の基本的な処理テスト
         assert len(long_name) == 100
         # 長い名前でも基本的な文字列操作が可能
@@ -132,7 +139,7 @@ class TestBoundaryValues:
     def test_large_number_validation(self) -> None:
         """大きな数値の検証テスト"""
         large_numbers = [999999, 2**31 - 1, 1.7976931348623157e308]
-        
+
         for number in large_numbers:
             # 大きな数値の基本的な処理テスト
             try:
@@ -145,7 +152,7 @@ class TestBoundaryValues:
     def test_timeout_values_validation(self) -> None:
         """タイムアウト値の検証テスト"""
         timeout_values = [0, 0.001, 1, 3600, 86400]  # 0秒から1日まで
-        
+
         for timeout_value in timeout_values:
             # タイムアウト値の妥当性チェック
             if timeout_value <= 0:
@@ -186,7 +193,7 @@ class TestMalformedData:
     def test_json_validation(self) -> None:
         """JSON形式の検証テスト"""
         import json
-        
+
         valid_data = {"name": "test", "value": 123}
         invalid_json_strings = [
             '{"name": "test"',  # 閉じ括弧なし
@@ -220,32 +227,35 @@ class TestResourceValidation:
         """メモリ使用量テスト用データ生成"""
         # 大量データ生成のテスト（実際の処理は行わない）
         large_data_count = 1000
-        
+
         # データ生成時間の測定
         import time
+
         start_time = time.time()
-        
+
         large_data = []
         for i in range(large_data_count):
-            large_data.append({
-                "id": i,
-                "name": f"test-item-{i:04d}",
-                "description": "x" * 100,  # 100文字の説明
-            })
-        
+            large_data.append(
+                {
+                    "id": i,
+                    "name": f"test-item-{i:04d}",
+                    "description": "x" * 100,  # 100文字の説明
+                }
+            )
+
         generation_time = time.time() - start_time
-        
+
         # データ生成の検証
         assert len(large_data) == large_data_count
         assert generation_time < 5.0, f"データ生成時間が長すぎます: {generation_time:.2f}秒"
-        
+
         print(f"{large_data_count}件のデータ生成時間: {generation_time:.2f}秒")
 
     def test_file_operations_simulation(self) -> None:
         """ファイル操作のシミュレーション"""
-        import tempfile
         import os
-        
+        import tempfile
+
         # 一時ファイル操作のテスト
         temp_files = []
         try:
@@ -254,10 +264,10 @@ class TestResourceValidation:
                 temp_file.write(b"test data")
                 temp_file.close()
                 temp_files.append(temp_file.name)
-            
+
             print(f"ファイル操作テスト完了: {len(temp_files)}個のファイル")
             assert len(temp_files) == 10
-            
+
         finally:
             # クリーンアップ
             for temp_file_name in temp_files:

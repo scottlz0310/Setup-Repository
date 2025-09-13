@@ -20,7 +20,6 @@ from setup_repo.setup_validators import (
 )
 from tests.multiplatform.helpers import (
     get_platform_specific_config,
-    skip_if_not_platform,
     verify_current_platform,
 )
 
@@ -33,7 +32,7 @@ class TestSetupValidators:
         verify_current_platform()  # プラットフォーム検証
 
         validator = SetupValidator()
-        
+
         assert validator.platform_detector is not None
         assert validator.platform_info is not None
         assert isinstance(validator.errors, list)
@@ -41,14 +40,15 @@ class TestSetupValidators:
 
     def test_validate_github_credentials(self):
         """GitHub認証情報検証テスト"""
-        with patch("setup_repo.setup_validators.get_github_user") as mock_user, \
-             patch("setup_repo.setup_validators.get_github_token") as mock_token:
-            
+        with (
+            patch("setup_repo.setup_validators.get_github_user") as mock_user,
+            patch("setup_repo.setup_validators.get_github_token") as mock_token,
+        ):
             mock_user.return_value = "testuser"
             mock_token.return_value = "test_token"
-            
+
             result = validate_github_credentials()
-            
+
             assert result["username"] == "testuser"
             assert result["token"] == "test_token"
             assert result["username_valid"] is True
@@ -58,7 +58,7 @@ class TestSetupValidators:
         """有効なディレクトリパス検証テスト"""
         with tempfile.TemporaryDirectory() as temp_dir:
             result = validate_directory_path(temp_dir)
-            
+
             assert result["valid"] is True
             assert result["error"] is None
             assert result["path"] == Path(temp_dir).resolve()
@@ -66,7 +66,7 @@ class TestSetupValidators:
     def test_validate_directory_path_invalid(self):
         """無効なディレクトリパス検証テスト"""
         result = validate_directory_path("")
-        
+
         assert result["valid"] is False
         assert "パスが空です" in result["error"]
         assert result["path"] is None
@@ -76,9 +76,9 @@ class TestSetupValidators:
         with patch("subprocess.run") as mock_run:
             # Gitが利用可能な場合のモック
             mock_run.return_value = Mock(returncode=0, stdout="git version 2.30.0")
-            
+
             result = validate_setup_prerequisites()
-            
+
             assert "valid" in result
             assert "errors" in result
             assert "warnings" in result
@@ -90,12 +90,12 @@ class TestSetupValidators:
     def test_check_system_requirements(self):
         """システム要件チェックテスト"""
         result = check_system_requirements()
-        
+
         assert "platform" in result
         assert "display_name" in result
         assert "supported" in result
         assert "disk_space" in result
-        
+
         assert result["platform"] in ["windows", "linux", "wsl", "macos"]
         assert result["supported"] is True
 
@@ -103,9 +103,9 @@ class TestSetupValidators:
         """文字列入力検証テスト"""
         with patch("builtins.input") as mock_input:
             mock_input.return_value = "test_input"
-            
+
             result = validate_user_input("入力してください: ", "string")
-            
+
             assert result["valid"] is True
             assert result["value"] == "test_input"
             assert result["error"] is None
@@ -114,36 +114,34 @@ class TestSetupValidators:
         """ブール入力検証テスト"""
         with patch("builtins.input") as mock_input:
             mock_input.return_value = "y"
-            
+
             result = validate_user_input("はい/いいえ: ", "boolean")
-            
+
             assert result["valid"] is True
             assert result["value"] is True
             assert result["error"] is None
 
     def test_validate_user_input_path(self):
         """パス入力検証テスト"""
-        with tempfile.TemporaryDirectory() as temp_dir, \
-             patch("builtins.input") as mock_input:
-            
+        with tempfile.TemporaryDirectory() as temp_dir, patch("builtins.input") as mock_input:
             mock_input.return_value = temp_dir
-            
+
             result = validate_user_input("パスを入力: ", "path")
-            
+
             assert result["valid"] is True
             assert result["path"] == Path(temp_dir).resolve()
 
     def test_setup_validator_error_handling(self):
         """セットアップ検証エラーハンドリングテスト"""
         validator = SetupValidator()
-        
+
         # エラーを追加
         validator.errors.append("テストエラー")
-        
+
         errors = validator.get_errors()
         assert len(errors) == 1
         assert "テストエラー" in errors
-        
+
         # エラーをクリア
         validator.clear_errors()
         assert len(validator.get_errors()) == 0
@@ -157,22 +155,23 @@ class TestSetupValidators:
         # セットアップ検証クラスのテスト
         validator = SetupValidator()
         assert validator.platform_info.name in ["windows", "linux", "wsl", "macos"]
-        
+
         # GitHub認証情報検証
-        with patch("setup_repo.setup_validators.get_github_user") as mock_user, \
-             patch("setup_repo.setup_validators.get_github_token") as mock_token:
-            
+        with (
+            patch("setup_repo.setup_validators.get_github_user") as mock_user,
+            patch("setup_repo.setup_validators.get_github_token") as mock_token,
+        ):
             mock_user.return_value = "testuser"
             mock_token.return_value = "test_token"
-            
+
             creds = validate_github_credentials()
             assert creds["username_valid"] is True
             assert creds["token_valid"] is True
-        
+
         # システム要件チェック
         sys_req = check_system_requirements()
         assert sys_req["supported"] is True
-        
+
         # セットアップ前提条件検証
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = Mock(returncode=0, stdout="git version 2.30.0")
@@ -187,10 +186,11 @@ class TestSetupValidators:
 
         start_time = time.time()
 
-        with patch("subprocess.run") as mock_run, \
-             patch("setup_repo.setup_validators.get_github_user") as mock_user, \
-             patch("setup_repo.setup_validators.get_github_token") as mock_token:
-            
+        with (
+            patch("subprocess.run") as mock_run,
+            patch("setup_repo.setup_validators.get_github_user") as mock_user,
+            patch("setup_repo.setup_validators.get_github_token") as mock_token,
+        ):
             mock_run.return_value = Mock(returncode=0, stdout="git version 2.30.0")
             mock_user.return_value = "testuser"
             mock_token.return_value = "test_token"
@@ -203,5 +203,3 @@ class TestSetupValidators:
 
         elapsed = time.time() - start_time
         assert elapsed < 5.0, f"検証処理が遅すぎます: {elapsed}秒"
-
-

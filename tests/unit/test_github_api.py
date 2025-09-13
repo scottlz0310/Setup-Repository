@@ -33,19 +33,15 @@ class TestGitHubAPI:
         """無効なパラメータでの初期化エラーテスト"""
         with pytest.raises(GitHubAPIError, match="GitHubトークンが必要です"):
             GitHubAPI("", "testuser")
-            
+
         with pytest.raises(GitHubAPIError, match="GitHubユーザー名が必要です"):
             GitHubAPI("test_token", "")
 
     def test_get_user_info_success(self):
         """ユーザー情報取得成功テスト"""
         api = GitHubAPI("test_token", "testuser")
-        
-        mock_response_data = {
-            "login": "testuser",
-            "name": "Test User",
-            "email": "test@example.com"
-        }
+
+        mock_response_data = {"login": "testuser", "name": "Test User", "email": "test@example.com"}
 
         with patch("setup_repo.github_api.requests.get") as mock_get:
             mock_response = Mock()
@@ -62,7 +58,7 @@ class TestGitHubAPI:
     def test_get_user_info_authentication_error(self):
         """認証エラーでのユーザー情報取得テスト"""
         api = GitHubAPI("invalid_token", "testuser")
-        
+
         with patch("setup_repo.github_api.requests.get") as mock_get:
             mock_response = Mock()
             mock_response.status_code = 401
@@ -75,7 +71,7 @@ class TestGitHubAPI:
     def test_get_user_repos_success(self):
         """ユーザーリポジトリ取得成功テスト"""
         api = GitHubAPI("test_token", "testuser")
-        
+
         mock_response_data = [
             {
                 "name": "repo1",
@@ -145,9 +141,9 @@ class TestGitHubAPI:
     def test_github_api_integration(self):
         """GitHub API統合テスト"""
         verify_current_platform()  # プラットフォーム検証
-        
+
         api = GitHubAPI("test_token", "testuser")
-        
+
         with patch("setup_repo.github_api.requests.get") as mock_get:
             # ユーザー情報取得のモック
             mock_response = Mock()
@@ -155,17 +151,13 @@ class TestGitHubAPI:
             mock_response.json.return_value = {"login": "testuser", "name": "Test User"}
             mock_response.raise_for_status.return_value = None
             mock_get.return_value = mock_response
-            
+
             user_info = api.get_user_info()
             assert user_info["login"] == "testuser"
-            
+
             # リポジトリ取得のモック
-            mock_response.json.return_value = [
-                {"name": "repo1", "full_name": "testuser/repo1"}
-            ]
-            
+            mock_response.json.return_value = [{"name": "repo1", "full_name": "testuser/repo1"}]
+
             repos = api.get_user_repos()
             assert len(repos) == 1
             assert repos[0]["name"] == "repo1"
-
-

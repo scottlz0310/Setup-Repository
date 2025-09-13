@@ -184,8 +184,13 @@ class TestSpecialCharacters:
             with (
                 patch("setup_repo.sync.get_repositories", return_value=repos),
                 patch("setup_repo.sync.sync_repository_with_retries", return_value=True),
-                patch("setup_repo.git_operations.choose_clone_url", return_value="https://github.com/test_user/test-repo.git"),
-                patch("subprocess.run", return_value=type('MockResult', (), {'returncode': 0, 'stdout': '', 'stderr': ''})),
+                patch(
+                    "setup_repo.git_operations.choose_clone_url",
+                    return_value="https://github.com/test_user/test-repo.git",
+                ),
+                patch(
+                    "subprocess.run", return_value=type("MockResult", (), {"returncode": 0, "stdout": "", "stderr": ""})
+                ),
             ):
                 result = sync_repositories(edge_case_config, dry_run=True)
 
@@ -231,8 +236,13 @@ class TestSpecialCharacters:
             with (
                 patch("setup_repo.sync.get_repositories", return_value=repos),
                 patch("setup_repo.sync.sync_repository_with_retries", return_value=True),
-                patch("setup_repo.git_operations.choose_clone_url", return_value="https://github.com/test_user/unicode-test-repo.git"),
-                patch("subprocess.run", return_value=type('MockResult', (), {'returncode': 0, 'stdout': '', 'stderr': ''})),
+                patch(
+                    "setup_repo.git_operations.choose_clone_url",
+                    return_value="https://github.com/test_user/unicode-test-repo.git",
+                ),
+                patch(
+                    "subprocess.run", return_value=type("MockResult", (), {"returncode": 0, "stdout": "", "stderr": ""})
+                ),
             ):
                 result = sync_repositories(edge_case_config, dry_run=True)
 
@@ -273,7 +283,9 @@ class TestSpecialCharacters:
             with (
                 patch("setup_repo.sync.get_repositories", return_value=repos),
                 patch("setup_repo.sync.sync_repository_with_retries", return_value=True),
-                patch("subprocess.run", return_value=type('MockResult', (), {'returncode': 0, 'stdout': '', 'stderr': ''})),
+                patch(
+                    "subprocess.run", return_value=type("MockResult", (), {"returncode": 0, "stdout": "", "stderr": ""})
+                ),
             ):
                 result = sync_repositories(edge_case_config, dry_run=True)
 
@@ -476,7 +488,9 @@ class TestMalformedData:
             with (
                 patch("setup_repo.sync.get_repositories", return_value=[malformed_repo]),
                 patch("setup_repo.sync.sync_repository_with_retries", return_value=True),
-                patch("subprocess.run", return_value=type('MockResult', (), {'returncode': 0, 'stdout': '', 'stderr': ''})),
+                patch(
+                    "subprocess.run", return_value=type("MockResult", (), {"returncode": 0, "stdout": "", "stderr": ""})
+                ),
             ):
                 result = sync_repositories(edge_case_config, dry_run=True)
 

@@ -121,12 +121,12 @@ class TestEndToEndWorkflow:
             repo = {"name": "test-repo"}
             config = {"max_retries": 2, "dry_run": False}
 
-            with patch("setup_repo.git_operations._sync_repository_once") as mock_sync, \
-                 patch("builtins.print"):
+            with patch("setup_repo.git_operations._sync_repository_once") as mock_sync, patch("builtins.print"):
                 # 最初の試行は失敗、2回目は成功
                 mock_sync.side_effect = [False, True]
 
                 from setup_repo.git_operations import sync_repository_with_retries
+
                 result = sync_repository_with_retries(repo, dest_dir, config)
                 assert result is True
 
@@ -143,10 +143,10 @@ class TestEndToEndWorkflow:
             "use_ssh": False,
             "max_retries": 3,
             "retry_delay": 1,
-            "dry_run": False
+            "dry_run": False,
         }
-        
-        with patch.object(load_config, '__call__', return_value=invalid_config):
+
+        with patch.object(load_config, "__call__", return_value=invalid_config):
             config = load_config()
             assert config["github_token"] is None
             assert config["owner"] == ""
@@ -159,10 +159,10 @@ class TestEndToEndWorkflow:
             "use_ssh": False,
             "max_retries": 3,
             "retry_delay": 1,
-            "dry_run": False
+            "dry_run": False,
         }
-        
-        with patch.object(load_config, '__call__', return_value=valid_config):
+
+        with patch.object(load_config, "__call__", return_value=valid_config):
             config = load_config()
             assert config["github_token"] == "test_token"
             assert config["owner"] == "testuser"
@@ -207,11 +207,11 @@ class TestEndToEndWorkflow:
                 test_path = project_path / "test" / "subdir"
             else:
                 test_path = project_path / "test" / "subdir"
-            
+
             # パスが正しく作成されることを確認
             test_path.mkdir(parents=True, exist_ok=True)
             assert test_path.exists()
-            
+
             # プラットフォーム情報の確認
             assert platform_info.name in ["windows", "linux", "wsl", "macos"]
 
@@ -265,5 +265,3 @@ class TestEndToEndWorkflow:
 
             # クリーンアップが完了したことを確認
             assert not any(f.exists() for f in temp_files)
-
-
