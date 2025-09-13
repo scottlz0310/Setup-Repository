@@ -72,7 +72,7 @@ def get_platform_specific_config():
             "shell": "powershell",
             "python_cmd": "python",
             "concurrent_limit": 4,
-            "timeout": 30
+            "timeout": 30,
         }
     else:
         return {
@@ -80,33 +80,33 @@ def get_platform_specific_config():
             "shell": platform_info.shell,
             "python_cmd": "python3",
             "concurrent_limit": 8,
-            "timeout": 60
+            "timeout": 60,
         }
 
 
 def optimize_for_platform():
     """プラットフォーム固有の最適化設定を適用"""
     platform_info = detect_platform()
-    config = get_platform_specific_config()
-    
+    get_platform_specific_config()  # プラットフォーム設定取得
+
     return {
         "platform": platform_info.name,
         "shell": config["shell"],
         "concurrent_limit": config["concurrent_limit"],
         "timeout": config["timeout"],
-        "performance_mode": True
+        "performance_mode": True,
     }
 
 
 def get_test_performance_config():
     """テスト用パフォーマンス設定を取得"""
     platform_config = get_platform_specific_config()
-    
+
     return {
         "small_repo_limit": 5,
         "medium_repo_limit": 20,
         "large_repo_limit": 100,
         "concurrent_workers": platform_config["concurrent_limit"],
         "timeout_per_repo": platform_config["timeout"],
-        "memory_limit_mb": 50
+        "memory_limit_mb": 50,
     }

@@ -31,7 +31,7 @@ class TestSyncIntegration:
     ) -> None:
         """完全な同期ワークフローのテスト"""
         # プラットフォーム検証を統合
-        platform_info = verify_current_platform()
+        verify_current_platform()  # プラットフォーム検証
 
         # テスト用のクローン先ディレクトリを設定
         clone_destination = temp_dir / "repos"
@@ -172,7 +172,7 @@ class TestSyncIntegration:
             ),
             patch("sys.exit"),
         ):
-            result = sync_repositories(sample_config, dry_run=False)
+            _ = sync_repositories(sample_config, dry_run=False)
 
         # エラーが適切に処理されることを確認
         # sync_repository_with_retriesがFalseを返しても、エラーは発生しない
@@ -276,7 +276,7 @@ class TestSyncIntegration:
             ),
             patch("sys.exit"),
         ):
-            result = sync_repositories(sample_config, dry_run=True)
+            _ = sync_repositories(sample_config, dry_run=True)
 
         execution_time = time.time() - start_time
 

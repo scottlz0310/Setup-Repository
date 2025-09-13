@@ -14,7 +14,8 @@ import pytest
 import requests
 
 from setup_repo.github_api import GitHubAPI, GitHubAPIError
-from ..multiplatform.helpers import verify_current_platform, check_platform_modules
+
+from ..multiplatform.helpers import check_platform_modules, verify_current_platform
 
 
 @pytest.mark.integration
@@ -31,9 +32,9 @@ class TestGitHubAPIIntegration:
     ) -> None:
         """GitHub API初期化テスト"""
         # プラットフォーム検証を統合
-        platform_info = verify_current_platform()
+        verify_current_platform()  # プラットフォーム検証
         check_platform_modules()
-        
+
         # 正常な初期化
         api = GitHubAPI(
             token=sample_config["github_token"],

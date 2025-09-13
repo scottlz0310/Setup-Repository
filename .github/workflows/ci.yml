@@ -234,7 +234,7 @@ jobs:
       fail-fast: false
 
     runs-on: ${{ matrix.os }}
-    
+
     env:
       CI: "true"
       MULTIPLATFORM_TESTS: "true"
@@ -317,21 +317,21 @@ jobs:
       shell: powershell
       run: |
         Write-Host "Starting multiplatform tests (Windows environment)" -ForegroundColor Yellow
-        
+
         # Windows固有のマルチプラットフォームテスト
         try {
           $env:CI = "true"
           $env:MULTIPLATFORM_TESTS = "true"
           $env:PRE_COMMIT = "1"
-          
+
           # マルチプラットフォームテストを実行
           Write-Host "Running multiplatform tests..." -ForegroundColor Cyan
           uv run pytest tests/multiplatform/ -v --tb=short -k "windows"
-          
+
           # 単体テストを実行
           Write-Host "Running unit tests..." -ForegroundColor Cyan
           uv run pytest tests/unit/ -v --tb=short -x --maxfail=10
-          
+
           Write-Host "Tests completed successfully" -ForegroundColor Green
         } catch {
           Write-Host "Test issues occurred but continuing: $_" -ForegroundColor Yellow
@@ -342,12 +342,12 @@ jobs:
       shell: bash
       run: |
         echo "マルチプラットフォームテストを開始します（Unix系環境）"
-        
+
         # Unix系環境でのマルチプラットフォームテスト
         export CI="true"
         export MULTIPLATFORM_TESTS="true"
         export PRE_COMMIT="1"
-        
+
         # プラットフォーム固有テストを実行
         if [ "${{ runner.os }}" = "macOS" ]; then
           echo "macOS固有テストを実行します"
@@ -356,11 +356,11 @@ jobs:
           echo "Linux/Unix固有テストを実行します"
           uv run pytest tests/multiplatform/ -v --tb=short -k "unix" || true
         fi
-        
+
         # 単体テストを実行
         echo "単体テストを実行します"
         uv run pytest tests/unit/ -v --tb=short -x --maxfail=10 || true
-        
+
         echo "CLIヘルプテストを実行します"
         uv run python main.py --help || echo "CLIヘルプテストが失敗しましたが、続行します"
 

@@ -8,7 +8,12 @@ import time
 from unittest.mock import patch
 
 import pytest
-from ..multiplatform.helpers import verify_current_platform, get_platform_specific_config, optimize_for_platform, get_test_performance_config
+
+from ..multiplatform.helpers import (
+    get_test_performance_config,
+    optimize_for_platform,
+    verify_current_platform,
+)
 
 
 class TestSyncPerformance:
@@ -18,10 +23,10 @@ class TestSyncPerformance:
     def test_small_repository_set_performance(self):
         """小規模リポジトリセットの同期パフォーマンステスト"""
         # プラットフォーム最適化とパフォーマンス設定
-        platform_info = verify_current_platform()
+        verify_current_platform()  # プラットフォーム検証
         optimization = optimize_for_platform()
         perf_config = get_test_performance_config()
-        
+
         start_time = time.time()
 
         # モックを使用して実際のGit操作を回避

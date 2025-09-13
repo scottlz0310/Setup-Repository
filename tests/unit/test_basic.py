@@ -13,7 +13,7 @@ from ..multiplatform.helpers import check_platform_modules, verify_current_platf
 def test_platform_detection():
     """現在のプラットフォームが検出できることをテスト"""
     # ヘルパー関数でプラットフォーム検証
-    platform_info = verify_current_platform()
+    platform_info = verify_current_platform()  # プラットフォーム検証
 
     # 従来のテストも維持
     current_platform = platform.system()
@@ -22,6 +22,7 @@ def test_platform_detection():
     # プラットフォーム情報の検証
     assert platform_info.name in ["windows", "linux", "wsl", "macos"]
     assert platform_info.shell in ["powershell", "bash", "zsh"]
+    assert platform_info.python_cmd in ["python", "python3"]
 
 
 @pytest.mark.unit

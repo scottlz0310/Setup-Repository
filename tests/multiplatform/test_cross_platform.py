@@ -151,7 +151,7 @@ class TestCrossPlatformIntegration:
     ):
         """パス処理統合テスト - 実際のプラットフォームで動作"""
         # ヘルパー関数でプラットフォーム検証
-        platform_info = verify_current_platform()
+        verify_current_platform()  # プラットフォーム検証
 
         # 実際のプラットフォームに応じたパス設定
         clone_destination = temp_dir / "repos"

@@ -30,7 +30,7 @@ class TestIntegrationSimplified:
     ) -> None:
         """GitHub API基本機能テスト"""
         # プラットフォーム検証を統合
-        platform_info = verify_current_platform()
+        verify_current_platform()  # プラットフォーム検証
         check_platform_modules()
 
         # GitHubAPIクラスの初期化テスト
@@ -66,7 +66,7 @@ class TestIntegrationSimplified:
     def test_sync_with_invalid_config(self) -> None:
         """無効な設定での同期テスト"""
         # プラットフォーム検証を統合
-        platform_info = verify_current_platform()
+        verify_current_platform()  # プラットフォーム検証
 
         # 空の設定
         empty_config = {}
@@ -93,7 +93,7 @@ class TestIntegrationSimplified:
     ) -> None:
         """ドライランモードでの同期テスト"""
         # プラットフォーム検証を統合
-        platform_info = verify_current_platform()
+        verify_current_platform()  # プラットフォーム検証
 
         # GitHub APIをモック
         with patch("setup_repo.sync.get_repositories") as mock_get_repos:
@@ -234,7 +234,7 @@ class TestIntegrationSimplified:
             mock_get_repos.return_value = many_repos
 
             start_time = time.time()
-            result = sync_repositories(sample_config, dry_run=True)
+            _ = sync_repositories(sample_config, dry_run=True)
             execution_time = time.time() - start_time
 
         # パフォーマンス要件を緩和: 10リポジトリの同期が10秒以内（ドライランモード）
@@ -249,7 +249,7 @@ class TestIntegrationSimplified:
     ) -> None:
         """基本的な統合ワークフローテスト"""
         # プラットフォーム検証を統合
-        platform_info = verify_current_platform()
+        verify_current_platform()  # プラットフォーム検証
         check_platform_modules()
 
         # 1. 設定ファイルの作成

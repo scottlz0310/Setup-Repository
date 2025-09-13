@@ -383,7 +383,7 @@ class TestBoundaryValues:
             patch("setup_repo.sync.get_repositories", return_value=repos),
             patch("setup_repo.sync.sync_repository_with_retries", return_value=True),
         ):
-            result = sync_repositories(edge_case_config, dry_run=True)
+            _ = sync_repositories(edge_case_config, dry_run=True)
 
         execution_time = time.time() - start_time
 
@@ -598,7 +598,7 @@ class TestResourceExhaustion:
             patch("setup_repo.sync.get_repositories", return_value=large_repos),
             patch("setup_repo.sync.sync_repository_with_retries", return_value=True),
         ):
-            result = sync_repositories(edge_case_config, dry_run=True)
+            _ = sync_repositories(edge_case_config, dry_run=True)
 
         try:
             final_memory = process.memory_info().rss / 1024 / 1024  # MB

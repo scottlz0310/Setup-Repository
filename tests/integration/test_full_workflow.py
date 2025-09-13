@@ -35,7 +35,7 @@ class TestFullWorkflow:
     ) -> None:
         """セットアップから同期までの完全なワークフローテスト"""
         # プラットフォーム検証を統合
-        platform_info = verify_current_platform()
+        verify_current_platform()  # プラットフォーム検証
         check_platform_modules()
 
         # 1. 設定ファイルの準備
@@ -378,7 +378,7 @@ class TestFullWorkflow:
             patch("setup_repo.sync.sync_repository_with_retries", return_value=True),
         ):
             start_time = time.time()
-            result = sync_repositories(sample_config, dry_run=True)
+            _ = sync_repositories(sample_config, dry_run=True)
             execution_time = time.time() - start_time
 
         # パフォーマンス要件: 50リポジトリの同期が30秒以内（ドライランモード）
