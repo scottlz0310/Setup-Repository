@@ -205,8 +205,11 @@ class TestCompatibility:
                     continue
 
                 available_feature = available_features[feature_name]
-                if required_version and available_feature.get("version"):
-                    if not version_compatible(available_feature["version"], required_version):
+                if (
+                    required_version
+                    and available_feature.get("version")
+                    and not version_compatible(available_feature["version"], required_version)
+                ):
                         incompatible_features.append(
                             {
                                 "feature": feature_name,

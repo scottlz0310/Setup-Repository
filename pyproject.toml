@@ -123,7 +123,7 @@ addopts = [
     "--cov-report=term-missing",
     "--cov-report=html:htmlcov",
     "--cov-report=xml:coverage.xml",
-    "--cov-fail-under=15",  # 部分テスト用の現実的な目標値
+    "--cov-fail-under=80",  # 本来の目標値
     "-v",
     "--timeout=30",  # タイムアウト30秒
     "--log-level=ERROR",  # ERROR以上のみ表示
@@ -157,8 +157,8 @@ omit = [
 ]
 
 [tool.coverage.report]
-# 段階的厳格化 - 部分テスト用の現実的な目標値
-fail_under = 15
+# 本来の目標値
+fail_under = 80
 show_missing = true
 skip_covered = false
 skip_empty = false

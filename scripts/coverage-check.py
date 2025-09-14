@@ -27,7 +27,7 @@ class CoverageChecker:
 
     def run_tests_with_coverage(self) -> bool:
         """カバレッジ付きでテストを実行"""
-        print("🧪 カバレッジ付きテスト実行中...")
+        print("カバレッジ付きテスト実行中...")
 
         cmd = [
             "uv",
@@ -52,20 +52,20 @@ class CoverageChecker:
 
             return result.returncode == 0
         except Exception as e:
-            print(f"❌ テスト実行エラー: {e}")
+            print(f"テスト実行エラー: {e}")
             return False
 
     def get_coverage_data(self) -> Optional[dict]:
         """カバレッジデータを取得"""
         try:
             if not self.coverage_file.exists():
-                print("❌ カバレッジファイルが見つかりません")
+                print("カバレッジファイルが見つかりません")
                 return None
 
             with open(self.coverage_file, encoding="utf-8") as f:
                 return json.load(f)
         except Exception as e:
-            print(f"❌ カバレッジデータ読み込みエラー: {e}")
+            print(f"カバレッジデータ読み込みエラー: {e}")
             return None
 
     def analyze_coverage(self) -> tuple[bool, dict]:
@@ -102,22 +102,22 @@ class CoverageChecker:
         """カバレッジレポートを生成"""
         report = []
         report.append("=" * 60)
-        report.append("📊 カバレッジレポート")
+        report.append("カバレッジレポート")
         report.append("=" * 60)
 
         # 全体サマリー
         total_cov = analysis["total_coverage"]
-        status = "✅ 通過" if analysis["passes_gate"] else "❌ 未達成"
+        status = "[OK] 通過" if analysis["passes_gate"] else "[NG] 未達成"
 
-        report.append(f"\n🎯 品質ゲート ({self.min_coverage}%): {status}")
-        report.append(f"📈 全体カバレッジ: {total_cov:.2f}%")
-        report.append(f"📝 総行数: {analysis['total_lines']}")
-        report.append(f"✅ カバー済み: {analysis['lines_covered']}")
-        report.append(f"❌ 未カバー: {analysis['lines_missing']}")
+        report.append(f"\n品質ゲート ({self.min_coverage}%): {status}")
+        report.append(f"全体カバレッジ: {total_cov:.2f}%")
+        report.append(f"総行数: {analysis['total_lines']}")
+        report.append(f"カバー済み: {analysis['lines_covered']}")
+        report.append(f"未カバー: {analysis['lines_missing']}")
 
         # ファイル別詳細
         report.append("\n" + "=" * 40)
-        report.append("📁 ファイル別カバレッジ")
+        report.append("ファイル別カバレッジ")
         report.append("=" * 40)
 
         sorted_files = sorted(analysis["files"].items(), key=lambda x: x[1]["coverage"])
@@ -125,7 +125,7 @@ class CoverageChecker:
         for file_path, file_data in sorted_files:
             file_name = Path(file_path).name
             coverage = file_data["coverage"]
-            status_icon = "✅" if coverage >= self.min_coverage else "❌"
+            status_icon = "[OK]" if coverage >= self.min_coverage else "[NG]"
 
             report.append(f"\n{status_icon} {file_name}: {coverage:.1f}%")
 
@@ -141,21 +141,21 @@ class CoverageChecker:
     def check_coverage_trend(self, previous_coverage: Optional[float] = None) -> str:
         """カバレッジトレンドをチェック"""
         if previous_coverage is None:
-            return "📊 トレンド分析: 前回データなし"
+            return "トレンド分析: 前回データなし"
 
         success, analysis = self.analyze_coverage()
         if not success:
-            return "❌ トレンド分析: 現在のカバレッジデータ取得失敗"
+            return "トレンド分析: 現在のカバレッジデータ取得失敗"
 
         current_coverage = analysis["total_coverage"]
         diff = current_coverage - previous_coverage
 
         if diff > 0:
-            return f"📈 トレンド: +{diff:.2f}% (改善)"
+            return f"トレンド: +{diff:.2f}% (改善)"
         elif diff < 0:
-            return f"📉 トレンド: {diff:.2f}% (低下)"
+            return f"トレンド: {diff:.2f}% (低下)"
         else:
-            return "📊 トレンド: 変化なし"
+            return "トレンド: 変化なし"
 
     def suggest_improvements(self, analysis: dict) -> list[str]:
         """改善提案を生成"""
@@ -167,7 +167,7 @@ class CoverageChecker:
         ]
 
         if low_coverage_files:
-            suggestions.append("🎯 改善提案:")
+            suggestions.append("改善提案:")
             suggestions.append("")
 
             for file_path, file_data in sorted(low_coverage_files, key=lambda x: x[1]["coverage"]):
@@ -186,18 +186,18 @@ class CoverageChecker:
 
     def run_quality_gate(self) -> bool:
         """品質ゲートを実行"""
-        print("🚀 カバレッジ品質ゲート実行中...")
+        print("カバレッジ品質ゲート実行中...")
 
         # テスト実行
         test_success = self.run_tests_with_coverage()
         if not test_success:
-            print("❌ テスト実行に失敗しました")
+            print("テスト実行に失敗しました")
             return False
 
         # カバレッジ分析
         success, analysis = self.analyze_coverage()
         if not success:
-            print("❌ カバレッジ分析に失敗しました")
+            print("カバレッジ分析に失敗しました")
             return False
 
         # レポート生成
@@ -212,7 +212,7 @@ class CoverageChecker:
         # HTMLレポートの場所を表示
         if self.html_dir.exists():
             html_report = self.html_dir / "index.html"
-            print(f"\n📊 詳細なHTMLレポート: {html_report}")
+            print(f"\n詳細なHTMLレポート: {html_report}")
 
         return analysis["passes_gate"]
 
@@ -252,7 +252,7 @@ def main():
 
             sys.exit(0 if analysis["passes_gate"] else 1)
         else:
-            print("❌ カバレッジデータが見つかりません")
+            print("カバレッジデータが見つかりません")
             sys.exit(1)
     else:
         # 品質ゲート実行

@@ -55,8 +55,9 @@ class TestConfig:
             assert token == "test_token"
 
     def test_get_github_token_no_env(self):
-        """環境変数がない場合のGitHubトークン取得テスト"""
+        """環境変数がない場合のGitHubトークン取得テスト（外部コマンドのみモック）"""
         with patch.dict(os.environ, {}, clear=True), patch("subprocess.run") as mock_run:
+            # 外部コマンド（ghコマンドなど）の失敗をシミュレート
             mock_run.side_effect = FileNotFoundError()
             token = get_github_token()
             assert token is None
@@ -68,16 +69,18 @@ class TestConfig:
             assert user == "testuser"
 
     def test_get_github_user_from_git_config(self):
-        """Git設定からのユーザー取得テスト"""
+        """Git設定からのユーザー取得テスト（外部コマンドのみモック）"""
         with patch.dict(os.environ, {}, clear=True), patch("subprocess.run") as mock_run:
+            # 外部コマンド（git config）の結果をシミュレート
             mock_run.return_value.stdout = "testuser\n"
             mock_run.return_value.returncode = 0
             user = get_github_user()
             assert user == "testuser"
 
     def test_get_github_user_no_config(self):
-        """設定がない場合のユーザー取得テスト"""
+        """設定がない場合のユーザー取得テスト（外部コマンドのみモック）"""
         with patch.dict(os.environ, {}, clear=True), patch("subprocess.run") as mock_run:
+            # 外部コマンド（git config）の失敗をシミュレート
             mock_run.side_effect = FileNotFoundError()
             user = get_github_user()
             assert user is None

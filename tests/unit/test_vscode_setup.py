@@ -38,9 +38,7 @@ class TestVscodeSetup:
             settings_file = template_dir / "settings.json"
             settings_file.write_text('{"python.defaultInterpreter": "python"}')
 
-            with patch("pathlib.Path.__file__") as mock_file, patch("builtins.print"):
-                mock_file.parent = repo_path
-
+            with patch("setup_repo.vscode_setup.__file__", str(repo_path / "vscode_setup.py")), patch("builtins.print"):
                 result = apply_vscode_template(repo_path, "linux", dry_run=False)
 
                 # テンプレートがない場合はTrueを返す
@@ -60,9 +58,7 @@ class TestVscodeSetup:
         with tempfile.TemporaryDirectory() as temp_dir:
             repo_path = Path(temp_dir)
 
-            with patch("pathlib.Path.__file__") as mock_file, patch("builtins.print"):
-                mock_file.parent = repo_path
-
+            with patch("setup_repo.vscode_setup.__file__", str(repo_path / "vscode_setup.py")), patch("builtins.print"):
                 result = apply_vscode_template(repo_path, "nonexistent", dry_run=False)
                 assert result is True  # テンプレートがない場合はスキップ
 
@@ -82,12 +78,10 @@ class TestVscodeSetup:
             (template_dir / "settings.json").write_text('{"new": "setting"}')
 
             with (
-                patch("pathlib.Path.__file__") as mock_file,
+                patch("setup_repo.vscode_setup.__file__", str(repo_path / "vscode_setup.py")),
                 patch("builtins.print"),
                 patch("time.time", return_value=1234567890),
             ):
-                mock_file.parent = repo_path
-
                 result = apply_vscode_template(repo_path, "linux", dry_run=False)
                 assert result is True
 
@@ -106,11 +100,10 @@ class TestVscodeSetup:
             (template_dir / "settings.json").write_text('{"test": "setting"}')
 
             with (
-                patch("pathlib.Path.__file__") as mock_file,
+                patch("setup_repo.vscode_setup.__file__", str(repo_path / "vscode_setup.py")),
                 patch("builtins.print"),
                 patch("shutil.copytree") as mock_copytree,
             ):
-                mock_file.parent = repo_path
                 mock_copytree.side_effect = Exception("コピーエラー")
 
                 result = apply_vscode_template(repo_path, "linux", dry_run=False)
@@ -119,7 +112,7 @@ class TestVscodeSetup:
     @pytest.mark.integration
     def test_apply_vscode_template_integration(self):
         """VS Codeテンプレート適用統合テスト"""
-        verify_current_platform()  # プラットフォーム検証
+        platform_info = verify_current_platform()  # プラットフォーム検証
         get_platform_specific_config()  # プラットフォーム設定取得
 
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -134,9 +127,7 @@ class TestVscodeSetup:
             settings = {"python.defaultInterpreter": "python", "editor.formatOnSave": True}
             (template_dir / "settings.json").write_text(json.dumps(settings, indent=2))
 
-            with patch("pathlib.Path.__file__") as mock_file, patch("builtins.print"):
-                mock_file.parent = repo_path
-
+            with patch("setup_repo.vscode_setup.__file__", str(repo_path / "vscode_setup.py")), patch("builtins.print"):
                 result = apply_vscode_template(repo_path, platform_name, dry_run=False)
                 assert result is True
 

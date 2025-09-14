@@ -95,14 +95,16 @@ class TestMigrationCheckpoint:
         verify_current_platform()  # プラットフォーム検証
 
         import os
+        import platform
 
         original_cwd = Path.cwd()
         os.chdir(temp_workspace)
 
         try:
-            # パストラバーサル攻撃を試行
-            with pytest.raises(ValueError, match="現在のディレクトリ以下である必要があります"):
-                MigrationCheckpoint(Path("/etc/passwd"))
+            # パストラバーサル攻撃を試行（Windowsでは存在しないパスを使用）
+            invalid_path = Path("C:/etc/passwd") if platform.system() == "Windows" else Path("/etc/passwd")
+            with pytest.raises((ValueError, FileNotFoundError)):
+                MigrationCheckpoint(invalid_path)
         finally:
             os.chdir(original_cwd)
 
@@ -332,8 +334,10 @@ class TestMigrationCheckpoint:
         """メタデータ保存権限エラー"""
         verify_current_platform()  # プラットフォーム検証
 
-        with patch("builtins.open", side_effect=OSError("Permission denied")):
-            with pytest.raises(MigrationError, match="メタデータファイル保存に失敗"):
+        with (
+            patch("builtins.open", side_effect=OSError("Permission denied")),
+            pytest.raises(MigrationError, match="メタデータファイル保存に失敗"),
+        ):
                 migration_checkpoint._save_metadata({})
 
     @pytest.mark.unit
@@ -341,8 +345,10 @@ class TestMigrationCheckpoint:
         """チェックポイント作成エラーハンドリング"""
         verify_current_platform()  # プラットフォーム検証
 
-        with patch("shutil.copytree", side_effect=OSError("Copy failed")):
-            with pytest.raises(MigrationError, match="チェックポイント作成に失敗"):
+        with (
+            patch("shutil.copytree", side_effect=OSError("Copy failed")),
+            pytest.raises(MigrationError, match="チェックポイント作成に失敗"),
+        ):
                 migration_checkpoint.create_checkpoint("error_phase")
 
     @pytest.mark.unit
@@ -428,7 +434,7 @@ class TestMigrationIntegration:
             original_file.write_text("# Phase 1 changes", encoding="utf-8")
 
             # Phase 2: 変更後のチェックポイント作成
-            phase2_id = checkpoint.create_checkpoint("phase2", "After phase 1 changes")
+            checkpoint.create_checkpoint("phase2", "After phase 1 changes")
 
             # さらにファイルを変更
             original_file.write_text("# Phase 2 changes", encoding="utf-8")

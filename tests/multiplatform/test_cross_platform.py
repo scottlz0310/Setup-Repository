@@ -151,7 +151,7 @@ class TestCrossPlatformIntegration:
     ):
         """パス処理統合テスト - 実際のプラットフォームで動作"""
         # ヘルパー関数でプラットフォーム検証
-        verify_current_platform()  # プラットフォーム検証
+        platform_info = verify_current_platform()  # プラットフォーム検証
 
         # 実際のプラットフォームに応じたパス設定
         clone_destination = temp_dir / "repos"
@@ -172,7 +172,7 @@ class TestCrossPlatformIntegration:
         with (
             pytest.MonkeyPatch().context() as m,
         ):
-            m.setattr("setup_repo.sync.get_repositories", lambda config: mock_repos)
+            m.setattr("setup_repo.sync.get_repositories", lambda config, github_api=None: mock_repos)
             m.setattr("setup_repo.sync.sync_repository_with_retries", lambda *args, **kwargs: True)
 
             result = sync_repositories(sample_config, dry_run=True)
@@ -218,7 +218,7 @@ class TestCrossPlatformIntegration:
         with (
             pytest.MonkeyPatch().context() as m,
         ):
-            m.setattr("setup_repo.sync.get_repositories", lambda config: mock_repos)
+            m.setattr("setup_repo.sync.get_repositories", lambda config, github_api=None: mock_repos)
             m.setattr("setup_repo.sync.sync_repository_with_retries", lambda *args, **kwargs: True)
 
             result = sync_repositories(sample_config, dry_run=True)

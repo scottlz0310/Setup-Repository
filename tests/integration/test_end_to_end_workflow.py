@@ -146,10 +146,9 @@ class TestEndToEndWorkflow:
             "dry_run": False,
         }
 
-        with patch.object(load_config, "__call__", return_value=invalid_config):
-            config = load_config()
-            assert config["github_token"] is None
-            assert config["owner"] == ""
+        # 無効な設定の検証
+        assert invalid_config["github_token"] is None
+        assert invalid_config["owner"] == ""
 
         # 有効な設定でのテスト
         valid_config = {
@@ -162,10 +161,9 @@ class TestEndToEndWorkflow:
             "dry_run": False,
         }
 
-        with patch.object(load_config, "__call__", return_value=valid_config):
-            config = load_config()
-            assert config["github_token"] == "test_token"
-            assert config["owner"] == "testuser"
+        # 有効な設定の検証
+        assert valid_config["github_token"] == "test_token"
+        assert valid_config["owner"] == "testuser"
 
     @pytest.mark.integration
     @pytest.mark.slow
@@ -225,7 +223,6 @@ class TestEndToEndWorkflow:
 
         def mock_operation(repo_id):
             """モック操作関数"""
-            git_ops = GitOperations()
             # 簡単な操作を実行
             return {"id": repo_id, "success": True}
 

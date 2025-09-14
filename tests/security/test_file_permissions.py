@@ -1,5 +1,6 @@
 """ファイル権限セキュリティテスト."""
 
+import contextlib
 import platform
 import shutil
 import tempfile
@@ -48,7 +49,7 @@ class TestFilePermissionsSecurity:
 
                 # 権限確認
                 file_stat = os.stat(file_path)
-                actual_permissions = stat.filemode(file_stat.st_mode)
+                _ = stat.filemode(file_stat.st_mode)
 
                 return True
 
@@ -163,7 +164,7 @@ class TestFilePermissionsSecurity:
             ("program.exe", False),  # 実行可能ファイル
         ]
 
-        for filename, expected_secure in test_cases:
+        for filename, _expected_secure in test_cases:
             test_file = self.temp_dir / filename
             test_file.write_text("test content")
 
@@ -250,10 +251,8 @@ class TestFilePermissionsSecurity:
                 return temp_path
             except Exception:
                 # エラー時はファイルを削除
-                try:
+                with contextlib.suppress(OSError):
                     os.unlink(temp_path)
-                except OSError:
-                    pass
                 raise
 
         # セキュア一時ファイルテスト

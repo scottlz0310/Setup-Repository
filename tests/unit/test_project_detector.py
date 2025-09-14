@@ -350,7 +350,7 @@ class TestProjectDetector:
         verify_current_platform()  # プラットフォーム検証
 
         # すべてのプロジェクトタイプにルールが定義されていることを確認
-        for project_type, rules in project_detector.DETECTION_RULES.items():
+        for _project_type, rules in project_detector.DETECTION_RULES.items():
             assert isinstance(rules, dict)
             assert "files" in rules
             assert "extensions" in rules
@@ -365,7 +365,7 @@ class TestProjectDetector:
         verify_current_platform()  # プラットフォーム検証
 
         # すべてのツールに検出ルールが定義されていることを確認
-        for tool, indicators in project_detector.TOOL_DETECTION.items():
+        for _tool, indicators in project_detector.TOOL_DETECTION.items():
             assert isinstance(indicators, list)
             assert len(indicators) > 0
             for indicator in indicators:

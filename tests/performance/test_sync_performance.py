@@ -24,7 +24,7 @@ class TestSyncPerformance:
         """小規模リポジトリセットの同期パフォーマンステスト"""
         # プラットフォーム最適化とパフォーマンス設定
         verify_current_platform()  # プラットフォーム検証
-        optimization = optimize_for_platform()
+        optimize_for_platform()
         perf_config = get_test_performance_config()
 
         start_time = time.time()

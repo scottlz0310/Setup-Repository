@@ -39,7 +39,7 @@ class ProjectDetector:
             "directories": ["src/main", "src/test", "target", "build"],
         },
         "csharp": {
-            "files": [".csproj", ".sln", "packages.config"],
+            "files": ["*.csproj", "*.sln", "packages.config"],
             "extensions": [".cs", ".vb"],
             "directories": ["bin", "obj"],
         },
@@ -92,9 +92,15 @@ class ProjectDetector:
 
     def _check_project_type(self, rules: dict) -> bool:
         """プロジェクトタイプの検出ルールをチェック"""
-        # ファイル存在チェック
-        if any(self._path_exists(file) for file in rules.get("files", [])):
-            return True
+        # ファイル存在チェック（ワイルドカード対応）
+        for file_pattern in rules.get("files", []):
+            if not file_pattern.strip():  # 空文字列チェック
+                continue
+            if "*" in file_pattern:
+                if list(self.repo_path.glob(file_pattern)):
+                    return True
+            elif self._path_exists(file_pattern):
+                return True
 
         # 拡張子チェック
         extensions = rules.get("extensions", [])

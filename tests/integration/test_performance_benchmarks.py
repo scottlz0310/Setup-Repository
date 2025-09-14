@@ -122,7 +122,7 @@ class TestPerformanceBenchmarks:
                 "memory_increase_mb": end_memory - start_memory,
                 "memory_leaked_mb": final_memory - start_memory,
                 "execution_time": execution_time,
-                "operation_result": result,
+                "operation_result": _,
             }
 
         # メモリ集約的な操作
@@ -194,7 +194,7 @@ class TestPerformanceBenchmarks:
                 "max_cpu_percent": max_cpu,
                 "min_cpu_percent": min_cpu,
                 "cpu_samples": len(cpu_samples),
-                "operation_result": result,
+                "operation_result": _,
             }
 
         # CPU集約的な操作
@@ -368,7 +368,7 @@ class TestPerformanceBenchmarks:
             test_file.write_text("test content")
 
             start_time = time.time()
-            for i in range(100):
+            for _i in range(100):
                 os.chmod(test_file, 0o644)
                 os.chmod(test_file, 0o755)
             results["permission_change_time"] = time.time() - start_time
@@ -408,7 +408,7 @@ class TestPerformanceBenchmarks:
             for i in range(1000):
                 path = Path(f"C:\\temp\\test_{i}.txt")
                 normalized = path.resolve()
-                str_path = str(normalized)
+                _ = str(normalized)
             results["path_operation_time"] = time.time() - start_time
 
             return results
@@ -448,18 +448,18 @@ class TestPerformanceBenchmarks:
             # 2. メモリ操作
             start_time = time.time()
             data = [i**2 for i in range(10000)]
-            filtered_data = [x for x in data if x % 2 == 0]
+            _ = [x for x in data if x % 2 == 0]
             benchmark_results["benchmarks"]["memory_ops"] = time.time() - start_time
 
             # 3. 計算処理
             start_time = time.time()
-            result = sum(i**0.5 for i in range(10000))
+            _ = sum(i**0.5 for i in range(10000))
             benchmark_results["benchmarks"]["computation"] = time.time() - start_time
 
             # 4. 文字列処理
             start_time = time.time()
             text = "test string " * 1000
-            processed = text.upper().replace("TEST", "PROCESSED").split()
+            _ = text.upper().replace("TEST", "PROCESSED").split()
             benchmark_results["benchmarks"]["string_ops"] = time.time() - start_time
 
             # 5. JSON処理
@@ -468,7 +468,7 @@ class TestPerformanceBenchmarks:
             start_time = time.time()
             data = {"items": [{"id": i, "value": f"item_{i}"} for i in range(1000)]}
             json_str = json.dumps(data)
-            parsed_data = json.loads(json_str)
+            _ = json.loads(json_str)
             benchmark_results["benchmarks"]["json_ops"] = time.time() - start_time
 
             return benchmark_results

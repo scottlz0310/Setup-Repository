@@ -4,6 +4,7 @@
 実際のGit操作を避けて基本的なロジックのみをテストします。
 """
 
+import contextlib
 from typing import Any
 
 import pytest
@@ -259,11 +260,10 @@ class TestResourceValidation:
         # 一時ファイル操作のテスト
         temp_files = []
         try:
-            for i in range(10):  # 10個のファイル操作をテスト
-                temp_file = tempfile.NamedTemporaryFile(delete=False)
-                temp_file.write(b"test data")
-                temp_file.close()
-                temp_files.append(temp_file.name)
+            for _i in range(10):  # 10個のファイル操作をテスト
+                with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+                    temp_file.write(b"test data")
+                    temp_files.append(temp_file.name)
 
             print(f"ファイル操作テスト完了: {len(temp_files)}個のファイル")
             assert len(temp_files) == 10
@@ -271,7 +271,5 @@ class TestResourceValidation:
         finally:
             # クリーンアップ
             for temp_file_name in temp_files:
-                try:
+                with contextlib.suppress(FileNotFoundError):
                     os.unlink(temp_file_name)
-                except FileNotFoundError:
-                    pass

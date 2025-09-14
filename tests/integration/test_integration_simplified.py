@@ -234,7 +234,7 @@ class TestIntegrationSimplified:
             mock_get_repos.return_value = many_repos
 
             start_time = time.time()
-            _ = sync_repositories(sample_config, dry_run=True)
+            result = sync_repositories(sample_config, dry_run=True)
             execution_time = time.time() - start_time
 
         # パフォーマンス要件を緩和: 10リポジトリの同期が10秒以内（ドライランモード）

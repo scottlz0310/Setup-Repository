@@ -98,8 +98,8 @@ class TestQualityLogger:
         # 品質メトリクスのモック
         quality_metrics = {
             "timestamp": "2024-12-01T10:00:00Z",
-            "platform": self.platform_info["system"],
-            "python_version": self.platform_info["python_version"],
+            "platform": self.platform_info.name,
+            "python_version": "3.9.0",
             "metrics": {"code_quality": 85, "test_coverage": 88, "security_score": 95, "maintainability": 82},
             "overall_score": 87.5,
         }
@@ -113,7 +113,7 @@ class TestQualityLogger:
         # ログ記録の検証
         assert "Quality metrics collected" in log_message
         assert "overall score 87.5" in log_message
-        assert f"platform: {self.platform_info['system']}" in log_message
+        assert f"platform: {self.platform_info.name}" in log_message
 
     @pytest.mark.unit
     def test_error_logging(self):
@@ -174,14 +174,14 @@ class TestQualityLogger:
                 "files_checked": 100,
                 "issues_found": 5,
                 "duration": 30.5,
-                "platform": self.platform_info["system"],
+                "platform": self.platform_info.name,
             },
         }
 
         # 構造化ログの検証
         assert structured_log["event"] == "quality_check_completed"
         assert structured_log["data"]["files_checked"] == 100
-        assert structured_log["data"]["platform"] == self.platform_info["system"]
+        assert structured_log["data"]["platform"] == self.platform_info.name
 
     @pytest.mark.unit
     def test_log_rotation(self):

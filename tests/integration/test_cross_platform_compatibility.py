@@ -338,7 +338,7 @@ class TestCrossPlatformCompatibility:
 
             # レジストリアクセステスト
             try:
-                import winreg
+                import winreg  # noqa: F401
 
                 features["registry_access"] = True
             except ImportError:
@@ -428,7 +428,7 @@ class TestCrossPlatformCompatibility:
 
             # SSLサポートテスト
             try:
-                import ssl
+                import ssl  # noqa: F401
 
                 features["ssl_support"] = True
             except ImportError:

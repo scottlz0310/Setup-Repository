@@ -62,7 +62,7 @@ class TestUvInstaller:
 
     def test_ensure_uv_install_failure(self):
         """インストール失敗テスト"""
-        with patch("shutil.which") as mock_which, patch("subprocess.run") as mock_run, patch("builtins.print"):
+        with patch("shutil.which") as mock_which, patch("subprocess.run"), patch("builtins.print"):
             # uv、pipx、pythonがない
             mock_which.return_value = None
 

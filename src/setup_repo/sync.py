@@ -47,20 +47,20 @@ def sync_repositories(config: dict, dry_run: bool = False) -> SyncResult:
     platform_detector = PlatformDetector()
     platform = platform_detector.detect_platform()
 
-    # 🔍 検出した設定を表示
-    print("\\n🔍 設定情報:")
-    print(f"   📱 プラットフォーム: {platform}")
-    print(f"   👤 オーナー: {owner or '❌ 検出されませんでした'}")
-    print(f"   📁 保存先: {dest}")
-    token_status = "✅ 検出されました" if config.get("github_token") else "❌ 見つかりません"
-    print(f"   🔑 GitHubトークン: {token_status}")
+    # 検出した設定を表示
+    print("\\n[INFO] 設定情報:")
+    print(f"   プラットフォーム: {platform}")
+    print(f"   オーナー: {owner or '[ERROR] 検出されませんでした'}")
+    print(f"   保存先: {dest}")
+    token_status = "[OK] 検出されました" if config.get("github_token") else "[ERROR] 見つかりません"
+    print(f"   GitHubトークン: {token_status}")
 
     if not owner:
         error_msg = "GitHubオーナーが検出されませんでした"
-        print(f"\\n❌ {error_msg}")
-        print("   🔧 GITHUB_USER 環境変数")
-        print("   🔧 git config --global user.name")
-        print("   🔧 config.local.json に 'owner' フィールドを作成")
+        print(f"\\n[ERROR] {error_msg}")
+        print("   [FIX] GITHUB_USER 環境変数")
+        print("   [FIX] git config --global user.name")
+        print("   [FIX] config.local.json に 'owner' フィールドを作成")
         errors.append(ValueError(error_msg))
         return SyncResult(success=False, synced_repos=[], errors=errors)
 
@@ -78,34 +78,34 @@ def sync_repositories(config: dict, dry_run: bool = False) -> SyncResult:
             lock = ProcessLock(lock_file)
 
         if not lock.acquire():
-            print(f"❌ 別のプロセスが実行中です（ロック: {lock.lock_file}）")
+            print(f"[ERROR] 別のプロセスが実行中です（ロック: {lock.lock_file}）")
             sys.exit(1)
 
     # ログセットアップ
     logger = TeeLogger(config.get("log_file") if not dry_run else None)
 
-    print("\\n🚀 セットアップを開始します...")
+    print("\\n[START] セットアップを開始します...")
 
     # uvインストールチェック
     if not config.get("skip_uv_install", False):
         ensure_uv()
 
     # リポジトリ一覧取得
-    print("\\n📡 リポジトリ一覧を取得中...")
+    print("\\n[INFO] リポジトリ一覧を取得中...")
     try:
         repos = get_repositories(owner, config.get("github_token"))
     except Exception as e:
-        print(f"❌ リポジトリ取得エラー: {e}")
+        print(f"[ERROR] リポジトリ取得エラー: {e}")
         errors.append(e)
         return SyncResult(success=False, synced_repos=[], errors=errors)
 
     if not repos:
         error_msg = "リポジトリが見つかりませんでした"
-        print(f"❌ {error_msg}")
+        print(f"[ERROR] {error_msg}")
         errors.append(ValueError(error_msg))
         return SyncResult(success=False, synced_repos=[], errors=errors)
 
-    print(f"📋 {len(repos)}個のリポジトリを発見")
+    print(f"[INFO] {len(repos)}個のリポジトリを発見")
 
     # 実際の接続方式を表示
     sample_url = choose_clone_url(repos[0], config.get("use_https", False))
@@ -114,7 +114,7 @@ def sync_repositories(config: dict, dry_run: bool = False) -> SyncResult:
         connection_type = "SSH" if sample_url.startswith("git@") else "HTTPS"
     else:
         connection_type = "UNKNOWN"
-    print(f"🔗 実際の接続方式: {connection_type}")
+    print(f"[INFO] 実際の接続方式: {connection_type}")
 
     # 保存先ディレクトリ作成
     dest_dir = Path(dest)
@@ -122,7 +122,7 @@ def sync_repositories(config: dict, dry_run: bool = False) -> SyncResult:
         dest_dir.mkdir(parents=True, exist_ok=True)
 
     # リポジトリ同期
-    print("\\n🔄 リポジトリ同期中...")
+    print("\\n[SYNC] リポジトリ同期中...")
     success_count = 0
 
     for repo in repos:
@@ -130,13 +130,13 @@ def sync_repositories(config: dict, dry_run: bool = False) -> SyncResult:
         repo_name = repo.get("name")
         if not isinstance(repo_name, str) or not repo_name:
             # 不正なリポジトリ名の場合はスキップ
-            print(f"   ⚠️  不正なリポジトリ名をスキップ: {repo_name}")
+            print(f"   [WARN] 不正なリポジトリ名をスキップ: {repo_name}")
             errors.append(ValueError(f"不正なリポジトリ名: {repo_name}"))
             continue
 
         # 必須フィールドの検証
         if not repo.get("clone_url") and not repo.get("ssh_url"):
-            print(f"   ⚠️  {repo_name}: クローンURLが見つかりません")
+            print(f"   [WARN] {repo_name}: クローンURLが見つかりません")
             errors.append(ValueError(f"{repo_name}: クローンURLが見つかりません"))
             continue
         repo_path = dest_dir / repo_name
@@ -147,10 +147,10 @@ def sync_repositories(config: dict, dry_run: bool = False) -> SyncResult:
             if has_issues:
                 choice = prompt_user_action(repo_name, issues)
                 if choice == "q":
-                    print("\\n🛑 ユーザーによって中断されました")
+                    print("\\n[STOP] ユーザーによって中断されました")
                     sys.exit(0)
                 elif choice == "s":
-                    print(f"   ⏭️  {repo_name}: スキップしました")
+                    print(f"   [SKIP] {repo_name}: スキップしました")
                     continue
                 elif choice == "c":
                     create_emergency_backup(repo_path)
@@ -159,7 +159,7 @@ def sync_repositories(config: dict, dry_run: bool = False) -> SyncResult:
         try:
             if dry_run:
                 # ドライランモードでは実際の同期は行わない
-                print(f"   🔍 {repo_name}: ドライランモード - 同期をスキップ")
+                print(f"   [DRY] {repo_name}: ドライランモード - 同期をスキップ")
                 synced_repos.append(repo_name)
                 success_count += 1
             elif sync_repository_with_retries(repo, dest_dir, config):
@@ -176,10 +176,10 @@ def sync_repositories(config: dict, dry_run: bool = False) -> SyncResult:
                 # Python環境セットアップ
                 setup_python_environment(repo_path, dry_run)
         except Exception as e:
-            print(f"   ❌ {repo_name}: 同期エラー - {e}")
+            print(f"   [ERROR] {repo_name}: 同期エラー - {e}")
             errors.append(e)
 
-    print(f"\\n✅ 完了: {success_count}/{len(repos)} リポジトリを同期しました")
+    print(f"\\n[DONE] 完了: {success_count}/{len(repos)} リポジトリを同期しました")
     logger.close()
 
     # 結果を返す

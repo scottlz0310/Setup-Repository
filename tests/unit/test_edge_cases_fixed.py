@@ -17,9 +17,7 @@ class EdgeCaseValidator:
     @staticmethod
     def validate_empty_values(value: Any) -> bool:
         """空値の検証"""
-        if value == "" or value is None or value == [] or value == {} or value == 0 or value is False:
-            return False
-        return True
+        return not (value == "" or value is None or value == [] or value == {} or value == 0 or value is False)
 
     @staticmethod
     def validate_special_characters(text: str) -> dict:
@@ -208,7 +206,7 @@ class TestConfigurationValidation:
 
         for config in invalid_configs:
             has_invalid = False
-            for key, value in config.items():
+            for _key, value in config.items():
                 if not EdgeCaseValidator.validate_empty_values(value):
                     has_invalid = True
                     break

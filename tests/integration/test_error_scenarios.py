@@ -422,7 +422,7 @@ class TestErrorScenarios:
                 side_effect=mock_sync_with_partial_error,
             ),
         ):
-            _ = sync_repositories(sample_config, dry_run=False)
+            result = sync_repositories(sample_config, dry_run=False)
 
         # 部分的成功を確認
         # 現在の実装では、エラーがあると全体が失敗とみなされるため、

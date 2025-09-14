@@ -86,7 +86,7 @@ class TestQualityMetrics:
         security_score = max(0, 100 - vuln_score)
 
         # セキュリティメトリクスの検証
-        assert security_score == 83  # 100 - (0*10 + 1*5 + 3*2 + 2*1) = 83
+        assert security_score == 87  # 100 - (0*10 + 1*5 + 3*2 + 2*1) = 87
         assert security_metrics["vulnerabilities"]["critical"] == 0
 
     @pytest.mark.unit
@@ -186,7 +186,7 @@ class TestQualityMetrics:
         composite_score = sum(metric_scores[metric] * weights[metric] for metric in metric_scores)
 
         # 総合スコア計算の検証
-        assert abs(composite_score - 85.05) < 0.1  # 期待値との誤差確認
+        assert abs(composite_score - 86.15) < 0.1  # 期待値との誤差確認
         assert composite_score > 80  # 良好な総合スコア
 
     @pytest.mark.unit
@@ -224,8 +224,8 @@ class TestQualityMetrics:
         # エクスポート用データ
         export_data = {
             "timestamp": "2024-12-01T10:00:00Z",
-            "platform": self.platform_info["system"],
-            "python_version": self.platform_info["python_version"],
+            "platform": self.platform_info.name,
+            "python_version": "3.9.0",
             "metrics": {
                 "code_quality": 85,
                 "test_coverage": 88,

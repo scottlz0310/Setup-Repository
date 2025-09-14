@@ -40,7 +40,7 @@ class TestSecurityUtils:
             ("nodigits", False),
             ("NOLOWERCASE123", False),
             ("nouppercase123", False),
-            ("Secure1", True),
+            ("Secure12", True),
         ]
 
         # パスワード検証テスト
@@ -88,12 +88,12 @@ class TestSecurityUtils:
 
         # サニタイゼーション関数
         def sanitize_input(user_input):
-            # HTMLエスケープ
-            html_escape_map = {"<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&#x27;"}
-
-            sanitized = user_input
-            for char, escape in html_escape_map.items():
-                sanitized = sanitized.replace(char, escape)
+            # HTMLエスケープ（&を最初に処理）
+            sanitized = user_input.replace("&", "&amp;")
+            sanitized = sanitized.replace("<", "&lt;")
+            sanitized = sanitized.replace(">", "&gt;")
+            sanitized = sanitized.replace('"', "&quot;")
+            sanitized = sanitized.replace("'", "&#x27;")
 
             return sanitized
 

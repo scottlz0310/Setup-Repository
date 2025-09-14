@@ -489,7 +489,7 @@ class TestQualityCollectorsIntegration:
         verify_current_platform()  # プラットフォーム検証
 
         # パストラバーサル攻撃を試行
-        malicious_path = tmp_path / ".." / ".." / "etc" / "passwd"
+        tmp_path / ".." / ".." / "etc" / "passwd"
 
         # 正常なパスでのテスト
         result = collect_coverage_metrics(tmp_path)

@@ -46,9 +46,9 @@ class TestErrorRecoveryScenarios:
                             time.sleep(self.retry_delay * (2**attempt))  # Exponential backoff
                             continue
                         else:
-                            raise last_error
+                            raise last_error from None
 
-                raise last_error
+                raise last_error from None
 
         # テスト用ファイル操作
         def write_test_file(file_path, content):
@@ -102,9 +102,9 @@ class TestErrorRecoveryScenarios:
                             time.sleep(0.01 * (2**attempt))  # Exponential backoff
                             continue
                         else:
-                            raise last_error
+                            raise last_error from None
 
-                raise last_error
+                raise last_error from None
 
         # ネットワーク回復テスト
         network = NetworkRecovery(max_retries=3)
@@ -232,7 +232,7 @@ class TestErrorRecoveryScenarios:
                 self.process_attempts = {}
 
             def execute_process(self, command, simulate_failure=False):
-                process_id = f"proc_{len(self.process_attempts)}"
+                process_id = f"proc_{command}"
                 self.process_attempts[process_id] = self.process_attempts.get(process_id, 0) + 1
 
                 # 失敗シミュレーション
@@ -262,9 +262,9 @@ class TestErrorRecoveryScenarios:
                             time.sleep(0.01)
                             continue
                         else:
-                            raise last_error
+                            raise last_error from None
 
-                raise last_error
+                raise last_error from None
 
         # プロセス回復テスト
         process_manager = ProcessRecovery(max_retries=3)
@@ -307,12 +307,12 @@ class TestErrorRecoveryScenarios:
                     return self.allocate_resource(size)
                 except MemoryError:
                     # 自動クリーンアップして再試行
-                    cleanup_result = self.cleanup_resources()
+                    self.cleanup_resources()
                     try:
                         allocation_result = self.allocate_resource(size)
                         return f"After cleanup: {allocation_result}"
                     except MemoryError:
-                        raise MemoryError("Insufficient memory even after cleanup")
+                        raise MemoryError("Insufficient memory even after cleanup") from None
 
         # リソース回復テスト
         resource_manager = ResourceRecovery()
@@ -336,14 +336,12 @@ class TestErrorRecoveryScenarios:
                 self.signal_handlers = {}
 
             def handle_signal_error(self, signal_name):
-                if signal_name == "SIGTERM":
-                    return {"action": "graceful_shutdown", "success": True}
-                elif signal_name == "SIGINT":
-                    return {"action": "interrupt_handling", "success": True}
-                elif signal_name == "SIGUSR1":
-                    return {"action": "reload_config", "success": True}
-                else:
-                    return {"action": "unknown_signal", "success": False}
+                signal_actions = {
+                    "SIGTERM": {"action": "graceful_shutdown", "success": True},
+                    "SIGINT": {"action": "interrupt_handling", "success": True},
+                    "SIGUSR1": {"action": "reload_config", "success": True},
+                }
+                return signal_actions.get(signal_name, {"action": "unknown_signal", "success": False})
 
             def recover_from_permission_error(self, file_path):
                 # 権限エラーからの回復試行
@@ -385,8 +383,6 @@ class TestErrorRecoveryScenarios:
                 }
 
             def handle_windows_error(self, error_code):
-                error_name = self.error_codes.get(error_code, "UNKNOWN_ERROR")
-
                 if error_code == 5:  # ACCESS_DENIED
                     return {
                         "action": "request_elevation",

@@ -17,7 +17,7 @@
 
 **統合元**:
 - `ci.yml`
-- `ci-matrix.yml` 
+- `ci-matrix.yml`
 - `test-ci.yml`
 
 ### 2. `scheduled-comprehensive.yml` - 包括的テスト（スケジュール実行）

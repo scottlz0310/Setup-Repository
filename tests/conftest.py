@@ -40,6 +40,7 @@ def sample_config() -> dict[str, Any]:
 def config_file(temp_dir: Path, sample_config: dict[str, Any]) -> Path:
     """設定ファイルフィクスチャ"""
     import json
+
     config_file_path = temp_dir / "config.json"
     with open(config_file_path, "w", encoding="utf-8") as f:
         json.dump(sample_config, f, indent=2, ensure_ascii=False)
@@ -49,51 +50,59 @@ def config_file(temp_dir: Path, sample_config: dict[str, Any]) -> Path:
 @pytest.fixture
 def mock_github_api():
     """GitHub APIモックフィクスチャ"""
-    class MockGitHubAPI:
-        def get_user_repos(self):
-            return [
-                {
-                    "name": "test-repo-1",
-                    "clone_url": "https://github.com/test_user/test-repo-1.git",
-                },
-                {
-                    "name": "test-repo-2", 
-                    "clone_url": "https://github.com/test_user/test-repo-2.git",
-                }
-            ]
-        
-        def get_user_info(self):
-            return {"login": "test_user"}
-    
-    return MockGitHubAPI()
+    from unittest.mock import Mock
+
+    mock = Mock()
+    mock.get_user_repos.return_value = [
+        {
+            "name": "test-repo-1",
+            "full_name": "test_user/test-repo-1",
+            "clone_url": "https://github.com/test_user/test-repo-1.git",
+            "ssh_url": "git@github.com:test_user/test-repo-1.git",
+            "description": "テストリポジトリ1",
+            "private": False,
+            "default_branch": "main",
+        },
+        {
+            "name": "test-repo-2",
+            "full_name": "test_user/test-repo-2",
+            "clone_url": "https://github.com/test_user/test-repo-2.git",
+            "ssh_url": "git@github.com:test_user/test-repo-2.git",
+            "description": "テストリポジトリ2",
+            "private": False,
+            "default_branch": "main",
+        },
+    ]
+    mock.get_user_info.return_value = {"login": "test_user"}
+
+    return mock
 
 
 @pytest.fixture
 def mock_git_operations():
     """Git操作モックフィクスチャ"""
-    class MockGitOperations:
-        def clone_repository(self):
-            return True
-        
-        def pull_repository(self):
-            return True
-        
-        def get_repository_status(self):
-            return {"clean": True}
-    
-    return MockGitOperations()
+    from unittest.mock import Mock
+
+    mock = Mock()
+    mock.clone_repository.return_value = True
+    mock.pull_repository.return_value = True
+    mock.get_repository_status.return_value = {"clean": True}
+    mock.is_git_repository.return_value = True
+
+    return mock
 
 
 @pytest.fixture
 def mock_platform_detector():
     """プラットフォーム検出モックフィクスチャ"""
+
     class MockPlatformDetector:
         def detect_platform(self):
             return "linux"
-        
+
         def get_package_manager(self):
             return "apt"
-    
+
     return MockPlatformDetector()
 
 
@@ -306,7 +315,9 @@ def assert_file_exists_with_content(file_path: Path, expected_content: str) -> N
     """ファイルの存在と内容をチェック"""
     assert file_path.exists(), f"ファイル {file_path} が存在しません"
     actual_content = file_path.read_text(encoding="utf-8")
-    assert actual_content == expected_content, f"ファイル内容が一致しません。期待値: {expected_content}, 実際: {actual_content}"
+    assert actual_content == expected_content, (
+        f"ファイル内容が一致しません。期待値: {expected_content}, 実際: {actual_content}"
+    )
 
 
 def assert_directory_structure(base_dir: Path, expected_structure: dict[str, Any]) -> None:
@@ -314,7 +325,7 @@ def assert_directory_structure(base_dir: Path, expected_structure: dict[str, Any
     for name, content in expected_structure.items():
         path = base_dir / name
         assert path.exists(), f"パス {path} が存在しません"
-        
+
         if isinstance(content, dict):
             # サブディレクトリの場合
             assert path.is_dir(), f"{path} はディレクトリではありません"

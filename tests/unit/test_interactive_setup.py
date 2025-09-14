@@ -334,7 +334,9 @@ class TestSetupWizard:
 
         setup_wizard.configure_workspace()
 
-        assert setup_wizard.config["dest"] == custom_path
+        # プラットフォーム固有のパス形式を考慮
+        expected_path = str(Path(custom_path))
+        assert setup_wizard.config["dest"] == expected_path
 
     @pytest.mark.unit
     @patch("builtins.open", new_callable=mock_open)

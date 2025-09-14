@@ -378,7 +378,7 @@ class TestFullWorkflow:
             patch("setup_repo.sync.sync_repository_with_retries", return_value=True),
         ):
             start_time = time.time()
-            _ = sync_repositories(sample_config, dry_run=True)
+            result = sync_repositories(sample_config, dry_run=True)
             execution_time = time.time() - start_time
 
         # パフォーマンス要件: 50リポジトリの同期が30秒以内（ドライランモード）
