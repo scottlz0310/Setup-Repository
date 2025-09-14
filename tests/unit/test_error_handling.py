@@ -224,7 +224,7 @@ class TestErrorHandling:
         # テスト用リポジトリディレクトリを作成
         repo_dir = temp_dir / "test_repo"
         repo_dir.mkdir()
-        (repo_dir / "test_file.txt").write_text("テストファイル")
+        (repo_dir / "test_file.txt").write_text("test file content", encoding="utf-8")
 
         # バックアップ作成をテスト
         with patch("shutil.copytree") as mock_copytree:

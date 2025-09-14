@@ -129,8 +129,9 @@ class TestCLIEdgeCases:
             with patch("builtins.print") as mock_print:
                 quality_cli(args)
 
-            # 相対パスが正しく解決されることを確認
-            mock_collector_class.assert_called_once_with(project_dir)
+            # 相対パスが正しく解決されることを確認（パス正規化で比較）
+            called_path = mock_collector_class.call_args[0][0]
+            assert called_path.resolve() == project_dir.resolve()
 
             # 出力メッセージの確認
             print_calls = [call[0][0] for call in mock_print.call_args_list]
@@ -230,9 +231,10 @@ class TestCLIEdgeCases:
             with patch("builtins.print") as mock_print:
                 quality_cli(args)
 
-            # トレンドマネージャーが正しく初期化されることを確認
+            # トレンドマネージャーが正しく初期化されることを確認（パス正規化で比較）
             expected_trend_file = project_dir / "quality-trends" / "trend-data.json"
-            mock_trend_class.assert_called_once_with(expected_trend_file)
+            called_path = mock_trend_class.call_args[0][0]
+            assert called_path.resolve() == expected_trend_file.resolve()
 
             # トレンドデータが追加されることを確認
             mock_trend_manager.add_data_point.assert_called_once_with(mock_metrics)
@@ -306,9 +308,10 @@ class TestCLIEdgeCases:
             with patch("builtins.print") as mock_print:
                 trend_cli(args)
 
-            # HTMLレポート生成が実行されることを確認
+            # HTMLレポート生成が実行されることを確認（パス正規化で比較）
             expected_output = project_dir / "quality-trends" / "trend-report.html"
-            mock_trend_manager.generate_html_report.assert_called_once_with(expected_output)
+            called_path = mock_trend_manager.generate_html_report.call_args[0][0]
+            assert called_path.resolve() == expected_output.resolve()
 
             # 出力メッセージの確認
             print_calls = [call[0][0] for call in mock_print.call_args_list]

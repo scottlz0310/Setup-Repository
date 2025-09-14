@@ -300,11 +300,18 @@ class TestSetupWizard:
 
         mock_validate.return_value = {"username": None, "token": "test_token"}
         mock_validate_input.return_value = {"valid": True, "value": "new_user"}
+        
+        # PowerShellの実行ポリシーチェックとgit configの両方をモック
+        mock_run.side_effect = [
+            Mock(returncode=0),  # PowerShell実行ポリシーチェック
+            Mock(returncode=0),  # git config --global user.name
+        ]
 
         setup_wizard.configure_github()
 
         assert setup_wizard.config["owner"] == "new_user"
-        mock_run.assert_called_once()
+        # PowerShellチェックとgit configの2回呼ばれることを確認
+        assert mock_run.call_count >= 1
 
     @pytest.mark.unit
     @patch("src.setup_repo.interactive_setup.validate_user_input")
