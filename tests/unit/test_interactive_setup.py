@@ -300,7 +300,7 @@ class TestSetupWizard:
 
         mock_validate.return_value = {"username": None, "token": "test_token"}
         mock_validate_input.return_value = {"valid": True, "value": "new_user"}
-        
+
         # PowerShellの実行ポリシーチェックとgit configの両方をモック
         mock_run.side_effect = [
             Mock(returncode=0),  # PowerShell実行ポリシーチェック

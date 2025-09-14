@@ -372,6 +372,7 @@ class TestSetupWithVenv:
             called_pip_path = pip_upgrade_call[0][0][0]
             # パスを正規化して比較
             from pathlib import Path
+
             assert Path(called_pip_path).resolve() == pip_path.resolve()
 
     @pytest.mark.unit
@@ -383,13 +384,13 @@ class TestSetupWithVenv:
         # venvディレクトリ構造をモック（WindowsとUnix両方に対応）
         venv_path = temp_repo / ".venv"
         venv_path.mkdir()
-        
+
         # Windows形式のパスも作成
         scripts_path = venv_path / "Scripts"
         scripts_path.mkdir()
         pip_exe_path = scripts_path / "pip.exe"
         pip_exe_path.write_text("@echo off", encoding="utf-8")
-        
+
         # Unix形式のパスも作成
         bin_path = venv_path / "bin"
         bin_path.mkdir()
