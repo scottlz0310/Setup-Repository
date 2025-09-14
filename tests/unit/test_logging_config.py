@@ -442,9 +442,9 @@ class TestLoggingConfig:
             patch("pathlib.Path.__truediv__", side_effect=OSError("Path error")),
             patch("pathlib.Path.cwd", side_effect=Exception("CWD error")),
         ):
-                path = LoggingConfig.get_log_file_path()
-                # WindowsPathが使用されることを確認
-                assert "quality.log" in str(path)
+            path = LoggingConfig.get_log_file_path()
+            # WindowsPathが使用されることを確認
+            assert "quality.log" in str(path)
 
     @pytest.mark.unit
     def test_environment_variable_combinations(self):

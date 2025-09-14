@@ -25,8 +25,8 @@ class TestConfigMissingCoverage:
             # gh CLIが失敗する場合をテスト
             patch("subprocess.run", side_effect=FileNotFoundError("gh command not found")),
         ):
-                token = get_github_token()
-                assert token is None  # 20行のreturn Noneをテスト
+            token = get_github_token()
+            assert token is None  # 20行のreturn Noneをテスト
 
     @pytest.mark.unit
     def test_load_config_direct_file_path(self, temp_dir):

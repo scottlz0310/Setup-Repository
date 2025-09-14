@@ -210,13 +210,13 @@ class TestCompatibility:
                     and available_feature.get("version")
                     and not version_compatible(available_feature["version"], required_version)
                 ):
-                        incompatible_features.append(
-                            {
-                                "feature": feature_name,
-                                "required": required_version,
-                                "available": available_feature["version"],
-                            }
-                        )
+                    incompatible_features.append(
+                        {
+                            "feature": feature_name,
+                            "required": required_version,
+                            "available": available_feature["version"],
+                        }
+                    )
 
             return {
                 "compatible": len(missing_features) == 0 and len(incompatible_features) == 0,

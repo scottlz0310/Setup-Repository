@@ -292,7 +292,7 @@ class TestSetupIntegration:
             patch("os.getcwd", return_value=str(temp_dir)),
             patch("pathlib.Path.home", return_value=temp_dir),
         ):
-                loaded_config = load_config()
+            loaded_config = load_config()
 
         # local設定が優先されることを確認
         assert loaded_config["github_token"] == sample_config["github_token"]

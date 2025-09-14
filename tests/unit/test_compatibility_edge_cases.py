@@ -60,7 +60,7 @@ class TestCompatibilityEdgeCases:
             patch("importlib.import_module", side_effect=ImportError("Module not found")),
             pytest.raises(ImportError, match="Module not found"),
         ):
-                _deprecated_import("old_module", "nonexistent_module", "test_function")
+            _deprecated_import("old_module", "nonexistent_module", "test_function")
 
     @pytest.mark.unit
     def test_deprecated_import_with_attribute_error(self):

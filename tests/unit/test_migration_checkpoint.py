@@ -338,7 +338,7 @@ class TestMigrationCheckpoint:
             patch("builtins.open", side_effect=OSError("Permission denied")),
             pytest.raises(MigrationError, match="メタデータファイル保存に失敗"),
         ):
-                migration_checkpoint._save_metadata({})
+            migration_checkpoint._save_metadata({})
 
     @pytest.mark.unit
     def test_create_checkpoint_error_handling(self, migration_checkpoint):
@@ -349,7 +349,7 @@ class TestMigrationCheckpoint:
             patch("shutil.copytree", side_effect=OSError("Copy failed")),
             pytest.raises(MigrationError, match="チェックポイント作成に失敗"),
         ):
-                migration_checkpoint.create_checkpoint("error_phase")
+            migration_checkpoint.create_checkpoint("error_phase")
 
     @pytest.mark.unit
     def test_rollback_error_handling(self, migration_checkpoint):

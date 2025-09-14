@@ -101,8 +101,11 @@ class TestCIErrorHandler:
         handler = CIErrorHandler()
 
         # GitHub Actions環境をシミュレート
-        with patch.dict(os.environ, {"GITHUB_ACTIONS": "true"}), patch(
-            "src.setup_repo.ci_error_handler.CIEnvironmentInfo.detect_ci_environment", return_value="github_actions"
+        with (
+            patch.dict(os.environ, {"GITHUB_ACTIONS": "true"}),
+            patch(
+                "src.setup_repo.ci_error_handler.CIEnvironmentInfo.detect_ci_environment", return_value="github_actions"
+            ),
         ):
             assert handler._is_github_actions() is True
 

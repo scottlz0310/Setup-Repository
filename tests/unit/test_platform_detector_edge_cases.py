@@ -39,16 +39,16 @@ class TestPlatformDetectorEdgeCases:
             patch("os.path.exists", return_value=False),
             patch("platform.release", return_value="5.4.0-generic"),
         ):
-                result = _check_wsl_environment()
-                assert isinstance(result, bool)
+            result = _check_wsl_environment()
+            assert isinstance(result, bool)
 
         # /proc/versionファイル読み取りエラー
         with (
             patch("os.path.exists", return_value=True),
             patch("builtins.open", side_effect=PermissionError("Access denied")),
         ):
-                result = _check_wsl_environment()
-                assert isinstance(result, bool)
+            result = _check_wsl_environment()
+            assert isinstance(result, bool)
 
         # platform.release()にmicrosoftが含まれる場合
         with patch("platform.release", return_value="5.4.0-microsoft-standard-WSL2"):

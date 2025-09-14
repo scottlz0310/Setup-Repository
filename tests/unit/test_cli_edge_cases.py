@@ -36,10 +36,10 @@ class TestCLIEdgeCases:
             patch("src.setup_repo.cli.sync_repositories") as mock_sync,
         ):
             mock_load_config.return_value = {
-                    "github_token": "test_token",
-                    "use_https": False,  # コマンドライン引数で上書きされる
-                    "sync_only": False,  # コマンドライン引数で上書きされる
-                }
+                "github_token": "test_token",
+                "use_https": False,  # コマンドライン引数で上書きされる
+                "sync_only": False,  # コマンドライン引数で上書きされる
+            }
 
             sync_cli(args)
 
@@ -112,30 +112,30 @@ class TestCLIEdgeCases:
             patch("src.setup_repo.cli.QualityMetricsCollector") as mock_collector_class,
             patch("src.setup_repo.cli.QualityTrendManager"),
         ):
-                    # モックメトリクス
-                    mock_metrics = Mock()
-                    mock_metrics.get_quality_score.return_value = 85.5
-                    mock_metrics.test_coverage = 90.0
-                    mock_metrics.ruff_issues = 2
-                    mock_metrics.mypy_errors = 1
-                    mock_metrics.security_vulnerabilities = 0
-                    mock_metrics.is_passing.return_value = True
+            # モックメトリクス
+            mock_metrics = Mock()
+            mock_metrics.get_quality_score.return_value = 85.5
+            mock_metrics.test_coverage = 90.0
+            mock_metrics.ruff_issues = 2
+            mock_metrics.mypy_errors = 1
+            mock_metrics.security_vulnerabilities = 0
+            mock_metrics.is_passing.return_value = True
 
-                    mock_collector = Mock()
-                    mock_collector.collect_all_metrics.return_value = mock_metrics
-                    mock_collector.save_metrics_report.return_value = project_dir / "report.json"
-                    mock_collector_class.return_value = mock_collector
+            mock_collector = Mock()
+            mock_collector.collect_all_metrics.return_value = mock_metrics
+            mock_collector.save_metrics_report.return_value = project_dir / "report.json"
+            mock_collector_class.return_value = mock_collector
 
-                    with patch("builtins.print") as mock_print:
-                        quality_cli(args)
+            with patch("builtins.print") as mock_print:
+                quality_cli(args)
 
-                    # 相対パスが正しく解決されることを確認
-                    mock_collector_class.assert_called_once_with(project_dir)
+            # 相対パスが正しく解決されることを確認
+            mock_collector_class.assert_called_once_with(project_dir)
 
-                    # 出力メッセージの確認
-                    print_calls = [call[0][0] for call in mock_print.call_args_list]
-                    assert any("品質メトリクス収集完了" in call for call in print_calls)
-                    assert any("品質スコア: 85.5/100" in call for call in print_calls)
+            # 出力メッセージの確認
+            print_calls = [call[0][0] for call in mock_print.call_args_list]
+            assert any("品質メトリクス収集完了" in call for call in print_calls)
+            assert any("品質スコア: 85.5/100" in call for call in print_calls)
 
     @pytest.mark.unit
     def test_quality_cli_with_absolute_path_security_check(self, temp_dir):
@@ -175,24 +175,24 @@ class TestCLIEdgeCases:
             patch.dict(os.environ, {"PYTEST_CURRENT_TEST": "test_quality_cli"}),
             patch("src.setup_repo.cli.QualityMetricsCollector") as mock_collector_class,
         ):
-                mock_metrics = Mock()
-                mock_metrics.get_quality_score.return_value = 75.0
-                mock_metrics.test_coverage = 80.0
-                mock_metrics.ruff_issues = 5
-                mock_metrics.mypy_errors = 3
-                mock_metrics.security_vulnerabilities = 1
-                mock_metrics.is_passing.return_value = False
+            mock_metrics = Mock()
+            mock_metrics.get_quality_score.return_value = 75.0
+            mock_metrics.test_coverage = 80.0
+            mock_metrics.ruff_issues = 5
+            mock_metrics.mypy_errors = 3
+            mock_metrics.security_vulnerabilities = 1
+            mock_metrics.is_passing.return_value = False
 
-                mock_collector = Mock()
-                mock_collector.collect_all_metrics.return_value = mock_metrics
-                mock_collector.save_metrics_report.return_value = external_path / "report.json"
-                mock_collector_class.return_value = mock_collector
+            mock_collector = Mock()
+            mock_collector.collect_all_metrics.return_value = mock_metrics
+            mock_collector.save_metrics_report.return_value = external_path / "report.json"
+            mock_collector_class.return_value = mock_collector
 
-                with patch("builtins.print"), patch("builtins.exit") as mock_exit:
-                    quality_cli(args)
+            with patch("builtins.print"), patch("builtins.exit") as mock_exit:
+                quality_cli(args)
 
-                    # 品質基準を満たしていない場合はexit(1)が呼ばれる
-                    mock_exit.assert_called_once_with(1)
+                # 品質基準を満たしていない場合はexit(1)が呼ばれる
+                mock_exit.assert_called_once_with(1)
 
     @pytest.mark.unit
     def test_quality_cli_with_trend_saving(self, temp_dir):
@@ -211,35 +211,35 @@ class TestCLIEdgeCases:
             patch("src.setup_repo.cli.QualityMetricsCollector") as mock_collector_class,
             patch("src.setup_repo.cli.QualityTrendManager") as mock_trend_class,
         ):
-                mock_metrics = Mock()
-                mock_metrics.get_quality_score.return_value = 95.0
-                mock_metrics.test_coverage = 95.0
-                mock_metrics.ruff_issues = 0
-                mock_metrics.mypy_errors = 0
-                mock_metrics.security_vulnerabilities = 0
-                mock_metrics.is_passing.return_value = True
+            mock_metrics = Mock()
+            mock_metrics.get_quality_score.return_value = 95.0
+            mock_metrics.test_coverage = 95.0
+            mock_metrics.ruff_issues = 0
+            mock_metrics.mypy_errors = 0
+            mock_metrics.security_vulnerabilities = 0
+            mock_metrics.is_passing.return_value = True
 
-                mock_collector = Mock()
-                mock_collector.collect_all_metrics.return_value = mock_metrics
-                mock_collector.save_metrics_report.return_value = project_dir / "report.json"
-                mock_collector_class.return_value = mock_collector
+            mock_collector = Mock()
+            mock_collector.collect_all_metrics.return_value = mock_metrics
+            mock_collector.save_metrics_report.return_value = project_dir / "report.json"
+            mock_collector_class.return_value = mock_collector
 
-                mock_trend_manager = Mock()
-                mock_trend_class.return_value = mock_trend_manager
+            mock_trend_manager = Mock()
+            mock_trend_class.return_value = mock_trend_manager
 
-                with patch("builtins.print") as mock_print:
-                    quality_cli(args)
+            with patch("builtins.print") as mock_print:
+                quality_cli(args)
 
-                # トレンドマネージャーが正しく初期化されることを確認
-                expected_trend_file = project_dir / "quality-trends" / "trend-data.json"
-                mock_trend_class.assert_called_once_with(expected_trend_file)
+            # トレンドマネージャーが正しく初期化されることを確認
+            expected_trend_file = project_dir / "quality-trends" / "trend-data.json"
+            mock_trend_class.assert_called_once_with(expected_trend_file)
 
-                # トレンドデータが追加されることを確認
-                mock_trend_manager.add_data_point.assert_called_once_with(mock_metrics)
+            # トレンドデータが追加されることを確認
+            mock_trend_manager.add_data_point.assert_called_once_with(mock_metrics)
 
-                # トレンド更新メッセージの確認
-                print_calls = [call[0][0] for call in mock_print.call_args_list]
-                assert any("トレンドデータを更新しました" in call for call in print_calls)
+            # トレンド更新メッセージの確認
+            print_calls = [call[0][0] for call in mock_print.call_args_list]
+            assert any("トレンドデータを更新しました" in call for call in print_calls)
 
     @pytest.mark.unit
     def test_trend_cli_analyze_action(self, temp_dir):
