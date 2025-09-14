@@ -58,8 +58,8 @@ class TestGitignoreManager:
         manager = GitignoreManager(temp_repo_path)
 
         assert manager.repo_path == Path(temp_repo_path)
-        # デフォルトパスの確認
-        expected_default = Path(__file__).parent.parent.parent.parent / "gitignore-templates"
+        # デフォルトパスの確認（プロジェクトルートからの相対パス）
+        expected_default = Path.cwd() / "gitignore-templates"
         assert manager.templates_dir == expected_default
 
     @pytest.mark.unit

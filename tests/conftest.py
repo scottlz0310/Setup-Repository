@@ -37,6 +37,67 @@ def sample_config() -> dict[str, Any]:
 
 
 @pytest.fixture
+def config_file(temp_dir: Path, sample_config: dict[str, Any]) -> Path:
+    """設定ファイルフィクスチャ"""
+    import json
+    config_file_path = temp_dir / "config.json"
+    with open(config_file_path, "w", encoding="utf-8") as f:
+        json.dump(sample_config, f, indent=2, ensure_ascii=False)
+    return config_file_path
+
+
+@pytest.fixture
+def mock_github_api():
+    """GitHub APIモックフィクスチャ"""
+    class MockGitHubAPI:
+        def get_user_repos(self):
+            return [
+                {
+                    "name": "test-repo-1",
+                    "clone_url": "https://github.com/test_user/test-repo-1.git",
+                },
+                {
+                    "name": "test-repo-2", 
+                    "clone_url": "https://github.com/test_user/test-repo-2.git",
+                }
+            ]
+        
+        def get_user_info(self):
+            return {"login": "test_user"}
+    
+    return MockGitHubAPI()
+
+
+@pytest.fixture
+def mock_git_operations():
+    """Git操作モックフィクスチャ"""
+    class MockGitOperations:
+        def clone_repository(self):
+            return True
+        
+        def pull_repository(self):
+            return True
+        
+        def get_repository_status(self):
+            return {"clean": True}
+    
+    return MockGitOperations()
+
+
+@pytest.fixture
+def mock_platform_detector():
+    """プラットフォーム検出モックフィクスチャ"""
+    class MockPlatformDetector:
+        def detect_platform(self):
+            return "linux"
+        
+        def get_package_manager(self):
+            return "apt"
+    
+    return MockPlatformDetector()
+
+
+@pytest.fixture
 def ci_environment() -> dict[str, str]:
     """CI環境変数フィクスチャ"""
     return {
@@ -59,14 +120,7 @@ def pytest_configure(config):
 
 def pytest_collection_modifyitems(config, items):
     """テスト収集時の処理"""
-    # CI環境でない場合、統合テストをスキップ
-    if not os.environ.get("CI") and not os.environ.get("INTEGRATION_TESTS"):
-        skip_integration = pytest.mark.skip(reason="統合テストはCI環境でのみ実行")
-        for item in items:
-            if "integration" in item.keywords:
-                item.add_marker(skip_integration)
-
-    # ネットワークテストのスキップ処理
+    # ネットワークテストのスキップ処理（明示的に有効化された場合のみ実行）
     if not os.environ.get("NETWORK_TESTS"):
         skip_network = pytest.mark.skip(reason="ネットワークテストは明示的に有効化された場合のみ実行")
         for item in items:
@@ -237,3 +291,36 @@ def cross_platform_helper():
                     assert not result["success"], f"{platform_name}でテストが成功してしまいました"
 
     return CrossPlatformHelper()
+
+
+# カスタムアサーション関数
+def assert_config_valid(config: dict[str, Any]) -> None:
+    """設定の妥当性をチェック"""
+    required_keys = ["github_token", "github_username", "clone_destination"]
+    for key in required_keys:
+        assert key in config, f"必須キー '{key}' が設定にありません"
+        assert config[key], f"キー '{key}' の値が空です"
+
+
+def assert_file_exists_with_content(file_path: Path, expected_content: str) -> None:
+    """ファイルの存在と内容をチェック"""
+    assert file_path.exists(), f"ファイル {file_path} が存在しません"
+    actual_content = file_path.read_text(encoding="utf-8")
+    assert actual_content == expected_content, f"ファイル内容が一致しません。期待値: {expected_content}, 実際: {actual_content}"
+
+
+def assert_directory_structure(base_dir: Path, expected_structure: dict[str, Any]) -> None:
+    """ディレクトリ構造をチェック"""
+    for name, content in expected_structure.items():
+        path = base_dir / name
+        assert path.exists(), f"パス {path} が存在しません"
+        
+        if isinstance(content, dict):
+            # サブディレクトリの場合
+            assert path.is_dir(), f"{path} はディレクトリではありません"
+            assert_directory_structure(path, content)
+        else:
+            # ファイルの場合
+            assert path.is_file(), f"{path} はファイルではありません"
+            actual_content = path.read_text(encoding="utf-8")
+            assert actual_content == content, f"ファイル {path} の内容が一致しません"

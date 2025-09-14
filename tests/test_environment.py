@@ -5,6 +5,7 @@
 """
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -181,6 +182,7 @@ def test_custom_assertions(temp_dir: Path, sample_config: dict[str, Any]) -> Non
 
 
 @pytest.mark.integration
+@pytest.mark.skipif(not os.getenv("CI"), reason="統合テストはCI環境でのみ実行")
 def test_test_environment_integration(
     temp_dir: Path, sample_config: dict[str, Any], mock_github_api, mock_git_operations
 ) -> None:

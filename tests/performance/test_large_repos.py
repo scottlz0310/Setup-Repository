@@ -152,7 +152,7 @@ class TestLargeRepositoryPerformance:
             patch("setup_repo.sync.get_repositories", return_value=repositories),
             patch("setup_repo.sync.sync_repository_with_retries", return_value=True),
         ):
-            _ = sync_repositories(large_repo_config, dry_run=True)
+            result = sync_repositories(large_repo_config, dry_run=True)
             profiler.update_peak_memory()
 
         metrics = profiler.end_profiling()
@@ -181,7 +181,7 @@ class TestLargeRepositoryPerformance:
             patch("setup_repo.sync.get_repositories", return_value=repositories),
             patch("setup_repo.sync.sync_repository_with_retries", return_value=True),
         ):
-            _ = sync_repositories(large_repo_config, dry_run=True)
+            result = sync_repositories(large_repo_config, dry_run=True)
             profiler.update_peak_memory()
 
         metrics = profiler.end_profiling()
@@ -214,7 +214,7 @@ class TestLargeRepositoryPerformance:
             patch("setup_repo.sync.get_repositories", return_value=repositories),
             patch("setup_repo.sync.sync_repository_with_retries", return_value=True),
         ):
-            _ = sync_repositories(large_repo_config, dry_run=True)
+            result = sync_repositories(large_repo_config, dry_run=True)
             profiler.update_peak_memory()
 
         metrics = profiler.end_profiling()
@@ -347,7 +347,7 @@ class TestLargeRepositoryPerformance:
                 patch("setup_repo.sync.get_repositories", return_value=repositories),
                 patch("setup_repo.sync.sync_repository_with_retries", return_value=True),
             ):
-                _ = sync_repositories(large_repo_config, dry_run=True)
+                result = sync_repositories(large_repo_config, dry_run=True)
 
             gc.collect()  # 処理後のガベージコレクション
             if HAS_PSUTIL:
@@ -395,7 +395,7 @@ class TestLargeRepositoryPerformance:
                         return_value=True,
                     ),
                 ):
-                    _ = sync_repositories(large_repo_config, dry_run=True)
+                    result = sync_repositories(large_repo_config, dry_run=True)
                     profiler.update_peak_memory()
 
                 metrics = profiler.end_profiling()
@@ -472,7 +472,7 @@ class TestLargeRepositoryPerformance:
                 # 監視開始
                 time.time()
 
-                _ = sync_repositories(large_repo_config, dry_run=True)
+                result = sync_repositories(large_repo_config, dry_run=True)
 
                 # 定期的なリソース監視（実際の実装では別スレッドで実行）
                 resource_snapshots.append(monitor_resources())

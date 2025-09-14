@@ -87,7 +87,7 @@ def get_platform_specific_config():
 def optimize_for_platform():
     """プラットフォーム固有の最適化設定を適用"""
     platform_info = detect_platform()
-    get_platform_specific_config()  # プラットフォーム設定取得
+    config = get_platform_specific_config()  # プラットフォーム設定取得
 
     return {
         "platform": platform_info.name,

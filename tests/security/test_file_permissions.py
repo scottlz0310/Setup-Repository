@@ -349,7 +349,7 @@ class TestFilePermissionsSecurity:
         ]
 
         for test_path, _expected_safe in test_cases:
-            _ = is_safe_path(test_path, base_dir)
+            is_safe = is_safe_path(test_path, base_dir)
             # 実際のファイルシステムでの検証は環境依存のため、
             # 基本的なロジックのテストのみ実行
             assert isinstance(is_safe, bool)

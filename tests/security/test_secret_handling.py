@@ -1,5 +1,6 @@
 """秘密情報処理セキュリティテスト."""
 
+import json
 import platform
 import shutil
 import tempfile
