@@ -171,8 +171,9 @@ def check_package_manager(manager: str) -> bool:
         # CI環境では短いタイムアウトを使用
         timeout = 5 if _is_ci_environment() else 10
 
-        # タイムアウト付きで実行
-        result = subprocess.run(cmd, capture_output=True, check=True, timeout=timeout, text=True)
+        # 安全なsubprocess実行
+        from .security_helpers import safe_subprocess_run
+        result = safe_subprocess_run(cmd, capture_output=True, timeout=timeout, text=True)
 
         # 出力が空でないことを確認
         return bool(result.stdout.strip() or result.stderr.strip())
@@ -271,7 +272,8 @@ def _log_windows_path_info() -> None:
 
     # PowerShellの実行ポリシーをチェック
     try:
-        result = subprocess.run(
+        from .security_helpers import safe_subprocess_run
+        result = safe_subprocess_run(
             ["powershell", "-Command", "Get-ExecutionPolicy"],
             capture_output=True,
             text=True,
@@ -527,7 +529,8 @@ def _diagnose_ci_specific_issues(diagnosis: dict[str, Any], platform_info: Platf
         if platform_info.name == "windows":
             # PowerShellの実行ポリシーをチェック
             try:
-                result = subprocess.run(
+                from .security_helpers import safe_subprocess_run
+                result = safe_subprocess_run(
                     ["powershell", "-Command", "Get-ExecutionPolicy"],
                     capture_output=True,
                     text=True,

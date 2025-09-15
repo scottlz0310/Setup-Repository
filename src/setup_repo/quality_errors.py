@@ -112,7 +112,12 @@ class ErrorReporter:
         """エラーレポートを保存する統一インターフェース"""
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"{report_type}_error_report_{timestamp}.json"
+        from .security_helpers import validate_file_path
         output_file = self.get_report_path(filename)
+        
+        # ファイルパスの安全性を検証
+        if not validate_file_path(output_file, [".json", ".txt"]):
+            raise ValueError(f"Unsafe file path detected: {output_file}")
 
         try:
             output_file.parent.mkdir(parents=True, exist_ok=True)
@@ -123,7 +128,8 @@ class ErrorReporter:
             return output_file
         except (OSError, IOError) as e:
             # ファイル操作エラーの場合、フォールバック先を使用
-            fallback_file = Path.cwd() / f"{filename}"
+            from .security_helpers import safe_path_join
+            fallback_file = safe_path_join(Path.cwd(), filename)
             with open(fallback_file, "w", encoding="utf-8") as f:
                 json.dump(error_data, f, indent=2, ensure_ascii=False)
             return fallback_file
@@ -144,7 +150,8 @@ class ErrorReporter:
 
     def get_report_path(self, filename: str) -> Path:
         """レポートファイルのパスを取得"""
-        return self.report_dir / filename
+        from .security_helpers import safe_path_join
+        return safe_path_join(self.report_dir, filename)
 
     def create_error_report(self, errors: list[Exception], context: Optional[dict[str, Any]] = None) -> dict[str, Any]:
         """詳細なエラーレポートを作成"""

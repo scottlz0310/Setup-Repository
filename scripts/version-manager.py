@@ -205,12 +205,14 @@ class VersionManager:
             tag_name = f"v{version}"
 
             # タグが既に存在するかチェック
-            result = subprocess.run(
+            import sys
+            sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+            from setup_repo.security_helpers import safe_subprocess_run
+            
+            result = safe_subprocess_run(
                 ["git", "tag", "-l", tag_name],
                 capture_output=True,
                 text=True,
-                check=True,
-                shell=False,
             )
 
             if result.stdout.strip():
@@ -218,18 +220,14 @@ class VersionManager:
                 return False
 
             # タグを作成
-            subprocess.run(
+            safe_subprocess_run(
                 ["git", "tag", "-a", tag_name, "-m", f"Release {tag_name}"],
-                check=True,
-                shell=False,
             )
             print(f"✅ Gitタグを作成: {tag_name}")
 
             if push:
-                subprocess.run(
+                safe_subprocess_run(
                     ["git", "push", "origin", tag_name],
-                    check=True,
-                    shell=False,
                 )
                 print(f"✅ タグをプッシュ: {tag_name}")
 

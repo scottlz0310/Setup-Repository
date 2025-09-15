@@ -49,8 +49,9 @@ class TestUtilsCoverage:
             result = invalid_lock.acquire()
             if result:
                 invalid_lock.release()
-        except Exception:
-            pass  # エラーが発生しても正常
+        except (OSError, PermissionError, ValueError) as e:
+            # ファイルアクセスエラーは正常なテスト結果
+            pytest.skip(f"ファイルアクセスエラー: {e}")
 
         # 長いパスでのテスト
         long_path = str(temp_dir / ("x" * 100) / "test.lock")
@@ -59,8 +60,8 @@ class TestUtilsCoverage:
             result = long_lock.acquire()
             if result:
                 long_lock.release()
-        except Exception:
-            pass
+        except (OSError, PermissionError, ValueError) as e:
+            pytest.skip(f"ファイル操作エラー: {e}")
 
     @pytest.mark.unit
     def test_file_operations_utilities(self, temp_dir):
@@ -79,15 +80,15 @@ class TestUtilsCoverage:
         try:
             safe_file_write(test_file, test_content)
             assert test_file.exists()
-        except Exception:
-            pass
+        except (OSError, PermissionError, ValueError) as e:
+            pytest.skip(f"ファイル操作エラー: {e}")
 
         # 安全なファイル読み込み
         try:
             content = safe_file_read(test_file)
             assert content == test_content
-        except Exception:
-            pass
+        except (OSError, PermissionError, ValueError) as e:
+            pytest.skip(f"ファイル操作エラー: {e}")
 
     @pytest.mark.unit
     def test_path_utilities(self):
@@ -104,8 +105,8 @@ class TestUtilsCoverage:
             test_path = "test/path/../normalized"
             normalized = normalize_path(test_path)
             assert isinstance(normalized, (str, Path))
-        except Exception:
-            pass
+        except (ValueError, TypeError, AttributeError) as e:
+            pytest.skip(f"パス処理エラー: {e}")
 
         # 安全なパスチェック
         try:
