@@ -22,9 +22,24 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v3
-      with:
-        version: "latest"
+      run: |
+        # Linux環境でのuvインストール
+        if command -v uv >/dev/null 2>&1; then
+          echo "uv is already installed"
+          uv --version
+        else
+          echo "Installing uv using official installer..."
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+        fi
+
+        # インストール確認
+        if command -v uv >/dev/null 2>&1; then
+          echo "✅ uv installation verified"
+          uv --version
+        else
+          echo "❌ uv installation failed"
+          exit 1
+        fi
 
     - name: Set up Python ${{ matrix.python-version }}
       run: uv python install ${{ matrix.python-version }}
@@ -142,7 +157,7 @@ jobs:
           FALLBACK_EXIT_CODE=1
         fi
         echo "::endgroup::"
-        
+
         if [ $FALLBACK_EXIT_CODE -ne 0 ]; then
           echo "❌ Fallback quality checks failed with exit code: $FALLBACK_EXIT_CODE"
           exit $FALLBACK_EXIT_CODE
@@ -219,9 +234,9 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v3
-      with:
-        version: "latest"
+      run: |
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        uv --version
 
     - name: Set up Python
       run: uv python install 3.11
@@ -268,11 +283,33 @@ jobs:
       if: runner.os != 'Windows'
       run: curl -LsSf https://astral.sh/uv/install.sh | sh
 
-    - name: Install and setup uv (Windows)
+    - name: Install uv (Windows)
       if: runner.os == 'Windows'
-      uses: astral-sh/setup-uv@v3
-      with:
-        version: "latest"
+      run: |
+        # Windows環境でのuvインストール（フォールバック付き）
+        if (Get-Command uv -ErrorAction SilentlyContinue) {
+          Write-Host "uv is already installed"
+          uv --version
+        } else {
+          Write-Host "Installing uv using PowerShell installer..."
+          try {
+            irm https://astral.sh/uv/install.ps1 | iex
+            Write-Host "uv installed successfully via PowerShell"
+          } catch {
+            Write-Host "PowerShell installation failed, trying pip..."
+            python -m pip install uv
+          }
+        }
+
+        # インストール確認
+        if (Get-Command uv -ErrorAction SilentlyContinue) {
+          Write-Host "✅ uv installation verified"
+          uv --version
+        } else {
+          Write-Host "❌ uv installation failed completely"
+          exit 1
+        }
+      shell: powershell
 
     - name: Verify uv installation
       run: |
@@ -601,9 +638,9 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v3
-      with:
-        version: "latest"
+      run: |
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        uv --version
 
     - name: Set up Python
       run: uv python install 3.11

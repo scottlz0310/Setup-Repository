@@ -117,7 +117,7 @@ testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "-v --tb=short --disable-warnings -p xdist -p pytest_cov -n 20 --dist=loadfile --cov=src/setup_repo --cov-report=term-missing --cov-report=html:htmlcov"
+addopts = "-v --tb=short --disable-warnings -p xdist -p pytest_cov -n auto --dist=loadfile --cov=src/setup_repo --cov-report=term-missing --cov-report=html:htmlcov"
 markers = [
     "unit: 単体テスト",
     "integration: 統合テスト",

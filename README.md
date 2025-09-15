@@ -17,9 +17,14 @@ sudo snap install --classic uv
 
 **Windows:**
 ```powershell
-scoop install uv
-# または
-winget install uv
+# pipxを使用（推奨）
+pipx install uv
+
+# またはcurlでインストール
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# またはwinget
+winget install astral-sh.uv
 ```
 
 ## 🏃‍♂️ クイックスタート

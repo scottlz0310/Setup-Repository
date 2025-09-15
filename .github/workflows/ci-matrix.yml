@@ -46,10 +46,14 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Install uv
-      uses: astral-sh/setup-uv@v3
-      with:
-        enable-cache: false
+    - name: Install uv (Unix)
+      if: runner.os != 'Windows'
+      run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+    - name: Install uv (Windows)
+      if: runner.os == 'Windows'
+      run: irm https://astral.sh/uv/install.ps1 | iex
+      shell: powershell
 
     - name: Verify uv installation
       run: |
@@ -77,19 +81,19 @@ jobs:
       run: |
         set -e
         EXIT_CODE=0
-        
+
         echo "Running comprehensive tests..."
         if ! uv run pytest tests/ -v --tb=short; then
           echo "❌ Comprehensive tests failed"
           EXIT_CODE=1
         fi
-        
+
         echo "Testing main script help..."
         if ! uv run python main.py --help; then
           echo "❌ Main script test failed"
           EXIT_CODE=1
         fi
-        
+
         if [ $EXIT_CODE -ne 0 ]; then
           echo "❌ Tests failed with exit code: $EXIT_CODE"
           exit $EXIT_CODE
@@ -101,7 +105,7 @@ jobs:
       run: |
         set -e
         EXIT_CODE=0
-        
+
         # プラットフォーム固有テストの実行
         if [ "${{ runner.os }}" = "Windows" ]; then
           echo "Running Windows-specific tests..."
@@ -122,7 +126,7 @@ jobs:
             EXIT_CODE=1
           fi
         fi
-        
+
         if [ $EXIT_CODE -ne 0 ]; then
           echo "❌ Platform-specific tests failed with exit code: $EXIT_CODE"
           exit $EXIT_CODE
@@ -163,9 +167,9 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v3
-      with:
-        enable-cache: false
+      run: |
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        uv --version
 
     - name: Set up Python
       run: uv python install 3.11
@@ -187,19 +191,19 @@ jobs:
       run: |
         echo "Measuring startup time..."
         EXIT_CODE=0
-        
+
         echo "Testing main script startup..."
         if ! time uv run python main.py --help > /dev/null; then
           echo "❌ Startup benchmark failed"
           EXIT_CODE=1
         fi
-        
+
         echo "Testing CLI module startup..."
         if ! time uv run python -c "from setup_repo.cli import main; main(['--help'])" > /dev/null; then
           echo "❌ CLI benchmark failed"
           EXIT_CODE=1
         fi
-        
+
         if [ $EXIT_CODE -ne 0 ]; then
           echo "❌ Startup benchmarks failed"
           exit $EXIT_CODE
