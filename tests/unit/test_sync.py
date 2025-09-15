@@ -44,11 +44,11 @@ class TestSyncRepositories:
     """sync_repositories関数のテスト"""
 
     @pytest.fixture
-    def mock_config(self):
+    def mock_config(self, temp_dir):
         """モック設定データ"""
         return {
             "owner": "test_user",
-            "dest": "/test/repos",
+            "dest": str(temp_dir / "repos"),
             "github_token": "test_token",
             "dry_run": False,
             "force": False,

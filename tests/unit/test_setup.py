@@ -141,9 +141,13 @@ class TestSetupRepositoryEnvironment:
     """setup_repository_environment関数のテスト"""
 
     @pytest.fixture
-    def mock_config(self):
+    def mock_config(self, temp_dir):
         """モック設定データ"""
-        return {"github_token": "test_token", "github_username": "test_user", "clone_destination": "/test/path"}
+        return {
+            "github_token": "test_token",
+            "github_username": "test_user",
+            "clone_destination": str(temp_dir / "test_path"),
+        }
 
     @pytest.mark.unit
     def test_setup_repository_environment_success(self, mock_config, temp_dir):

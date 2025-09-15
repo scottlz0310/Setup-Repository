@@ -309,8 +309,11 @@ class TestSetupWithVenv:
         # requirements.txtを作成
         (temp_repo / "requirements.txt").write_text("requests==2.28.0", encoding="utf-8")
 
-        # safe_subprocessをモック
-        with patch("src.setup_repo.security_helpers.safe_subprocess") as mock_safe_subprocess:
+        # safe_subprocessとPath.existsをモック
+        with (
+            patch("src.setup_repo.security_helpers.safe_subprocess") as mock_safe_subprocess,
+            patch("pathlib.Path.exists") as mock_exists,
+        ):
             # venvディレクトリ構造をモック内で作成
             def mock_subprocess_side_effect(cmd, **kwargs):
                 if len(cmd) >= 3 and cmd[1] == "-m" and cmd[2] == "venv":
@@ -325,6 +328,8 @@ class TestSetupWithVenv:
                 return Mock(returncode=0)
 
             mock_safe_subprocess.side_effect = mock_subprocess_side_effect
+            # pipパスが存在することをシミュレート
+            mock_exists.return_value = True
 
             result = _setup_with_venv(temp_repo)
 

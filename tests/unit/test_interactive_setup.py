@@ -245,14 +245,23 @@ class TestSetupWizard:
     @pytest.mark.unit
     @patch("src.setup_repo.interactive_setup.get_available_package_managers")
     @patch("src.setup_repo.interactive_setup.get_install_commands")
-    @patch("subprocess.run")
-    def test_install_uv_success(self, mock_run, mock_get_commands, mock_get_managers, setup_wizard):
+    @patch("src.setup_repo.interactive_setup.safe_subprocess")
+    def test_install_uv_success(self, mock_safe_subprocess, mock_get_commands, mock_get_managers, setup_wizard):
         """uvインストール成功テスト"""
         verify_current_platform()  # プラットフォーム検証
 
-        mock_get_managers.return_value = ["scoop"]
-        mock_get_commands.return_value = {"scoop": ["scoop install uv"]}
-        mock_run.return_value = Mock(returncode=0)
+        # プラットフォームに応じたパッケージマネージャーを設定
+        import platform
+
+        if platform.system() == "Windows":
+            mock_get_managers.return_value = ["scoop"]
+            mock_get_commands.return_value = {"scoop": ["scoop", "install", "uv"]}
+        else:
+            # Linux/macOSではpipフォールバックを使用
+            mock_get_managers.return_value = []
+            mock_get_commands.return_value = {}
+
+        mock_safe_subprocess.return_value = Mock(returncode=0)
 
         result = setup_wizard._install_uv()
 
