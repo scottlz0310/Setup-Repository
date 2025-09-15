@@ -147,3 +147,137 @@ def secure_html_render(template: str, **kwargs) -> str:
             escaped_kwargs[key] = value
 
     return template.format(**escaped_kwargs)
+
+
+def scan_for_secrets(content: str) -> dict[str, list[dict[str, str]]]:
+    """コンテンツ内のシークレットをスキャン"""
+    secrets_found: dict[str, list[dict[str, str]]] = {
+        "api_keys": [],
+        "tokens": [],
+        "passwords": [],
+        "private_keys": [],
+    }
+
+    # APIキーのパターン
+    api_key_patterns = [
+        (r"(?i)api[_-]?key[\s]*[=:][\s]*['\"]?([a-zA-Z0-9_-]{20,})['\"]?", "API Key"),
+        (r"(?i)github[_-]?token[\s]*[=:][\s]*['\"]?([a-zA-Z0-9_-]{20,})['\"]?", "GitHub Token"),
+        (r"(?i)secret[_-]?key[\s]*[=:][\s]*['\"]?([a-zA-Z0-9_-]{20,})['\"]?", "Secret Key"),
+    ]
+
+    for pattern, secret_type in api_key_patterns:
+        matches = re.finditer(pattern, content)
+        for match in matches:
+            secrets_found["api_keys"].append(
+                {
+                    "type": secret_type,
+                    "value": match.group(1)[:10] + "...",  # 部分的に表示
+                    "line": str(content[: match.start()].count("\n") + 1),
+                    "position": str(match.start()),
+                }
+            )
+
+    # パスワードのパターン
+    password_patterns = [
+        (r"(?i)password[\s]*[=:][\s]*['\"]?([^\s'\"]{8,})['\"]?", "Password"),
+        (r"(?i)passwd[\s]*[=:][\s]*['\"]?([^\s'\"]{8,})['\"]?", "Password"),
+    ]
+
+    for pattern, secret_type in password_patterns:
+        matches = re.finditer(pattern, content)
+        for match in matches:
+            # 明らかにプレースホルダーやテスト値は除外
+            value = match.group(1)
+            if value.lower() in ["password", "your_password", "test", "example", "placeholder"]:
+                continue  # type: ignore[unreachable]
+
+            secrets_found["passwords"].append(
+                {
+                    "type": secret_type,
+                    "value": "***",  # パスワードは非表示
+                    "line": str(content[: match.start()].count("\n") + 1),
+                    "position": str(match.start()),
+                }
+            )
+
+    # 秘密鍵のパターン
+    private_key_patterns = [
+        (r"-----BEGIN [A-Z ]+PRIVATE KEY-----", "Private Key"),
+        (r"-----BEGIN RSA PRIVATE KEY-----", "RSA Private Key"),
+        (r"-----BEGIN OPENSSH PRIVATE KEY-----", "OpenSSH Private Key"),
+    ]
+
+    for pattern, secret_type in private_key_patterns:
+        matches = re.finditer(pattern, content)
+        for match in matches:
+            secrets_found["private_keys"].append(
+                {
+                    "type": secret_type,
+                    "value": "[PRIVATE KEY DETECTED]",
+                    "line": str(content[: match.start()].count("\n") + 1),
+                    "position": str(match.start()),
+                }
+            )
+
+    return secrets_found
+
+
+def validate_input(input_data: str, input_type: str = "general") -> dict[str, Union[bool, str, list[str]]]:
+    """入力データのセキュリティ検証"""
+    errors = []
+    warnings = []
+
+    # 基本的なサニタイゼーション
+    if not isinstance(input_data, str):
+        errors.append("入力データは文字列である必要があります")
+        return {"valid": False, "errors": errors, "warnings": warnings}  # type: ignore[unreachable]
+
+    # 長さチェック
+    if len(input_data) > 10000:  # 10KB制限
+        errors.append("入力データが長すぎます")  # type: ignore[unreachable]
+
+    # コマンドインジェクションチェック
+    dangerous_patterns = [
+        r"[;&|`$(){}\[\]]",  # コマンドインジェクション
+        r"<script",  # XSS
+        r"javascript:",  # JavaScript URL
+        r"data:.*base64",  # Data URL
+    ]
+
+    for pattern in dangerous_patterns:
+        if re.search(pattern, input_data, re.IGNORECASE):
+            errors.append(f"危険なパターンが検出されました: {pattern}")
+
+    # タイプ別検証
+    if input_type == "path":
+        if not SecurityValidator.validate_path(input_data):
+            errors.append("危険なパスが検出されました")  # type: ignore[unreachable]
+
+    elif input_type == "url":
+        url_pattern = r"^https?://[a-zA-Z0-9.-]+(/.*)?$"
+        if not re.match(url_pattern, input_data):
+            errors.append("URLの形式が無効です")
+
+        # 危険なURLチェック
+        dangerous_hosts = ["localhost", "127.0.0.1", "0.0.0.0", "::1"]  # nosec B104
+        for host in dangerous_hosts:
+            if host in input_data.lower():
+                warnings.append(f"ローカルホストへのアクセスが検出されました: {host}")
+
+    elif input_type == "email":
+        email_pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+        if not re.match(email_pattern, input_data):
+            errors.append("メールアドレスの形式が無効です")
+
+    # シークレットスキャン
+    secrets = scan_for_secrets(input_data)
+    total_secrets = sum(len(secrets[key]) for key in secrets)
+    if total_secrets > 0:
+        warnings.append(f"シークレットが検出されました: {total_secrets}件")
+
+    return {
+        "valid": len(errors) == 0,
+        "errors": errors,
+        "warnings": warnings,
+        "secrets_detected": str(total_secrets),
+    }

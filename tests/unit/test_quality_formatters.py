@@ -298,3 +298,88 @@ class TestQualityFormatters:
 
             assert "exception" in log_data
             assert "ValueError" in log_data["exception"]
+
+    @pytest.mark.unit
+    def test_format_quality_report_json(self):
+        """品質レポートのJSON形式フォーマットテスト"""
+        verify_current_platform()
+
+        try:
+            from src.setup_repo.quality_formatters import format_quality_report
+        except ImportError:
+            pytest.skip("format_quality_reportが利用できません")
+
+        test_data = {
+            "coverage": 85.5,
+            "tests_passed": True,
+            "linting_errors": 0,
+            "timestamp": "2024-01-01 12:00:00",
+        }
+
+        result = format_quality_report(test_data, "json")
+        parsed = json.loads(result)
+
+        assert parsed["coverage"] == 85.5
+        assert parsed["tests_passed"] is True
+        assert parsed["linting_errors"] == 0
+
+    @pytest.mark.unit
+    def test_format_quality_report_html(self):
+        """品質レポートのHTML形式フォーマットテスト"""
+        verify_current_platform()
+
+        try:
+            from src.setup_repo.quality_formatters import format_quality_report
+        except ImportError:
+            pytest.skip("format_quality_reportが利用できません")
+
+        test_data = {
+            "coverage": 90.0,
+            "build_status": {"success": True, "duration": "2m 30s"},
+        }
+
+        result = format_quality_report(test_data, "html")
+
+        assert "<!DOCTYPE html>" in result
+        assert "品質レポート" in result
+        assert "<strong>coverage:</strong> 90.0" in result
+        assert "生成日時:" in result
+
+    @pytest.mark.unit
+    def test_format_quality_report_text(self):
+        """品質レポートのテキスト形式フォーマットテスト"""
+        verify_current_platform()
+
+        try:
+            from src.setup_repo.quality_formatters import format_quality_report
+        except ImportError:
+            pytest.skip("format_quality_reportが利用できません")
+
+        test_data = {
+            "coverage": 75.0,
+            "security": {"vulnerabilities": 0, "scan_date": "2024-01-01"},
+            "performance": "good",
+        }
+
+        result = format_quality_report(test_data, "text")
+
+        assert "=== 品質レポート ===" in result
+        assert "coverage: 75.0" in result
+        assert "security:" in result
+        assert "vulnerabilities: 0" in result
+        assert "performance: good" in result
+
+    @pytest.mark.unit
+    def test_format_quality_report_invalid_format(self):
+        """品質レポートの無効な形式テスト"""
+        verify_current_platform()
+
+        try:
+            from src.setup_repo.quality_formatters import format_quality_report
+        except ImportError:
+            pytest.skip("format_quality_reportが利用できません")
+
+        test_data = {"test": "data"}
+
+        with pytest.raises(ValueError, match="サポートされていない形式"):
+            format_quality_report(test_data, "invalid_format")

@@ -8,6 +8,8 @@
 """
 
 import json
+import os
+import tempfile
 from pathlib import Path
 from typing import Any
 from unittest.mock import Mock, patch
@@ -110,9 +112,10 @@ class TestErrorScenarios:
         sample_config: dict[str, Any],
     ) -> None:
         """ファイルシステム権限エラーのテスト"""
-        # 権限のないディレクトリを指定
-        restricted_dir = temp_dir / "restricted"
-        sample_config["clone_destination"] = str(restricted_dir)
+        # 一時ディレクトリを使用してファイルシステム操作を安全化
+        with tempfile.TemporaryDirectory() as safe_temp_dir:
+            restricted_dir = Path(safe_temp_dir) / "restricted"
+            sample_config["clone_destination"] = str(restricted_dir)
 
         mock_repos = [
             {
@@ -136,10 +139,14 @@ class TestErrorScenarios:
         with (
             patch("setup_repo.sync.get_repositories", return_value=mock_repos),
             patch("setup_repo.sync.ProcessLock", return_value=mock_lock),
+            # ディレクトリ作成は成功させ、sync_repository_with_retriesでエラーを発生
+            patch("pathlib.Path.mkdir"),
             patch(
                 "setup_repo.sync.sync_repository_with_retries",
                 side_effect=permission_error,
             ),
+            patch("setup_repo.sync.ensure_uv"),
+            patch("sys.exit"),
         ):
             result = sync_repositories(sample_config, dry_run=False)
 
@@ -147,14 +154,17 @@ class TestErrorScenarios:
         assert not result.success
         assert result.errors
 
+    @pytest.mark.skipif(not hasattr(os, "statvfs"), reason="os.statvfs not available on Windows")
     def test_disk_space_error(
         self,
         temp_dir: Path,
         sample_config: dict[str, Any],
     ) -> None:
-        """ディスク容量不足エラーのテスト"""
-        clone_destination = temp_dir / "repos"
-        sample_config["clone_destination"] = str(clone_destination)
+        """ディスク容量不足エラーのテスト（Unix系のみ）"""
+        # 一時ディレクトリを使用してディスク操作を安全化
+        with tempfile.TemporaryDirectory() as safe_temp_dir:
+            clone_destination = Path(safe_temp_dir) / "repos"
+            sample_config["clone_destination"] = str(clone_destination)
 
         mock_repos = [
             {
@@ -179,6 +189,8 @@ class TestErrorScenarios:
             patch("setup_repo.sync.get_repositories", return_value=mock_repos),
             patch("setup_repo.sync.ProcessLock", return_value=mock_lock),
             patch("setup_repo.sync.sync_repository_with_retries", side_effect=disk_error),
+            patch("shutil.disk_usage", return_value=(0, 0, 0)),
+            patch("os.statvfs", side_effect=disk_error),
         ):
             result = sync_repositories(sample_config, dry_run=False)
 
@@ -234,13 +246,12 @@ class TestErrorScenarios:
         sample_config: dict[str, Any],
     ) -> None:
         """Gitプルエラーのテスト"""
-        clone_destination = temp_dir / "repos"
-        sample_config["clone_destination"] = str(clone_destination)
+        # 一時ディレクトリを使用してGit操作を安全化
+        with tempfile.TemporaryDirectory() as safe_temp_dir:
+            clone_destination = Path(safe_temp_dir) / "repos"
+            sample_config["clone_destination"] = str(clone_destination)
 
-        # 既存のリポジトリを作成
-        existing_repo = clone_destination / "pull-error-repo"
-        existing_repo.mkdir(parents=True)
-        (existing_repo / ".git").mkdir()
+            # 既存のリポジトリをモック化（実際のファイル作成を避ける）
 
         mock_repos = [
             {
@@ -254,7 +265,7 @@ class TestErrorScenarios:
             },
         ]
 
-        def mock_sync_with_pull_error(repo, dest_dir, config):
+        def mock_sync_with_pull_error(*args, **kwargs):
             # Gitプルエラーをシミュレート
             raise RuntimeError("error: Your local changes to the following files would be overwritten by merge")
 
@@ -265,10 +276,18 @@ class TestErrorScenarios:
         with (
             patch("setup_repo.sync.get_repositories", return_value=mock_repos),
             patch("setup_repo.sync.ProcessLock", return_value=mock_lock),
+            # ディレクトリ作成とuv確認は成功させる
+            patch("pathlib.Path.mkdir"),
+            patch("setup_repo.sync.ensure_uv"),
+            # SSH接続チェックは成功させる
+            patch("subprocess.run", return_value=Mock(returncode=0, stdout="")),
             patch(
                 "setup_repo.sync.sync_repository_with_retries",
                 side_effect=mock_sync_with_pull_error,
             ),
+            patch("pathlib.Path.exists", return_value=True),
+            patch("pathlib.Path.is_dir", return_value=True),
+            patch("sys.exit"),
         ):
             result = sync_repositories(sample_config, dry_run=False)
 

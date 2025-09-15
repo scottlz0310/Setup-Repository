@@ -20,10 +20,23 @@ class TestQualityLogger:
     def teardown_method(self):
         """テストメソッドの後処理."""
         # 一時ディレクトリのクリーンアップ
+        import contextlib
         import shutil
+        import time
 
         if self.temp_dir.exists():
-            shutil.rmtree(self.temp_dir)
+            # Windowsでのファイルロック問題を回避
+            for _ in range(3):
+                try:
+                    shutil.rmtree(self.temp_dir)
+                    break
+                except PermissionError:
+                    time.sleep(0.1)
+                    continue
+            else:
+                # 最終的に失敗した場合は無視
+                with contextlib.suppress(PermissionError):
+                    shutil.rmtree(self.temp_dir)
 
     @pytest.mark.unit
     def test_quality_logger_initialization(self):
@@ -246,6 +259,238 @@ class TestQualityLogger:
         # Windows固有ログ設定の検証
         assert windows_log_config["event_log_enabled"] is True
         assert windows_log_config["source_name"] == "QualityChecker"
+
+    @pytest.mark.unit
+    def test_quality_logger_real_functionality(self):
+        """実際のQualityLogger機能のテスト"""
+        from setup_repo.quality_logger import LogLevel, QualityLogger
+
+        # ログファイルを一時ディレクトリに作成
+        log_file = self.temp_dir / "quality_test.log"
+
+        # QualityLoggerの初期化テスト
+        logger = QualityLogger(
+            name="test_logger",
+            log_level=LogLevel.DEBUG,
+            log_file=log_file,
+            enable_console=True,
+            enable_json_format=False,
+        )
+
+        # 基本ログ機能のテスト
+        logger.debug("Debug message")
+        logger.info("Info message")
+        logger.warning("Warning message")
+        logger.error("Error message")
+        logger.critical("Critical message")
+
+        # ログファイルが作成されていることを確認
+        assert log_file.exists()
+
+        # ログ内容の確認
+        log_content = log_file.read_text(encoding="utf-8")
+        assert "Debug message" in log_content
+        assert "Info message" in log_content
+        assert "Warning message" in log_content
+
+    @pytest.mark.unit
+    def test_quality_check_logging_methods(self):
+        """品質チェックログメソッドのテスト"""
+        from setup_repo.quality_logger import QualityLogger
+
+        log_file = self.temp_dir / "quality_check.log"
+        logger = QualityLogger(log_file=log_file, enable_console=False)
+
+        # 品質チェック開始ログ
+        logger.log_quality_check_start("ruff", {"files": 10})
+
+        # 品質チェック成功ログ
+        logger.log_quality_check_success("ruff", {"errors": 0, "warnings": 2})
+
+        # 品質チェック失敗ログ
+        test_error = Exception("Test error")
+        logger.log_quality_check_failure("mypy", test_error, {"file": "test.py"})
+
+        # 品質チェック結果ログ
+        result_success = {"success": True, "metrics": {"score": 95}}
+        logger.log_quality_check_result("pytest", result_success)
+
+        result_failure = {"success": False, "errors": ["Test failed"], "details": {"line": 42}}
+        logger.log_quality_check_result("coverage", result_failure)
+
+        # ログ内容の確認
+        log_content = log_file.read_text(encoding="utf-8")
+        assert "品質チェック開始: ruff" in log_content
+        assert "品質チェック成功: ruff" in log_content
+        assert "品質チェック失敗: mypy" in log_content
+
+    @pytest.mark.unit
+    def test_ci_stage_logging_methods(self):
+        """CI/CDステージログメソッドのテスト"""
+        from setup_repo.quality_logger import QualityLogger
+
+        log_file = self.temp_dir / "ci_stage.log"
+        logger = QualityLogger(log_file=log_file, enable_console=False)
+
+        # CIステージ開始ログ
+        logger.log_ci_stage_start("build", {"branch": "main"})
+
+        # CIステージ成功ログ
+        logger.log_ci_stage_success("build", duration=45.2)
+
+        # CIステージ失敗ログ
+        test_error = RuntimeError("Build failed")
+        logger.log_ci_stage_failure("test", test_error, duration=12.5)
+
+        # ログ内容の確認
+        log_content = log_file.read_text(encoding="utf-8")
+        assert "CI/CDステージ開始: build" in log_content
+        assert "CI/CDステージ成功: build" in log_content
+        assert "45.20秒" in log_content
+        assert "CI/CDステージ失敗: test" in log_content
+
+    @pytest.mark.unit
+    def test_error_reporting_methods(self):
+        """エラーレポートメソッドのテスト"""
+        from setup_repo.quality_logger import QualityLogger
+
+        log_file = self.temp_dir / "error_report.log"
+        logger = QualityLogger(log_file=log_file, enable_console=False)
+
+        # コンテキスト付きエラーログ
+        test_error = ValueError("Invalid value")
+        context = {"function": "test_function", "line": 123}
+        logger.log_error_with_context(test_error, context, include_traceback=True)
+
+        # エラーレポート作成
+        errors = [ValueError("Error 1"), RuntimeError("Error 2")]
+        report = logger.create_error_report(errors, context)
+
+        # レポートの基本構造を確認
+        assert isinstance(report, dict)
+        assert "errors" in report or "summary" in report  # ErrorReporterの実装に依存
+
+        # エラーレポート保存
+        report_file = self.temp_dir / "custom_report.json"
+        saved_path = logger.save_error_report(errors, report_file, context)
+
+        # 保存されたファイルの確認
+        assert saved_path.exists()
+        assert saved_path.suffix == ".json"
+
+    @pytest.mark.unit
+    def test_metrics_logging_methods(self):
+        """メトリクスログメソッドのテスト"""
+        from setup_repo.quality_logger import QualityLogger
+
+        log_file = self.temp_dir / "metrics.log"
+        logger = QualityLogger(log_file=log_file, enable_console=False)
+
+        # 辞書形式のメトリクス
+        metrics_dict = {"coverage": 85.5, "complexity": 12, "maintainability": 78}
+        logger.log_metrics_summary(metrics_dict)
+
+        # オブジェクト形式のメトリクス（__dict__あり）
+        class MockMetrics:
+            def __init__(self):
+                self.coverage = 90.0
+                self.complexity = 8
+
+        mock_metrics = MockMetrics()
+        logger.log_metrics_summary(mock_metrics)
+
+        # ログ内容の確認
+        log_content = log_file.read_text(encoding="utf-8")
+        # format_metrics_summaryの出力が含まれていることを確認
+        assert "メトリクス" in log_content or "coverage" in log_content
+
+    @pytest.mark.unit
+    def test_json_formatter_functionality(self):
+        """JSONフォーマッター機能のテスト"""
+        from setup_repo.quality_logger import QualityLogger
+
+        log_file = self.temp_dir / "json_format.log"
+        logger = QualityLogger(log_file=log_file, enable_console=False, enable_json_format=True)
+
+        # JSON形式でログ出力
+        logger.info("JSON format test", extra_data={"key": "value"})
+        logger.error("JSON error test", error_code=500)
+
+        # ログファイルが作成されていることを確認
+        assert log_file.exists()
+
+        # JSON形式のログが出力されていることを確認
+        log_content = log_file.read_text(encoding="utf-8")
+        # JSONフォーマッターが使用されていることを間接的に確認
+        assert "JSON format test" in log_content
+
+    @pytest.mark.unit
+    def test_global_logger_functions(self):
+        """グローバルロガー関数のテスト"""
+        from setup_repo.quality_logger import LogLevel, configure_quality_logging, get_quality_logger
+
+        # グローバルロガーの取得
+        logger1 = get_quality_logger()
+        logger2 = get_quality_logger()
+
+        # シングルトンパターンの確認
+        assert logger1 is logger2
+
+        # ログ設定の再構成
+        log_file = self.temp_dir / "configured.log"
+        configured_logger = configure_quality_logging(log_level=LogLevel.DEBUG, log_file=log_file, enable_console=False)
+
+        # 再構成されたロガーの確認
+        assert configured_logger is not None
+        configured_logger.debug("Configuration test")
+
+        # ログファイルが作成されていることを確認
+        assert log_file.exists()
+
+    @pytest.mark.unit
+    def test_dataclass_metrics_handling(self):
+        """データクラスメトリクスの処理テスト"""
+        from dataclasses import dataclass
+
+        from setup_repo.quality_logger import QualityLogger
+
+        @dataclass
+        class TestMetrics:
+            coverage: float
+            complexity: int
+            score: float
+
+        log_file = self.temp_dir / "dataclass_metrics.log"
+        logger = QualityLogger(log_file=log_file, enable_console=False)
+
+        # データクラスメトリクスのログ
+        metrics = TestMetrics(coverage=85.5, complexity=12, score=78.2)
+        logger.log_metrics_summary(metrics)
+
+        # ログ内容の確認
+        log_content = log_file.read_text(encoding="utf-8")
+        # データクラスが適切に処理されていることを確認
+        assert "85.5" in log_content or "coverage" in log_content
+
+    @pytest.mark.unit
+    def test_invalid_metrics_handling(self):
+        """無効なメトリクスの処理テスト"""
+        from setup_repo.quality_logger import QualityLogger
+
+        log_file = self.temp_dir / "invalid_metrics.log"
+        logger = QualityLogger(log_file=log_file, enable_console=False)
+
+        # 無効なメトリクスタイプのテスト
+        invalid_metrics = "invalid_string_metrics"
+        logger.log_metrics_summary(invalid_metrics)
+
+        # 数値メトリクスのテスト
+        numeric_metrics = 42
+        logger.log_metrics_summary(numeric_metrics)
+
+        # ログ内容の確認（警告メッセージが出力されることを確認）
+        log_content = log_file.read_text(encoding="utf-8")
+        assert "メトリクスの形式が不正" in log_content
 
     @pytest.mark.unit
     def test_log_aggregation(self):

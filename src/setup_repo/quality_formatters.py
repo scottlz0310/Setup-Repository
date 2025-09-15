@@ -189,3 +189,67 @@ def format_quality_check_result(check_type: str, result: dict[str, Any]) -> str:
             safe_details = html.escape(str(result["details"]))
             message += f" - 詳細: {safe_details}"
         return message
+
+
+def format_quality_report(data: dict[str, Any], format_type: str = "json") -> str:
+    """品質レポートを指定された形式でフォーマット"""
+    if format_type.lower() == "json":
+        return json.dumps(data, ensure_ascii=False, indent=2)
+
+    elif format_type.lower() == "html":
+        html_template = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>品質レポート</title>
+    <meta charset="utf-8">
+    <style>
+        body {{ font-family: Arial, sans-serif; margin: 20px; }}
+        .header {{ background-color: #f0f0f0; padding: 10px; border-radius: 5px; }}
+        .metric {{ margin: 10px 0; padding: 5px; border-left: 3px solid #007acc; }}
+        .success {{ border-left-color: #28a745; }}
+        .error {{ border-left-color: #dc3545; }}
+        .warning {{ border-left-color: #ffc107; }}
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>品質レポート</h1>
+        <p>生成日時: {timestamp}</p>
+    </div>
+    <div class="content">
+        {metrics}
+    </div>
+</body>
+</html>
+        """
+
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        metrics_html = ""
+
+        for key, value in data.items():
+            css_class = "metric"
+            if isinstance(value, dict) and "success" in value:
+                css_class += " success" if value["success"] else " error"
+
+            metrics_html += f'<div class="{css_class}"><strong>{key}:</strong> {value}</div>\n'
+
+        return html_template.format(timestamp=timestamp, metrics=metrics_html)
+
+    elif format_type.lower() == "text":
+        lines = ["=== 品質レポート ==="]
+        lines.append(f"生成日時: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        lines.append("")
+
+        for key, value in data.items():
+            if isinstance(value, dict):
+                lines.append(f"{key}:")
+                for sub_key, sub_value in value.items():
+                    lines.append(f"  {sub_key}: {sub_value}")
+            else:
+                lines.append(f"{key}: {value}")
+
+        return "\n".join(lines)
+
+    else:
+        raise ValueError(f"サポートされていない形式: {format_type}")

@@ -379,3 +379,276 @@ class TestSecurityUtils:
         assert len(vulnerabilities_found) == 1
         assert vulnerabilities_found[0]["package"] == "urllib3"
         assert vulnerabilities_found[0]["severity"] == "MEDIUM"
+
+    @pytest.mark.unit
+    def test_scan_for_secrets_api_keys(self):
+        """シークレットスキャン - APIキー検出テスト"""
+        try:
+            from src.setup_repo.security_utils import scan_for_secrets
+        except ImportError:
+            pytest.skip("scan_for_secretsが利用できません")
+
+        # APIキーを含むコンテンツ
+        content_with_secrets = """
+        api_key = "sk-1234567890abcdef1234567890abcdef"
+        github_token = "ghp_abcdefghijklmnopqrstuvwxyz123456"
+        secret_key = "very_secret_key_12345678901234567890"
+        """
+
+        result = scan_for_secrets(content_with_secrets)
+
+        assert "api_keys" in result
+        assert len(result["api_keys"]) >= 1
+
+        # APIキーが検出されていることを確認
+        api_key_found = any(
+            "API Key" in item["type"] or "GitHub Token" in item["type"] or "Secret Key" in item["type"]
+            for item in result["api_keys"]
+        )
+        assert api_key_found
+
+    @pytest.mark.unit
+    def test_scan_for_secrets_passwords(self):
+        """シークレットスキャン - パスワード検出テスト"""
+        try:
+            from src.setup_repo.security_utils import scan_for_secrets
+        except ImportError:
+            pytest.skip("scan_for_secretsが利用できません")
+
+        # パスワードを含むコンテンツ
+        content_with_passwords = """
+        password = "my_secret_password_123"
+        passwd = "another_secret_pass"
+        password = "password"  # これはプレースホルダーなので除外される
+        """
+
+        result = scan_for_secrets(content_with_passwords)
+
+        assert "passwords" in result
+        # プレースホルダーではないパスワードが検出される
+        assert len(result["passwords"]) >= 1
+
+    @pytest.mark.unit
+    def test_scan_for_secrets_private_keys(self):
+        """シークレットスキャン - 秘密鍵検出テスト"""
+        try:
+            from src.setup_repo.security_utils import scan_for_secrets
+        except ImportError:
+            pytest.skip("scan_for_secretsが利用できません")
+
+        # 秘密鍵を含むコンテンツ
+        content_with_keys = """
+        -----BEGIN RSA PRIVATE KEY-----
+        MIIEpAIBAAKCAQEA...
+        -----END RSA PRIVATE KEY-----
+
+        -----BEGIN OPENSSH PRIVATE KEY-----
+        b3BlbnNzaC1rZXktdjEAAAAA...
+        -----END OPENSSH PRIVATE KEY-----
+        """
+
+        result = scan_for_secrets(content_with_keys)
+
+        assert "private_keys" in result
+        assert len(result["private_keys"]) >= 1
+
+        # 秘密鍵が検出されていることを確認
+        key_found = any("Private Key" in item["type"] for item in result["private_keys"])
+        assert key_found
+
+    @pytest.mark.unit
+    def test_scan_for_secrets_clean_content(self):
+        """シークレットスキャン - クリーンコンテンツテスト"""
+        try:
+            from src.setup_repo.security_utils import scan_for_secrets
+        except ImportError:
+            pytest.skip("scan_for_secretsが利用できません")
+
+        # シークレットを含まないコンテンツ
+        clean_content = """
+        This is a normal configuration file.
+        server_host = "localhost"
+        server_port = 8080
+        debug_mode = true
+        """
+
+        result = scan_for_secrets(clean_content)
+
+        # すべてのカテゴリでシークレットが検出されないことを確認
+        assert len(result["api_keys"]) == 0
+        assert len(result["tokens"]) == 0
+        assert len(result["passwords"]) == 0
+        assert len(result["private_keys"]) == 0
+
+    @pytest.mark.unit
+    def test_validate_input_general(self):
+        """入力検証 - 一般的な入力テスト"""
+        try:
+            from src.setup_repo.security_utils import validate_input
+        except ImportError:
+            pytest.skip("validate_inputが利用できません")
+
+        # 正常な入力
+        result = validate_input("normal text input", "general")
+        assert result["valid"] is True
+        assert len(result["errors"]) == 0
+
+        # 空の入力
+        result = validate_input("", "general")
+        assert result["valid"] is True  # 空は許可
+
+    @pytest.mark.unit
+    def test_validate_input_dangerous_patterns(self):
+        """入力検証 - 危険なパターンテスト"""
+        try:
+            from src.setup_repo.security_utils import validate_input
+        except ImportError:
+            pytest.skip("validate_inputが利用できません")
+
+        # コマンドインジェクションのパターン
+        dangerous_inputs = [
+            "rm -rf /; echo 'hacked'",
+            "<script>alert('xss')</script>",
+            "javascript:alert('xss')",
+            "data:text/html;base64,PHNjcmlwdD5hbGVydCgneHNzJyk8L3NjcmlwdD4=",
+        ]
+
+        for dangerous_input in dangerous_inputs:
+            result = validate_input(dangerous_input, "general")
+            assert result["valid"] is False
+            assert len(result["errors"]) > 0
+
+    @pytest.mark.unit
+    def test_validate_input_path_type(self):
+        """入力検証 - パスタイプテスト"""
+        try:
+            from src.setup_repo.security_utils import validate_input
+        except ImportError:
+            pytest.skip("validate_inputが利用できません")
+
+        # 安全なパス
+        result = validate_input("/safe/path/to/file.txt", "path")
+        assert result["valid"] is True
+
+        # 危険なパス
+        dangerous_paths = [
+            "../../../etc/passwd",
+            "..\\..\\windows\\system32",
+            "/etc/shadow",
+        ]
+
+        for dangerous_path in dangerous_paths:
+            result = validate_input(dangerous_path, "path")
+            assert result["valid"] is False
+
+    @pytest.mark.unit
+    def test_validate_input_url_type(self):
+        """入力検証 - URLタイプテスト"""
+        try:
+            from src.setup_repo.security_utils import validate_input
+        except ImportError:
+            pytest.skip("validate_inputが利用できません")
+
+        # 正常なURL
+        valid_urls = [
+            "https://github.com/user/repo",
+            "http://example.com",
+            "https://api.example.com/v1/data",
+        ]
+
+        for url in valid_urls:
+            result = validate_input(url, "url")
+            assert result["valid"] is True
+
+        # 無効なURL
+        invalid_urls = [
+            "not_a_url",
+            "ftp://example.com",
+            "javascript:alert('xss')",
+        ]
+
+        for url in invalid_urls:
+            result = validate_input(url, "url")
+            assert result["valid"] is False
+
+    @pytest.mark.unit
+    def test_validate_input_email_type(self):
+        """入力検証 - メールタイプテスト"""
+        try:
+            from src.setup_repo.security_utils import validate_input
+        except ImportError:
+            pytest.skip("validate_inputが利用できません")
+
+        # 正常なメールアドレス
+        valid_emails = [
+            "user@example.com",
+            "test.email+tag@domain.co.jp",
+            "user123@test-domain.org",
+        ]
+
+        for email in valid_emails:
+            result = validate_input(email, "email")
+            assert result["valid"] is True
+
+        # 無効なメールアドレス
+        invalid_emails = [
+            "not_an_email",
+            "@domain.com",
+            "user@",
+            "user@domain",
+        ]
+
+        for email in invalid_emails:
+            result = validate_input(email, "email")
+            assert result["valid"] is False
+
+    @pytest.mark.unit
+    def test_validate_input_with_secrets(self):
+        """入力検証 - シークレット検出テスト"""
+        try:
+            from src.setup_repo.security_utils import validate_input
+        except ImportError:
+            pytest.skip("validate_inputが利用できません")
+
+        # シークレットを含む入力
+        input_with_secret = "api_key = 'sk-1234567890abcdef1234567890abcdef'"
+
+        result = validate_input(input_with_secret, "general")
+
+        # シークレットが検出されたことを確認
+        assert "secrets_detected" in result
+        assert int(result["secrets_detected"]) > 0
+        assert len(result["warnings"]) > 0
+        assert any("シークレットが検出" in warning for warning in result["warnings"])
+
+    @pytest.mark.unit
+    def test_validate_input_length_limit(self):
+        """入力検証 - 長さ制限テスト"""
+        try:
+            from src.setup_repo.security_utils import validate_input
+        except ImportError:
+            pytest.skip("validate_inputが利用できません")
+
+        # 長すぎる入力
+        long_input = "a" * 10001  # 10KBを超える
+
+        result = validate_input(long_input, "general")
+
+        assert result["valid"] is False
+        assert any("長すぎ" in error for error in result["errors"])
+
+    @pytest.mark.unit
+    def test_validate_input_non_string(self):
+        """入力検証 - 非文字列入力テスト"""
+        try:
+            from src.setup_repo.security_utils import validate_input
+        except ImportError:
+            pytest.skip("validate_inputが利用できません")
+
+        # 非文字列入力
+        non_string_inputs = [123, [], {}, None]
+
+        for input_data in non_string_inputs:
+            result = validate_input(input_data, "general")
+            assert result["valid"] is False
+            assert any("文字列である必要" in error for error in result["errors"])

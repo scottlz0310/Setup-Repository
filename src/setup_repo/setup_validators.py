@@ -5,6 +5,7 @@
 ユーザー入力検証と前提条件チェック機能を提供します。
 """
 
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -296,3 +297,117 @@ def validate_user_input(
             "value": None,
             "error": f"入力検証エラー: {e}",
         }
+
+
+def validate_config(config: dict[str, Any]) -> dict[str, Any]:
+    """設定ファイルの内容を検証"""
+    errors = []
+    warnings = []
+
+    # 必須フィールドのチェック
+    required_fields = ["github_user", "github_token"]
+    for field in required_fields:
+        if field not in config or not config[field]:
+            errors.append(f"必須フィールドが不足しています: {field}")
+
+    # GitHub設定の検証
+    if "github_user" in config:
+        username = config["github_user"]
+        if not isinstance(username, str) or len(username) < 1:
+            errors.append("GitHub ユーザー名が無効です")
+        elif not re.match(r"^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$", username):
+            errors.append("GitHub ユーザー名の形式が無効です")
+
+    if "github_token" in config:
+        token = config["github_token"]
+        if not isinstance(token, str):
+            errors.append("GitHub トークンが無効です")
+        elif len(token) < 10:  # 最小長チェック
+            errors.append("GitHub トークンが短すぎます")
+
+    # オプション設定の検証
+    if "default_branch" in config:
+        branch = config["default_branch"]
+        if not isinstance(branch, str) or not branch:
+            warnings.append("デフォルトブランチ名が無効です")
+
+    if "auto_push" in config:
+        auto_push = config["auto_push"]
+        if not isinstance(auto_push, bool):
+            warnings.append("auto_push は boolean 値である必要があります")
+
+    return {
+        "valid": len(errors) == 0,
+        "errors": errors,
+        "warnings": warnings,
+        "config": config,
+    }
+
+
+def validate_environment() -> dict[str, Any]:
+    """実行環境を検証"""
+    errors = []
+    warnings = []
+    environment_info = {}
+
+    # Python環境の検証
+    python_info = {
+        "version": f"{sys.version_info[0]}.{sys.version_info[1]}.{sys.version_info[2]}",
+        "executable": sys.executable,
+        "valid": sys.version_info >= (3, 9),
+    }
+
+    if not python_info["valid"]:
+        errors.append(f"Python 3.9以上が必要です (現在: {python_info['version']})")
+
+    environment_info["python"] = python_info
+
+    # 作業ディレクトリの検証
+    try:
+        current_dir = Path.cwd()
+        dir_info = {
+            "path": str(current_dir),
+            "exists": current_dir.exists(),
+            "writable": current_dir.is_dir() and current_dir.stat().st_mode & 0o200,
+        }
+
+        if not dir_info["writable"]:
+            errors.append("現在のディレクトリに書き込み権限がありません")  # type: ignore[unreachable]
+
+        environment_info["working_directory"] = dir_info
+    except Exception as e:
+        errors.append(f"作業ディレクトリの検証に失敗: {e}")  # type: ignore[unreachable]
+
+    # 環境変数の検証
+    import os
+
+    env_vars: dict[str, dict[str, object]] = {}
+    important_vars = ["HOME", "PATH", "GITHUB_TOKEN"]
+
+    for var in important_vars:
+        value = os.environ.get(var)
+        env_vars[var] = {
+            "set": value is not None,
+            "value": "***" if var == "GITHUB_TOKEN" and value else value,
+        }
+
+    environment_info["environment_variables"] = env_vars  # type: ignore[assignment]
+
+    # ネットワーク接続の簡易チェック
+    try:
+        import socket
+
+        socket.create_connection(("github.com", 443), timeout=5)
+        network_available = True
+    except OSError:
+        network_available = False
+        warnings.append("GitHub への接続ができません")
+
+    environment_info["network"] = {"github_accessible": network_available}
+
+    return {
+        "valid": len(errors) == 0,
+        "errors": errors,
+        "warnings": warnings,
+        "environment": environment_info,
+    }

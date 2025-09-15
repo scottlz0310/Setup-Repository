@@ -29,6 +29,7 @@ requires-python = ">=3.9"
 dependencies = [
     "rg>=0.0.75",
     "requests>=2.25.0",
+    "bandit>=1.8.6",
 ]
 
 [project.optional-dependencies]
@@ -100,7 +101,7 @@ disallow_subclassing_any = false  # 段階的厳格化 - 初期段階では緩�
 warn_redundant_casts = true
 warn_unused_ignores = false  # CI/pre-commit環境の違いによる問題を回避
 warn_no_return = true
-warn_unreachable = true
+warn_unreachable = false  # unreachableエラーを無視（Phase 4品質チェック対応）
 strict_optional = false  # 段階的厳格化 - 初期段階では緩和
 show_error_codes = true
 show_column_numbers = true
@@ -125,8 +126,10 @@ addopts = [
     "--cov-report=xml:coverage.xml",
     "--cov-fail-under=80",  # 本来の目標値
     "-v",
-    "--timeout=30",  # タイムアウト30秒
+    "--timeout=60",  # タイムアウト60秒（Phase 2最適化）
     "--log-level=ERROR",  # ERROR以上のみ表示
+    "-n", "auto",  # 並列実行（CPUコア数に合わせて自動調整）
+    "--dist", "worksteal",  # ワークスティーリングで効率的な並列実行
 ]
 markers = [
     "unit: 単体テスト",

@@ -203,3 +203,136 @@ class TestSetupValidators:
 
         elapsed = time.time() - start_time
         assert elapsed < 5.0, f"検証処理が遅すぎます: {elapsed}秒"
+
+    @pytest.mark.unit
+    def test_validate_config_valid(self):
+        """有効な設定ファイル検証テスト"""
+        try:
+            from setup_repo.setup_validators import validate_config
+        except ImportError:
+            pytest.skip("validate_configが利用できません")
+
+        valid_config = {
+            "github_user": "testuser",
+            "github_token": "ghp_1234567890abcdef",
+            "default_branch": "main",
+            "auto_push": True,
+        }
+
+        result = validate_config(valid_config)
+
+        assert result["valid"] is True
+        assert len(result["errors"]) == 0
+        assert result["config"] == valid_config
+
+    @pytest.mark.unit
+    def test_validate_config_missing_required(self):
+        """必須フィールド不足の設定ファイル検証テスト"""
+        try:
+            from setup_repo.setup_validators import validate_config
+        except ImportError:
+            pytest.skip("validate_configが利用できません")
+
+        invalid_config = {
+            "github_user": "",  # 空のユーザー名
+            # github_tokenが不足
+        }
+
+        result = validate_config(invalid_config)
+
+        assert result["valid"] is False
+        assert len(result["errors"]) >= 1
+        assert any("必須フィールド" in error for error in result["errors"])
+
+    @pytest.mark.unit
+    def test_validate_config_invalid_username(self):
+        """無効なGitHubユーザー名の設定ファイル検証テスト"""
+        try:
+            from setup_repo.setup_validators import validate_config
+        except ImportError:
+            pytest.skip("validate_configが利用できません")
+
+        invalid_config = {
+            "github_user": "invalid-user-name-",  # 無効な形式
+            "github_token": "valid_token_12345",
+        }
+
+        result = validate_config(invalid_config)
+
+        assert result["valid"] is False
+        assert any("GitHub ユーザー名の形式" in error for error in result["errors"])
+
+    @pytest.mark.unit
+    def test_validate_config_short_token(self):
+        """短いGitHubトークンの設定ファイル検証テスト"""
+        try:
+            from setup_repo.setup_validators import validate_config
+        except ImportError:
+            pytest.skip("validate_configが利用できません")
+
+        invalid_config = {
+            "github_user": "validuser",
+            "github_token": "short",  # 短すぎるトークン
+        }
+
+        result = validate_config(invalid_config)
+
+        assert result["valid"] is False
+        assert any("トークンが短すぎ" in error for error in result["errors"])
+
+    @pytest.mark.unit
+    def test_validate_environment_basic(self):
+        """基本的な環境検証テスト"""
+        try:
+            from setup_repo.setup_validators import validate_environment
+        except ImportError:
+            pytest.skip("validate_environmentが利用できません")
+
+        result = validate_environment()
+
+        assert "valid" in result
+        assert "errors" in result
+        assert "warnings" in result
+        assert "environment" in result
+
+        # Python情報のチェック
+        assert "python" in result["environment"]
+        python_info = result["environment"]["python"]
+        assert "version" in python_info
+        assert "executable" in python_info
+        assert "valid" in python_info
+
+    @pytest.mark.unit
+    def test_validate_environment_network_check(self):
+        """ネットワーク接続チェックの環境検証テスト"""
+        try:
+            from setup_repo.setup_validators import validate_environment
+        except ImportError:
+            pytest.skip("validate_environmentが利用できません")
+
+        with patch("socket.create_connection") as mock_socket:
+            # ネットワーク接続成功のケース
+            mock_socket.return_value = None
+
+            result = validate_environment()
+
+            assert "network" in result["environment"]
+            assert result["environment"]["network"]["github_accessible"] is True
+
+    @pytest.mark.unit
+    def test_validate_environment_network_failure(self):
+        """ネットワーク接続失敗の環境検証テスト"""
+        try:
+            from setup_repo.setup_validators import validate_environment
+        except ImportError:
+            pytest.skip("validate_environmentが利用できません")
+
+        with patch("socket.create_connection") as mock_socket:
+            # ネットワーク接続失敗のケース
+            mock_socket.side_effect = OSError("Connection failed")
+
+            result = validate_environment()
+
+            assert "network" in result["environment"]
+            assert result["environment"]["network"]["github_accessible"] is False
+            assert any("GitHub への接続" in warning for warning in result["warnings"])
