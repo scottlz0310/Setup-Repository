@@ -105,18 +105,28 @@ jobs:
       if: failure()
       run: |
         echo "::warning::Comprehensive quality check failed, running individual checks for debugging"
+        FALLBACK_EXIT_CODE=0
 
         echo "::group::Ruff Linting"
-        uv run ruff check . --output-format=github || true
-        uv run ruff format --check . || true
+        if ! uv run ruff check . --output-format=github; then
+          echo "❌ Ruff linting failed"
+          FALLBACK_EXIT_CODE=1
+        fi
+        if ! uv run ruff format --check .; then
+          echo "❌ Ruff format check failed"
+          FALLBACK_EXIT_CODE=1
+        fi
         echo "::endgroup::"
 
         echo "::group::MyPy Type Checking"
-        uv run mypy src/ || true
+        if ! uv run mypy src/; then
+          echo "❌ MyPy type checking failed"
+          FALLBACK_EXIT_CODE=1
+        fi
         echo "::endgroup::"
 
         echo "::group::Pytest Tests"
-        uv run pytest tests/ \
+        if ! uv run pytest tests/ \
           --cov=src/setup_repo \
           --cov-report=term-missing \
           --cov-report=xml \
@@ -127,8 +137,18 @@ jobs:
           --json-report \
           --json-report-file=test-report.json \
           -n auto \
-          --dist=worksteal || true
+          --dist=worksteal; then
+          echo "❌ Pytest tests failed"
+          FALLBACK_EXIT_CODE=1
+        fi
         echo "::endgroup::"
+        
+        if [ $FALLBACK_EXIT_CODE -ne 0 ]; then
+          echo "❌ Fallback quality checks failed with exit code: $FALLBACK_EXIT_CODE"
+          exit $FALLBACK_EXIT_CODE
+        else
+          echo "✅ Fallback quality checks passed"
+        fi
 
     - name: Generate coverage report
       if: matrix.python-version == '3.11'
@@ -319,22 +339,36 @@ jobs:
         Write-Host "Starting multiplatform tests (Windows environment)" -ForegroundColor Yellow
 
         # Windows固有のマルチプラットフォームテスト
+        $env:CI = "true"
+        $env:MULTIPLATFORM_TESTS = "true"
+        $env:PRE_COMMIT = "1"
+        $exitCode = 0
+
+        # マルチプラットフォームテストを実行
+        Write-Host "Running multiplatform tests..." -ForegroundColor Cyan
         try {
-          $env:CI = "true"
-          $env:MULTIPLATFORM_TESTS = "true"
-          $env:PRE_COMMIT = "1"
-
-          # マルチプラットフォームテストを実行
-          Write-Host "Running multiplatform tests..." -ForegroundColor Cyan
           uv run pytest tests/multiplatform/ -v --tb=short -k "windows"
-
-          # 単体テストを実行
-          Write-Host "Running unit tests..." -ForegroundColor Cyan
-          uv run pytest tests/unit/ -v --tb=short -x --maxfail=10
-
-          Write-Host "Tests completed successfully" -ForegroundColor Green
+          if ($LASTEXITCODE -ne 0) { $exitCode = $LASTEXITCODE }
         } catch {
-          Write-Host "Test issues occurred but continuing: $_" -ForegroundColor Yellow
+          Write-Host "Multiplatform tests failed: $_" -ForegroundColor Red
+          $exitCode = 1
+        }
+
+        # 単体テストを実行
+        Write-Host "Running unit tests..." -ForegroundColor Cyan
+        try {
+          uv run pytest tests/unit/ -v --tb=short -x --maxfail=10
+          if ($LASTEXITCODE -ne 0) { $exitCode = $LASTEXITCODE }
+        } catch {
+          Write-Host "Unit tests failed: $_" -ForegroundColor Red
+          $exitCode = 1
+        }
+
+        if ($exitCode -eq 0) {
+          Write-Host "Tests completed successfully" -ForegroundColor Green
+        } else {
+          Write-Host "Tests failed with exit code: $exitCode" -ForegroundColor Red
+          exit $exitCode
         }
 
     - name: Run multiplatform tests (Unix)
@@ -342,27 +376,48 @@ jobs:
       shell: bash
       run: |
         echo "マルチプラットフォームテストを開始します（Unix系環境）"
+        set -e  # エラー時に即座に終了
 
         # Unix系環境でのマルチプラットフォームテスト
         export CI="true"
         export MULTIPLATFORM_TESTS="true"
         export PRE_COMMIT="1"
+        EXIT_CODE=0
 
         # プラットフォーム固有テストを実行
         if [ "${{ runner.os }}" = "macOS" ]; then
           echo "macOS固有テストを実行します"
-          uv run pytest tests/multiplatform/ -v --tb=short -k "macos" || true
+          if ! uv run pytest tests/multiplatform/ -v --tb=short -k "macos"; then
+            echo "❌ macOS固有テストが失敗しました"
+            EXIT_CODE=1
+          fi
         else
           echo "Linux/Unix固有テストを実行します"
-          uv run pytest tests/multiplatform/ -v --tb=short -k "unix" || true
+          if ! uv run pytest tests/multiplatform/ -v --tb=short -k "unix"; then
+            echo "❌ Linux/Unix固有テストが失敗しました"
+            EXIT_CODE=1
+          fi
         fi
 
         # 単体テストを実行
         echo "単体テストを実行します"
-        uv run pytest tests/unit/ -v --tb=short -x --maxfail=10 || true
+        if ! uv run pytest tests/unit/ -v --tb=short -x --maxfail=10; then
+          echo "❌ 単体テストが失敗しました"
+          EXIT_CODE=1
+        fi
 
         echo "CLIヘルプテストを実行します"
-        uv run python main.py --help || echo "CLIヘルプテストが失敗しましたが、続行します"
+        if ! uv run python main.py --help; then
+          echo "❌ CLIヘルプテストが失敗しました"
+          EXIT_CODE=1
+        fi
+
+        if [ $EXIT_CODE -ne 0 ]; then
+          echo "❌ テストが失敗しました (終了コード: $EXIT_CODE)"
+          exit $EXIT_CODE
+        else
+          echo "✅ 全てのテストが成功しました"
+        fi
 
     - name: Run platform diagnostics (Windows)
       if: runner.os == 'Windows'
@@ -371,9 +426,14 @@ jobs:
         Write-Host "Running platform diagnostics (Windows environment)" -ForegroundColor Yellow
         try {
           uv run python scripts/ci-platform-diagnostics.py
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "Platform diagnostics failed with exit code: $LASTEXITCODE" -ForegroundColor Red
+            exit $LASTEXITCODE
+          }
           Write-Host "Platform diagnostics completed successfully" -ForegroundColor Green
         } catch {
-          Write-Host "Platform diagnostics encountered issues: $_" -ForegroundColor Yellow
+          Write-Host "Platform diagnostics encountered critical error: $_" -ForegroundColor Red
+          exit 1
         }
 
     - name: Run platform diagnostics (Unix)
@@ -381,12 +441,17 @@ jobs:
       shell: bash
       run: |
         echo "プラットフォーム診断を実行します（Unix系環境）"
-        uv run python scripts/ci-platform-diagnostics.py || echo "プラットフォーム診断で問題が発生しましたが、続行します"
+        set -e
+        if ! uv run python scripts/ci-platform-diagnostics.py; then
+          echo "❌ プラットフォーム診断が失敗しました"
+          exit 1
+        fi
+        echo "✅ プラットフォーム診断が完了しました"
 
     - name: Test platform detection with enhanced error handling
       run: |
         echo "::group::プラットフォーム検出テスト"
-        uv run python -c "
+        if ! uv run python -c "
         import sys
         import traceback
         from src.setup_repo.platform_detector import PlatformDetector
@@ -421,6 +486,7 @@ jobs:
                     print('✅ msvcrtモジュールが利用可能です')
                 except ImportError as e:
                     print(f'❌ msvcrtモジュールのインポートに失敗: {e}')
+                    raise
 
                 try:
                     import fcntl
@@ -435,6 +501,7 @@ jobs:
                     print('✅ fcntlモジュールが利用可能です')
                 except ImportError as e:
                     print(f'❌ fcntlモジュールのインポートに失敗: {e}')
+                    raise
 
                 try:
                     import msvcrt
@@ -449,6 +516,7 @@ jobs:
                     print('✅ fcntlモジュールが利用可能です')
                 except ImportError as e:
                     print(f'❌ fcntlモジュールのインポートに失敗: {e}')
+                    raise
 
             # 診断実行
             print('🔍 プラットフォーム診断を実行します')
@@ -463,12 +531,16 @@ jobs:
                 print(f'✅ 利用可能なパッケージマネージャー: {available_managers}')
             else:
                 print('⚠️ 利用可能なパッケージマネージャーが見つかりません')
+                # パッケージマネージャーがない場合はエラー
+                raise RuntimeError('必要なパッケージマネージャーが利用できません')
 
             # CI固有の問題を報告
             if 'ci_specific_issues' in diagnosis and diagnosis['ci_specific_issues']:
                 print('⚠️ CI固有の問題が検出されました:')
                 for issue in diagnosis['ci_specific_issues']:
                     print(f'  • {issue}')
+                # CI固有の問題がある場合はエラー
+                raise RuntimeError(f'CI固有の問題が検出されました: {diagnosis["ci_specific_issues"]}')
             else:
                 print('✅ CI固有の問題は検出されませんでした')
 
@@ -477,6 +549,8 @@ jobs:
                 print('💡 推奨事項:')
                 for rec in diagnosis['recommendations'][:3]:  # 最初の3つのみ表示
                     print(f'  • {rec}')
+
+            print('✅ プラットフォーム検出テストが成功しました')
 
         except Exception as e:
             print(f'❌ プラットフォーム検出エラー: {e}')
@@ -499,7 +573,12 @@ jobs:
 
             traceback.print_exc()
             sys.exit(1)
-        "
+        "; then
+          echo "✅ プラットフォーム検出テストが成功しました"
+        else
+          echo "❌ プラットフォーム検出テストが失敗しました"
+          exit 1
+        fi
         echo "::endgroup::"
 
     - name: Upload platform test results on failure

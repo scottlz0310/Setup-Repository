@@ -117,18 +117,7 @@ testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = [
-    "--strict-markers",
-    "--strict-config",
-    "-v",
-    "--log-level=ERROR",
-    "--cov=src/setup_repo",
-    "--cov-report=term-missing",
-    "--cov-report=html:htmlcov",
-    "--cov-fail-under=80",
-    "-n", "20",  # 20コア全て使用して最大パフォーマンス
-    "--dist", "loadfile",  # workstealより安定なloadfile
-]
+addopts = "-v --tb=short --disable-warnings -p xdist -p pytest_cov -n 20 --dist=loadfile --cov=src/setup_repo --cov-report=term-missing --cov-report=html:htmlcov"
 markers = [
     "unit: 単体テスト",
     "integration: 統合テスト",
@@ -213,21 +202,21 @@ url = "https://pkgs.safetycli.com/repository/scottlz-team/project/setup-reposito
 default = false
 [dependency-groups]
 dev = [
-    "pre-commit>=4.3.0",
     "pytest>=8.4.2",
-    "pytest-cov>=6.3.0",
+    "pytest-cov>=7.0.0",
     "pytest-xdist>=3.8.0",
-    "pytest-json-report>=1.5.0", # パフォーマンステスト用JSONレポート
-    "pytest-benchmark>=4.0.0", # ベンチマークテスト用
+    "pytest-json-report>=1.5.0",
+    "pytest-benchmark>=4.0.0",
+    "pytest-timeout>=2.4.0",
+    "pre-commit>=4.3.0",
     "ruff>=0.8.0",
     "mypy>=1.13.0",
     "coverage>=7.6.0",
-    "tomli-w>=1.0.0", # バージョン管理スクリプト用
-    "psutil>=5.9.0", # パフォーマンス監視用
+    "tomli-w>=1.0.0",
+    "psutil>=5.9.0",
     "black>=25.1.0",
     "types-psutil>=7.0.0.20250822",
     "types-requests>=2.32.4.20250809",
-    "pytest-timeout>=2.4.0",
 ]
 security = [
     "safety>=3.0.0",

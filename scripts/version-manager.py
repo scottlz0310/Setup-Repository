@@ -206,9 +206,10 @@ class VersionManager:
 
             # タグが既に存在するかチェック
             import sys
+
             sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
             from setup_repo.security_helpers import safe_subprocess_run
-            
+
             result = safe_subprocess_run(
                 ["git", "tag", "-l", tag_name],
                 capture_output=True,

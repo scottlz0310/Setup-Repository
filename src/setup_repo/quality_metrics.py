@@ -368,10 +368,10 @@ class QualityMetricsCollector:
     def save_metrics_report(self, metrics: QualityMetrics, output_file: Optional[Path] = None) -> Path:
         """メトリクスレポートをJSONファイルに保存"""
         from .security_helpers import safe_path_join, validate_file_path
-        
+
         if output_file is None:
             output_file = safe_path_join(self.project_root, "quality-report.json")
-        
+
         # ファイルパスの安全性を検証
         if not validate_file_path(output_file, [".json"]):
             raise ValueError(f"Unsafe file path detected: {output_file}")

@@ -85,7 +85,7 @@ class TestPlatformDetectorEdgeCases:
         mock_result.stdout = ""
         mock_result.stderr = ""
 
-        with patch("subprocess.run", return_value=mock_result):
+        with patch("src.setup_repo.security_helpers.safe_subprocess_run", return_value=mock_result):
             result = check_package_manager("empty_output_manager")
             assert result is False
 
@@ -93,7 +93,7 @@ class TestPlatformDetectorEdgeCases:
         mock_result.stdout = ""
         mock_result.stderr = "version 1.0.0"
 
-        with patch("subprocess.run", return_value=mock_result):
+        with patch("src.setup_repo.security_helpers.safe_subprocess_run", return_value=mock_result):
             result = check_package_manager("stderr_only_manager")
             assert result is True
 

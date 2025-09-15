@@ -7,7 +7,7 @@ import time
 from pathlib import Path
 from typing import Union
 
-from .security_helpers import safe_subprocess, safe_path_join
+from .security_helpers import safe_path_join, safe_subprocess
 
 
 class GitOperations:

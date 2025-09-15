@@ -114,7 +114,7 @@ def _detect_default_linux_platform(github_actions: bool) -> PlatformInfo:
 def _check_wsl_environment() -> bool:
     """現在のプラットフォームを詳細検出"""
     from .security_helpers import safe_path_join
-    
+
     # 方法1: platform.release()でMicrosoftをチェック
     if "microsoft" in platform.release().lower():
         return True
@@ -173,10 +173,12 @@ def check_package_manager(manager: str) -> bool:
 
         # 安全なsubprocess実行
         from .security_helpers import safe_subprocess_run
+
         result = safe_subprocess_run(cmd, capture_output=True, timeout=timeout, text=True)
 
         # 出力が空でないことを確認
-        return bool(result.stdout.strip() or result.stderr.strip())
+        output = result.stdout.strip() or result.stderr.strip()
+        return bool(output)
 
     except (
         subprocess.CalledProcessError,
@@ -273,6 +275,7 @@ def _log_windows_path_info() -> None:
     # PowerShellの実行ポリシーをチェック
     try:
         from .security_helpers import safe_subprocess_run
+
         result = safe_subprocess_run(
             ["powershell", "-Command", "Get-ExecutionPolicy"],
             capture_output=True,
@@ -530,6 +533,7 @@ def _diagnose_ci_specific_issues(diagnosis: dict[str, Any], platform_info: Platf
             # PowerShellの実行ポリシーをチェック
             try:
                 from .security_helpers import safe_subprocess_run
+
                 result = safe_subprocess_run(
                     ["powershell", "-Command", "Get-ExecutionPolicy"],
                     capture_output=True,

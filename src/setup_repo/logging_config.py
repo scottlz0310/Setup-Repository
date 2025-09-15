@@ -357,23 +357,24 @@ def get_platform_debug_info() -> dict[str, Any]:
 
 def check_logging_permissions(session_data: Optional[dict[str, Any]] = None) -> bool:
     """ログ設定変更の権限をチェック
-    
+
     Args:
         session_data: セッションデータ
-        
+
     Returns:
         権限がある場合True
     """
     # CI環境では常に許可
     if LoggingConfig.is_ci_environment():
         return True
-    
+
     # セッションデータがない場合はローカル環境とみなして許可
     if not session_data:
         return True
-    
+
     # セッションベースの認証チェック
     from .security_helpers import check_admin_role
+
     return check_admin_role(session_data)
 
 

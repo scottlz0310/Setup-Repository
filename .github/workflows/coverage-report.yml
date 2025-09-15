@@ -41,21 +41,22 @@ jobs:
         run: |
           echo "🔍 包括的カバレッジ分析を実行中..."
 
-          # 基本的なカバレッジレポート生成（統合テストの失敗を許容）
-          set +e  # エラーで停止しない
-          uv run pytest tests/ \
+          # 基本的なカバレッジレポート生成（テスト失敗時は即座に終了）
+          echo "🧪 テスト実行とカバレッジ測定を開始します"
+          
+          if ! uv run pytest tests/ \
             --cov=src/setup_repo \
             --cov-report=term-missing \
             --cov-report=xml \
             --cov-report=html \
             --cov-report=json \
             --junit-xml=test-results.xml \
-            -v
+            -v; then
+            echo "❌ テストが失敗しました"
+            exit 1
+          fi
 
-          TEST_EXIT_CODE=$?
-          set -e  # エラーで停止を再有効化
-
-          echo "テスト終了コード: $TEST_EXIT_CODE"
+          echo "✅ テストが成功しました"
 
           # カバレッジファイルが生成されているかチェック
           if [ -f "coverage.xml" ] && [ -f "coverage.json" ]; then
@@ -65,14 +66,13 @@ jobs:
             exit 1
           fi
 
-          # カバレッジ監視システムを使用してレポート生成（エラー時は継続）
-          uv run python scripts/coverage-monitor.py --generate-report || echo "⚠️ カバレッジ監視システムでエラーが発生しましたが、継続します"
-
-          # 統合テストの失敗は警告として扱う
-          if [ $TEST_EXIT_CODE -ne 0 ]; then
-            echo "⚠️ 一部のテストが失敗しましたが、カバレッジレポートは生成されました"
-            echo "::warning::統合テストで失敗がありましたが、カバレッジ分析は完了しました"
+          # カバレッジ監視システムを使用してレポート生成
+          if ! uv run python scripts/coverage-monitor.py --generate-report; then
+            echo "❌ カバレッジ監視システムでエラーが発生しました"
+            exit 1
           fi
+          
+          echo "✅ カバレッジ分析が完了しました"
 
       - name: Generate coverage summary
         if: always()  # テスト失敗時でも実行
@@ -213,7 +213,7 @@ jobs:
 
       - name: Check coverage trend
         if: github.event_name == 'pull_request'
-        continue-on-error: true  # トレンド分析の失敗でワークフローを停止しない
+  
         run: |
           echo "📈 カバレッジトレンド分析中..."
 
@@ -227,9 +227,13 @@ jobs:
           if git checkout ${{ github.event.pull_request.base.sha }}; then
             echo "✅ ベースブランチに切り替えました"
 
-            # ベースブランチでテスト実行（エラーは無視）
+            # ベースブランチでテスト実行
             echo "📋 ベースブランチでカバレッジ測定中..."
-            uv run pytest tests/ --cov=src/setup_repo --cov-report=json:base-coverage.json -x --tb=no -q || echo "⚠️ ベースブランチのテストでエラーが発生しました"
+            if ! uv run pytest tests/ --cov=src/setup_repo --cov-report=json:base-coverage.json -x --tb=no -q; then
+              echo "⚠️ ベースブランチのテストでエラーが発生しました（比較をスキップします）"
+              echo "comparison-skipped=true" >> $GITHUB_OUTPUT
+              exit 0
+            fi
 
             # 現在のブランチに戻る
             if git checkout $CURRENT_BRANCH; then

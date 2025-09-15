@@ -155,7 +155,7 @@ class TestCLIEdgeCases:
         with (
             patch.dict(os.environ, {}, clear=True),  # PYTEST_CURRENT_TESTとCIを削除
             patch("pathlib.Path.cwd", return_value=temp_dir),
-            pytest.raises(ValueError, match="プロジェクトルートは現在のディレクトリ以下である必要があります"),
+            pytest.raises(ValueError, match="不正なプロジェクトルートパス"),
         ):
             quality_cli(args)
 
@@ -411,7 +411,7 @@ class TestCLIEdgeCases:
         # テスト環境でない場合のセキュリティチェック
         with (
             patch.dict(os.environ, {}, clear=True),
-            pytest.raises(ValueError, match="プロジェクトルートは現在のディレクトリ以下である必要があります"),
+            pytest.raises(ValueError, match="不正なプロジェクトルートパス"),
         ):
             trend_cli(args)
 

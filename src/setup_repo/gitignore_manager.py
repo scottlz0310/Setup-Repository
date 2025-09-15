@@ -87,7 +87,7 @@ class GitignoreManager:
             template_file = safe_path_join(self.templates_dir, f"{template_name}.gitignore")
         except ValueError:
             return ""
-            
+
         if not template_file.exists():
             return ""
 

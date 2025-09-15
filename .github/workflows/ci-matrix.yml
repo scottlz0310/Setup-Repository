@@ -75,33 +75,83 @@ jobs:
 
     - name: Run comprehensive tests
       run: |
-        uv run pytest tests/ -v --tb=short || echo "Some tests failed, continuing..."
-        uv run python main.py --help || echo "Main script test failed, continuing..."
+        set -e
+        EXIT_CODE=0
+        
+        echo "Running comprehensive tests..."
+        if ! uv run pytest tests/ -v --tb=short; then
+          echo "❌ Comprehensive tests failed"
+          EXIT_CODE=1
+        fi
+        
+        echo "Testing main script help..."
+        if ! uv run python main.py --help; then
+          echo "❌ Main script test failed"
+          EXIT_CODE=1
+        fi
+        
+        if [ $EXIT_CODE -ne 0 ]; then
+          echo "❌ Tests failed with exit code: $EXIT_CODE"
+          exit $EXIT_CODE
+        else
+          echo "✅ All tests passed successfully"
+        fi
 
     - name: Run platform-specific tests
       run: |
+        set -e
+        EXIT_CODE=0
+        
         # プラットフォーム固有テストの実行
         if [ "${{ runner.os }}" = "Windows" ]; then
-          uv run pytest tests/multiplatform/ -k "windows" -v --tb=short || echo "Windows tests failed, continuing..."
+          echo "Running Windows-specific tests..."
+          if ! uv run pytest tests/multiplatform/ -k "windows" -v --tb=short; then
+            echo "❌ Windows tests failed"
+            EXIT_CODE=1
+          fi
         elif [ "${{ runner.os }}" = "Linux" ]; then
-          uv run pytest tests/multiplatform/ -k "unix or linux" -v --tb=short || echo "Unix tests failed, continuing..."
+          echo "Running Linux/Unix-specific tests..."
+          if ! uv run pytest tests/multiplatform/ -k "unix or linux" -v --tb=short; then
+            echo "❌ Unix tests failed"
+            EXIT_CODE=1
+          fi
         elif [ "${{ runner.os }}" = "macOS" ]; then
-          uv run pytest tests/multiplatform/ -k "macos or unix" -v --tb=short || echo "macOS tests failed, continuing..."
+          echo "Running macOS-specific tests..."
+          if ! uv run pytest tests/multiplatform/ -k "macos or unix" -v --tb=short; then
+            echo "❌ macOS tests failed"
+            EXIT_CODE=1
+          fi
+        fi
+        
+        if [ $EXIT_CODE -ne 0 ]; then
+          echo "❌ Platform-specific tests failed with exit code: $EXIT_CODE"
+          exit $EXIT_CODE
+        else
+          echo "✅ Platform-specific tests passed successfully"
         fi
       shell: bash
 
     - name: Test platform-specific functionality
       run: |
-        uv run python -c "
+        echo "Testing platform-specific functionality..."
+        if ! uv run python -c "
         try:
             from setup_repo.platform_detector import detect_platform
             platform = detect_platform()
             print(f'Platform: {platform.name} - {platform.display_name}')
             print(f'Shell: {platform.shell}')
             print(f'Python command: {platform.python_cmd}')
+            print('✅ Platform detection successful')
         except Exception as e:
-            print(f'Platform detection failed: {e}')
-        " || echo "Platform test failed, continuing..."
+            print(f'❌ Platform detection failed: {e}')
+            import sys
+            sys.exit(1)
+        "; then
+          echo "✅ Platform functionality test passed"
+        else
+          echo "❌ Platform functionality test failed"
+          exit 1
+        fi
 
   performance-test:
     name: Performance Test
@@ -125,10 +175,34 @@ jobs:
 
     - name: Run performance tests
       run: |
-        uv run pytest tests/ -m "slow" -v --tb=short || echo "Performance tests skipped or failed"
+        echo "Running performance tests..."
+        if ! uv run pytest tests/ -m "slow" -v --tb=short; then
+          echo "❌ Performance tests failed"
+          exit 1
+        else
+          echo "✅ Performance tests passed"
+        fi
 
     - name: Benchmark startup time
       run: |
         echo "Measuring startup time..."
-        time uv run python main.py --help > /dev/null || echo "Startup benchmark failed"
-        time uv run python -c "from setup_repo.cli import main; main(['--help'])" > /dev/null || echo "CLI benchmark failed"
+        EXIT_CODE=0
+        
+        echo "Testing main script startup..."
+        if ! time uv run python main.py --help > /dev/null; then
+          echo "❌ Startup benchmark failed"
+          EXIT_CODE=1
+        fi
+        
+        echo "Testing CLI module startup..."
+        if ! time uv run python -c "from setup_repo.cli import main; main(['--help'])" > /dev/null; then
+          echo "❌ CLI benchmark failed"
+          EXIT_CODE=1
+        fi
+        
+        if [ $EXIT_CODE -ne 0 ]; then
+          echo "❌ Startup benchmarks failed"
+          exit $EXIT_CODE
+        else
+          echo "✅ Startup benchmarks completed successfully"
+        fi

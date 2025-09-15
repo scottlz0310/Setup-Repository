@@ -113,7 +113,7 @@ class ProjectDetector:
     def _path_exists(self, path_str: str) -> bool:
         """パスの存在確認（パストラバーサル対策）"""
         from .security_helpers import safe_path_join
-        
+
         try:
             # 安全なパス結合を使用
             safe_path = safe_path_join(self.repo_path, path_str)

@@ -71,14 +71,26 @@ jobs:
         else
           echo "Safety API Key not set (無料/公開DBモード)"
         fi
-        uv run safety scan --output json --save-as safety-report.json || true
-        uv run safety scan --output screen || true
+        if ! uv run safety scan --output json --save-as safety-report.json; then
+          echo "❌ Safetyスキャンが失敗しました"
+          exit 1
+        fi
+        if ! uv run safety scan --output screen; then
+          echo "❌ Safetyスキャン（スクリーン出力）が失敗しました"
+          exit 1
+        fi
 
     - name: Run Bandit security linter
       run: |
         echo "=== Bandit Security Linter ==="
-        uv run bandit -r src/ -f json -o bandit-report.json || true
-        uv run bandit -r src/ -f txt || true
+        if ! uv run bandit -r src/ -f json -o bandit-report.json; then
+          echo "❌ Banditスキャンが失敗しました"
+          exit 1
+        fi
+        if ! uv run bandit -r src/ -f txt; then
+          echo "❌ Banditスキャン（テキスト出力）が失敗しました"
+          exit 1
+        fi
 
     - name: Run Semgrep security analysis (optional)
       run: |
@@ -181,8 +193,14 @@ jobs:
     - name: Run TruffleHog secret scan
       run: |
         echo "=== TruffleHog Secret Scan ==="
-        trufflehog git file://. --json --output trufflehog-report.json || true
-        trufflehog git file://. || true
+        if ! trufflehog git file://. --json --output trufflehog-report.json; then
+          echo "❌ TruffleHogシークレットスキャンが失敗しました"
+          exit 1
+        fi
+        if ! trufflehog git file://.; then
+          echo "❌ TruffleHogシークレットスキャン（スクリーン出力）が失敗しました"
+          exit 1
+        fi
 
     - name: Upload secret scan results
       uses: actions/upload-artifact@v4
@@ -231,8 +249,14 @@ jobs:
     - name: Check licenses
       run: |
         echo "=== License Compliance Check ==="
-        uv run pip-licenses --format=json --output-file=licenses-report.json || true
-        uv run pip-licenses --format=plain || true
+        if ! uv run pip-licenses --format=json --output-file=licenses-report.json; then
+          echo "❌ ライセンスチェックが失敗しました"
+          exit 1
+        fi
+        if ! uv run pip-licenses --format=plain; then
+          echo "❌ ライセンスチェック（プレーン出力）が失敗しました"
+          exit 1
+        fi
 
     - name: Upload license report
       uses: actions/upload-artifact@v4

@@ -261,20 +261,20 @@ class TestSetupWizard:
     @pytest.mark.unit
     @patch("src.setup_repo.interactive_setup.get_available_package_managers")
     @patch("src.setup_repo.interactive_setup.get_install_commands")
-    @patch("subprocess.run")
-    def test_install_uv_fallback_pip(self, mock_run, mock_get_commands, mock_get_managers, setup_wizard):
+    @patch("src.setup_repo.interactive_setup.safe_subprocess")
+    def test_install_uv_fallback_pip(self, mock_safe_subprocess, mock_get_commands, mock_get_managers, setup_wizard):
         """uvインストールのpipフォールバック"""
         verify_current_platform()  # プラットフォーム検証
 
         mock_get_managers.return_value = []
         mock_get_commands.return_value = {}
-        mock_run.return_value = Mock(returncode=0)
+        mock_safe_subprocess.return_value = Mock(returncode=0)
 
         result = setup_wizard._install_uv()
 
         assert result is True
-        # pipでのインストールが呼ばれることを確認
-        mock_run.assert_called_with(["pip", "install", "uv"], check=True)
+        # safe_subprocessでのpipインストールが呼ばれることを確認
+        mock_safe_subprocess.assert_called_with(["pip", "install", "uv"], check=True)
 
     @pytest.mark.unit
     @patch("src.setup_repo.interactive_setup.validate_github_credentials")

@@ -113,8 +113,9 @@ class ErrorReporter:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"{report_type}_error_report_{timestamp}.json"
         from .security_helpers import validate_file_path
+
         output_file = self.get_report_path(filename)
-        
+
         # ファイルパスの安全性を検証
         if not validate_file_path(output_file, [".json", ".txt"]):
             raise ValueError(f"Unsafe file path detected: {output_file}")
@@ -126,23 +127,25 @@ class ErrorReporter:
                 json.dump(error_data, f, indent=2, ensure_ascii=False)
 
             return output_file
-        except (OSError, IOError) as e:
+        except OSError:
             # ファイル操作エラーの場合、フォールバック先を使用
             from .security_helpers import safe_path_join
+
             fallback_file = safe_path_join(Path.cwd(), filename)
             with open(fallback_file, "w", encoding="utf-8") as f:
                 json.dump(error_data, f, indent=2, ensure_ascii=False)
             return fallback_file
-        except json.JSONEncodeError as e:
+        except (TypeError, ValueError) as e:
             # JSONエンコードエラーの場合、テキストファイルとして保存
-            text_file = output_file.with_suffix('.txt')
+            text_file = output_file.with_suffix(".txt")
             with open(text_file, "w", encoding="utf-8") as f:
                 f.write(f"JSONエンコードエラー: {e}\n")
                 f.write(f"エラーデータ: {str(error_data)}\n")
             return text_file
-        except PermissionError as e:
+        except PermissionError:
             # 権限エラーの場合、一時ディレクトリを使用
             import tempfile
+
             temp_file = Path(tempfile.gettempdir()) / filename
             with open(temp_file, "w", encoding="utf-8") as f:
                 json.dump(error_data, f, indent=2, ensure_ascii=False)
@@ -151,6 +154,7 @@ class ErrorReporter:
     def get_report_path(self, filename: str) -> Path:
         """レポートファイルのパスを取得"""
         from .security_helpers import safe_path_join
+
         return safe_path_join(self.report_dir, filename)
 
     def create_error_report(self, errors: list[Exception], context: Optional[dict[str, Any]] = None) -> dict[str, Any]:

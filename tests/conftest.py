@@ -137,16 +137,15 @@ def pytest_collection_modifyitems(config, items):
                 item.add_marker(skip_network)
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def setup_test_environment():
-    """テスト環境の自動セットアップ"""
+    """テスト環境のセットアップ（必要な場合のみ使用）"""
     # テスト実行前の処理
-    original_env = os.environ.copy()
 
     # テスト用環境変数を設定
     test_env = {
         "PYTEST_RUNNING": "true",
-        "LOG_LEVEL": "DEBUG",
+        "LOG_LEVEL": "ERROR",  # DEBUGからERRORに変更して高速化
     }
 
     for key, value in test_env.items():
@@ -155,8 +154,8 @@ def setup_test_environment():
     yield
 
     # テスト実行後のクリーンアップ
-    os.environ.clear()
-    os.environ.update(original_env)
+    for key in test_env:
+        os.environ.pop(key, None)
 
 
 @pytest.fixture

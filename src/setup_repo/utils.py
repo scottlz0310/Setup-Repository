@@ -300,7 +300,7 @@ class ProcessLock:
     def _is_wsl(self) -> bool:
         """WSL環境かどうかを判定"""
         from .security_helpers import safe_path_join
-        
+
         try:
             proc_version = safe_path_join(Path("/"), "proc/version")
             with open(proc_version) as f:

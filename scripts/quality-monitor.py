@@ -9,7 +9,6 @@
 import json
 import logging
 import statistics
-import subprocess
 import sys
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -128,13 +127,9 @@ class QualityMonitor:
         try:
             # Git情報を取得（セキュアなコマンド実行）
             from .security_helpers import safe_subprocess
-            
+
             commit_result = safe_subprocess(
-                ["git", "rev-parse", "HEAD"],
-                capture_output=True,
-                text=True,
-                cwd=self.project_root,
-                timeout=10
+                ["git", "rev-parse", "HEAD"], capture_output=True, text=True, cwd=self.project_root, timeout=10
             )
             commit_sha = commit_result.stdout.strip()
 
@@ -143,7 +138,7 @@ class QualityMonitor:
                 capture_output=True,
                 text=True,
                 cwd=self.project_root,
-                timeout=10
+                timeout=10,
             )
             branch = branch_result.stdout.strip()
 
@@ -161,7 +156,7 @@ class QualityMonitor:
                 capture_output=True,
                 text=True,
                 timeout=300,
-                check=False
+                check=False,
             )
 
             test_coverage = 0.0
@@ -190,7 +185,7 @@ class QualityMonitor:
                 capture_output=True,
                 text=True,
                 timeout=300,
-                check=False
+                check=False,
             )
 
             if test_result.returncode in [0, 1]:  # 0=成功, 1=テスト失敗
@@ -210,7 +205,7 @@ class QualityMonitor:
                 capture_output=True,
                 text=True,
                 timeout=60,
-                check=False
+                check=False,
             )
 
             ruff_issues = 0
@@ -228,7 +223,7 @@ class QualityMonitor:
                 capture_output=True,
                 text=True,
                 timeout=120,
-                check=False
+                check=False,
             )
 
             mypy_errors = 0

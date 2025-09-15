@@ -65,19 +65,19 @@ jobs:
             # ユーザー入力をサニタイズ（英数字、ドット、ハイフンのみ許可）
             RAW_VERSION="${{ github.event.inputs.version }}"
             VERSION=$(echo "$RAW_VERSION" | sed 's/[^a-zA-Z0-9.-]//g')
-            
+
             # バージョン形式の検証
             if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-(alpha|beta|rc)\.[0-9]+)?$ ]]; then
               echo "❌ 無効なバージョン形式: $VERSION"
               exit 1
             fi
-            
+
             IS_PRERELEASE="${{ github.event.inputs.prerelease }}"
           else
             # タグからバージョンを抽出 (v1.0.0 -> 1.0.0)
             RAW_TAG="${GITHUB_REF#refs/tags/v}"
             VERSION=$(echo "$RAW_TAG" | sed 's/[^a-zA-Z0-9.-]//g')
-            
+
             # プレリリースかどうかを判定 (alpha, beta, rc を含む場合)
             if [[ "$VERSION" =~ (alpha|beta|rc) ]]; then
               IS_PRERELEASE="true"
@@ -517,7 +517,7 @@ jobs:
           EOF
 
           chmod +x scripts/generate-release-notes.py
-          
+
       - name: 📝 リリースノートを生成実行
         env:
           VERSION: ${{ needs.version-consistency-check.outputs.version }}

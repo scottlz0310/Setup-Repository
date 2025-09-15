@@ -72,17 +72,23 @@ def _setup_with_venv(repo_path: Path) -> bool:
 
     try:
         venv_path = repo_path / ".venv"
-        safe_subprocess(
-            ["python3", "-m", "venv", str(venv_path)], check=True, capture_output=True, timeout=300
-        )
+        # Windowsではpython3が存在しない場合があるため、pythonも試す
+        python_cmd = "python3"
+        try:
+            safe_subprocess([python_cmd, "-m", "venv", str(venv_path)], check=True, capture_output=True, timeout=300)
+        except (FileNotFoundError, OSError):
+            python_cmd = "python"
+            safe_subprocess([python_cmd, "-m", "venv", str(venv_path)], check=True, capture_output=True, timeout=300)
 
         pip_path = venv_path / "bin" / "pip"
         if not pip_path.exists():
             pip_path = venv_path / "Scripts" / "pip.exe"
 
-        safe_subprocess(
-            [str(pip_path), "install", "--upgrade", "pip"], check=True, capture_output=True, timeout=300
-        )
+        # pipパスが存在しない場合はエラー
+        if not pip_path.exists():
+            raise FileNotFoundError(f"pip not found in venv: {pip_path}")
+
+        safe_subprocess([str(pip_path), "install", "--upgrade", "pip"], check=True, capture_output=True, timeout=300)
 
         if (repo_path / "requirements.txt").exists():
             safe_subprocess(
@@ -95,6 +101,6 @@ def _setup_with_venv(repo_path: Path) -> bool:
         print(f"   ✅ {repo_name}: venv環境セットアップ完了")
         return True
 
-    except subprocess.CalledProcessError:
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
         print(f"   ❌ {repo_name}: venv環境セットアップ失敗")
         return False

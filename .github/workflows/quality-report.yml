@@ -47,7 +47,7 @@ jobs:
           echo "mypy_errors=$MYPY_ERRORS" >> $GITHUB_OUTPUT
           echo "security_vulnerabilities=$SECURITY_VULNS" >> $GITHUB_OUTPUT
         fi
-      continue-on-error: true
+
 
     - name: Generate quality badge data
       run: |

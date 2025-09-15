@@ -24,6 +24,7 @@ class TestConfigMissingCoverage:
             patch.dict(os.environ, {}, clear=True),
             # gh CLIが失敗する場合をテスト
             patch("subprocess.run", side_effect=FileNotFoundError("gh command not found")),
+            patch("builtins.print"),  # print出力を抑制
         ):
             token = get_github_token()
             assert token is None  # 20行のreturn Noneをテスト
@@ -41,7 +42,10 @@ class TestConfigMissingCoverage:
             json.dump(test_config, f)
 
         # CONFIG_PATHが直接ファイルを指す場合
-        with patch.dict(os.environ, {"CONFIG_PATH": str(config_file)}):
+        with (
+            patch.dict(os.environ, {"CONFIG_PATH": str(config_file)}),
+            patch("builtins.print"),  # print出力を抑制
+        ):
             config = load_config()
 
             # 78行のconfig_path = config_dirが実行されることを確認
@@ -62,7 +66,10 @@ class TestConfigMissingCoverage:
 
         # CONFIG_PATHが異なるファイル名を指す場合
         different_file = temp_dir / "different.json"
-        with patch.dict(os.environ, {"CONFIG_PATH": str(different_file)}):
+        with (
+            patch.dict(os.environ, {"CONFIG_PATH": str(different_file)}),
+            patch("builtins.print"),  # print出力を抑制
+        ):
             config = load_config()
 
             # ファイルが見つからないため、自動検出設定が使用される

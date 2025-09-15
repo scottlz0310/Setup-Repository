@@ -208,6 +208,7 @@ class CIErrorHandler:
 
         if filename:
             from .security_helpers import safe_path_join
+
             try:
                 output_file = safe_path_join(self.error_report_dir, filename)
                 output_file.parent.mkdir(parents=True, exist_ok=True)
@@ -219,13 +220,13 @@ class CIErrorHandler:
             except ValueError as e:
                 self.logger.error(f"不正なファイルパス: {e}")
                 output_file = self.error_reporter.save_report(report, "ci")
-            except (OSError, IOError) as e:
+            except OSError as e:
                 self.logger.error(f"ファイル操作エラー: {e}")
                 output_file = self.error_reporter.save_report(report, "ci")
             except (PermissionError, FileNotFoundError) as e:
                 self.logger.error(f"ファイルアクセスエラー: {e}")
                 output_file = self.error_reporter.save_report(report, "ci")
-            except json.JSONEncodeError as e:
+            except TypeError as e:
                 self.logger.error(f"JSONエンコードエラー: {e}")
                 output_file = self.error_reporter.save_report(report, "ci")
         else:
@@ -307,6 +308,7 @@ class CIErrorHandler:
 
         try:
             from .security_helpers import safe_path_join
+
             try:
                 safe_summary_file = safe_path_join(Path("/"), summary_file.lstrip("/"))
                 with open(safe_summary_file, "a", encoding="utf-8") as f:
@@ -317,7 +319,7 @@ class CIErrorHandler:
             except ValueError as e:
                 # パスが不正な場合はスキップ
                 self.logger.warning(f"不正なGitHub Step Summaryパスが検出されました: {e}")
-            except (OSError, IOError) as e:
+            except OSError as e:
                 # ファイル操作エラー
                 self.logger.error(f"GitHub Step Summaryファイル操作エラー: {e}")
 

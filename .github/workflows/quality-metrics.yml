@@ -44,19 +44,28 @@ jobs:
 
           # Ruffによるコード品質チェック
           echo "📝 Ruffリンティング実行中..."
-          uv run ruff check . --output-format=json > ruff-report.json || true
+          if ! uv run ruff check . --output-format=json > ruff-report.json; then
+            echo "❌ Ruffリンティングでエラーが発生しました"
+            exit 1
+          fi
 
           # MyPyによる型チェック
           echo "🔍 MyPy型チェック実行中..."
-          uv run mypy src/ --json-report mypy-report.json || true
+          if ! uv run mypy src/ --json-report mypy-report.json; then
+            echo "❌ MyPy型チェックでエラーが発生しました"
+            exit 1
+          fi
 
           # テスト実行とメトリクス収集
           echo "🧪 テスト実行中..."
-          uv run pytest tests/ \
+          if ! uv run pytest tests/ \
             --json-report --json-report-file=test-report.json \
             --cov=src/setup_repo \
             --cov-report=json:coverage.json \
-            -v || true
+            -v; then
+            echo "❌ テストが失敗しました"
+            exit 1
+          fi
 
       - name: Generate quality metrics summary
         run: |

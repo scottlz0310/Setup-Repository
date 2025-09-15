@@ -312,6 +312,7 @@ jobs:
           echo "🚨 品質アラートチェック中..."
 
           # 品質ゲートをチェック
+          echo "💪 品質ゲートチェックを実行します"
           if ! uv run python scripts/quality-monitor.py --check-gates; then
             echo "❌ 品質ゲートを通過できませんでした"
 
@@ -321,7 +322,7 @@ jobs:
               cat quality_alert.txt
             fi
 
-            # 重要な品質問題がある場合は失敗させる
+            echo "❌ 重大な品質問題が検出されたため、ワークフローを停止します"
             exit 1
           else
             echo "✅ 品質ゲートを通過しました"

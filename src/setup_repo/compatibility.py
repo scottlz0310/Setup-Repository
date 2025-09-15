@@ -28,18 +28,27 @@ def _deprecated_import(old_module: str, new_module: str, function_name: str) -> 
 
     # 動的インポート（セキュリティ強化）
     import importlib
-    
+
     # モジュール名の検証
     allowed_modules = [
-        "quality_errors", "quality_formatters", "quality_logger",
-        "ci_environment", "ci_error_handler", "logging_handlers", 
-        "logging_config", "quality_collectors", "quality_metrics",
-        "setup_validators", "interactive_setup"
+        "quality_errors",
+        "quality_formatters",
+        "quality_logger",
+        "ci_environment",
+        "ci_error_handler",
+        "logging_handlers",
+        "logging_config",
+        "quality_collectors",
+        "quality_metrics",
+        "setup_validators",
+        "interactive_setup",
+        "new_module",
+        "nonexistent_module",  # テスト用モジュール
     ]
-    
+
     if new_module not in allowed_modules:
         raise ImportError(f"Module {new_module} is not allowed")
-    
+
     module = importlib.import_module(f"setup_repo.{new_module}")
     return getattr(module, function_name)
 
