@@ -60,12 +60,24 @@ jobs:
       - name: 🔍 バージョン情報を抽出
         id: extract-version
         run: |
+          # 入力値のサニタイズとバリデーション
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            VERSION="${{ github.event.inputs.version }}"
+            # ユーザー入力をサニタイズ（英数字、ドット、ハイフンのみ許可）
+            RAW_VERSION="${{ github.event.inputs.version }}"
+            VERSION=$(echo "$RAW_VERSION" | sed 's/[^a-zA-Z0-9.-]//g')
+            
+            # バージョン形式の検証
+            if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-(alpha|beta|rc)\.[0-9]+)?$ ]]; then
+              echo "❌ 無効なバージョン形式: $VERSION"
+              exit 1
+            fi
+            
             IS_PRERELEASE="${{ github.event.inputs.prerelease }}"
           else
             # タグからバージョンを抽出 (v1.0.0 -> 1.0.0)
-            VERSION="${GITHUB_REF#refs/tags/v}"
+            RAW_TAG="${GITHUB_REF#refs/tags/v}"
+            VERSION=$(echo "$RAW_TAG" | sed 's/[^a-zA-Z0-9.-]//g')
+            
             # プレリリースかどうかを判定 (alpha, beta, rc を含む場合)
             if [[ "$VERSION" =~ (alpha|beta|rc) ]]; then
               IS_PRERELEASE="true"
@@ -144,8 +156,10 @@ jobs:
           chmod +x scripts/version-check.py
 
       - name: ✅ バージョン一貫性を検証
+        env:
+          VERSION: ${{ steps.extract-version.outputs.version }}
         run: |
-          python scripts/version-check.py "${{ steps.extract-version.outputs.version }}"
+          python scripts/version-check.py "$VERSION"
 
   # 品質チェック（既存のCIワークフローを再利用）
   quality-check:
@@ -328,17 +342,22 @@ jobs:
 
       - name: 📝 CHANGELOGを更新
         id: update-changelog
+        env:
+          VERSION: ${{ needs.version-consistency-check.outputs.version }}
+          IS_PRERELEASE: ${{ needs.version-consistency-check.outputs.is-prerelease }}
         run: |
-          result=$(python scripts/update-changelog.py "${{ needs.version-consistency-check.outputs.version }}" "${{ needs.version-consistency-check.outputs.is-prerelease }}")
+          result=$(python scripts/update-changelog.py "$VERSION" "$IS_PRERELEASE")
           echo "updated=${result##*=}" >> $GITHUB_OUTPUT
 
       - name: 💾 CHANGELOG変更をコミット
         if: steps.update-changelog.outputs.updated == 'true'
+        env:
+          VERSION: ${{ needs.version-consistency-check.outputs.version }}
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add CHANGELOG.md
-          git commit -m "📝 CHANGELOG.mdを更新: v${{ needs.version-consistency-check.outputs.version }}"
+          git commit -m "📝 CHANGELOG.mdを更新: v$VERSION"
           git push
 
   # GitHub Releasesの自動作成
@@ -498,7 +517,13 @@ jobs:
           EOF
 
           chmod +x scripts/generate-release-notes.py
-          python scripts/generate-release-notes.py "${{ needs.version-consistency-check.outputs.version }}" "${{ needs.version-consistency-check.outputs.is-prerelease }}"
+          
+      - name: 📝 リリースノートを生成実行
+        env:
+          VERSION: ${{ needs.version-consistency-check.outputs.version }}
+          IS_PRERELEASE: ${{ needs.version-consistency-check.outputs.is-prerelease }}
+        run: |
+          python scripts/generate-release-notes.py "$VERSION" "$IS_PRERELEASE"
 
       - name: 🚀 GitHub Releaseを作成
         uses: softprops/action-gh-release@v2
@@ -517,10 +542,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: 📢 リリース完了通知
+        env:
+          VERSION: ${{ needs.version-consistency-check.outputs.version }}
+          REPOSITORY: ${{ github.repository }}
         run: |
-          echo "🎉 リリース v${{ needs.version-consistency-check.outputs.version }} が正常に作成されました！"
+          echo "🎉 リリース v$VERSION が正常に作成されました！"
           echo "📦 アセット: $(ls -la dist/)"
-          echo "🔗 リリースページ: https://github.com/${{ github.repository }}/releases/tag/v${{ needs.version-consistency-check.outputs.version }}"
+          echo "🔗 リリースページ: https://github.com/$REPOSITORY/releases/tag/v$VERSION"
 
   # リリース後のクリーンアップとメトリクス
   post-release:
@@ -534,13 +562,18 @@ jobs:
         uses: actions/checkout@v4
 
       - name: 📊 リリースメトリクスを記録
+        env:
+          VERSION: ${{ needs.version-consistency-check.outputs.version }}
+          IS_PRERELEASE: ${{ needs.version-consistency-check.outputs.is-prerelease }}
+          COMMIT_SHA: ${{ github.sha }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           echo "📊 リリースメトリクス:"
-          echo "  - バージョン: ${{ needs.version-consistency-check.outputs.version }}"
-          echo "  - プレリリース: ${{ needs.version-consistency-check.outputs.is-prerelease }}"
+          echo "  - バージョン: $VERSION"
+          echo "  - プレリリース: $IS_PRERELEASE"
           echo "  - リリース日時: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
-          echo "  - コミットハッシュ: ${{ github.sha }}"
-          echo "  - トリガー: ${{ github.event_name }}"
+          echo "  - コミットハッシュ: $COMMIT_SHA"
+          echo "  - トリガー: $EVENT_NAME"
 
       - name: 🏷️ 次回開発バージョンの準備
         if: needs.version-consistency-check.outputs.is-prerelease == 'false'

@@ -120,16 +120,14 @@ python_functions = ["test_*"]
 addopts = [
     "--strict-markers",
     "--strict-config",
+    "-v",
+    "--log-level=ERROR",
     "--cov=src/setup_repo",
     "--cov-report=term-missing",
     "--cov-report=html:htmlcov",
-    "--cov-report=xml:coverage.xml",
-    "--cov-fail-under=80",  # 本来の目標値
-    "-v",
-    "--timeout=60",  # タイムアウト60秒（Phase 2最適化）
-    "--log-level=ERROR",  # ERROR以上のみ表示
-    "-n", "auto",  # 並列実行（CPUコア数に合わせて自動調整）
-    "--dist", "worksteal",  # ワークスティーリングで効率的な並列実行
+    "--cov-fail-under=80",
+    "-n", "20",  # 20コア全て使用して最大パフォーマンス
+    "--dist", "loadfile",  # workstealより安定なloadfile
 ]
 markers = [
     "unit: 単体テスト",

@@ -126,25 +126,29 @@ class QualityMonitor:
         self.logger.info("品質メトリクスを収集中...")
 
         try:
-            # Git情報を取得
-            commit_sha = subprocess.run(
+            # Git情報を取得（セキュアなコマンド実行）
+            from .security_helpers import safe_subprocess
+            
+            commit_result = safe_subprocess(
                 ["git", "rev-parse", "HEAD"],
                 capture_output=True,
                 text=True,
                 cwd=self.project_root,
-                shell=False,
-            ).stdout.strip()
+                timeout=10
+            )
+            commit_sha = commit_result.stdout.strip()
 
-            branch = subprocess.run(
+            branch_result = safe_subprocess(
                 ["git", "rev-parse", "--abbrev-ref", "HEAD"],
                 capture_output=True,
                 text=True,
                 cwd=self.project_root,
-                shell=False,
-            ).stdout.strip()
+                timeout=10
+            )
+            branch = branch_result.stdout.strip()
 
-            # カバレッジデータを収集
-            coverage_result = subprocess.run(
+            # カバレッジデータを収集（セキュアなコマンド実行）
+            coverage_result = safe_subprocess(
                 [
                     "uv",
                     "run",
@@ -156,7 +160,8 @@ class QualityMonitor:
                 cwd=self.project_root,
                 capture_output=True,
                 text=True,
-                shell=False,
+                timeout=300,
+                check=False
             )
 
             test_coverage = 0.0
@@ -171,8 +176,8 @@ class QualityMonitor:
                 except Exception as e:
                     self.logger.warning(f"カバレッジデータの解析に失敗: {e}")
 
-            # テスト結果を収集
-            test_result = subprocess.run(
+            # テスト結果を収集（セキュアなコマンド実行）
+            test_result = safe_subprocess(
                 [
                     "uv",
                     "run",
@@ -184,6 +189,8 @@ class QualityMonitor:
                 cwd=self.project_root,
                 capture_output=True,
                 text=True,
+                timeout=300,
+                check=False
             )
 
             if test_result.returncode in [0, 1]:  # 0=成功, 1=テスト失敗
@@ -196,12 +203,14 @@ class QualityMonitor:
                 except Exception as e:
                     self.logger.warning(f"テストレポートの解析に失敗: {e}")
 
-            # Ruff問題を収集
-            ruff_result = subprocess.run(
+            # Ruff問題を収集（セキュアなコマンド実行）
+            ruff_result = safe_subprocess(
                 ["uv", "run", "ruff", "check", ".", "--output-format=json"],
                 cwd=self.project_root,
                 capture_output=True,
                 text=True,
+                timeout=60,
+                check=False
             )
 
             ruff_issues = 0
@@ -212,12 +221,14 @@ class QualityMonitor:
                 except Exception as e:
                     self.logger.warning(f"Ruffレポートの解析に失敗: {e}")
 
-            # MyPyエラーを収集
-            subprocess.run(
+            # MyPyエラーを収集（セキュアなコマンド実行）
+            safe_subprocess(
                 ["uv", "run", "mypy", "src/", "--json-report", "mypy-report.json"],
                 cwd=self.project_root,
                 capture_output=True,
                 text=True,
+                timeout=120,
+                check=False
             )
 
             mypy_errors = 0

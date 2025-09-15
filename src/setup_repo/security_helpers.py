@@ -39,7 +39,7 @@ def safe_path_join(base: Path, user_path: str) -> Path:
     return resolved
 
 
-def safe_subprocess_run(cmd: List[str], **kwargs) -> subprocess.CompletedProcess:
+def safe_subprocess(cmd: List[str], **kwargs) -> subprocess.CompletedProcess:
     """コマンドインジェクション攻撃を防ぐ安全なsubprocess実行
     
     Args:
@@ -131,3 +131,62 @@ class PathTraversalError(SecurityError):
 class CommandInjectionError(SecurityError):
     """コマンドインジェクション攻撃エラー"""
     pass
+
+
+def validate_session_data(session_data: Any) -> bool:
+    """セッションデータの妥当性を検証
+    
+    Args:
+        session_data: 検証するセッションデータ
+        
+    Returns:
+        有効な場合True
+    """
+    if not isinstance(session_data, dict):
+        return False
+        
+    required_fields = ['user_id', 'session_id', 'created_at']
+    return all(field in session_data for field in required_fields)
+
+
+def check_admin_role(session_data: dict) -> bool:
+    """サーバーサイドセッションベースの認証チェック
+    
+    Args:
+        session_data: セッションデータ
+        
+    Returns:
+        管理者権限がある場合True
+    """
+    if not validate_session_data(session_data):
+        return False
+        
+    return session_data.get('authenticated_role') == 'admin'
+
+
+def sanitize_user_input(user_input: Any, max_length: int = 1000) -> str:
+    """ユーザー入力の無害化
+    
+    Args:
+        user_input: ユーザー入力
+        max_length: 最大長
+        
+    Returns:
+        無害化された文字列
+    """
+    if not isinstance(user_input, str):
+        return ""
+        
+    # 危険な文字を除去
+    dangerous_chars = ['<', '>', '"', "'", '&']
+    sanitized = user_input
+    
+    for char in dangerous_chars:
+        sanitized = sanitized.replace(char, '')
+        
+    # 長さ制限
+    return sanitized[:max_length]
+
+
+# 後方互換性のためのエイリアス
+safe_subprocess_run = safe_subprocess

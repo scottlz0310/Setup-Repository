@@ -7,7 +7,7 @@ import time
 from pathlib import Path
 from typing import Union
 
-from .security_helpers import safe_subprocess
+from .security_helpers import safe_subprocess, safe_path_join
 
 
 class GitOperations:
@@ -20,12 +20,19 @@ class GitOperations:
     def is_git_repository(self, path: Union[Path, str]) -> bool:
         """指定されたパスがGitリポジトリかどうかを確認"""
         repo_path = Path(path)
-        return (repo_path / ".git").exists()
+        # パストラバーサル攻撃を防ぐため、安全なパス結合を使用
+        try:
+            git_path = safe_path_join(repo_path, ".git")
+            return git_path.exists()
+        except ValueError:
+            return False
 
     def clone_repository(self, repo_url: str, destination: Union[Path, str]) -> bool:
         """リポジトリをクローン"""
         dest_path = Path(destination)
+        # パストラバーサル攻撃を防ぐため、パスを検証
         try:
+            dest_path = dest_path.resolve()
             safe_subprocess(
                 ["git", "clone", repo_url, str(dest_path)],
                 capture_output=True,
@@ -33,7 +40,7 @@ class GitOperations:
                 check=True,
             )
             return True
-        except subprocess.CalledProcessError:
+        except (subprocess.CalledProcessError, ValueError):
             return False
 
     def pull_repository(self, repo_path: Union[Path, str]) -> bool:
