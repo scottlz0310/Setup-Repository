@@ -198,8 +198,10 @@ jobs:
                 print(f'✅ パフォーマンス基準クリア: 実行時間 {duration}秒 <= 基準値 {MAX_DURATION}秒')
 
             except Exception as e:
-                print(f'⚠️ パフォーマンス回帰チェックエラー: {e}')
-                # エラーの場合は警告のみでビルドは継続
+                print(f'❌ パフォーマンス回帰チェックエラー: {e}')
+                import traceback
+                traceback.print_exc()
+                sys.exit(1)  # エラー時は失敗させる
 
         import os
         check_performance_regression()
