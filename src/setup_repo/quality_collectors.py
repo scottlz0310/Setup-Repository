@@ -12,6 +12,7 @@ from typing import Any, Optional, Union
 
 from .quality_errors import CoverageError, MyPyError, RuffError, TestFailureError
 from .quality_logger import QualityLogger, get_quality_logger
+from .security_helpers import safe_path_join, safe_subprocess
 
 
 class QualityToolCollector:
@@ -49,7 +50,7 @@ def collect_ruff_metrics(
             "main.py",
             "--output-format=json",
         ]
-        result = subprocess.run(
+        result = safe_subprocess(
             ruff_cmd,
             cwd=project_root,
             capture_output=True,
@@ -103,7 +104,7 @@ def collect_mypy_metrics(
 
     try:
         # MyPyチェック実行
-        result = subprocess.run(
+        result = safe_subprocess(
             ["uv", "run", "mypy", "src/", "--no-error-summary"],
             cwd=project_root,
             capture_output=True,
@@ -202,30 +203,33 @@ def collect_pytest_metrics(
 
         # Pytestでカバレッジ付きテスト実行
         logger.info(f"テストコマンド: {' '.join(cmd)}")
-        result = subprocess.run(cmd, cwd=project_root, capture_output=True, text=True, check=False)
+        result = safe_subprocess(cmd, cwd=project_root, capture_output=True, text=True, check=False)
 
         # カバレッジ情報を読み取り
-        coverage_file = project_root / "coverage.json"
-        # パストラバーサル攻撃を防ぐためのバリデーション
-        resolved_coverage_file = coverage_file.resolve()
-        if not str(resolved_coverage_file).startswith(str(project_root.resolve())):
-            logger.warning("カバレッジファイルのパスが不正です")
+        try:
+            coverage_file = safe_path_join(project_root, "coverage.json")
+        except ValueError as e:
+            logger.warning(f"カバレッジファイルのパスが不正です: {e}")
             coverage_percent = 0.0
-        elif resolved_coverage_file.exists():
-            try:
-                with open(resolved_coverage_file, encoding="utf-8") as f:
-                    coverage_data = json.load(f)
-                    coverage_percent = coverage_data.get("totals", {}).get("percent_covered", 0.0)
-            except (json.JSONDecodeError, KeyError):
-                coverage_percent = 0.0
         else:
-            coverage_percent = 0.0
+            if coverage_file.exists():
+                try:
+                    with open(coverage_file, encoding="utf-8") as f:
+                        coverage_data = json.load(f)
+                        coverage_percent = coverage_data.get("totals", {}).get("percent_covered", 0.0)
+                except (json.JSONDecodeError, KeyError):
+                    coverage_percent = 0.0
+            else:
+                coverage_percent = 0.0
 
         # テスト結果を読み取り
-        test_report_file = project_root / "test-report.json"
+        try:
+            test_report_file = safe_path_join(project_root, "test-report.json")
+        except ValueError:
+            test_report_file = None
         passed = failed = 0
         failed_tests = []
-        if test_report_file.exists():
+        if test_report_file and test_report_file.exists():
             try:
                 with open(test_report_file, encoding="utf-8") as f:
                     test_data = json.load(f)
@@ -332,7 +336,14 @@ def collect_coverage_metrics(
     project_root = project_root or Path.cwd()
     logger = logger or get_quality_logger()
 
-    coverage_file = project_root / "coverage.json"
+    try:
+        coverage_file = safe_path_join(project_root, "coverage.json")
+    except ValueError:
+        return {
+            "success": False,
+            "coverage_percent": 0.0,
+            "errors": ["カバレッジファイルのパスが不正です"],
+        }
 
     if not coverage_file.exists():
         return {

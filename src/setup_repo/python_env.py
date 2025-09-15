@@ -4,6 +4,7 @@
 import subprocess
 from pathlib import Path
 
+from .security_helpers import safe_subprocess
 from .uv_installer import ensure_uv
 
 
@@ -45,17 +46,16 @@ def _setup_with_uv(repo_path: Path) -> bool:
     try:
         if (repo_path / "pyproject.toml").exists():
             if not (repo_path / "uv.lock").exists():
-                subprocess.run(["uv", "lock"], cwd=repo_path, check=True, capture_output=True, shell=False, timeout=300)
-            subprocess.run(["uv", "venv"], cwd=repo_path, check=True, capture_output=True, shell=False, timeout=300)
-            subprocess.run(["uv", "sync"], cwd=repo_path, check=True, capture_output=True, shell=False, timeout=300)
+                safe_subprocess(["uv", "lock"], cwd=repo_path, check=True, capture_output=True, timeout=300)
+            safe_subprocess(["uv", "venv"], cwd=repo_path, check=True, capture_output=True, timeout=300)
+            safe_subprocess(["uv", "sync"], cwd=repo_path, check=True, capture_output=True, timeout=300)
         elif (repo_path / "requirements.txt").exists():
-            subprocess.run(["uv", "venv"], cwd=repo_path, check=True, capture_output=True, shell=False, timeout=300)
-            subprocess.run(
+            safe_subprocess(["uv", "venv"], cwd=repo_path, check=True, capture_output=True, timeout=300)
+            safe_subprocess(
                 ["uv", "pip", "install", "-r", "requirements.txt"],
                 cwd=repo_path,
                 check=True,
                 capture_output=True,
-                shell=False,
                 timeout=300,
             )
 
@@ -72,24 +72,23 @@ def _setup_with_venv(repo_path: Path) -> bool:
 
     try:
         venv_path = repo_path / ".venv"
-        subprocess.run(
-            ["python3", "-m", "venv", str(venv_path)], check=True, capture_output=True, shell=False, timeout=300
+        safe_subprocess(
+            ["python3", "-m", "venv", str(venv_path)], check=True, capture_output=True, timeout=300
         )
 
         pip_path = venv_path / "bin" / "pip"
         if not pip_path.exists():
             pip_path = venv_path / "Scripts" / "pip.exe"
 
-        subprocess.run(
-            [str(pip_path), "install", "--upgrade", "pip"], check=True, capture_output=True, shell=False, timeout=300
+        safe_subprocess(
+            [str(pip_path), "install", "--upgrade", "pip"], check=True, capture_output=True, timeout=300
         )
 
         if (repo_path / "requirements.txt").exists():
-            subprocess.run(
+            safe_subprocess(
                 [str(pip_path), "install", "-r", "requirements.txt"],
                 check=True,
                 capture_output=True,
-                shell=False,
                 timeout=300,
             )
 

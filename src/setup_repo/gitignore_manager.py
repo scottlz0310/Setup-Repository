@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+from .security_helpers import safe_path_join
+
 
 class GitignoreManager:
     """Gitignore管理クラス"""
@@ -81,7 +83,11 @@ class GitignoreManager:
 
     def load_template(self, template_name: str) -> str:
         """テンプレートファイルを読み込み"""
-        template_file = self.templates_dir / f"{template_name}.gitignore"
+        try:
+            template_file = safe_path_join(self.templates_dir, f"{template_name}.gitignore")
+        except ValueError:
+            return ""
+            
         if not template_file.exists():
             return ""
 

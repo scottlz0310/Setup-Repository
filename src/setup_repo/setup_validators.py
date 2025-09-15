@@ -13,6 +13,7 @@ from typing import Any, Optional
 
 from .config import get_github_token, get_github_user
 from .platform_detector import PlatformDetector
+from .security_helpers import safe_subprocess
 
 
 class SetupValidator:
@@ -128,7 +129,7 @@ def validate_setup_prerequisites() -> dict[str, Any]:
     git_available = False
     git_version = None
     try:
-        result = subprocess.run(["git", "--version"], capture_output=True, text=True, check=True)
+        result = safe_subprocess(["git", "--version"], capture_output=True, text=True, check=True)
         git_available = True
         git_version = result.stdout.strip()
     except (subprocess.CalledProcessError, FileNotFoundError):
@@ -138,7 +139,7 @@ def validate_setup_prerequisites() -> dict[str, Any]:
     uv_available = False
     uv_version = None
     try:
-        result = subprocess.run(["uv", "--version"], capture_output=True, text=True, check=True)
+        result = safe_subprocess(["uv", "--version"], capture_output=True, text=True, check=True)
         uv_available = True
         uv_version = result.stdout.strip()
     except (subprocess.CalledProcessError, FileNotFoundError):
@@ -148,7 +149,7 @@ def validate_setup_prerequisites() -> dict[str, Any]:
     gh_available = False
     gh_version = None
     try:
-        result = subprocess.run(["gh", "--version"], capture_output=True, text=True, check=True)
+        result = safe_subprocess(["gh", "--version"], capture_output=True, text=True, check=True)
         gh_available = True
         gh_version = result.stdout.strip().split("\n")[0]  # 最初の行のみ
     except (subprocess.CalledProcessError, FileNotFoundError):

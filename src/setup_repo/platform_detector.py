@@ -4,6 +4,7 @@ import os
 import platform
 import subprocess
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 
@@ -112,29 +113,39 @@ def _detect_default_linux_platform(github_actions: bool) -> PlatformInfo:
 
 def _check_wsl_environment() -> bool:
     """現在のプラットフォームを詳細検出"""
+    from .security_helpers import safe_path_join
+    
     # 方法1: platform.release()でMicrosoftをチェック
     if "microsoft" in platform.release().lower():
         return True
 
     # 方法2: /proc/versionファイルでWSLをチェック
-    if os.path.exists("/proc/version"):
-        try:
-            with open("/proc/version", encoding="utf-8") as f:
-                version_info = f.read().lower()
-                if "microsoft" in version_info or "wsl" in version_info:
-                    return True
-        except (FileNotFoundError, PermissionError, OSError):
-            pass
+    try:
+        proc_version = safe_path_join(Path("/"), "proc/version")
+        if proc_version.exists():
+            try:
+                with open(proc_version, encoding="utf-8") as f:
+                    version_info = f.read().lower()
+                    if "microsoft" in version_info or "wsl" in version_info:
+                        return True
+            except (FileNotFoundError, PermissionError, OSError):
+                pass
+    except ValueError:
+        pass
 
     # 方法3: /proc/sys/kernel/osreleaseでチェック
-    if os.path.exists("/proc/sys/kernel/osrelease"):
-        try:
-            with open("/proc/sys/kernel/osrelease", encoding="utf-8") as f:
-                osrelease_info = f.read().lower()
-                if "microsoft" in osrelease_info or "wsl" in osrelease_info:
-                    return True
-        except (FileNotFoundError, PermissionError, OSError):
-            pass
+    try:
+        osrelease_path = safe_path_join(Path("/"), "proc/sys/kernel/osrelease")
+        if osrelease_path.exists():
+            try:
+                with open(osrelease_path, encoding="utf-8") as f:
+                    osrelease_info = f.read().lower()
+                    if "microsoft" in osrelease_info or "wsl" in osrelease_info:
+                        return True
+            except (FileNotFoundError, PermissionError, OSError):
+                pass
+    except ValueError:
+        pass
 
     return False
 

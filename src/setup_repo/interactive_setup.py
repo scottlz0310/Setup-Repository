@@ -9,6 +9,7 @@ from .platform_detector import (
     get_available_package_managers,
     get_install_commands,
 )
+from .security_helpers import safe_subprocess
 from .setup_validators import (
     check_system_requirements,
     validate_directory_path,
@@ -213,7 +214,7 @@ class SetupWizard:
     def _check_tool(self, tool: str) -> bool:
         """ツールの存在チェック"""
         try:
-            result = subprocess.run([tool, "--version"], capture_output=True, text=True, check=True, shell=False)
+            result = safe_subprocess([tool, "--version"], capture_output=True, text=True, check=True)
             parts = result.stdout.strip().split()
             version = f"{parts[0]} {parts[1] if len(parts) > 1 else ''}"
             print(f"✅ {tool}: {version}")
@@ -241,11 +242,11 @@ class SetupWizard:
 
                         # コマンドを安全に分割して実行
                         cmd_parts = shlex.split(cmd)
-                        subprocess.run(cmd_parts, check=True, shell=False)
+                        safe_subprocess(cmd_parts, check=True)
                     else:
                         # コマンドを安全に分割して実行
                         cmd_parts = cmd.split()
-                        subprocess.run(cmd_parts, check=True, shell=False)
+                        safe_subprocess(cmd_parts, check=True)
 
                     print("✅ uv のインストールが完了しました")
                     return True
@@ -256,7 +257,7 @@ class SetupWizard:
 
         # フォールバック: pip
         try:
-            subprocess.run(["pip", "install", "uv"], check=True)
+            safe_subprocess(["pip", "install", "uv"], check=True)
             print("✅ pip で uv をインストールしました")
             return True
         except subprocess.CalledProcessError:
@@ -275,7 +276,7 @@ class SetupWizard:
                     print(f"   {manager} を使用: {cmd}")
                     # コマンドを安全に分割して実行
                     cmd_parts = cmd.split()
-                    subprocess.run(cmd_parts, check=True, shell=False)
+                    safe_subprocess(cmd_parts, check=True)
                     print("✅ GitHub CLI のインストールが完了しました")
                     return True
                 except subprocess.CalledProcessError:
@@ -302,7 +303,7 @@ class SetupWizard:
                 username = username_input["value"]
                 # git config に設定
                 try:
-                    subprocess.run(["git", "config", "--global", "user.name", username], check=True, shell=False)
+                    safe_subprocess(["git", "config", "--global", "user.name", username], check=True)
                     print(f"✅ Git設定にユーザー名を保存しました: {username}")
                 except subprocess.CalledProcessError:
                     print("⚠️  Git設定の保存に失敗しました")
@@ -329,7 +330,7 @@ class SetupWizard:
 
             if choice_input["valid"] and choice_input["value"]:
                 try:
-                    subprocess.run(["gh", "auth", "login"], check=True, shell=False)
+                    safe_subprocess(["gh", "auth", "login"], check=True)
                     # 再度トークンをチェック
                     updated_credentials = validate_github_credentials()
                     token = updated_credentials["token"]

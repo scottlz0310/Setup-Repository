@@ -114,12 +114,33 @@ class ErrorReporter:
         filename = f"{report_type}_error_report_{timestamp}.json"
         output_file = self.get_report_path(filename)
 
-        output_file.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            output_file.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(output_file, "w", encoding="utf-8") as f:
-            json.dump(error_data, f, indent=2, ensure_ascii=False)
+            with open(output_file, "w", encoding="utf-8") as f:
+                json.dump(error_data, f, indent=2, ensure_ascii=False)
 
-        return output_file
+            return output_file
+        except (OSError, IOError) as e:
+            # ファイル操作エラーの場合、フォールバック先を使用
+            fallback_file = Path.cwd() / f"{filename}"
+            with open(fallback_file, "w", encoding="utf-8") as f:
+                json.dump(error_data, f, indent=2, ensure_ascii=False)
+            return fallback_file
+        except json.JSONEncodeError as e:
+            # JSONエンコードエラーの場合、テキストファイルとして保存
+            text_file = output_file.with_suffix('.txt')
+            with open(text_file, "w", encoding="utf-8") as f:
+                f.write(f"JSONエンコードエラー: {e}\n")
+                f.write(f"エラーデータ: {str(error_data)}\n")
+            return text_file
+        except PermissionError as e:
+            # 権限エラーの場合、一時ディレクトリを使用
+            import tempfile
+            temp_file = Path(tempfile.gettempdir()) / filename
+            with open(temp_file, "w", encoding="utf-8") as f:
+                json.dump(error_data, f, indent=2, ensure_ascii=False)
+            return temp_file
 
     def get_report_path(self, filename: str) -> Path:
         """レポートファイルのパスを取得"""

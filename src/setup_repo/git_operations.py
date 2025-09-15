@@ -7,6 +7,8 @@ import time
 from pathlib import Path
 from typing import Union
 
+from .security_helpers import safe_subprocess
+
 
 class GitOperations:
     """Git操作を管理するクラス"""
@@ -24,7 +26,7 @@ class GitOperations:
         """リポジトリをクローン"""
         dest_path = Path(destination)
         try:
-            subprocess.run(
+            safe_subprocess(
                 ["git", "clone", repo_url, str(dest_path)],
                 capture_output=True,
                 text=True,
@@ -38,7 +40,7 @@ class GitOperations:
         """既存リポジトリをpull"""
         path = Path(repo_path)
         try:
-            subprocess.run(
+            safe_subprocess(
                 ["git", "pull", "--rebase"],
                 cwd=path,
                 capture_output=True,
@@ -71,7 +73,7 @@ def choose_clone_url(repo: dict, use_https: bool = False) -> str:
     if any(key.exists() for key in ssh_keys):
         # SSH接続テスト
         try:
-            result = subprocess.run(
+            result = safe_subprocess(
                 [
                     "ssh",
                     "-o",
@@ -82,7 +84,6 @@ def choose_clone_url(repo: dict, use_https: bool = False) -> str:
                 ],
                 capture_output=True,
                 timeout=5,
-                shell=False,
             )
             if result.returncode in [0, 1]:  # 0=成功, 1=認証成功だが接続拒否
                 full_name = repo.get("full_name")
@@ -163,7 +164,7 @@ def _update_repository(repo_name: str, repo_path: Path, config: dict) -> bool:
             stashed = _auto_stash_changes(repo_path)
 
         # pull実行
-        subprocess.run(
+        safe_subprocess(
             ["git", "pull", "--rebase"],
             cwd=repo_path,
             capture_output=True,
@@ -193,7 +194,7 @@ def _clone_repository(repo_name: str, repo_url: str, repo_path: Path, dry_run: b
         return True
 
     try:
-        subprocess.run(
+        safe_subprocess(
             ["git", "clone", repo_url, str(repo_path)],
             capture_output=True,
             text=True,
@@ -210,7 +211,7 @@ def _auto_stash_changes(repo_path: Path) -> bool:
     """変更を自動でstash"""
     try:
         # 変更があるかチェック
-        result = subprocess.run(
+        result = safe_subprocess(
             ["git", "status", "--porcelain"],
             cwd=repo_path,
             capture_output=True,
@@ -221,7 +222,7 @@ def _auto_stash_changes(repo_path: Path) -> bool:
         if result.stdout.strip():
             # 変更をstash
             timestamp = int(time.time())
-            subprocess.run(
+            safe_subprocess(
                 ["git", "stash", "push", "-u", "-m", f"autostash-{timestamp}"],
                 cwd=repo_path,
                 capture_output=True,
@@ -241,7 +242,7 @@ def _auto_stash_changes(repo_path: Path) -> bool:
 def _auto_pop_stash(repo_path: Path) -> bool:
     """stashした変更をpop"""
     try:
-        subprocess.run(
+        safe_subprocess(
             ["git", "stash", "pop"],
             cwd=repo_path,
             capture_output=True,

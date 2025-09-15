@@ -5,6 +5,7 @@ from pathlib import Path
 from .config import load_config
 from .quality_metrics import QualityMetricsCollector
 from .quality_trends import QualityTrendManager
+from .security_helpers import safe_path_join
 from .setup import run_interactive_setup
 from .sync import sync_repositories
 
@@ -42,24 +43,10 @@ def sync_cli(args) -> None:
 def quality_cli(args) -> None:
     """品質メトリクス収集コマンド"""
     if args.project_root:
-        # パストラバーサル攻撃を防ぐためのバリデーション
-        project_root_path = Path(args.project_root)
-        current_dir = Path.cwd().resolve()
-
-        # 相対パスで指定された場合は、現在のディレクトリからの相対パスとして処理
-        if not project_root_path.is_absolute():
-            project_root = current_dir / project_root_path
-            project_root = project_root.resolve()
-        else:
-            project_root = project_root_path.resolve()
-            # 絶対パスの場合、セキュリティチェックを実行（テスト環境では緩和）
-            import os
-
-            if not os.environ.get("PYTEST_CURRENT_TEST") and not os.environ.get("CI"):
-                try:
-                    project_root.relative_to(current_dir)
-                except ValueError:
-                    raise ValueError("プロジェクトルートは現在のディレクトリ以下である必要があります") from None
+        try:
+            project_root = safe_path_join(Path.cwd(), args.project_root)
+        except ValueError as e:
+            raise ValueError(f"不正なプロジェクトルートパス: {e}") from e
     else:
         project_root = Path.cwd()
     collector = QualityMetricsCollector(project_root)
@@ -68,7 +55,12 @@ def quality_cli(args) -> None:
     metrics = collector.collect_all_metrics()
 
     # レポート保存
-    output_file = Path(args.output) if args.output else None
+    output_file = None
+    if args.output:
+        try:
+            output_file = safe_path_join(project_root, args.output)
+        except ValueError as e:
+            raise ValueError(f"不正な出力ファイルパス: {e}") from e
     report_file = collector.save_metrics_report(metrics, output_file)
 
     print("\n品質メトリクス収集完了:")
@@ -81,7 +73,8 @@ def quality_cli(args) -> None:
 
     # トレンドデータに追加
     if args.save_trend:
-        trend_manager = QualityTrendManager(project_root / "quality-trends" / "trend-data.json")
+        trend_file = safe_path_join(project_root, "quality-trends/trend-data.json")
+        trend_manager = QualityTrendManager(trend_file)
         trend_manager.add_data_point(metrics)
         print("  トレンドデータを更新しました")
 
@@ -96,44 +89,20 @@ def quality_cli(args) -> None:
 def trend_cli(args) -> None:
     """品質トレンド分析コマンド"""
     if args.project_root:
-        # パストラバーサル攻撃を防ぐためのバリデーション
-        project_root_path = Path(args.project_root)
-        current_dir = Path.cwd().resolve()
-
-        # 相対パスで指定された場合は、現在のディレクトリからの相対パスとして処理
-        if not project_root_path.is_absolute():
-            project_root = current_dir / project_root_path
-            project_root = project_root.resolve()
-        else:
-            project_root = project_root_path.resolve()
-            # 絶対パスの場合、セキュリティチェックを実行（テスト環境では緩和）
-            import os
-
-            if not os.environ.get("PYTEST_CURRENT_TEST") and not os.environ.get("CI"):
-                try:
-                    project_root.relative_to(current_dir)
-                except ValueError:
-                    raise ValueError("プロジェクトルートは現在のディレクトリ以下である必要があります") from None
+        try:
+            project_root = safe_path_join(Path.cwd(), args.project_root)
+        except ValueError as e:
+            raise ValueError(f"不正なプロジェクトルートパス: {e}") from e
     else:
         project_root = Path.cwd()
 
     if args.trend_file:
-        # トレンドファイルパスの検証（テスト環境では緩和）
-        trend_file = Path(args.trend_file).resolve()
-        import os
-
-        if (
-            not os.environ.get("PYTEST_CURRENT_TEST")
-            and not os.environ.get("CI")
-            and not str(trend_file).startswith(str(project_root))
-        ):
-            raise ValueError("トレンドファイルはプロジェクトルート以下である必要があります")
+        try:
+            trend_file = safe_path_join(project_root, args.trend_file)
+        except ValueError as e:
+            raise ValueError(f"不正なトレンドファイルパス: {e}") from e
     else:
-        trend_file = project_root / "quality-trends" / "trend-data.json"
-
-    # テスト環境でtrend_fileが設定されている場合はそのまま使用
-    if hasattr(args, "trend_file") and args.trend_file:
-        trend_file = Path(args.trend_file).resolve()
+        trend_file = safe_path_join(project_root, "quality-trends/trend-data.json")
 
     trend_manager = QualityTrendManager(trend_file)
 
@@ -162,7 +131,13 @@ def trend_cli(args) -> None:
 
     elif args.action == "report":
         # HTMLレポート生成
-        output_file = Path(args.output) if args.output else project_root / "quality-trends" / "trend-report.html"
+        if args.output:
+            try:
+                output_file = safe_path_join(project_root, args.output)
+            except ValueError as e:
+                raise ValueError(f"不正な出力ファイルパス: {e}") from e
+        else:
+            output_file = safe_path_join(project_root, "quality-trends/trend-report.html")
         report_file = trend_manager.generate_html_report(output_file)
         print(f"HTMLレポートを生成しました: {report_file}")
 

@@ -29,6 +29,7 @@ from .quality_logger import (
     QualityLogger,
     get_quality_logger,
 )
+from .security_helpers import safe_subprocess
 
 
 class QualityCheckStatus(Enum):
@@ -63,7 +64,7 @@ class QualityMetrics:
     def _get_current_commit_hash(self) -> str:
         """現在のコミットハッシュを取得"""
         try:
-            result = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=True)
+            result = safe_subprocess(["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=True)
             return result.stdout.strip()[:8]  # 短縮ハッシュ
         except (subprocess.CalledProcessError, FileNotFoundError):
             return "unknown"
@@ -175,7 +176,7 @@ class QualityMetricsCollector:
 
         # セキュリティツールの利用可能性をチェック
         try:
-            result = subprocess.run(
+            result = safe_subprocess(
                 ["uv", "run", "bandit", "--version"],
                 cwd=self.project_root,
                 capture_output=True,
@@ -187,7 +188,7 @@ class QualityMetricsCollector:
             self.logger.debug("Banditバージョンチェックに失敗しました")
 
         try:
-            result = subprocess.run(
+            result = safe_subprocess(
                 ["uv", "run", "safety", "--version"],
                 cwd=self.project_root,
                 capture_output=True,
@@ -201,7 +202,7 @@ class QualityMetricsCollector:
         # Banditセキュリティチェック
         if tools_available["bandit"]:
             try:
-                result = subprocess.run(
+                result = safe_subprocess(
                     ["uv", "run", "bandit", "-r", "src/", "-f", "json"],
                     cwd=self.project_root,
                     capture_output=True,
@@ -228,7 +229,7 @@ class QualityMetricsCollector:
         # Safetyチェック（依存関係の脆弱性）
         if tools_available["safety"]:
             try:
-                result = subprocess.run(
+                result = safe_subprocess(
                     ["uv", "run", "safety", "check", "--json"],
                     cwd=self.project_root,
                     capture_output=True,
