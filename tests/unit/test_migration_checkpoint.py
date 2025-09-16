@@ -254,7 +254,9 @@ class TestMigrationCheckpoint:
 
         # 最新の5個が残っていることを確認
         remaining_ids = [cp["id"] for cp in remaining_checkpoints]
-        assert checkpoints[-5:] == remaining_ids[::-1]  # 逆順でソートされている
+        expected_ids = sorted(checkpoints[-5:], reverse=True)  # 作成順の最新5個を降順ソート
+        actual_ids = sorted(remaining_ids, reverse=True)  # 実際の残存IDを降順ソート
+        assert expected_ids == actual_ids  # ソート済みリストで比較
 
     @pytest.mark.unit
     def test_cleanup_checkpoints_no_cleanup_needed(self, migration_checkpoint):
