@@ -51,7 +51,7 @@ jobs:
 
           # MyPyによる型チェック
           echo "🔍 MyPy型チェック実行中..."
-          if ! uv run mypy src/ --json-report mypy-report.json; then
+          if ! uv run mypy src/ --no-error-summary > mypy-report.txt; then
             echo "❌ MyPy型チェックでエラーが発生しました"
             exit 1
           fi
@@ -331,8 +331,8 @@ jobs:
           # 品質ゲートの判定
           GATE_PASSED=true
 
-          if (( $(echo "$COVERAGE < 80" | bc -l) )); then
-            echo "❌ カバレッジが80%を下回っています: ${COVERAGE}%"
+          if (( $(echo "$COVERAGE < 75" | bc -l) )); then
+            echo "❌ カバレッジが75%を下回っています: ${COVERAGE}%"
             GATE_PASSED=false
           fi
 

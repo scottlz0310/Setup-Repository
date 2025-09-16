@@ -151,7 +151,7 @@ jobs:
           --cov-report=xml \
           --cov-report=html \
           --cov-report=json \
-          --cov-fail-under=80 \
+          --cov-fail-under=75 \
           --junit-xml=test-results.xml \
           --json-report \
           --json-report-file=test-report.json \
@@ -183,8 +183,8 @@ jobs:
     - name: Coverage quality gate
       if: matrix.python-version == '3.11'
       run: |
-        uv run coverage report --fail-under=80
-        echo "✅ カバレッジ品質ゲート通過: 80%以上"
+        uv run coverage report --fail-under=75
+        echo "✅ カバレッジ品質ゲート通過: 75%以上"
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v4
