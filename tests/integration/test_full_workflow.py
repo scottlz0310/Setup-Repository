@@ -81,7 +81,7 @@ class TestFullWorkflow:
                 patch("pathlib.Path.exists", return_value=True),
                 # stdin読み取り問題を回避するためprompt_user_actionをモック化
                 patch("setup_repo.sync.prompt_user_action", return_value="c"),
-                patch("setup_repo.sync.check_unpushed_changes", return_value=[]),
+                patch("setup_repo.sync.check_unpushed_changes", return_value=(False, [])),
             ):
                 # 3. 同期実行
                 result = sync_repositories(sample_config, dry_run=False)
@@ -147,7 +147,7 @@ class TestFullWorkflow:
                 patch("setup_repo.sync.ProcessLock", return_value=Mock(acquire=Mock(return_value=True))),
                 # stdin読み取り問題を回避するためprompt_user_actionをモック化
                 patch("setup_repo.sync.prompt_user_action", return_value="c"),
-                patch("setup_repo.sync.check_unpushed_changes", return_value=[]),
+                patch("setup_repo.sync.check_unpushed_changes", return_value=(False, [])),
             ):
                 result = sync_repositories(sample_config, dry_run=False)
 
@@ -419,7 +419,7 @@ class TestFullWorkflow:
             repo_dir = clone_destination / repo_name
             repo_dir.mkdir(parents=True)
             (repo_dir / ".git").mkdir()
-            (repo_dir / "old_file.txt").write_text(f"古いファイル: {repo_name}")
+            (repo_dir / "old_file.txt").write_text(f"古いファイル: {repo_name}", encoding="utf-8")
 
         # 現在のリポジトリ（一部は既存と重複）
         current_repos = [

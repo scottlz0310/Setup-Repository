@@ -142,17 +142,29 @@ def sync_repositories(config: dict, dry_run: bool = False) -> SyncResult:
 
         # 安全性チェック
         if repo_path.exists() and not dry_run and not force:
-            has_issues, issues = check_unpushed_changes(repo_path)
-            if has_issues:
-                choice = prompt_user_action(repo_name, issues)
-                if choice == "q":
-                    print("\\n[STOP] ユーザーによって中断されました")
-                    sys.exit(0)
-                elif choice == "s":
-                    print(f"   [SKIP] {repo_name}: スキップしました")
-                    continue
-                elif choice == "c":
-                    create_emergency_backup(repo_path)
+            try:
+                check_result = check_unpushed_changes(repo_path)
+                # 戻り値がタプルでない場合のエラーハンドリング
+                if isinstance(check_result, tuple) and len(check_result) == 2:
+                    has_issues, issues = check_result
+                else:
+                    # 予期しない戻り値の場合はスキップ
+                    print(f"   [WARN] {repo_name}: 安全性チェックで予期しない結果: {check_result}")
+                    has_issues, issues = False, []
+
+                if has_issues:
+                    choice = prompt_user_action(repo_name, issues)
+                    if choice == "q":
+                        print("\\n[STOP] ユーザーによって中断されました")
+                        sys.exit(0)
+                    elif choice == "s":
+                        print(f"   [SKIP] {repo_name}: スキップしました")
+                        continue
+                    elif choice == "c":
+                        create_emergency_backup(repo_path)
+            except Exception as e:
+                print(f"   [WARN] {repo_name}: 安全性チェックエラー - {e}")
+                # エラーが発生した場合は続行
 
         # Git同期
         try:

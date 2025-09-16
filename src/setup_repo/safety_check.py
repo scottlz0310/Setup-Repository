@@ -50,6 +50,12 @@ def check_unpushed_changes(repo_path: Path) -> tuple[bool, list[str]]:
 
         logger = logging.getLogger(__name__)
         logger.debug(f"Gitコマンド実行エラー: {e}")
+    except Exception as e:
+        # 予期しないエラーの場合もログに記録
+        import logging
+
+        logger = logging.getLogger(__name__)
+        logger.debug(f"予期しないエラー: {e}")
 
     return len(issues) > 0, issues
 

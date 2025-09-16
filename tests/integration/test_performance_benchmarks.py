@@ -74,7 +74,7 @@ class TestPerformanceBenchmarks:
                 "delete_time": delete_time,
                 "files_processed": num_files,
                 "total_bytes": total_bytes_read,
-                "throughput_mb_s": (total_bytes_read / (1024 * 1024)) / total_time,
+                "throughput_mb_s": (total_bytes_read / (1024 * 1024)) / max(total_time, 0.001),
             }
 
         # ファイル操作ベンチマーク実行
@@ -253,9 +253,9 @@ class TestPerformanceBenchmarks:
             # ファイル削除
             file_path.unlink()
 
-            # スループット計算
-            write_throughput = (total_size / (1024 * 1024)) / write_time  # MB/s
-            read_throughput = (total_read / (1024 * 1024)) / read_time  # MB/s
+            # スループット計算（ゼロ除算を防ぐ）
+            write_throughput = (total_size / (1024 * 1024)) / max(write_time, 0.001)  # MB/s
+            read_throughput = (total_read / (1024 * 1024)) / max(read_time, 0.001)  # MB/s
 
             return {
                 "file_size_mb": file_size_mb,
@@ -312,7 +312,7 @@ class TestPerformanceBenchmarks:
                     "worker_id": worker_id,
                     "execution_time": execution_time,
                     "operations_completed": len(worker_results),
-                    "operations_per_second": len(worker_results) / execution_time,
+                    "operations_per_second": len(worker_results) / max(execution_time, 0.001),
                 }
 
             # 並行実行
@@ -324,14 +324,14 @@ class TestPerformanceBenchmarks:
 
             # 統計計算
             total_operations = sum(r["operations_completed"] for r in results)
-            avg_ops_per_second = sum(r["operations_per_second"] for r in results) / len(results)
+            avg_ops_per_second = sum(r["operations_per_second"] for r in results) / max(len(results), 1)
 
             return {
                 "total_time": total_time,
                 "num_threads": num_threads,
                 "total_operations": total_operations,
                 "avg_operations_per_second": avg_ops_per_second,
-                "overall_operations_per_second": total_operations / total_time,
+                "overall_operations_per_second": total_operations / max(total_time, 0.001),
                 "worker_results": results,
             }
 
