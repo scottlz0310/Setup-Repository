@@ -4,6 +4,9 @@ import platform
 
 import pytest
 
+from setup_repo.quality_metrics import QualityMetrics
+from setup_repo.quality_trends import TrendAnalysis, TrendDataPoint
+
 from ..multiplatform.helpers import verify_current_platform
 
 
@@ -272,33 +275,39 @@ class TestQualityTrends:
         assert handle_trend < 0  # ハンドル数が改善（減少）
 
     @pytest.mark.unit
-    def test_trend_reporting(self):
-        """トレンドレポート生成のテスト."""
-        # トレンドレポートデータ
-        trend_report = {
-            "period": "30_days",
-            "metrics": {
-                "quality_score": {
-                    "start_value": 75,
-                    "end_value": 89,
-                    "change": 14,
-                    "change_percent": 18.67,
-                    "trend": "improving",
-                },
-                "coverage": {
-                    "start_value": 70,
-                    "end_value": 88,
-                    "change": 18,
-                    "change_percent": 25.71,
-                    "trend": "improving",
-                },
-            },
-            "overall_assessment": "positive",
-            "confidence": 0.92,
-        }
+    def test_trend_data_point_creation(self):
+        """トレンドデータポイント作成テスト"""
+        metrics = QualityMetrics(
+            ruff_issues=2, mypy_errors=1, test_coverage=85.0, test_passed=100, test_failed=0, security_vulnerabilities=0
+        )
 
-        # トレンドレポートの検証
-        assert trend_report["metrics"]["quality_score"]["trend"] == "improving"
-        assert trend_report["metrics"]["coverage"]["change_percent"] > 20
-        assert trend_report["overall_assessment"] == "positive"
-        assert trend_report["confidence"] > 0.9
+        data_point = TrendDataPoint.from_metrics(metrics)
+
+        assert data_point.ruff_issues == 2
+        assert data_point.mypy_errors == 1
+        assert data_point.coverage == 85.0
+        assert data_point.test_passed == 100
+        assert data_point.test_failed == 0
+        assert data_point.security_vulnerabilities == 0
+
+    @pytest.mark.unit
+    def test_trend_analysis_creation(self):
+        """トレンド分析結果作成テスト"""
+        analysis = TrendAnalysis(
+            period_days=30,
+            data_points=10,
+            quality_score_trend="improving",
+            coverage_trend="stable",
+            average_quality_score=85.0,
+            average_coverage=80.0,
+            best_quality_score=95.0,
+            worst_quality_score=75.0,
+            recent_issues=[],
+            recommendations=["Keep up the good work"],
+        )
+
+        assert analysis.period_days == 30
+        assert analysis.data_points == 10
+        assert analysis.quality_score_trend == "improving"
+        assert analysis.coverage_trend == "stable"
+        assert analysis.average_quality_score == 85.0

@@ -5,6 +5,8 @@ import platform
 
 import pytest
 
+from setup_repo.quality_metrics import QualityMetrics
+
 from ..multiplatform.helpers import verify_current_platform
 
 
@@ -269,28 +271,39 @@ class TestQualityMetrics:
         assert windows_metrics["page_file_usage"] < 0.8  # ページファイル使用率80%未満
 
     @pytest.mark.unit
-    def test_metrics_validation(self):
-        """メトリクス値の妥当性検証テスト."""
-        # 検証対象のメトリクス
-        metrics_to_validate = {
-            "coverage_percentage": 85.5,
-            "complexity_score": 12,
-            "error_rate": 0.02,
-            "response_time": 150.5,
-        }
+    def test_quality_metrics_creation(self):
+        """QualityMetricsオブジェクト作成テスト"""
+        metrics = QualityMetrics(
+            ruff_issues=5, mypy_errors=2, test_coverage=85.5, test_passed=100, test_failed=2, security_vulnerabilities=0
+        )
 
-        # 妥当性チェック
-        validation_rules = {
-            "coverage_percentage": lambda x: 0 <= x <= 100,
-            "complexity_score": lambda x: x >= 0,
-            "error_rate": lambda x: 0 <= x <= 1,
-            "response_time": lambda x: x > 0,
-        }
+        assert metrics.ruff_issues == 5
+        assert metrics.mypy_errors == 2
+        assert metrics.test_coverage == 85.5
+        assert metrics.test_passed == 100
+        assert metrics.test_failed == 2
+        assert metrics.security_vulnerabilities == 0
 
-        # 各メトリクスの妥当性検証
-        validation_results = {metric: validation_rules[metric](value) for metric, value in metrics_to_validate.items()}
+    @pytest.mark.unit
+    def test_quality_score_calculation(self):
+        """品質スコア計算テスト"""
+        metrics = QualityMetrics(
+            ruff_issues=0, mypy_errors=0, test_coverage=90.0, test_passed=100, test_failed=0, security_vulnerabilities=0
+        )
 
-        # 妥当性検証の確認
-        assert all(validation_results.values())
-        assert validation_results["coverage_percentage"] is True
-        assert validation_results["error_rate"] is True
+        score = metrics.get_quality_score()
+        assert score == 100.0
+
+    @pytest.mark.unit
+    def test_is_passing_check(self):
+        """品質基準チェックテスト"""
+        passing_metrics = QualityMetrics(
+            ruff_issues=0, mypy_errors=0, test_coverage=85.0, test_passed=100, test_failed=0, security_vulnerabilities=0
+        )
+
+        failing_metrics = QualityMetrics(
+            ruff_issues=5, mypy_errors=2, test_coverage=70.0, test_passed=95, test_failed=5, security_vulnerabilities=1
+        )
+
+        assert passing_metrics.is_passing() is True
+        assert failing_metrics.is_passing() is False

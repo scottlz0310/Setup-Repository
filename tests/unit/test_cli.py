@@ -4,9 +4,8 @@ CLI機能のテスト
 マルチプラットフォームテスト方針に準拠したCLI機能のテスト
 """
 
+from pathlib import Path
 from unittest.mock import Mock, patch
-
-import pytest
 
 from setup_repo.cli import (
     quality_cli,
@@ -15,7 +14,6 @@ from setup_repo.cli import (
     trend_cli,
 )
 from tests.multiplatform.helpers import (
-    get_platform_specific_config,
     verify_current_platform,
 )
 
@@ -113,35 +111,53 @@ class TestCLI:
             mock_manager.assert_called_once()
             mock_instance.analyze_trend.assert_called_once_with(30)
 
-    @pytest.mark.integration
-    def test_cli_integration(self):
-        """CLI統合テスト"""
-        verify_current_platform()  # プラットフォーム検証
-        get_platform_specific_config()  # プラットフォーム設定取得
+    def test_quality_cli_with_project_root(self):
+        """品質CLI プロジェクトルート指定テスト"""
+        args = Mock()
+        args.project_root = "test_project"
+        args.output = None
+        args.save_trend = False
 
-        # セットアップコマンドのテスト
-        setup_args = Mock()
-        with patch("setup_repo.cli.run_interactive_setup") as mock_setup:
-            setup_cli(setup_args)
-            mock_setup.assert_called_once()
+        with (
+            patch("setup_repo.cli.QualityMetricsCollector") as mock_collector,
+            patch("setup_repo.cli.safe_path_join") as mock_path_join,
+        ):
+            mock_path_join.return_value = Path("test_project")
+            mock_instance = Mock()
+            mock_metrics = Mock()
+            mock_metrics.get_quality_score.return_value = 85.0
+            mock_metrics.test_coverage = 90.0
+            mock_metrics.ruff_issues = 0
+            mock_metrics.mypy_errors = 0
+            mock_metrics.security_vulnerabilities = 0
+            mock_metrics.is_passing.return_value = True
+            mock_instance.collect_all_metrics.return_value = mock_metrics
+            mock_instance.save_metrics_report.return_value = "report.json"
+            mock_collector.return_value = mock_instance
 
-        # 同期コマンドのテスト
-        sync_args = Mock()
-        sync_args.owner = None
-        sync_args.dest = None
-        sync_args.dry_run = False
-        sync_args.force = False
-        sync_args.use_https = False
-        sync_args.sync_only = False
-        sync_args.auto_stash = False
-        sync_args.skip_uv_install = False
+            with patch("builtins.print"):
+                quality_cli(args)
 
-        with patch("setup_repo.cli.load_config") as mock_load, patch("setup_repo.cli.sync_repositories") as mock_sync:
-            mock_load.return_value = {
-                "use_https": False,
-                "sync_only": False,
-                "auto_stash": False,
-                "skip_uv_install": False,
-            }
-            sync_cli(sync_args)
-            mock_sync.assert_called_once()
+            mock_collector.assert_called_once_with(Path("test_project"))
+
+    def test_trend_cli_report_action(self):
+        """トレンドCLI レポート生成テスト"""
+        args = Mock()
+        args.project_root = None
+        args.trend_file = None
+        args.action = "report"
+        args.output = None
+
+        with (
+            patch("setup_repo.cli.QualityTrendManager") as mock_manager,
+            patch("setup_repo.cli.safe_path_join") as mock_path_join,
+        ):
+            mock_path_join.return_value = Path("trend-report.html")
+            mock_instance = Mock()
+            mock_instance.generate_html_report.return_value = Path("report.html")
+            mock_manager.return_value = mock_instance
+
+            with patch("builtins.print"):
+                trend_cli(args)
+
+            mock_instance.generate_html_report.assert_called_once()

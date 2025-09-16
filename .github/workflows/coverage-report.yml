@@ -43,7 +43,7 @@ jobs:
 
           # 基本的なカバレッジレポート生成（テスト失敗時は即座に終了）
           echo "🧪 テスト実行とカバレッジ測定を開始します"
-          
+
           if ! uv run pytest tests/ \
             --cov=src/setup_repo \
             --cov-report=term-missing \
@@ -71,7 +71,7 @@ jobs:
             echo "❌ カバレッジ監視システムでエラーが発生しました"
             exit 1
           fi
-          
+
           echo "✅ カバレッジ分析が完了しました"
 
       - name: Generate coverage summary
@@ -213,7 +213,7 @@ jobs:
 
       - name: Check coverage trend
         if: github.event_name == 'pull_request'
-  
+
         run: |
           echo "📈 カバレッジトレンド分析中..."
 
