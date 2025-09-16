@@ -28,7 +28,7 @@ class TestCompatibility:
             current_parts = current_version[: len(required_parts)]
 
             # バージョン比較
-            for req, cur in zip(required_parts, current_parts):
+            for req, cur in zip(required_parts, current_parts, strict=False):
                 if cur > req:
                     return True, f"Python {'.'.join(map(str, current_parts))} is compatible"
                 elif cur < req:

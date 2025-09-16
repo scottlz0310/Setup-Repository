@@ -6,9 +6,8 @@
 
 import json
 from dataclasses import asdict, dataclass
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Optional
 
 from .quality_logger import QualityLogger, get_quality_logger
 from .quality_metrics import QualityMetrics
@@ -63,7 +62,7 @@ class TrendAnalysis:
 class QualityTrendManager:
     """品質トレンド管理クラス"""
 
-    def __init__(self, trend_file: Optional[Path] = None, logger: Optional[QualityLogger] = None) -> None:
+    def __init__(self, trend_file: Path | None = None, logger: QualityLogger | None = None) -> None:
         self.trend_file = trend_file or Path("quality-trends/trend-data.json")
         self.logger = logger or get_quality_logger("setup_repo.quality_trends")
 
@@ -140,9 +139,8 @@ class QualityTrendManager:
             )
 
         # 指定期間内のデータを抽出
-        from datetime import timezone
 
-        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
+        cutoff_date = datetime.now(UTC) - timedelta(days=days)
         recent_points = [
             point
             for point in data_points
@@ -195,7 +193,7 @@ class QualityTrendManager:
 
         sum_x = sum(x_values)
         sum_y = sum(values)
-        sum_xy = sum(x * y for x, y in zip(x_values, values))
+        sum_xy = sum(x * y for x, y in zip(x_values, values, strict=False))
         sum_x2 = sum(x * x for x in x_values)
 
         slope = (n * sum_xy - sum_x * sum_y) / (n * sum_x2 - sum_x * sum_x)
@@ -274,7 +272,7 @@ class QualityTrendManager:
 
         return recommendations
 
-    def generate_html_report(self, output_file: Optional[Path] = None) -> Path:
+    def generate_html_report(self, output_file: Path | None = None) -> Path:
         """HTML形式のトレンドレポートを生成"""
         if output_file is None:
             output_file = self.trend_file.parent / "trend-report.html"

@@ -243,7 +243,7 @@ class TestSecurityUtils:
 
         # 簡単なXOR暗号化（テスト用）
         def xor_encrypt_decrypt(data, key):
-            return bytes(a ^ b for a, b in zip(data, (key * (len(data) // len(key) + 1))[: len(data)]))
+            return bytes(a ^ b for a, b in zip(data, (key * (len(data) // len(key) + 1))[: len(data)], strict=False))
 
         # テストデータ
         original_data = b"sensitive information"

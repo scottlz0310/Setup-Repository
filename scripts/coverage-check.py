@@ -13,7 +13,6 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional
 
 
 class CoverageChecker:
@@ -55,7 +54,7 @@ class CoverageChecker:
             print(f"テスト実行エラー: {e}")
             return False
 
-    def get_coverage_data(self) -> Optional[dict]:
+    def get_coverage_data(self) -> dict | None:
         """カバレッジデータを取得"""
         try:
             if not self.coverage_file.exists():
@@ -138,7 +137,7 @@ class CoverageChecker:
 
         return "\n".join(report)
 
-    def check_coverage_trend(self, previous_coverage: Optional[float] = None) -> str:
+    def check_coverage_trend(self, previous_coverage: float | None = None) -> str:
         """カバレッジトレンドをチェック"""
         if previous_coverage is None:
             return "トレンド分析: 前回データなし"

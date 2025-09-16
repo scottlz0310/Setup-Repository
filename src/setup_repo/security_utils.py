@@ -6,7 +6,6 @@ import re
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Optional, Union
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +63,7 @@ class SecurePathHandler:
     """セキュアなパス操作クラス"""
 
     @staticmethod
-    def safe_join(base: Union[str, Path], *parts: str) -> Path:
+    def safe_join(base: str | Path, *parts: str) -> Path:
         """セキュアなパス結合"""
         base_path = Path(base).resolve()
 
@@ -116,7 +115,7 @@ class SecureCommandRunner:
         return self.verified_commands[command]
 
     def run_secure_command(
-        self, command: str, args: list[str], timeout: int = 60, cwd: Optional[Path] = None
+        self, command: str, args: list[str], timeout: int = 60, cwd: Path | None = None
     ) -> subprocess.CompletedProcess:
         """セキュアなコマンド実行"""
         cmd_path = self.verify_command(command)
@@ -222,7 +221,7 @@ def scan_for_secrets(content: str) -> dict[str, list[dict[str, str]]]:
     return secrets_found
 
 
-def validate_input(input_data: str, input_type: str = "general") -> dict[str, Union[bool, str, list[str]]]:
+def validate_input(input_data: str, input_type: str = "general") -> dict[str, bool | str | list[str]]:
     """入力データのセキュリティ検証"""
     errors = []
     warnings = []

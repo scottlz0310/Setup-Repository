@@ -5,7 +5,6 @@ import shutil
 import subprocess
 import time
 from pathlib import Path
-from typing import Union
 
 from .security_helpers import safe_path_join, safe_subprocess
 
@@ -13,11 +12,11 @@ from .security_helpers import safe_path_join, safe_subprocess
 class GitOperations:
     """Git操作を管理するクラス"""
 
-    def __init__(self, config: Union[dict, None] = None) -> None:
+    def __init__(self, config: dict | None = None) -> None:
         """初期化"""
         self.config = config or {}
 
-    def is_git_repository(self, path: Union[Path, str]) -> bool:
+    def is_git_repository(self, path: Path | str) -> bool:
         """指定されたパスがGitリポジトリかどうかを確認"""
         repo_path = Path(path)
         # パストラバーサル攻撃を防ぐため、安全なパス結合を使用
@@ -27,7 +26,7 @@ class GitOperations:
         except ValueError:
             return False
 
-    def clone_repository(self, repo_url: str, destination: Union[Path, str]) -> bool:
+    def clone_repository(self, repo_url: str, destination: Path | str) -> bool:
         """リポジトリをクローン"""
         dest_path = Path(destination)
         # パストラバーサル攻撃を防ぐため、パスを検証
@@ -43,7 +42,7 @@ class GitOperations:
         except (subprocess.CalledProcessError, ValueError):
             return False
 
-    def pull_repository(self, repo_path: Union[Path, str]) -> bool:
+    def pull_repository(self, repo_path: Path | str) -> bool:
         """既存リポジトリをpull"""
         path = Path(repo_path)
         try:
@@ -262,6 +261,6 @@ def _auto_pop_stash(repo_path: Path) -> bool:
 
 
 # 後方互換性のためのインスタンス作成関数
-def create_git_operations(config: Union[dict, None] = None) -> GitOperations:
+def create_git_operations(config: dict | None = None) -> GitOperations:
     """GitOperationsインスタンスを作成"""
     return GitOperations(config)

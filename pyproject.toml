@@ -180,6 +180,7 @@ title = "Setup Repository Coverage Report"
 output = "coverage.xml"
 
 [tool.bandit]
+# ルール6.1「継続的セキュリティチェック」準拠
 exclude_dirs = ["tests", "venv", ".venv", "build", "dist"]
 skips = [
     "B101",  # assert_used - テストでのassert使用を許可
@@ -195,6 +196,7 @@ skips = [
 skips = ["*_test.py", "test_*.py"]
 
 
+# Safety Platform統合設定（ルール6.1準拠）
 [[tool.uv.index]]
 name = "safety"
 url = "https://pkgs.safetycli.com/repository/scottlz-team/project/setup-repository/pypi/simple/"
@@ -218,9 +220,9 @@ dev = [
     "types-requests>=2.32.4.20250809",
 ]
 security = [
-    "safety>=3.0.0",
-    "bandit>=1.7.0",
-    "pip-licenses>=4.3.0",
+    "safety>=3.6.0",  # 新しいscanコマンド対応バージョン
+    "bandit>=1.8.6",  # pre-commit設定と整合
+    "pip-licenses>=5.0.0",  # 最新版に更新
     # semgrep>=1.45.0 - LGPLライセンスのため除外、代わりにCodeQLを使用
 ]
 quality = [

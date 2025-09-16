@@ -1,6 +1,9 @@
 # Pre-commit設定ファイル
 # 詳細: https://pre-commit.com/
 
+# 最初の失敗で即座に停止（テストは最後に実行）
+fail_fast: true
+
 repos:
   # Ruff - 高速なPythonリンター・フォーマッター
   - repo: https://github.com/astral-sh/ruff-pre-commit
@@ -91,12 +94,12 @@ repos:
         always_run: true
         stages: [pre-push]
 
-      - id: safety-check
-        name: "Safety 脆弱性チェック"
-        description: "Safetyによる既知の脆弱性チェック"
-        # APIキー未設定（無料アカウント未ログイン）環境では対話プロンプトが発生しコミットが失敗するためスキップ
-        # SAFETY_API_KEY がある場合のみ実行し、失敗してもフック全体は落とさない
-        entry: uv run safety scan --output screen --continue-on-error
+      - id: safety-scan
+        name: "Safety 脆弱性スキャン"
+        description: "Safetyによる既知の脆弱性スキャン（新しいscanコマンド使用）"
+        # ルール6章準拠: 継続的セキュリティチェック
+        # 脆弱性が見つかった場合はポリシーに従って処理される
+        entry: uv run safety scan --output screen
         language: system
         pass_filenames: false
         always_run: true

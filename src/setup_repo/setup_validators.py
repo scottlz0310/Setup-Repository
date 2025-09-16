@@ -9,7 +9,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from .config import get_github_token, get_github_user
 from .platform_detector import PlatformDetector
@@ -230,7 +230,7 @@ def validate_user_input(
     prompt: str,
     input_type: str = "string",
     required: bool = True,
-    default: Optional[str] = None,
+    default: str | None = None,
 ) -> dict[str, Any]:
     """ユーザー入力を検証"""
     try:

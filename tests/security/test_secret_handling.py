@@ -218,7 +218,9 @@ class TestSecretHandlingSecurity:
                 encrypted = bytes(
                     a ^ b
                     for a, b in zip(
-                        data_bytes, (key_bytes * (len(data_bytes) // len(key_bytes) + 1))[: len(data_bytes)]
+                        data_bytes,
+                        (key_bytes * (len(data_bytes) // len(key_bytes) + 1))[: len(data_bytes)],
+                        strict=False,
                     )
                 )
                 return base64.b64encode(encrypted).decode()
@@ -262,6 +264,7 @@ class TestSecretHandlingSecurity:
                     for a, b in zip(
                         encrypted_bytes,
                         (key_bytes * (len(encrypted_bytes) // len(key_bytes) + 1))[: len(encrypted_bytes)],
+                        strict=False,
                     )
                 )
                 return decrypted.decode()

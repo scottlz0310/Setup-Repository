@@ -8,7 +8,7 @@ import platform
 import sys
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from .logging_config import setup_project_logging
 
@@ -237,7 +237,7 @@ class ProcessLock:
 
     def __init__(self, lock_file: str):
         self.lock_file = Path(lock_file)
-        self.lock_fd: Optional[int] = None
+        self.lock_fd: int | None = None
         self.lock_implementation = self._get_lock_implementation()
 
         # プラットフォーム互換性の警告をログ
@@ -365,7 +365,7 @@ class ProcessLock:
             return False
 
     def _log_platform_specific_recommendations(
-        self, platform_info: dict[str, Any], error: Optional[Exception] = None
+        self, platform_info: dict[str, Any], error: Exception | None = None
     ) -> None:
         """プラットフォーム固有の推奨事項をログ"""
         platform = platform_info["platform"]
@@ -412,7 +412,7 @@ class ProcessLock:
 class TeeLogger:
     """コンソール+ファイル同時出力"""
 
-    def __init__(self, log_file: Optional[str] = None):
+    def __init__(self, log_file: str | None = None):
         self.log_file = Path(log_file) if log_file else None
         self.original_stdout = sys.stdout
         self.original_stderr = sys.stderr

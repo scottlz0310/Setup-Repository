@@ -8,7 +8,7 @@
 import os
 import platform
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from .logging_handlers import (
     create_ci_handler,
@@ -63,7 +63,7 @@ class LoggingConfig:
         )
 
     @classmethod
-    def get_log_file_path(cls, log_name: str = "quality") -> Optional[Path]:
+    def get_log_file_path(cls, log_name: str = "quality") -> Path | None:
         """ログファイルパスを取得（クロスプラットフォーム対応）"""
         # CI環境では通常ファイルログは不要（明示的に指定された場合を除く）
         if cls.is_ci_environment() and not os.getenv("CI_LOG_FILE") and not os.getenv("LOG_DIR"):
@@ -203,7 +203,7 @@ def setup_testing_logging() -> QualityLogger:
 
 
 def create_platform_specific_error_message(
-    error: Exception, platform_name: str, context: Optional[dict[str, Any]] = None
+    error: Exception, platform_name: str, context: dict[str, Any] | None = None
 ) -> str:
     """プラットフォーム固有のエラーメッセージを作成"""
     from .platform_detector import check_module_availability, detect_platform
@@ -355,7 +355,7 @@ def get_platform_debug_info() -> dict[str, Any]:
     }
 
 
-def check_logging_permissions(session_data: Optional[dict[str, Any]] = None) -> bool:
+def check_logging_permissions(session_data: dict[str, Any] | None = None) -> bool:
     """ログ設定変更の権限をチェック
 
     Args:

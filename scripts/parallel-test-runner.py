@@ -12,7 +12,6 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Optional
 
 
 def get_cpu_count() -> int:
@@ -74,11 +73,11 @@ def count_tests(test_paths: list[str]) -> int:
 
 def run_parallel_tests(
     test_paths: list[str],
-    workers: Optional[int] = None,
+    workers: int | None = None,
     coverage: bool = True,
-    markers: Optional[str] = None,
+    markers: str | None = None,
     verbose: bool = False,
-    junit_xml: Optional[str] = None,
+    junit_xml: str | None = None,
     timeout: int = 1800,  # 30分
 ) -> int:
     """並列テストを実行"""

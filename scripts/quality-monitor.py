@@ -13,7 +13,7 @@ import sys
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 
 @dataclass
@@ -74,7 +74,7 @@ class ResponsibilityModule:
 class QualityMonitor:
     """品質監視システムのメインクラス"""
 
-    def __init__(self, project_root: Optional[Path] = None):
+    def __init__(self, project_root: Path | None = None):
         """
         品質監視システムを初期化
 
@@ -115,7 +115,7 @@ class QualityMonitor:
 
         return logger
 
-    def collect_quality_metrics(self) -> Optional[QualityMetrics]:
+    def collect_quality_metrics(self) -> QualityMetrics | None:
         """
         現在の品質メトリクスを収集
 

@@ -9,7 +9,6 @@ import logging
 import shutil
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +26,7 @@ class MigrationCheckpoint:
     段階的移行とロールバック機能を提供します。
     """
 
-    def __init__(self, checkpoint_dir: Optional[Path] = None):
+    def __init__(self, checkpoint_dir: Path | None = None):
         """
         チェックポイント管理を初期化
 
@@ -222,7 +221,7 @@ class MigrationCheckpoint:
         except Exception as e:
             logger.error(f"チェックポイントクリーンアップに失敗: {e}")
 
-    def get_checkpoint_info(self, checkpoint_id: str) -> Optional[dict[str, str]]:
+    def get_checkpoint_info(self, checkpoint_id: str) -> dict[str, str] | None:
         """
         指定されたチェックポイントの詳細情報を取得
 

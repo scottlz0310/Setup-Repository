@@ -4,10 +4,9 @@ import json
 import os
 import subprocess
 from pathlib import Path
-from typing import Optional
 
 
-def get_github_token() -> Optional[str]:
+def get_github_token() -> str | None:
     """環境変数またはgh CLIからGitHubトークンを自動検出"""
     # 環境変数を最初に試す
     token = os.getenv("GITHUB_TOKEN")
@@ -22,7 +21,7 @@ def get_github_token() -> Optional[str]:
         return None
 
 
-def get_github_user() -> Optional[str]:
+def get_github_user() -> str | None:
     """GitHubユーザー名の自動検出"""
     user = os.getenv("GITHUB_USER")
     if user:

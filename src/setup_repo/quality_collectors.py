@@ -8,7 +8,7 @@
 import json
 import subprocess
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any
 
 from .quality_errors import CoverageError, MyPyError, RuffError, TestFailureError
 from .quality_logger import QualityLogger, get_quality_logger
@@ -20,16 +20,16 @@ class QualityToolCollector:
 
     def __init__(
         self,
-        project_root: Optional[Path] = None,
-        logger: Optional[QualityLogger] = None,
+        project_root: Path | None = None,
+        logger: QualityLogger | None = None,
     ) -> None:
         self.project_root = project_root or Path.cwd()
         self.logger = logger or get_quality_logger()
 
 
 def collect_ruff_metrics(
-    project_root: Optional[Path] = None,
-    logger: Optional[QualityLogger] = None,
+    project_root: Path | None = None,
+    logger: QualityLogger | None = None,
 ) -> dict[str, Any]:
     """Ruffリンティングメトリクスを収集"""
     project_root = project_root or Path.cwd()
@@ -93,8 +93,8 @@ def collect_ruff_metrics(
 
 
 def collect_mypy_metrics(
-    project_root: Optional[Path] = None,
-    logger: Optional[QualityLogger] = None,
+    project_root: Path | None = None,
+    logger: QualityLogger | None = None,
 ) -> dict[str, Any]:
     """MyPy型チェックメトリクスを収集"""
     project_root = project_root or Path.cwd()
@@ -143,9 +143,9 @@ def collect_mypy_metrics(
 
 
 def collect_pytest_metrics(
-    project_root: Optional[Path] = None,
-    logger: Optional[QualityLogger] = None,
-    parallel_workers: Union[str, int] = "auto",
+    project_root: Path | None = None,
+    logger: QualityLogger | None = None,
+    parallel_workers: str | int = "auto",
     coverage_threshold: float = 80.0,
     skip_integration_tests: bool = False,
 ) -> dict[str, Any]:
@@ -329,8 +329,8 @@ def collect_pytest_metrics(
 
 
 def collect_coverage_metrics(
-    project_root: Optional[Path] = None,
-    logger: Optional[QualityLogger] = None,
+    project_root: Path | None = None,
+    logger: QualityLogger | None = None,
 ) -> dict[str, Any]:
     """カバレッジメトリクスを収集"""
     project_root = project_root or Path.cwd()

@@ -40,7 +40,7 @@ class TestQualityTrends:
         # 傾きの計算
         sum_x = sum(x_values)
         sum_y = sum(quality_scores)
-        sum_xy = sum(x * y for x, y in zip(x_values, quality_scores))
+        sum_xy = sum(x * y for x, y in zip(x_values, quality_scores, strict=False))
         sum_x2 = sum(x * x for x in x_values)
 
         slope = (n * sum_xy - sum_x * sum_y) / (n * sum_x2 - sum_x * sum_x)
@@ -169,7 +169,7 @@ class TestQualityTrends:
         # 線形回帰の係数計算
         sum_x = sum(x_values)
         sum_y = sum(quality_scores)
-        sum_xy = sum(x * y for x, y in zip(x_values, quality_scores))
+        sum_xy = sum(x * y for x, y in zip(x_values, quality_scores, strict=False))
         sum_x2 = sum(x * x for x in x_values)
 
         slope = (n * sum_xy - sum_x * sum_y) / (n * sum_x2 - sum_x * sum_x)
@@ -193,7 +193,7 @@ class TestQualityTrends:
         n = len(quality_scores)
         sum_x = sum(quality_scores)
         sum_y = sum(coverage_scores)
-        sum_xy = sum(x * y for x, y in zip(quality_scores, coverage_scores))
+        sum_xy = sum(x * y for x, y in zip(quality_scores, coverage_scores, strict=False))
         sum_x2 = sum(x * x for x in quality_scores)
         sum_y2 = sum(y * y for y in coverage_scores)
 
@@ -218,7 +218,7 @@ class TestQualityTrends:
         # 線形回帰
         sum_x = sum(x_values)
         sum_y = sum(quality_scores)
-        sum_xy = sum(x * y for x, y in zip(x_values, quality_scores))
+        sum_xy = sum(x * y for x, y in zip(x_values, quality_scores, strict=False))
         sum_x2 = sum(x * x for x in x_values)
 
         slope = (n * sum_xy - sum_x * sum_y) / (n * sum_x2 - sum_x * sum_x)
@@ -230,7 +230,7 @@ class TestQualityTrends:
         # R²値の計算
         mean_y = sum_y / n
         ss_tot = sum((y - mean_y) ** 2 for y in quality_scores)
-        ss_res = sum((y - pred) ** 2 for y, pred in zip(quality_scores, predicted))
+        ss_res = sum((y - pred) ** 2 for y, pred in zip(quality_scores, predicted, strict=False))
 
         r_squared = 1 - (ss_res / ss_tot) if ss_tot != 0 else 0
 

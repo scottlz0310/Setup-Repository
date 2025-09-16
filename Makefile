@@ -1,7 +1,7 @@
 # Setup Repository - Makefile
 # カバレッジ測定と品質チェック用のタスク
 
-.PHONY: help test coverage coverage-report coverage-html coverage-check quality-gate quality-metrics quality-trend quality-report clean install dev-install version-check version-bump release
+.PHONY: help test coverage coverage-report coverage-html coverage-check quality-gate quality-metrics quality-trend quality-report security security-scan security-sbom clean install dev-install version-check version-bump release
 
 # デフォルトターゲット
 help:
@@ -19,6 +19,9 @@ help:
 	@echo "  make quality-metrics - 品質メトリクス収集"
 	@echo "  make quality-trend  - 品質トレンド分析"
 	@echo "  make quality-report - 品質HTMLレポート生成"
+	@echo "  make security       - 包括的セキュリティチェック"
+	@echo "  make security-scan  - Safety脆弱性スキャン"
+	@echo "  make security-sbom  - SBOM生成"
 	@echo "  make version-check  - バージョン一貫性チェック"
 	@echo "  make version-bump   - バージョン自動インクリメント"
 	@echo "  make release        - リリース準備（品質チェック + バージョン確認）"
@@ -82,7 +85,31 @@ quality-gate:
 	uv run mypy src/
 	@echo "4️⃣ カバレッジ品質ゲート..."
 	$(MAKE) coverage-check
+	@echo "5️⃣ セキュリティチェック..."
+	$(MAKE) security
 	@echo "✅ 全品質チェック完了！"
+
+# セキュリティチェック（ルール6章準拠）
+security:
+	@echo "🛡️ 包括的セキュリティチェック実行中..."
+	@echo "1️⃣ Banditセキュリティ分析..."
+	uv run bandit -r src/ -c pyproject.toml
+	@echo "2️⃣ Safety脆弱性スキャン..."
+	uv run safety scan --output screen
+	@echo "3️⃣ ライセンス監査..."
+	uv run pip-licenses --format=table
+	@echo "✅ セキュリティチェック完了！"
+
+# Safety脆弱性スキャン
+security-scan:
+	@echo "🔍 Safety脆弱性スキャン実行中..."
+	uv run safety scan --output screen --detailed-output
+
+# SBOM生成（ルール6.2準拠）
+security-sbom:
+	@echo "📋 SBOM生成中..."
+	uv run python scripts/generate-sbom.py
+	@echo "✅ SBOM生成完了: output/sbom_latest.json"
 
 # 品質メトリクス収集
 quality-metrics:
@@ -174,7 +201,9 @@ release:
 	$(MAKE) quality-gate
 	@echo "2️⃣ バージョン一貫性チェック..."
 	$(MAKE) version-check
-	@echo "3️⃣ ビルドテスト..."
+	@echo "3️⃣ SBOM生成..."
+	$(MAKE) security-sbom
+	@echo "4️⃣ ビルドテスト..."
 	uv build
 	@echo "✅ リリース準備完了！"
 	@echo ""

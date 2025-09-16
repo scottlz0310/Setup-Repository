@@ -14,7 +14,7 @@ from dataclasses import asdict, dataclass
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any
 
 from .quality_collectors import (
     collect_coverage_metrics,
@@ -139,8 +139,8 @@ class QualityMetricsCollector:
 
     def __init__(
         self,
-        project_root: Optional[Path] = None,
-        logger: Optional[QualityLogger] = None,
+        project_root: Path | None = None,
+        logger: QualityLogger | None = None,
     ) -> None:
         self.project_root = project_root or Path.cwd()
         self.logger = logger or get_quality_logger()
@@ -155,7 +155,7 @@ class QualityMetricsCollector:
 
     def collect_test_metrics(
         self,
-        parallel_workers: Union[str, int] = "auto",
+        parallel_workers: str | int = "auto",
         coverage_threshold: float = 80.0,
         skip_integration_tests: bool = False,
     ) -> dict[str, Any]:
@@ -365,7 +365,7 @@ class QualityMetricsCollector:
         self.logger.log_metrics_summary(metrics_summary)
         return metrics
 
-    def save_metrics_report(self, metrics: QualityMetrics, output_file: Optional[Path] = None) -> Path:
+    def save_metrics_report(self, metrics: QualityMetrics, output_file: Path | None = None) -> Path:
         """メトリクスレポートをJSONファイルに保存"""
         from .security_helpers import safe_path_join, validate_file_path
 

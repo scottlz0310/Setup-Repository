@@ -14,7 +14,7 @@ import xml.etree.ElementTree as ET
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 
 @dataclass
@@ -62,7 +62,7 @@ class CoverageTarget:
 class CoverageMonitor:
     """カバレッジ監視システムのメインクラス"""
 
-    def __init__(self, project_root: Optional[Path] = None):
+    def __init__(self, project_root: Path | None = None):
         """
         カバレッジ監視システムを初期化
 
@@ -150,7 +150,7 @@ class CoverageMonitor:
             self.logger.error(f"テスト実行中にエラーが発生しました: {e}")
             return False
 
-    def parse_coverage_xml(self) -> Optional[CoverageReport]:
+    def parse_coverage_xml(self) -> CoverageReport | None:
         """
         coverage.xmlファイルを解析してカバレッジレポートを生成
 
@@ -202,7 +202,7 @@ class CoverageMonitor:
             self.logger.error(f"coverage.xmlの解析中にエラーが発生しました: {e}")
             return None
 
-    def parse_coverage_json(self) -> Optional[CoverageReport]:
+    def parse_coverage_json(self) -> CoverageReport | None:
         """
         coverage.jsonファイルを解析してカバレッジレポートを生成
 
@@ -285,7 +285,7 @@ class CoverageMonitor:
 
         return passed, warnings
 
-    def generate_coverage_report(self) -> Optional[dict[str, Any]]:
+    def generate_coverage_report(self) -> dict[str, Any] | None:
         """
         包括的なカバレッジレポートを生成
 

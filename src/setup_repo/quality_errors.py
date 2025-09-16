@@ -9,7 +9,7 @@ import json
 import traceback
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 
 class QualityCheckError(Exception):
@@ -18,8 +18,8 @@ class QualityCheckError(Exception):
     def __init__(
         self,
         message: str,
-        error_code: Optional[str] = None,
-        details: Optional[dict[str, Any]] = None,
+        error_code: str | None = None,
+        details: dict[str, Any] | None = None,
     ):
         super().__init__(message)
         self.message = message
@@ -31,14 +31,14 @@ class QualityCheckError(Exception):
 class RuffError(QualityCheckError):
     """Ruffリンティングエラー"""
 
-    def __init__(self, message: str, issues: Optional[list[dict[str, Any]]] = None):
+    def __init__(self, message: str, issues: list[dict[str, Any]] | None = None):
         super().__init__(message, "RUFF_ERROR", {"issues": issues or []})
 
 
 class MyPyError(QualityCheckError):
     """MyPy型チェックエラー"""
 
-    def __init__(self, message: str, errors: Optional[list[str]] = None):
+    def __init__(self, message: str, errors: list[str] | None = None):
         super().__init__(message, "MYPY_ERROR", {"errors": errors or []})
 
 
@@ -48,8 +48,8 @@ class TestFailureError(QualityCheckError):
     def __init__(
         self,
         message: str,
-        failed_tests: Optional[list[str]] = None,
-        coverage: Optional[float] = None,
+        failed_tests: list[str] | None = None,
+        coverage: float | None = None,
     ):
         super().__init__(
             message,
@@ -75,7 +75,7 @@ class CoverageError(QualityCheckError):
 class SecurityScanError(QualityCheckError):
     """セキュリティスキャンエラー"""
 
-    def __init__(self, message: str, vulnerabilities: Optional[list[dict[str, Any]]] = None):
+    def __init__(self, message: str, vulnerabilities: list[dict[str, Any]] | None = None):
         super().__init__(message, "SECURITY_ERROR", {"vulnerabilities": vulnerabilities or []})
 
 
@@ -85,8 +85,8 @@ class CIError(Exception):
     def __init__(
         self,
         message: str,
-        error_code: Optional[str] = None,
-        details: Optional[dict[str, Any]] = None,
+        error_code: str | None = None,
+        details: dict[str, Any] | None = None,
     ):
         super().__init__(message)
         self.message = message
@@ -98,14 +98,14 @@ class CIError(Exception):
 class ReleaseError(CIError):
     """リリースプロセスエラー"""
 
-    def __init__(self, message: str, release_stage: Optional[str] = None):
+    def __init__(self, message: str, release_stage: str | None = None):
         super().__init__(message, "RELEASE_ERROR", {"release_stage": release_stage})
 
 
 class ErrorReporter:
     """統一されたエラーレポート機能を提供するクラス"""
 
-    def __init__(self, report_dir: Optional[Path] = None):
+    def __init__(self, report_dir: Path | None = None):
         self.report_dir = report_dir or Path("error-reports")
 
     def save_report(self, error_data: dict[str, Any], report_type: str) -> Path:
@@ -157,7 +157,7 @@ class ErrorReporter:
 
         return safe_path_join(self.report_dir, filename)
 
-    def create_error_report(self, errors: list[Exception], context: Optional[dict[str, Any]] = None) -> dict[str, Any]:
+    def create_error_report(self, errors: list[Exception], context: dict[str, Any] | None = None) -> dict[str, Any]:
         """詳細なエラーレポートを作成"""
         report: dict[str, Any] = {
             "timestamp": datetime.now().isoformat(),

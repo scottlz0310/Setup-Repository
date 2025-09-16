@@ -4,7 +4,6 @@ import sys
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 from .git_operations import choose_clone_url, sync_repository_with_retries
 from .github_api import get_repositories
@@ -28,7 +27,7 @@ class SyncResult:
     success: bool
     synced_repos: list[str]
     errors: list[Exception]
-    timestamp: Optional[datetime] = None
+    timestamp: datetime | None = None
 
     def __post_init__(self):
         if self.timestamp is None:

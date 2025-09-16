@@ -8,11 +8,10 @@ import argparse
 import re
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
-from typing import Optional
 
 import tomli_w
-import tomllib
 
 
 class VersionManager:
@@ -25,7 +24,7 @@ class VersionManager:
             "src/setup_repo/__init__.py": self._update_init_py,
         }
 
-    def get_current_version(self) -> Optional[str]:
+    def get_current_version(self) -> str | None:
         """現在のバージョンを取得"""
         pyproject_path = self.root_path / "pyproject.toml"
 
@@ -159,7 +158,7 @@ class VersionManager:
                 print(f"  - {file_name}: {file_version}")
             return False
 
-    def bump_version(self, bump_type: str) -> Optional[str]:
+    def bump_version(self, bump_type: str) -> str | None:
         """バージョンを自動的にインクリメント"""
         current_version = self.get_current_version()
         if not current_version:

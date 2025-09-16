@@ -9,7 +9,7 @@ import logging
 import logging.handlers
 import sys
 from pathlib import Path
-from typing import Optional, TextIO
+from typing import TextIO
 
 from .quality_formatters import ColoredFormatter, JSONFormatter
 
@@ -63,7 +63,7 @@ class RotatingFileHandler(logging.handlers.RotatingFileHandler):
 class ColoredConsoleHandler(logging.StreamHandler):
     """色付きコンソール出力ハンドラー"""
 
-    def __init__(self, stream: Optional[TextIO] = None, include_platform_info: bool = False):
+    def __init__(self, stream: TextIO | None = None, include_platform_info: bool = False):
         super().__init__(stream or sys.stdout)
         self.setFormatter(
             ColoredFormatter(
@@ -104,7 +104,7 @@ def create_console_handler(
     enable_json_format: bool = False,
     enable_colors: bool = True,
     include_platform_info: bool = False,
-    stream: Optional[TextIO] = None,
+    stream: TextIO | None = None,
 ) -> logging.Handler:
     """コンソールハンドラーを作成"""
     handler = logging.StreamHandler(stream or sys.stdout)
@@ -145,7 +145,7 @@ def create_ci_handler(enable_json_format: bool = True) -> logging.Handler:
     )
 
 
-def create_development_handler(log_file: Optional[Path] = None) -> logging.Handler:
+def create_development_handler(log_file: Path | None = None) -> logging.Handler:
     """開発環境専用ハンドラーを作成"""
     console_handler = create_console_handler(
         enable_json_format=False,

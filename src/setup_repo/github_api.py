@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 """GitHub API操作モジュール"""
 
-from typing import Optional
-
 import requests
 
 
@@ -91,7 +89,7 @@ class GitHubAPI:
         return repos
 
 
-def get_repositories(owner: str, token: Optional[str] = None) -> list[dict]:
+def get_repositories(owner: str, token: str | None = None) -> list[dict]:
     """GitHub APIからリポジトリ一覧を取得（プライベートリポジトリ対応）"""
     headers = {"User-Agent": "repo-sync/1.0"}
 
@@ -163,7 +161,7 @@ def get_repositories(owner: str, token: Optional[str] = None) -> list[dict]:
     return repos
 
 
-def _get_authenticated_user(token: str) -> Optional[str]:
+def _get_authenticated_user(token: str) -> str | None:
     """認証されたユーザー名を取得"""
     try:
         headers = {"User-Agent": "repo-sync/1.0", "Authorization": f"token {token}"}

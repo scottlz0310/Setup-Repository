@@ -10,7 +10,7 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from .ci_environment import CIEnvironmentInfo
 from .quality_errors import ErrorReporter
@@ -34,9 +34,9 @@ class CIErrorHandler:
 
     def __init__(
         self,
-        logger: Optional[QualityLogger] = None,
+        logger: QualityLogger | None = None,
         enable_github_annotations: bool = True,
-        error_report_dir: Optional[Path] = None,
+        error_report_dir: Path | None = None,
     ):
         """
         CI/CDエラーハンドラーを初期化
@@ -63,8 +63,8 @@ class CIErrorHandler:
         self,
         stage: str,
         error: Exception,
-        duration: Optional[float] = None,
-        context: Optional[dict[str, Any]] = None,
+        duration: float | None = None,
+        context: dict[str, Any] | None = None,
     ) -> None:
         """CI/CDステージエラーを処理"""
         self.errors.append(error)
@@ -105,7 +105,7 @@ class CIErrorHandler:
         self,
         check_type: str,
         error: Exception,
-        metrics: Optional[dict[str, Any]] = None,
+        metrics: dict[str, Any] | None = None,
     ) -> None:
         """品質チェックエラーを処理"""
         self.errors.append(error)
@@ -202,7 +202,7 @@ class CIErrorHandler:
 
         return report
 
-    def save_error_report(self, filename: Optional[str] = None) -> Path:
+    def save_error_report(self, filename: str | None = None) -> Path:
         """エラーレポートをファイルに保存"""
         report = self.create_comprehensive_error_report()
 
@@ -336,8 +336,8 @@ class CIErrorHandler:
         self,
         level: str,
         message: str,
-        file_path: Optional[str] = None,
-        line: Optional[int] = None,
+        file_path: str | None = None,
+        line: int | None = None,
     ) -> None:
         """GitHub Actionsアノテーションを出力"""
         if not self._is_github_actions():
@@ -371,7 +371,7 @@ class CIErrorHandler:
 
 def create_ci_error_handler(
     enable_github_annotations: bool = True,
-    error_report_dir: Optional[Path] = None,
+    error_report_dir: Path | None = None,
     log_level: LogLevel = LogLevel.INFO,
 ) -> CIErrorHandler:
     """CI/CDエラーハンドラーを作成"""

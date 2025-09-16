@@ -9,7 +9,7 @@ import json
 import logging
 import re
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from .security_helpers import safe_html_escape
 
@@ -30,7 +30,7 @@ class ColoredFormatter(logging.Formatter):
     def __init__(self, fmt=None, datefmt=None, include_platform_info: bool = False):
         super().__init__(fmt, datefmt)
         self.include_platform_info = include_platform_info
-        self._platform_info: Optional[str] = None
+        self._platform_info: str | None = None
 
     def _get_platform_info(self) -> str:
         """プラットフォーム情報を取得（キャッシュ付き）"""
@@ -66,7 +66,7 @@ class JSONFormatter(logging.Formatter):
     def __init__(self, include_platform_info: bool = True):
         super().__init__()
         self.include_platform_info = include_platform_info
-        self._platform_info: Optional[dict[str, str]] = None
+        self._platform_info: dict[str, str] | None = None
 
     def _get_platform_info(self) -> dict[str, Any]:
         """プラットフォーム情報を取得（キャッシュ付き）"""
@@ -113,8 +113,8 @@ class JSONFormatter(logging.Formatter):
 def format_log_message(
     message: str,
     level: str = "INFO",
-    timestamp: Optional[datetime] = None,
-    context: Optional[dict[str, Any]] = None,
+    timestamp: datetime | None = None,
+    context: dict[str, Any] | None = None,
 ) -> str:
     """ログメッセージをフォーマット"""
     if timestamp is None:

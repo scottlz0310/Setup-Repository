@@ -2,6 +2,7 @@
 
 import json
 import tempfile
+from datetime import UTC
 from pathlib import Path
 from unittest.mock import patch
 
@@ -76,9 +77,9 @@ class TestQualityIntegration:
             trend_manager = QualityTrendManager(project_root / "trend-data.json")
 
             # 複数のメトリクスデータを作成（改善傾向）
-            from datetime import datetime, timezone
+            from datetime import datetime
 
-            base_time = datetime(2024, 1, 1, tzinfo=timezone.utc)
+            base_time = datetime(2024, 1, 1, tzinfo=UTC)
 
             metrics_data = [
                 QualityMetrics(
@@ -208,9 +209,9 @@ class TestQualityIntegration:
             trend_manager = QualityTrendManager(project_root / "trend-data.json")
 
             # 品質低下のシナリオを作成
-            from datetime import datetime, timezone
+            from datetime import datetime
 
-            base_time = datetime(2024, 1, 1, tzinfo=timezone.utc)
+            base_time = datetime(2024, 1, 1, tzinfo=UTC)
 
             # 最初は良好な状態
             good_metrics = QualityMetrics(
@@ -260,9 +261,9 @@ class TestQualityIntegration:
 
             # 最初のマネージャーでデータを保存
             manager1 = QualityTrendManager(trend_file)
-            from datetime import datetime, timezone
+            from datetime import datetime
 
-            base_time = datetime(2024, 1, 1, tzinfo=timezone.utc)
+            base_time = datetime(2024, 1, 1, tzinfo=UTC)
 
             metrics1 = QualityMetrics(
                 ruff_issues=1,

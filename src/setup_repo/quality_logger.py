@@ -10,7 +10,7 @@ import sys
 import traceback
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any
 
 # 分割されたモジュールからインポート
 from .quality_errors import (
@@ -48,7 +48,7 @@ class QualityLogger:
         self,
         name: str = "setup_repo.quality",
         log_level: LogLevel = LogLevel.INFO,
-        log_file: Optional[Path] = None,
+        log_file: Path | None = None,
         enable_console: bool = True,
         enable_json_format: bool = False,
     ):
@@ -143,14 +143,14 @@ class QualityLogger:
         """重大エラーレベルのログ"""
         self.logger.critical(message, extra=kwargs)
 
-    def log_quality_check_start(self, check_type: str, details: Optional[dict[str, Any]] = None) -> None:
+    def log_quality_check_start(self, check_type: str, details: dict[str, Any] | None = None) -> None:
         """品質チェック開始をログ"""
         message = f"品質チェック開始: {check_type}"
         if details:
             message += f" - 詳細: {details}"
         self.info(message)
 
-    def log_quality_check_success(self, check_type: str, metrics: Optional[dict[str, Any]] = None) -> None:
+    def log_quality_check_success(self, check_type: str, metrics: dict[str, Any] | None = None) -> None:
         """品質チェック成功をログ"""
         message = f"品質チェック成功: {check_type}"
         if metrics:
@@ -160,8 +160,8 @@ class QualityLogger:
     def log_quality_check_failure(
         self,
         check_type: str,
-        error: Union[Exception, str],
-        details: Optional[dict[str, Any]] = None,
+        error: Exception | str,
+        details: dict[str, Any] | None = None,
     ) -> None:
         """品質チェック失敗をログ"""
         if isinstance(error, Exception):
@@ -189,7 +189,7 @@ class QualityLogger:
             error_message = "; ".join(errors) if errors else "不明なエラー"
             self.log_quality_check_failure(check_type, error_message, result.get("details"))
 
-    def log_metrics_summary(self, metrics: Union[dict[str, Any], Any]) -> None:
+    def log_metrics_summary(self, metrics: dict[str, Any] | Any) -> None:
         """メトリクス概要をログ"""
         # QualityMetricsオブジェクトの場合は辞書に変換
         if hasattr(metrics, "__dict__"):
@@ -213,21 +213,21 @@ class QualityLogger:
         formatted_summary = format_metrics_summary(metrics_dict)
         self.info(formatted_summary)
 
-    def log_ci_stage_start(self, stage: str, details: Optional[dict[str, Any]] = None) -> None:
+    def log_ci_stage_start(self, stage: str, details: dict[str, Any] | None = None) -> None:
         """CI/CDステージ開始をログ"""
         message = f"CI/CDステージ開始: {stage}"
         if details:
             message += f" - 詳細: {details}"
         self.info(message)
 
-    def log_ci_stage_success(self, stage: str, duration: Optional[float] = None) -> None:
+    def log_ci_stage_success(self, stage: str, duration: float | None = None) -> None:
         """CI/CDステージ成功をログ"""
         message = f"CI/CDステージ成功: {stage}"
         if duration:
             message += f" - 実行時間: {duration:.2f}秒"
         self.info(message)
 
-    def log_ci_stage_failure(self, stage: str, error: Union[Exception, str], duration: Optional[float] = None) -> None:
+    def log_ci_stage_failure(self, stage: str, error: Exception | str, duration: float | None = None) -> None:
         """CI/CDステージ失敗をログ"""
         message = f"CI/CDステージ失敗: {stage} - {str(error)}"
         if duration:
@@ -242,7 +242,7 @@ class QualityLogger:
     def log_error_with_context(
         self,
         error: Exception,
-        context: Optional[dict[str, Any]] = None,
+        context: dict[str, Any] | None = None,
         include_traceback: bool = True,
     ) -> None:
         """コンテキスト付きエラーログ"""
@@ -254,7 +254,7 @@ class QualityLogger:
 
         self.error(f"エラー発生: {formatted_error}")
 
-    def create_error_report(self, errors: list[Exception], context: Optional[dict[str, Any]] = None) -> dict[str, Any]:
+    def create_error_report(self, errors: list[Exception], context: dict[str, Any] | None = None) -> dict[str, Any]:
         """詳細なエラーレポートを作成"""
         error_reporter = ErrorReporter()
         return error_reporter.create_error_report(errors, context)
@@ -262,8 +262,8 @@ class QualityLogger:
     def save_error_report(
         self,
         errors: list[Exception],
-        output_file: Optional[Path] = None,
-        context: Optional[dict[str, Any]] = None,
+        output_file: Path | None = None,
+        context: dict[str, Any] | None = None,
     ) -> Path:
         """エラーレポートをファイルに保存"""
         error_reporter = ErrorReporter()
@@ -326,13 +326,13 @@ class QualityLogger:
 
 
 # グローバルロガーインスタンス
-_default_logger: Optional[QualityLogger] = None
+_default_logger: QualityLogger | None = None
 
 
 def get_quality_logger(
     name: str = "setup_repo.quality",
     log_level: LogLevel = LogLevel.INFO,
-    log_file: Optional[Path] = None,
+    log_file: Path | None = None,
     enable_console: bool = True,
     enable_json_format: bool = False,
 ) -> QualityLogger:
@@ -353,7 +353,7 @@ def get_quality_logger(
 
 def configure_quality_logging(
     log_level: LogLevel = LogLevel.INFO,
-    log_file: Optional[Path] = None,
+    log_file: Path | None = None,
     enable_console: bool = True,
     enable_json_format: bool = False,
 ) -> QualityLogger:
