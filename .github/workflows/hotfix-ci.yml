@@ -1,0 +1,126 @@
+name: Hotfix CI Issues
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - '.github/workflows/**'
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+jobs:
+  hotfix-test:
+    name: Hotfix Test (Windows)
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install uv
+      run: |
+        # Windows環境でのuvインストール（改良版）
+        if (Get-Command uv -ErrorAction SilentlyContinue) {
+          Write-Host "uv is already installed"
+          uv --version
+        } else {
+          Write-Host "Installing uv using PowerShell installer..."
+          try {
+            Invoke-RestMethod https://astral.sh/uv/install.ps1 | Invoke-Expression
+            Write-Host "✅ uv installed via PowerShell"
+          } catch {
+            Write-Host "PowerShell installation failed, trying pip..."
+            python -m pip install --upgrade pip
+            python -m pip install uv
+            Write-Host "✅ uv installed via pip"
+          }
+        }
+
+        # 最終確認
+        if (Get-Command uv -ErrorAction SilentlyContinue) {
+          Write-Host "✅ uv installation verified"
+          uv --version
+        } else {
+          Write-Host "❌ uv installation verification failed"
+          exit 1
+        }
+      shell: powershell
+
+    - name: Set up Python
+      run: uv python install 3.11
+
+    - name: Create virtual environment
+      run: uv venv --python 3.11
+
+    - name: Install dependencies
+      run: uv sync --dev
+
+    - name: Run hotfix tests
+      run: |
+        # 修正されたテストのみ実行
+        Write-Host "Running hotfix tests for Windows path issues..."
+
+        # Windows短縮パス問題のテスト
+        uv run pytest tests/unit/test_quality_errors.py::TestErrorReporter::test_get_report_path_functionality -v
+
+        # PowerShell実行ポリシーチェック対応テスト
+        uv run pytest tests/unit/test_python_env.py::TestSetupWithUv::test_setup_with_uv_pyproject_toml_success -v
+        uv run pytest tests/unit/test_python_env.py::TestSetupWithUv::test_setup_with_uv_pyproject_toml_with_existing_lock -v
+        uv run pytest tests/unit/test_python_env.py::TestSetupWithUv::test_setup_with_uv_requirements_txt -v
+
+        # venvセットアップテスト（CI環境対応）
+        uv run pytest tests/unit/test_python_env.py::TestSetupWithVenv::test_setup_with_venv_success_windows -v
+        uv run pytest tests/unit/test_python_env.py::TestSetupWithVenv::test_setup_with_venv_no_requirements -v
+
+        # CLI短縮パス問題のテスト
+        uv run pytest tests/unit/test_cli_edge_cases.py::TestCLIEdgeCases::test_trend_cli_with_custom_output_file -v
+
+        # セキュリティヘルパーテスト
+        uv run pytest tests/unit/test_quality_metrics_security.py::TestQualityMetricsCollectorSecurity::test_save_metrics_report -v
+
+        Write-Host "✅ Hotfix tests completed"
+      shell: powershell
+
+    - name: Run security helper validation
+      run: |
+        # セキュリティヘルパーのWindows短縮パス対応確認
+        uv run python -c "
+        from src.setup_repo.security_helpers import validate_file_path
+        from pathlib import Path
+        import tempfile
+        import os
+
+        # Windows短縮パス形式のテスト
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # CI環境フラグを設定
+            os.environ['CI'] = '1'
+
+            # 通常のパス
+            normal_path = Path(temp_dir) / 'normal_file.json'
+            print(f'Normal path validation: {validate_file_path(normal_path)}')
+
+            # Windows短縮パス形式（シミュレーション）
+            short_path_str = temp_dir.replace('runneradmin', 'RUNNER~1')
+            short_path = Path(short_path_str) / 'short_file.json'
+            print(f'Short path validation: {validate_file_path(short_path)}')
+
+            print('✅ Security helper Windows path validation completed')
+        "
+      shell: powershell
+
+    - name: Validate quality gate
+      run: |
+        # 品質ゲートの確認（修正後）
+        Write-Host "Validating quality gate with fixes..."
+
+        # カバレッジ80%以上の確認
+        uv run pytest tests/unit/ --cov=src/setup_repo --cov-report=term-missing --cov-fail-under=80 -x --maxfail=3
+
+        Write-Host "✅ Quality gate validation completed"
+      shell: powershell

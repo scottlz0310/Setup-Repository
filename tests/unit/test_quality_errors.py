@@ -276,7 +276,8 @@ class TestErrorReporter:
         filename = "test_report.json"
         path = reporter.get_report_path(filename)
 
-        assert path.parent == temp_dir
+        # Windows短縮パス（RUNNER~1など）を考慮した比較
+        assert path.parent.resolve() == temp_dir.resolve()
         assert path.name == filename
         assert isinstance(path, Path)
 

@@ -439,5 +439,6 @@ class TestCLIEdgeCases:
             with patch("builtins.print"):
                 trend_cli(args)
 
-            # カスタム出力ファイルが使用されることを確認
-            mock_trend_manager.generate_html_report.assert_called_once_with(custom_output)
+            # カスタム出力ファイルが使用されることを確認（Windows短縮パス対応）
+            called_path = mock_trend_manager.generate_html_report.call_args[0][0]
+            assert called_path.resolve() == custom_output.resolve()

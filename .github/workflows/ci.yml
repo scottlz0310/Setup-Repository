@@ -8,13 +8,19 @@ on:
   workflow_dispatch:
   workflow_call:
 
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+  actions: read
+
 jobs:
   quality-checks:
     name: Code Quality Checks
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.11", "3.12", "3.13"]
       fail-fast: false
 
     steps:
@@ -75,7 +81,7 @@ jobs:
         path: |
           ~/.cache/uv
           .venv
-        key: ${{ runner.os }}-uv-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml') }}
+        key: ${{ runner.os }}-uv-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml', '**/uv.lock') }}
         restore-keys: |
           ${{ runner.os }}-uv-${{ matrix.python-version }}-
           ${{ runner.os }}-uv-
@@ -183,8 +189,8 @@ jobs:
     - name: Coverage quality gate
       if: matrix.python-version == '3.11'
       run: |
-        uv run coverage report --fail-under=75
-        echo "✅ カバレッジ品質ゲート通過: 75%以上"
+        uv run coverage report --fail-under=80
+        echo "✅ カバレッジ品質ゲート通過: 80%以上（production要件）"
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v4
@@ -218,7 +224,7 @@ jobs:
             const match = coverage.match(/line-rate="([^"]+)"/);
             if (match) {
               const rate = (parseFloat(match[1]) * 100).toFixed(2);
-              const body = `## 📊 カバレッジレポート\n\n**現在のカバレッジ**: ${rate}%\n\n${rate >= 80 ? '✅' : '❌'} 品質ゲート (80%): ${rate >= 80 ? '通過' : '未達成'}\n\n詳細なレポートはArtifactsからダウンロードできます。`;
+              const body = `## 📊 カバレッジレポート\n\n**現在のカバレッジ**: ${rate}%\n\n${rate >= 80 ? '✅' : '❌'} 品質ゲート (80%): ${rate >= 80 ? '通過' : '未達成'}\n\n**ルール5.2準拠**: production段階では80%以上必須\n\n詳細なレポートはArtifactsからダウンロードできます。`;
 
               github.rest.issues.createComment({
                 issue_number: context.issue.number,
@@ -273,7 +279,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ["3.9", "3.11", "3.13"]
+        python-version: ["3.11", "3.12", "3.13"]
       fail-fast: false
 
     runs-on: ${{ matrix.os }}

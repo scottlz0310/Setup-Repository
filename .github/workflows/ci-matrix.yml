@@ -9,7 +9,7 @@ on:
       python_versions:
         description: 'Python versions to test (comma-separated)'
         required: false
-        default: '3.9,3.10,3.11,3.12,3.13'
+        default: '3.11,3.12,3.13'
 
 jobs:
   extended-matrix-test:
@@ -18,26 +18,26 @@ jobs:
     strategy:
       matrix:
         include:
-          # Ubuntu (最新版含む)
-          - os: ubuntu-22.04
+          # Ubuntu (LTSと最新安定版)
+          - os: ubuntu-latest
             python-version: "3.11"
-          - os: ubuntu-22.04
+          - os: ubuntu-latest
             python-version: "3.12"
-          - os: ubuntu-22.04
+          - os: ubuntu-latest
             python-version: "3.13"
-          # Windows (最新版含む)
-          - os: windows-2022
+          # Windows (最新安定版)
+          - os: windows-latest
             python-version: "3.11"
-          - os: windows-2022
+          - os: windows-latest
             python-version: "3.12"
-          - os: windows-2022
+          - os: windows-latest
             python-version: "3.13"
-          # macOS (最新版含む)
-          - os: macos-13
+          # macOS (最新安定版)
+          - os: macos-latest
             python-version: "3.11"
-          - os: macos-13
+          - os: macos-latest
             python-version: "3.12"
-          - os: macos-13
+          - os: macos-latest
             python-version: "3.13"
       fail-fast: false
       max-parallel: 3

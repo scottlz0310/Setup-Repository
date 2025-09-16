@@ -18,14 +18,13 @@ classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
 
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
+
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Version Control :: Git",
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 dependencies = [
     "rg>=0.0.75",
     "requests>=2.25.0",
@@ -52,7 +51,7 @@ Repository = "https://github.com/scottlz0310/Setup-Repository"
 Issues = "https://github.com/scottlz0310/Setup-Repository/issues"
 
 [tool.ruff]
-target-version = "py39"
+target-version = "py311"
 line-length = 120
 
 [tool.ruff.lint]
@@ -88,7 +87,7 @@ split-on-trailing-comma = true
 packages = ["src/setup_repo"]
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.11"
 warn_return_any = false  # 段階的厳格化 - 初期段階では緩和
 warn_unused_configs = true
 disallow_untyped_defs = false  # 段階的厳格化 - 初期段階では緩和
@@ -117,7 +116,7 @@ testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "-v --tb=short --disable-warnings -p xdist -p pytest_cov -n auto --dist=loadfile --cov=src/setup_repo --cov-report=term-missing --cov-report=html:htmlcov"
+addopts = "-v --tb=short --disable-warnings -p xdist -p pytest_cov -n auto --dist=worksteal --cov=src/setup_repo --cov-report=term-missing --cov-report=html:htmlcov --cov-fail-under=80"
 markers = [
     "unit: 単体テスト",
     "integration: 統合テスト",
@@ -147,8 +146,8 @@ omit = [
 ]
 
 [tool.coverage.report]
-# 段階的改善のため一時的に調整
-fail_under = 75
+# production段階要件（ルール5.2準拠）
+fail_under = 80
 show_missing = true
 skip_covered = false
 skip_empty = false

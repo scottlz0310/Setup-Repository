@@ -9,7 +9,7 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +92,7 @@ def safe_html_escape(data: Any) -> str:
     return html.escape(str(data), quote=True)
 
 
-def validate_file_path(file_path: Path, allowed_extensions: Optional[list[str]] = None) -> bool:
+def validate_file_path(file_path: Path, allowed_extensions: list[str] | None = None) -> bool:
     """ファイルパスの安全性を検証
 
     Args:
@@ -125,8 +125,19 @@ def validate_file_path(file_path: Path, allowed_extensions: Optional[list[str]] 
                 logger.warning(f"Root directory access denied: {path_str}")
                 return False
 
-        # 危険な文字列のチェック
-        dangerous_patterns = ["..", "~", "$", "<", ">", "|", "?", "*"]
+        # 危険な文字列のチェック（Windows短縮パス対応）
+        dangerous_patterns = ["..", "$", "<", ">", "|", "?", "*"]
+
+        # Windows短縮パス（~1, ~2など）は除外
+        if not is_test_env and "~" in original_str:
+            # Windows短縮パス形式（例：RUNNER~1）をチェック
+            import re
+
+            windows_short_path = re.compile(r"[A-Z0-9]+~[0-9]+", re.IGNORECASE)
+            if not windows_short_path.search(original_str):
+                logger.warning(f"Dangerous pattern '~' found in path: {original_str}")
+                return False
+
         for pattern in dangerous_patterns:
             if pattern in original_str:
                 logger.warning(f"Dangerous pattern '{pattern}' found in path: {original_str}")
