@@ -158,17 +158,8 @@ class TestQualityTrendManager:
     @pytest.mark.unit
     def test_save_trend_data_error(self):
         """トレンドデータ保存エラーテスト."""
-        # 書き込み不可能なパスを設定（ファイル名に無効文字を使用）
-        import platform
-
-        if platform.system() == "Windows":
-            # Windowsで無効なファイル名文字を使用
-            invalid_path = self.temp_dir / "invalid<>file.json"
-        else:
-            # Unix系で無効なパスを使用
-            invalid_path = Path("/invalid/path/trend-data.json")
-
-        manager = QualityTrendManager(trend_file=invalid_path, logger=self.mock_logger)
+        # 書き込み不可能なパスを設定
+        from unittest.mock import patch
 
         data_points = [
             TrendDataPoint(
@@ -184,7 +175,9 @@ class TestQualityTrendManager:
             )
         ]
 
-        manager.save_trend_data(data_points)
+        # ファイル書き込み時にエラーを発生させる
+        with patch("builtins.open", side_effect=PermissionError("Permission denied")):
+            self.manager.save_trend_data(data_points)
 
         # エラーログが呼ばれることを確認
         self.mock_logger.error.assert_called()

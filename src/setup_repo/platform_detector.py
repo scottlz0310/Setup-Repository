@@ -176,6 +176,10 @@ def check_package_manager(manager: str) -> bool:
 
         result = safe_subprocess_run(cmd, capture_output=True, timeout=timeout, text=True)
 
+        # 戻り値が0でない場合は失敗
+        if result.returncode != 0:
+            return False
+
         # 出力が空でないことを確認
         output = result.stdout.strip() or result.stderr.strip()
         return bool(output)

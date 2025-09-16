@@ -80,8 +80,9 @@ class TestPlatformDetectorEdgeCases:
         """パッケージマネージャーチェックの空出力処理テスト"""
         verify_current_platform()
 
-        # 空の出力を返すコマンド
+        # 空の出力を返すコマンド（returncode=0でも出力が空なら失敗）
         mock_result = Mock()
+        mock_result.returncode = 0
         mock_result.stdout = ""
         mock_result.stderr = ""
 
@@ -90,6 +91,7 @@ class TestPlatformDetectorEdgeCases:
             assert result is False
 
         # stderrのみに出力があるケース
+        mock_result.returncode = 0
         mock_result.stdout = ""
         mock_result.stderr = "version 1.0.0"
 
