@@ -41,10 +41,12 @@ repos:
       - id: end-of-file-fixer
         name: "ファイル末尾修正"
         description: "ファイル末尾に改行を追加"
+        exclude: '\.safety-project\.ini$'
       # 行末空白文字の削除
       - id: trailing-whitespace
         name: "行末空白削除"
         description: "行末の不要な空白文字を削除"
+        exclude: '\.safety-project\.ini$'
       # YAML構文チェック
       - id: check-yaml
         name: "YAML構文チェック"
@@ -73,17 +75,19 @@ repos:
         args: ["-c", "pyproject.toml"]
         files: ^src/
 
-  # ローカルフック - Pytest実行
+  # ローカルフック - 高速チェック→時間のかかるテストの順
   - repo: local
     hooks:
-      - id: pytest-check
-        name: "Pytest テスト実行"
-        description: "Pytestによる全テスト実行"
-        entry: uv run pytest --tb=short -k "not (test_mock_git_operations_fixture or test_mock_platform_detector_fixture)"
+      - id: safety-scan
+        name: "Safety 脆弱性スキャン"
+        description: "Safetyによる既知の脆弱性スキャン（新しいscanコマンド使用）"
+        # ルール6章準拠: 継続的セキュリティチェック
+        # Safety Platformポリシーに従い、除外された脆弱性は正常終了
+        entry: uv run safety scan --output screen --short-report --disable-optional-telemetry
         language: system
         pass_filenames: false
         always_run: true
-        stages: [pre-commit]
+        stages: [pre-push]
 
       - id: coverage-check
         name: "カバレッジ品質ゲート"
@@ -94,12 +98,10 @@ repos:
         always_run: true
         stages: [pre-push]
 
-      - id: safety-scan
-        name: "Safety 脆弱性スキャン"
-        description: "Safetyによる既知の脆弱性スキャン（新しいscanコマンド使用）"
-        # ルール6章準拠: 継続的セキュリティチェック
-        # 脆弱性が見つかった場合はポリシーに従って処理される
-        entry: uv run safety scan --output screen
+      - id: pytest-check
+        name: "Pytest テスト実行"
+        description: "Pytestによる全テスト実行（最も時間がかかるため最後に実行）"
+        entry: uv run pytest --tb=short -k "not (test_mock_git_operations_fixture or test_mock_platform_detector_fixture)"
         language: system
         pass_filenames: false
         always_run: true
