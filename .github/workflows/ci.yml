@@ -28,24 +28,10 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Install uv
-      run: |
-        # Linux環境でのuvインストール
-        if command -v uv >/dev/null 2>&1; then
-          echo "uv is already installed"
-          uv --version
-        else
-          echo "Installing uv using official installer..."
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-        fi
+      run: curl -LsSf https://astral.sh/uv/install.sh | sh
 
-        # インストール確認
-        if command -v uv >/dev/null 2>&1; then
-          echo "✅ uv installation verified"
-          uv --version
-        else
-          echo "❌ uv installation failed"
-          exit 1
-        fi
+    - name: Add uv to PATH
+      run: echo "$HOME/.local/bin" >> $GITHUB_PATH
 
     - name: Set up Python ${{ matrix.python-version }}
       run: uv python install ${{ matrix.python-version }}
@@ -248,9 +234,10 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Install uv
-      run: |
-        curl -LsSf https://astral.sh/uv/install.sh | sh
-        uv --version
+      run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+    - name: Add uv to PATH
+      run: echo "$HOME/.local/bin" >> $GITHUB_PATH
 
     - name: Set up Python
       run: uv python install 3.11
@@ -297,88 +284,21 @@ jobs:
       if: runner.os != 'Windows'
       run: curl -LsSf https://astral.sh/uv/install.sh | sh
 
+    - name: Add uv to PATH (Unix)
+      if: runner.os != 'Windows'
+      run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+
     - name: Install uv (Windows)
       if: runner.os == 'Windows'
-      run: |
-        # Windows環境でのuvインストール（改良版）
-        if (Get-Command uv -ErrorAction SilentlyContinue) {
-          Write-Host "uv is already installed"
-          uv --version
-        } else {
-          Write-Host "Installing uv using multiple methods..."
-          $installed = $false
+      shell: pwsh
+      run: iwr https://astral.sh/uv/install.ps1 | iex
 
-          # 方法1: PowerShellスクリプト
-          try {
-            Write-Host "Trying PowerShell installer..."
-            Invoke-RestMethod https://astral.sh/uv/install.ps1 | Invoke-Expression
-            if (Get-Command uv -ErrorAction SilentlyContinue) {
-              $installed = $true
-              Write-Host "✅ uv installed via PowerShell"
-            }
-          } catch {
-            Write-Host "PowerShell installation failed: $_"
-          }
+    - name: Add uv to PATH (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: echo "$env:USERPROFILE\.local\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
-          # 方法2: pip経由
-          if (-not $installed) {
-            try {
-              Write-Host "Trying pip installation..."
-              python -m pip install --upgrade pip
-              python -m pip install uv
-              if (Get-Command uv -ErrorAction SilentlyContinue) {
-                $installed = $true
-                Write-Host "✅ uv installed via pip"
-              }
-            } catch {
-              Write-Host "Pip installation failed: $_"
-            }
-          }
 
-          # 方法3: GitHub Releases
-          if (-not $installed) {
-            try {
-              Write-Host "Trying GitHub releases..."
-              $arch = if ([Environment]::Is64BitOperatingSystem) { "x86_64" } else { "i686" }
-              $url = "https://github.com/astral-sh/uv/releases/latest/download/uv-$arch-pc-windows-msvc.zip"
-              $temp = New-TemporaryFile
-              Invoke-WebRequest -Uri $url -OutFile "$temp.zip"
-              Expand-Archive "$temp.zip" -DestinationPath $env:TEMP
-              $uvPath = Join-Path $env:TEMP "uv.exe"
-              if (Test-Path $uvPath) {
-                $binDir = Join-Path $env:USERPROFILE ".local\bin"
-                New-Item -ItemType Directory -Force -Path $binDir
-                Copy-Item $uvPath (Join-Path $binDir "uv.exe")
-                $env:PATH = "$binDir;$env:PATH"
-                echo "$binDir" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-                $installed = $true
-                Write-Host "✅ uv installed from GitHub releases"
-              }
-            } catch {
-              Write-Host "GitHub releases installation failed: $_"
-            }
-          }
-
-          if (-not $installed) {
-            Write-Host "❌ All installation methods failed"
-            exit 1
-          }
-        }
-
-        # 最終確認
-        if (Get-Command uv -ErrorAction SilentlyContinue) {
-          Write-Host "✅ uv installation verified"
-          uv --version
-        } else {
-          Write-Host "❌ uv installation verification failed"
-          exit 1
-        }
-      shell: powershell
-
-    - name: Verify uv installation
-      run: |
-        uv --version
-        echo "uv installation verified successfully"
 
     - name: Set up Python ${{ matrix.python-version }}
       run: uv python install ${{ matrix.python-version }}
@@ -702,9 +622,10 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Install uv
-      run: |
-        curl -LsSf https://astral.sh/uv/install.sh | sh
-        uv --version
+      run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+    - name: Add uv to PATH
+      run: echo "$HOME/.local/bin" >> $GITHUB_PATH
 
     - name: Set up Python
       run: uv python install 3.11
