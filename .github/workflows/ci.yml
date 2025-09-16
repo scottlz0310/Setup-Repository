@@ -318,22 +318,19 @@ jobs:
         $maxRetries = 3
         $retryDelay = 5
         $ErrorActionPreference = "Continue"
+        $success = $false
 
         for ($i = 1; $i -le $maxRetries; $i++) {
           Write-Host "Attempting to install dependencies (attempt $i/$maxRetries)" -ForegroundColor Yellow
 
-          $installResult = $null
-          try {
-            # 開発依存をインストール
-            & uv sync --dev
-            if ($LASTEXITCODE -eq 0) {
-              Write-Host "Dependencies installed successfully" -ForegroundColor Green
-              break
-            } else {
-              throw "uv sync failed with exit code $LASTEXITCODE"
-            }
-          } catch {
-            Write-Host "Dependency installation failed (attempt $i/$maxRetries): $_" -ForegroundColor Yellow
+          # 開発依存をインストール
+          & uv sync --dev
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "Dependencies installed successfully" -ForegroundColor Green
+            $success = $true
+            break
+          } else {
+            Write-Host "Dependency installation failed (attempt $i/$maxRetries) with exit code: $LASTEXITCODE" -ForegroundColor Yellow
 
             if ($i -eq $maxRetries) {
               Write-Host "Dependency installation failed after $maxRetries attempts" -ForegroundColor Red
@@ -343,6 +340,11 @@ jobs:
             Write-Host "Waiting $retryDelay seconds before retry..." -ForegroundColor Yellow
             Start-Sleep -Seconds $retryDelay
           }
+        }
+
+        if (-not $success) {
+          Write-Host "Failed to install dependencies after all retries" -ForegroundColor Red
+          exit 1
         }
 
     - name: Install dependencies (Unix)
@@ -368,7 +370,7 @@ jobs:
       shell: pwsh
       run: |
         Write-Host "Starting multiplatform tests (Windows environment)" -ForegroundColor Yellow
-        $ErrorActionPreference = "Continue"
+        $ErrorActionPreference = "Stop"
 
         # Windows固有のマルチプラットフォームテスト
         $env:CI = "true"
@@ -378,30 +380,35 @@ jobs:
 
         # マルチプラットフォームテストを実行
         Write-Host "Running multiplatform tests..." -ForegroundColor Cyan
-        try {
-          & uv run pytest tests/multiplatform/ -v --tb=short -k "windows"
-          if ($LASTEXITCODE -ne 0) { $exitCode = $LASTEXITCODE }
-        } catch {
-          Write-Host "Multiplatform tests failed: $_" -ForegroundColor Red
-          $exitCode = 1
+        & uv run pytest tests/multiplatform/ -v --tb=short -k "windows"
+        if ($LASTEXITCODE -ne 0) {
+          Write-Host "Multiplatform tests failed with exit code: $LASTEXITCODE" -ForegroundColor Red
+          $exitCode = $LASTEXITCODE
         }
 
         # 単体テストを実行
         Write-Host "Running unit tests..." -ForegroundColor Cyan
-        try {
-          & uv run pytest tests/unit/ -v --tb=short -x --maxfail=10
-          if ($LASTEXITCODE -ne 0) { $exitCode = $LASTEXITCODE }
-        } catch {
-          Write-Host "Unit tests failed: $_" -ForegroundColor Red
-          $exitCode = 1
+        & uv run pytest tests/unit/ -v --tb=short -x --maxfail=10
+        if ($LASTEXITCODE -ne 0) {
+          Write-Host "Unit tests failed with exit code: $LASTEXITCODE" -ForegroundColor Red
+          $exitCode = $LASTEXITCODE
         }
 
-        if ($exitCode -eq 0) {
-          Write-Host "Tests completed successfully" -ForegroundColor Green
+        # メインテストスイートを実行
+        Write-Host "Running main test suite with coverage..." -ForegroundColor Cyan
+        & uv run pytest tests/ --cov=src/setup_repo --cov-report=term-missing --cov-report=html --cov-fail-under=80 -v --tb=short
+        $testExitCode = $LASTEXITCODE
+
+        if ($testExitCode -eq 0) {
+          Write-Host "All tests completed successfully" -ForegroundColor Green
         } else {
-          Write-Host "Tests failed with exit code: $exitCode" -ForegroundColor Red
-          exit $exitCode
+          Write-Host "Tests failed with exit code: $testExitCode" -ForegroundColor Red
+          $exitCode = $testExitCode
         }
+
+        # 最終結果を出力して終了
+        Write-Host "Final exit code: $exitCode" -ForegroundColor $(if ($exitCode -eq 0) { 'Green' } else { 'Red' })
+        exit $exitCode
 
     - name: Run multiplatform tests (Unix)
       if: runner.os != 'Windows'
@@ -456,18 +463,15 @@ jobs:
       shell: pwsh
       run: |
         Write-Host "Running platform diagnostics (Windows environment)" -ForegroundColor Yellow
-        $ErrorActionPreference = "Continue"
-        try {
-          & uv run python scripts/ci-platform-diagnostics.py
-          if ($LASTEXITCODE -ne 0) {
-            Write-Host "Platform diagnostics failed with exit code: $LASTEXITCODE" -ForegroundColor Red
-            exit $LASTEXITCODE
-          }
-          Write-Host "Platform diagnostics completed successfully" -ForegroundColor Green
-        } catch {
-          Write-Host "Platform diagnostics encountered critical error: $_" -ForegroundColor Red
-          exit 1
+        $ErrorActionPreference = "Stop"
+
+        & uv run python scripts/ci-platform-diagnostics.py
+        if ($LASTEXITCODE -ne 0) {
+          Write-Host "Platform diagnostics failed with exit code: $LASTEXITCODE" -ForegroundColor Red
+          exit $LASTEXITCODE
         }
+        Write-Host "Platform diagnostics completed successfully" -ForegroundColor Green
+        exit 0
 
     - name: Run platform diagnostics (Unix)
       if: runner.os != 'Windows'
