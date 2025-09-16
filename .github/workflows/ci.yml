@@ -291,12 +291,16 @@ jobs:
     - name: Install uv (Windows)
       if: runner.os == 'Windows'
       shell: pwsh
-      run: iwr https://astral.sh/uv/install.ps1 | iex
+      run: irm https://astral.sh/uv/install.ps1 | iex
 
     - name: Add uv to PATH (Windows)
       if: runner.os == 'Windows'
       shell: pwsh
-      run: echo "$env:USERPROFILE\.local\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      run: |
+        $uvPath = "$env:USERPROFILE\.local\bin"
+        echo $uvPath | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        $env:PATH = "$uvPath;$env:PATH"
+        Write-Host "Added $uvPath to PATH"
 
 
 
@@ -308,32 +312,38 @@ jobs:
 
     - name: Install dependencies with retry (Windows)
       if: runner.os == 'Windows'
+      shell: pwsh
       run: |
         # Windows環境での依存関係インストール（リトライ機能付き）
         $maxRetries = 3
         $retryDelay = 5
+        $ErrorActionPreference = "Continue"
 
         for ($i = 1; $i -le $maxRetries; $i++) {
           Write-Host "Attempting to install dependencies (attempt $i/$maxRetries)" -ForegroundColor Yellow
 
+          $installResult = $null
           try {
             # 開発依存をインストール
-            uv sync --dev
-            Write-Host "Dependencies installed successfully" -ForegroundColor Green
-            break
+            & uv sync --dev
+            if ($LASTEXITCODE -eq 0) {
+              Write-Host "Dependencies installed successfully" -ForegroundColor Green
+              break
+            } else {
+              throw "uv sync failed with exit code $LASTEXITCODE"
+            }
           } catch {
             Write-Host "Dependency installation failed (attempt $i/$maxRetries): $_" -ForegroundColor Yellow
 
             if ($i -eq $maxRetries) {
               Write-Host "Dependency installation failed after $maxRetries attempts" -ForegroundColor Red
-              throw "Failed to install dependencies"
+              exit 1
             }
 
             Write-Host "Waiting $retryDelay seconds before retry..." -ForegroundColor Yellow
             Start-Sleep -Seconds $retryDelay
           }
         }
-      shell: powershell
 
     - name: Install dependencies (Unix)
       if: runner.os != 'Windows'
@@ -355,9 +365,10 @@ jobs:
 
     - name: Run multiplatform tests (Windows)
       if: runner.os == 'Windows'
-      shell: powershell
+      shell: pwsh
       run: |
         Write-Host "Starting multiplatform tests (Windows environment)" -ForegroundColor Yellow
+        $ErrorActionPreference = "Continue"
 
         # Windows固有のマルチプラットフォームテスト
         $env:CI = "true"
@@ -368,7 +379,7 @@ jobs:
         # マルチプラットフォームテストを実行
         Write-Host "Running multiplatform tests..." -ForegroundColor Cyan
         try {
-          uv run pytest tests/multiplatform/ -v --tb=short -k "windows"
+          & uv run pytest tests/multiplatform/ -v --tb=short -k "windows"
           if ($LASTEXITCODE -ne 0) { $exitCode = $LASTEXITCODE }
         } catch {
           Write-Host "Multiplatform tests failed: $_" -ForegroundColor Red
@@ -378,7 +389,7 @@ jobs:
         # 単体テストを実行
         Write-Host "Running unit tests..." -ForegroundColor Cyan
         try {
-          uv run pytest tests/unit/ -v --tb=short -x --maxfail=10
+          & uv run pytest tests/unit/ -v --tb=short -x --maxfail=10
           if ($LASTEXITCODE -ne 0) { $exitCode = $LASTEXITCODE }
         } catch {
           Write-Host "Unit tests failed: $_" -ForegroundColor Red
@@ -442,11 +453,12 @@ jobs:
 
     - name: Run platform diagnostics (Windows)
       if: runner.os == 'Windows'
-      shell: powershell
+      shell: pwsh
       run: |
         Write-Host "Running platform diagnostics (Windows environment)" -ForegroundColor Yellow
+        $ErrorActionPreference = "Continue"
         try {
-          uv run python scripts/ci-platform-diagnostics.py
+          & uv run python scripts/ci-platform-diagnostics.py
           if ($LASTEXITCODE -ne 0) {
             Write-Host "Platform diagnostics failed with exit code: $LASTEXITCODE" -ForegroundColor Red
             exit $LASTEXITCODE
