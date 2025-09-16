@@ -79,6 +79,9 @@ class TestFullWorkflow:
                 # ファイルシステム操作をモック化
                 patch("pathlib.Path.mkdir"),
                 patch("pathlib.Path.exists", return_value=True),
+                # stdin読み取り問題を回避するためprompt_user_actionをモック化
+                patch("setup_repo.sync.prompt_user_action", return_value="c"),
+                patch("setup_repo.sync.check_unpushed_changes", return_value=[]),
             ):
                 # 3. 同期実行
                 result = sync_repositories(sample_config, dry_run=False)
@@ -142,6 +145,9 @@ class TestFullWorkflow:
                 patch("pathlib.Path.exists", return_value=True),
                 patch("pathlib.Path.mkdir"),
                 patch("setup_repo.sync.ProcessLock", return_value=Mock(acquire=Mock(return_value=True))),
+                # stdin読み取り問題を回避するためprompt_user_actionをモック化
+                patch("setup_repo.sync.prompt_user_action", return_value="c"),
+                patch("setup_repo.sync.check_unpushed_changes", return_value=[]),
             ):
                 result = sync_repositories(sample_config, dry_run=False)
 
