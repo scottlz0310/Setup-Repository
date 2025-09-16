@@ -140,7 +140,9 @@ class QualityTrendManager:
             )
 
         # 指定期間内のデータを抽出
-        cutoff_date = datetime.now() - timedelta(days=days)
+        from datetime import timezone
+
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
         recent_points = [
             point
             for point in data_points

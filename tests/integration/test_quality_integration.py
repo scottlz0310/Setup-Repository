@@ -28,7 +28,7 @@ class TestQualityIntegration:
                 test_passed=18,
                 test_failed=1,
                 security_vulnerabilities=0,
-                timestamp="2024-01-01T00:00:00",
+                timestamp="2024-01-01T00:00:00Z",
                 commit_hash="abc12345",
             )
 
@@ -76,6 +76,10 @@ class TestQualityIntegration:
             trend_manager = QualityTrendManager(project_root / "trend-data.json")
 
             # 複数のメトリクスデータを作成（改善傾向）
+            from datetime import datetime, timezone
+
+            base_time = datetime(2024, 1, 1, tzinfo=timezone.utc)
+
             metrics_data = [
                 QualityMetrics(
                     ruff_issues=5,
@@ -84,7 +88,7 @@ class TestQualityIntegration:
                     test_passed=15,
                     test_failed=2,
                     security_vulnerabilities=1,
-                    timestamp=f"2024-01-0{i + 1}T00:00:00",
+                    timestamp=(base_time.replace(day=i + 1)).isoformat(),
                     commit_hash=f"commit{i}",
                 )
                 for i in range(5)
@@ -204,6 +208,9 @@ class TestQualityIntegration:
             trend_manager = QualityTrendManager(project_root / "trend-data.json")
 
             # 品質低下のシナリオを作成
+            from datetime import datetime, timezone
+
+            base_time = datetime(2024, 1, 1, tzinfo=timezone.utc)
 
             # 最初は良好な状態
             good_metrics = QualityMetrics(
@@ -213,7 +220,7 @@ class TestQualityIntegration:
                 test_passed=20,
                 test_failed=0,
                 security_vulnerabilities=0,
-                timestamp="2024-01-01T00:00:00",
+                timestamp=base_time.isoformat(),
                 commit_hash="good_commit",
             )
             trend_manager.add_data_point(good_metrics)
@@ -227,7 +234,7 @@ class TestQualityIntegration:
                     test_passed=20 - i,  # 19, 18, 17
                     test_failed=i,  # 1, 2, 3
                     security_vulnerabilities=1 if i >= 2 else 0,  # 2回目から脆弱性
-                    timestamp=f"2024-01-0{i + 1}T00:00:00",
+                    timestamp=(base_time.replace(day=i + 1)).isoformat(),
                     commit_hash=f"bad_commit_{i}",
                 )
                 trend_manager.add_data_point(degraded_metrics)
@@ -253,10 +260,14 @@ class TestQualityIntegration:
 
             # 最初のマネージャーでデータを保存
             manager1 = QualityTrendManager(trend_file)
+            from datetime import datetime, timezone
+
+            base_time = datetime(2024, 1, 1, tzinfo=timezone.utc)
+
             metrics1 = QualityMetrics(
                 ruff_issues=1,
                 test_coverage=85.0,
-                timestamp="2024-01-01T00:00:00",
+                timestamp=base_time.isoformat(),
                 commit_hash="commit1",
             )
             manager1.add_data_point(metrics1)
@@ -273,7 +284,7 @@ class TestQualityIntegration:
             metrics2 = QualityMetrics(
                 ruff_issues=0,
                 test_coverage=90.0,
-                timestamp="2024-01-02T00:00:00",
+                timestamp=(base_time.replace(day=2)).isoformat(),
                 commit_hash="commit2",
             )
             manager2.add_data_point(metrics2)

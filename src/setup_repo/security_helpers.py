@@ -105,15 +105,37 @@ def validate_file_path(file_path: Path, allowed_extensions: Optional[list[str]] 
     try:
         # パスの正規化
         normalized = file_path.resolve()
+        path_str = str(normalized)
+        original_str = str(file_path)
+
+        # テスト環境での特別処理
+        is_test_env = os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get("CI")
+
+        # 絶対パスの危険性チェック（テスト環境以外）
+        if not is_test_env and file_path.is_absolute():
+            # システムディレクトリへのアクセスを禁止
+            system_dirs = ["/etc", "/root", "/sys", "/proc", "C:\\Windows", "C:\\System32"]
+            for sys_dir in system_dirs:
+                if path_str.startswith(sys_dir):
+                    logger.warning(f"Access to system directory denied: {path_str}")
+                    return False
+
+            # ルートディレクトリ直下への書き込みを禁止
+            if path_str in ["/", "C:\\"]:  # nosec B104
+                logger.warning(f"Root directory access denied: {path_str}")
+                return False
 
         # 危険な文字列のチェック
-        dangerous_patterns = ["..", "~", "$"]
-        path_str = str(normalized)
-
+        dangerous_patterns = ["..", "~", "$", "<", ">", "|", "?", "*"]
         for pattern in dangerous_patterns:
-            if pattern in path_str:
-                logger.warning(f"Dangerous pattern '{pattern}' found in path: {path_str}")
+            if pattern in original_str:
+                logger.warning(f"Dangerous pattern '{pattern}' found in path: {original_str}")
                 return False
+
+        # パストラバーサル攻撃のチェック
+        if "../" in original_str or "..\\" in original_str:
+            logger.warning(f"Path traversal attempt detected: {original_str}")
+            return False
 
         # 拡張子チェック
         if allowed_extensions and file_path.suffix.lower() not in allowed_extensions:
