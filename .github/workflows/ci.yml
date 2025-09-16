@@ -370,7 +370,7 @@ jobs:
       shell: pwsh
       run: |
         Write-Host "Starting multiplatform tests (Windows environment)" -ForegroundColor Yellow
-        $ErrorActionPreference = "Stop"
+        $ErrorActionPreference = "Continue"
 
         # Windows固有のマルチプラットフォームテスト
         $env:CI = "true"
@@ -397,18 +397,25 @@ jobs:
         # メインテストスイートを実行
         Write-Host "Running main test suite with coverage..." -ForegroundColor Cyan
         & uv run pytest tests/ --cov=src/setup_repo --cov-report=term-missing --cov-report=html --cov-fail-under=80 -v --tb=short
-        $testExitCode = $LASTEXITCODE
-
-        if ($testExitCode -eq 0) {
-          Write-Host "All tests completed successfully" -ForegroundColor Green
-        } else {
-          Write-Host "Tests failed with exit code: $testExitCode" -ForegroundColor Red
-          $exitCode = $testExitCode
+        if ($LASTEXITCODE -ne 0) {
+          Write-Host "Tests failed with exit code: $LASTEXITCODE" -ForegroundColor Red
+          $exitCode = $LASTEXITCODE
         }
 
-        # 最終結果を出力して終了
+        # 最終結果を出力
+        if ($exitCode -eq 0) {
+          Write-Host "All tests completed successfully" -ForegroundColor Green
+        } else {
+          Write-Host "Tests failed with exit code: $exitCode" -ForegroundColor Red
+        }
+
         Write-Host "Final exit code: $exitCode" -ForegroundColor $(if ($exitCode -eq 0) { 'Green' } else { 'Red' })
-        exit $exitCode
+
+        # 明示的に終了コードを設定
+        if ($exitCode -ne 0) {
+          $host.SetShouldExit($exitCode)
+          exit $exitCode
+        }
 
     - name: Run multiplatform tests (Unix)
       if: runner.os != 'Windows'
@@ -463,15 +470,15 @@ jobs:
       shell: pwsh
       run: |
         Write-Host "Running platform diagnostics (Windows environment)" -ForegroundColor Yellow
-        $ErrorActionPreference = "Stop"
+        $ErrorActionPreference = "Continue"
 
         & uv run python scripts/ci-platform-diagnostics.py
         if ($LASTEXITCODE -ne 0) {
           Write-Host "Platform diagnostics failed with exit code: $LASTEXITCODE" -ForegroundColor Red
+          $host.SetShouldExit($LASTEXITCODE)
           exit $LASTEXITCODE
         }
         Write-Host "Platform diagnostics completed successfully" -ForegroundColor Green
-        exit 0
 
     - name: Run platform diagnostics (Unix)
       if: runner.os != 'Windows'
