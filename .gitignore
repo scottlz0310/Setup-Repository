@@ -62,6 +62,11 @@ test-results.xml
 # Security tools
 .bandit/
 .safety/
+.safety-*
+.safety-project.ini
+*.safety-cache
+safety-cache/
+safety-report.*
 
 # Package managers
 uv.lock

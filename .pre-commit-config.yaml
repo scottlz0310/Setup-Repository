@@ -41,12 +41,10 @@ repos:
       - id: end-of-file-fixer
         name: "ファイル末尾修正"
         description: "ファイル末尾に改行を追加"
-        exclude: '\.safety-project\.ini$'
       # 行末空白文字の削除
       - id: trailing-whitespace
         name: "行末空白削除"
         description: "行末の不要な空白文字を削除"
-        exclude: '\.safety-project\.ini$'
       # YAML構文チェック
       - id: check-yaml
         name: "YAML構文チェック"
@@ -87,7 +85,7 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
-        stages: [pre-push]
+        stages: [pre-commit]
 
       - id: coverage-check
         name: "カバレッジ品質ゲート"
