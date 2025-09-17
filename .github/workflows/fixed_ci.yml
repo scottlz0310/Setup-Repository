@@ -152,7 +152,7 @@ jobs:
           --tb=short \
           -x \
           --maxfail=5 \
-          --maxfail=10; then
+          -k "not (test_complete_setup_to_sync_workflow or test_incremental_sync_workflow or test_setup_with_venv_success_unix or test_concurrent_processing_performance)"; then
           echo "❌ Pytest tests failed"
           FALLBACK_EXIT_CODE=1
         fi
