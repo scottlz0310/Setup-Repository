@@ -1,417 +1,695 @@
-name: Security Scan
+name: Security Management
 
-run-name: "Security Scan - ${{ github.event_name == 'schedule' && 'Scheduled' || github.event_name == 'pull_request' && format('PR #{0}', github.event.number) || github.ref_name }}"
+run-name: "Security Management - ${{ github.event_name == 'schedule' && (github.event.schedule == '0 2 * * *' && 'Daily Scan' || github.event.schedule == '0 23 * * *' && 'Security Monitor') || github.event_name == 'pull_request' && format('PR #{0}', github.event.number) || github.event_name == 'workflow_dispatch' && 'Manual' || github.ref_name }}"
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
+    types: [opened, synchronize, reopened, ready_for_review]
+  pull_request_review:
+    types: [submitted]
+  check_suite:
+    types: [completed]
   schedule:
-    # 毎日午前2時（UTC）にセキュリティスキャンを実行
-    - cron: '0 2 * * *'
+    # 毎日午前2時（UTC）- セキュリティスキャン
+    - cron: "0 2 * * *"
+    # 毎日午後11時（UTC）- セキュリティ監視
+    - cron: "0 23 * * *"
   workflow_dispatch:
+    inputs:
+      security_mode:
+        description: "セキュリティチェックモード"
+        required: false
+        default: "full"
+        type: choice
+        options:
+          - "scan"
+          - "monitor"
+          - "dependabot"
+          - "full"
+      force_check:
+        description: "強制的にセキュリティチェックを実行"
+        required: false
+        default: "false"
+        type: boolean
 
 permissions:
-  contents: read
+  contents: write
   security-events: write
   actions: read
+  pull-requests: write
+  issues: write
+  checks: read
+
+env:
+  PYTHON_VERSION: "3.11"
 
 jobs:
-  dependency-review:
-    name: Dependency Review
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-    permissions:
-      contents: read
-      pull-requests: write
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Check dependency files
-      id: check-deps
-      run: |
-        echo "Checking for dependency files..."
-        if [ -f "pyproject.toml" ]; then
-          echo "Found pyproject.toml"
-          echo "has_deps=true" >> $GITHUB_OUTPUT
-        elif [ -f "requirements.txt" ]; then
-          echo "Found requirements.txt"
-          echo "has_deps=true" >> $GITHUB_OUTPUT
-        else
-          echo "No dependency files found"
-          echo "has_deps=false" >> $GITHUB_OUTPUT
-        fi
-
-    - name: Dependency Review
-      if: steps.check-deps.outputs.has_deps == 'true'
-      uses: actions/dependency-review-action@v4
-      with:
-        fail-on-severity: moderate
-        deny-licenses: GPL-2.0, GPL-3.0, AGPL-3.0, LGPL-2.1, LGPL-3.0
-        allow-licenses: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, MPL-2.0
-        config-file: '.github/dependency-review-config.yml'
-
   security-scan:
     name: Security Vulnerability Scan
     runs-on: ubuntu-latest
-    # Safetyの有償/拡張DBを利用する場合はGitHub Secretsに SAFETY_API_KEY を登録し、ここで渡す
-    # Settings > Secrets and variables > Actions > New repository secret で作成
-    env:
-      SAFETY_API_KEY: ${{ secrets.SAFETY_API_KEY }}
+    if: |
+      github.event_name == 'push' ||
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'schedule' && github.event.schedule == '0 2 * * *') ||
+      (github.event_name == 'workflow_dispatch' && (inputs.security_mode == 'scan' || inputs.security_mode == 'full'))
+
+    outputs:
+      safety_issues: ${{ steps.security-analysis.outputs.safety_issues }}
+      bandit_high: ${{ steps.security-analysis.outputs.bandit_high }}
+      bandit_medium: ${{ steps.security-analysis.outputs.bandit_medium }}
+      secret_count: ${{ steps.security-analysis.outputs.secret_count }}
+      license_violations: ${{ steps.security-analysis.outputs.license_violations }}
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-    - name: Install uv
-      uses: astral-sh/setup-uv@v3
-      with:
-        version: "latest"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
 
-    - name: Set up Python
-      run: uv python install 3.11
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
 
-    - name: Create virtual environment
-      run: uv venv --python 3.11
+      - name: Create virtual environment
+        run: uv venv --python ${{ env.PYTHON_VERSION }}
 
-    - name: Install dependencies
-      run: uv sync --dev
+      - name: Install dependencies
+        run: uv sync --dev
 
-    - name: Install security tools
-      run: |
-        uv pip install safety bandit
-        # Semgrepは除外（LGPLライセンスのため）
+      - name: Install security tools
+        run: |
+          uv pip install safety bandit pip-licenses
 
-    - name: Run Safety check for known vulnerabilities
-      run: |
-        echo "=== Safety Check ==="
-        if [ -n "${SAFETY_API_KEY}" ]; then
-          echo "Safety API Key detected (値はマスクされます)"
-        else
-          echo "Safety API Key not set (無料/公開DBモード)"
-        fi
-        # Safetyスキャンを実行（エラー許容）
-        if uv run safety scan --output json --save-as safety-report.json; then
-          echo "✅ SafetyスキャンのJSON出力が成功しました"
-        else
-          echo "⚠️ SafetyスキャンのJSON出力が失敗しました（継続）"
-          echo '{}' > safety-report.json  # 空のレポートを作成
-        fi
+      - name: Run comprehensive security analysis
+        id: security-analysis
+        env:
+          SAFETY_API_KEY: ${{ secrets.SAFETY_API_KEY }}
+        run: |
+          echo "🔍 包括的セキュリティ分析を実行中..."
 
-        if uv run safety scan --output screen; then
-          echo "✅ Safetyスキャンのスクリーン出力が成功しました"
-        else
-          echo "⚠️ Safetyスキャンのスクリーン出力が失敗しました（継続）"
-        fi
-
-    - name: Run Bandit security linter
-      run: |
-        echo "=== Bandit Security Linter ==="
-        # Banditスキャンを実行（エラー許容）
-        if uv run bandit -r src/ -f json -o bandit-report.json; then
-          echo "✅ BanditスキャンのJSON出力が成功しました"
-        else
-          echo "⚠️ BanditスキャンのJSON出力が失敗しました（継続）"
-          echo '{"results": []}' > bandit-report.json  # 空のレポートを作成
-        fi
-
-        if uv run bandit -r src/ -f txt; then
-          echo "✅ Banditスキャンのテキスト出力が成功しました"
-        else
-          echo "⚠️ Banditスキャンのテキスト出力が失敗しました（継続）"
-        fi
-
-    - name: Run Semgrep security analysis (optional)
-      run: |
-        echo "=== Semgrep Security Analysis ==="
-        echo "Semgrepはスキップされました（LGPLライセンスのため）"
-        echo "代わりにCodeQLを使用してセキュリティ分析を実行します"
-
-    - name: Upload security scan results
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: security-scan-results
-        path: |
-          safety-report.json
-          bandit-report.json
-          semgrep-report.json
-
-    - name: Check for critical vulnerabilities
-      run: |
-        echo "=== Critical Vulnerability Check ==="
-
-        # Safety結果をチェック
-        if [ -f safety-report.json ]; then
-          SAFETY_ISSUES=$(jq '.vulnerabilities | length' safety-report.json 2>/dev/null || echo "0")
-          echo "Safety found $SAFETY_ISSUES vulnerabilities"
-          if [ "$SAFETY_ISSUES" -gt 0 ]; then
-            echo "::warning::Safety found $SAFETY_ISSUES known vulnerabilities"
-            jq -r '.vulnerabilities[] | "- \(.package_name // "unknown") \(.installed_version // "unknown"): \(.vulnerability.advisory // .advisory // "No advisory")"' safety-report.json || true
+          # Safety check for known vulnerabilities
+          echo "=== Safety Check ==="
+          if [ -n "${SAFETY_API_KEY}" ]; then
+            echo "Safety API Key detected"
+          else
+            echo "Safety API Key not set (free mode)"
           fi
-        fi
 
-        # Bandit結果をチェック
-        if [ -f bandit-report.json ]; then
+          if uv run safety scan --output json --save-as safety-report.json; then
+            echo "✅ Safetyスキャン成功"
+          else
+            echo "⚠️ Safetyスキャン失敗（継続）"
+            echo '{"vulnerabilities": []}' > safety-report.json
+          fi
+
+          # Bandit security linter
+          echo "=== Bandit Security Linter ==="
+          if uv run bandit -r src/ -f json -o bandit-report.json; then
+            echo "✅ Banditスキャン成功"
+          else
+            echo "⚠️ Banditスキャン失敗（継続）"
+            echo '{"results": []}' > bandit-report.json
+          fi
+
+          # TruffleHog secret scan
+          echo "=== TruffleHog Secret Scan ==="
+          curl -sSfL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/scripts/install.sh | sh -s -- -b /usr/local/bin
+
+          if trufflehog git file://. --json --output trufflehog-report.json; then
+            echo "✅ TruffleHogスキャン成功"
+          else
+            echo "⚠️ TruffleHogスキャン失敗（継続）"
+            echo '[]' > trufflehog-report.json
+          fi
+
+          # License compliance check
+          echo "=== License Compliance Check ==="
+          if uv run pip-licenses --format=json --output-file=licenses-report.json; then
+            echo "✅ ライセンスチェック成功"
+          else
+            echo "⚠️ ライセンスチェック失敗（継続）"
+            echo '[]' > licenses-report.json
+          fi
+
+          # Analyze results
+          SAFETY_ISSUES=$(jq '.vulnerabilities | length' safety-report.json 2>/dev/null || echo "0")
           BANDIT_HIGH=$(jq '[.results[] | select(.issue_severity == "HIGH")] | length' bandit-report.json 2>/dev/null || echo "0")
           BANDIT_MEDIUM=$(jq '[.results[] | select(.issue_severity == "MEDIUM")] | length' bandit-report.json 2>/dev/null || echo "0")
-          echo "Bandit found $BANDIT_HIGH high severity and $BANDIT_MEDIUM medium severity issues"
-          if [ "$BANDIT_HIGH" -gt 0 ]; then
-            echo "::error::Bandit found $BANDIT_HIGH high severity security issues"
-            exit 1
-          elif [ "$BANDIT_MEDIUM" -gt 3 ]; then
-            echo "::warning::Bandit found $BANDIT_MEDIUM medium severity security issues"
-          fi
-        fi
-
-        # Semgrep結果をチェック（スキップ）
-        echo "Semgrepチェックはスキップされました（LGPLライセンスのため）"
-
-  codeql-analysis:
-    name: CodeQL Analysis
-    runs-on: ubuntu-latest
-
-    strategy:
-      fail-fast: false
-      matrix:
-        language: [ 'python' ]
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Initialize CodeQL
-      uses: github/codeql-action/init@v3
-      with:
-        languages: ${{ matrix.language }}
-        queries: security-extended,security-and-quality
-
-    - name: Install uv
-      uses: astral-sh/setup-uv@v3
-      with:
-        version: "latest"
-
-    - name: Set up Python
-      run: uv python install 3.11
-
-    - name: Create virtual environment
-      run: uv venv --python 3.11
-
-    - name: Install dependencies
-      run: uv sync --dev
-
-    - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v3
-      with:
-        category: "/language:${{matrix.language}}"
-
-  secret-scan:
-    name: Secret Scanning
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-
-    - name: Install TruffleHog
-      run: |
-        curl -sSfL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/scripts/install.sh | sh -s -- -b /usr/local/bin
-
-    - name: Run TruffleHog secret scan
-      run: |
-        echo "=== TruffleHog Secret Scan ==="
-        # TruffleHogシークレットスキャンを実行（エラー許容）
-        if trufflehog git file://. --json --output trufflehog-report.json; then
-          echo "✅ TruffleHogシークレットスキャンのJSON出力が成功しました"
-        else
-          echo "⚠️ TruffleHogシークレットスキャンのJSON出力が失敗しました（継続）"
-          echo '[]' > trufflehog-report.json  # 空のレポートを作成
-        fi
-
-        if trufflehog git file://.; then
-          echo "✅ TruffleHogシークレットスキャンのスクリーン出力が成功しました"
-        else
-          echo "⚠️ TruffleHogシークレットスキャンのスクリーン出力が失敗しました（継続）"
-        fi
-
-    - name: Upload secret scan results
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: secret-scan-results
-        path: trufflehog-report.json
-
-    - name: Check for secrets
-      run: |
-        if [ -f trufflehog-report.json ]; then
           SECRET_COUNT=$(jq '. | length' trufflehog-report.json 2>/dev/null || echo "0")
-          echo "TruffleHog found $SECRET_COUNT potential secrets"
-          if [ "$SECRET_COUNT" -gt 0 ]; then
-            echo "::error::TruffleHog found $SECRET_COUNT potential secrets in the repository"
-            jq -r '.[] | "- \(.DetectorName): \(.Raw[:50])..."' trufflehog-report.json || true
-            exit 1
-          fi
-        fi
 
-  license-check:
-    name: License Compliance Check
+          # License violations
+          FORBIDDEN_LICENSES=$(jq -r '.[] | select(.License | test("GPL|AGPL|LGPL"; "i")) | .Name' licenses-report.json 2>/dev/null | wc -l || echo "0")
+
+          echo "safety_issues=$SAFETY_ISSUES" >> $GITHUB_OUTPUT
+          echo "bandit_high=$BANDIT_HIGH" >> $GITHUB_OUTPUT
+          echo "bandit_medium=$BANDIT_MEDIUM" >> $GITHUB_OUTPUT
+          echo "secret_count=$SECRET_COUNT" >> $GITHUB_OUTPUT
+          echo "license_violations=$FORBIDDEN_LICENSES" >> $GITHUB_OUTPUT
+
+          echo "📊 セキュリティ分析結果:"
+          echo "  Safety脆弱性: $SAFETY_ISSUES 件"
+          echo "  Bandit高リスク: $BANDIT_HIGH 件"
+          echo "  Bandit中リスク: $BANDIT_MEDIUM 件"
+          echo "  潜在的シークレット: $SECRET_COUNT 件"
+          echo "  ライセンス違反: $FORBIDDEN_LICENSES 件"
+
+      - name: Run dependency review
+        if: github.event_name == 'pull_request'
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: moderate
+          deny-licenses: GPL-2.0, GPL-3.0, AGPL-3.0, LGPL-2.1, LGPL-3.0
+          allow-licenses: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, MPL-2.0
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: python
+          queries: security-extended,security-and-quality
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:python"
+
+      - name: Generate security summary
+        run: |
+          echo "📊 セキュリティサマリー生成中..."
+
+          cat > security-summary.md << 'EOF'
+          # 🔒 セキュリティスキャン結果
+
+          ## 実行日時
+          EOF
+
+          echo "$(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> security-summary.md
+          echo "" >> security-summary.md
+
+          echo "## 脆弱性スキャン結果" >> security-summary.md
+          echo "" >> security-summary.md
+          echo "- **Safety**: ${{ steps.security-analysis.outputs.safety_issues }} 件の既知の脆弱性" >> security-summary.md
+          echo "- **Bandit**: ${{ steps.security-analysis.outputs.bandit_high }} 件の高リスク、${{ steps.security-analysis.outputs.bandit_medium }} 件の中リスク" >> security-summary.md
+          echo "- **TruffleHog**: ${{ steps.security-analysis.outputs.secret_count }} 件の潜在的なシークレット" >> security-summary.md
+          echo "- **ライセンス**: ${{ steps.security-analysis.outputs.license_violations }} 件の違反" >> security-summary.md
+          echo "" >> security-summary.md
+
+          # 総合判定
+          TOTAL_CRITICAL=$((${{ steps.security-analysis.outputs.safety_issues }} + ${{ steps.security-analysis.outputs.bandit_high }} + ${{ steps.security-analysis.outputs.secret_count }} + ${{ steps.security-analysis.outputs.license_violations }}))
+
+          if [ "$TOTAL_CRITICAL" -eq 0 ]; then
+            echo "✅ **総合判定**: セキュリティ問題は検出されませんでした" >> security-summary.md
+          elif [ "$TOTAL_CRITICAL" -le 3 ]; then
+            echo "⚠️ **総合判定**: 軽微なセキュリティ問題が検出されました" >> security-summary.md
+          else
+            echo "❌ **総合判定**: 重大なセキュリティ問題が検出されました" >> security-summary.md
+          fi
+
+      - name: Upload security artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-scan-results-${{ github.sha }}
+          path: |
+            safety-report.json
+            bandit-report.json
+            trufflehog-report.json
+            licenses-report.json
+            security-summary.md
+          retention-days: 90
+
+      - name: Check for critical vulnerabilities
+        run: |
+          echo "🚨 重要な脆弱性チェック中..."
+
+          CRITICAL_ISSUES=0
+
+          # Safety結果をチェック
+          if [ "${{ steps.security-analysis.outputs.safety_issues }}" -gt 0 ]; then
+            echo "::warning::Safety found ${{ steps.security-analysis.outputs.safety_issues }} known vulnerabilities"
+            CRITICAL_ISSUES=$((CRITICAL_ISSUES + 1))
+          fi
+
+          # Bandit高リスクをチェック
+          if [ "${{ steps.security-analysis.outputs.bandit_high }}" -gt 0 ]; then
+            echo "::error::Bandit found ${{ steps.security-analysis.outputs.bandit_high }} high severity security issues"
+            CRITICAL_ISSUES=$((CRITICAL_ISSUES + 1))
+          fi
+
+          # シークレット検出をチェック
+          if [ "${{ steps.security-analysis.outputs.secret_count }}" -gt 0 ]; then
+            echo "::error::TruffleHog found ${{ steps.security-analysis.outputs.secret_count }} potential secrets"
+            CRITICAL_ISSUES=$((CRITICAL_ISSUES + 1))
+          fi
+
+          # ライセンス違反をチェック
+          if [ "${{ steps.security-analysis.outputs.license_violations }}" -gt 0 ]; then
+            echo "::error::Found ${{ steps.security-analysis.outputs.license_violations }} license violations"
+            CRITICAL_ISSUES=$((CRITICAL_ISSUES + 1))
+          fi
+
+          if [ "$CRITICAL_ISSUES" -gt 0 ]; then
+            echo "❌ $CRITICAL_ISSUES 件の重要なセキュリティ問題が検出されました"
+            exit 1
+          else
+            echo "✅ 重要なセキュリティ問題は検出されませんでした"
+          fi
+
+  dependabot-auto-merge:
+    name: Dependabot Auto-merge
     runs-on: ubuntu-latest
+    if: |
+      github.actor == 'dependabot[bot]' &&
+      (github.event_name == 'pull_request' ||
+       github.event_name == 'pull_request_review' ||
+       github.event_name == 'check_suite' ||
+       (github.event_name == 'workflow_dispatch' && (inputs.security_mode == 'dependabot' || inputs.security_mode == 'full')))
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
 
-    - name: Install uv
-      uses: astral-sh/setup-uv@v3
-      with:
-        version: "latest"
+      - name: Get Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
 
-    - name: Set up Python
-      run: uv python install 3.11
+      - name: Analyze update type and security impact
+        id: security-check
+        run: |
+          echo "=== Dependabot更新分析 ==="
+          echo "依存関係: ${{ steps.metadata.outputs.dependency-names }}"
+          echo "更新タイプ: ${{ steps.metadata.outputs.update-type }}"
+          echo "アラート状態: ${{ steps.metadata.outputs.alert-state }}"
 
-    - name: Create virtual environment
-      run: uv venv --python 3.11
+          is_security_update=false
+          auto_merge_eligible=false
 
-    - name: Install dependencies
-      run: uv sync --dev
-
-    - name: Install license checker
-      run: uv pip install pip-licenses
-
-    - name: Check licenses
-      run: |
-        echo "=== License Compliance Check ==="
-        # ライセンスチェックを実行（エラー許容）
-        if uv run pip-licenses --format=json --output-file=licenses-report.json; then
-          echo "✅ ライセンスチェックのJSON出力が成功しました"
-        else
-          echo "⚠️ ライセンスチェックのJSON出力が失敗しました（継続）"
-          echo '[]' > licenses-report.json  # 空のレポートを作成
-        fi
-
-        if uv run pip-licenses --format=plain; then
-          echo "✅ ライセンスチェックのプレーン出力が成功しました"
-        else
-          echo "⚠️ ライセンスチェックのプレーン出力が失敗しました（継続）"
-        fi
-
-    - name: Upload license report
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: license-report
-        path: licenses-report.json
-
-    - name: Validate license compliance
-      run: |
-        echo "=== License Validation ==="
-        # 許可されたライセンスのリスト
-        ALLOWED_LICENSES="MIT|Apache Software License|BSD License|ISC License|Mozilla Public License 2.0|Python Software Foundation License"
-
-        if [ -f licenses-report.json ]; then
-          # 禁止されたライセンスをチェック
-          FORBIDDEN_LICENSES=$(jq -r '.[] | select(.License | test("GPL|AGPL|LGPL"; "i")) | "\(.Name): \(.License)"' licenses-report.json || true)
-
-          if [ -n "$FORBIDDEN_LICENSES" ]; then
-            echo "::error::Found packages with forbidden licenses:"
-            echo "$FORBIDDEN_LICENSES"
-            exit 1
+          # セキュリティ更新の判定
+          if [[ "${{ steps.metadata.outputs.alert-state }}" == "OPEN" ]] || \
+             [[ "${{ steps.metadata.outputs.alert-state }}" == "FIXED" ]]; then
+            is_security_update=true
+            echo "🚨 セキュリティ更新が検出されました"
           fi
 
-          # 不明なライセンスをチェック
-          UNKNOWN_LICENSES=$(jq -r '.[] | select(.License == "UNKNOWN" or .License == "") | "\(.Name): \(.License)"' licenses-report.json || true)
+          # 更新タイプによる自動マージ判定
+          case "${{ steps.metadata.outputs.update-type }}" in
+            "version-update:semver-patch"|"version-update:semver-minor")
+              auto_merge_eligible=true
+              echo "✅ パッチ/マイナー更新: 自動マージ対象"
+              ;;
+            "version-update:semver-major")
+              auto_merge_eligible=false
+              echo "⚠️ メジャー更新: 手動レビュー必要"
+              ;;
+          esac
 
-          if [ -n "$UNKNOWN_LICENSES" ]; then
-            echo "::warning::Found packages with unknown licenses:"
-            echo "$UNKNOWN_LICENSES"
+          # セキュリティ更新は優先的に自動マージ
+          if [[ "$is_security_update" == "true" ]]; then
+            auto_merge_eligible=true
+            echo "🔒 セキュリティ更新のため自動マージを有効化"
           fi
-        fi
+
+          echo "is-security=$is_security_update" >> $GITHUB_OUTPUT
+          echo "auto-merge=$auto_merge_eligible" >> $GITHUB_OUTPUT
+
+      - name: Setup UV environment for testing
+        if: steps.security-check.outputs.auto-merge == 'true'
+        run: |
+          uv python install ${{ env.PYTHON_VERSION }}
+          uv venv --python ${{ env.PYTHON_VERSION }}
+          uv sync --dev
+
+      - name: Run compatibility tests
+        if: steps.security-check.outputs.auto-merge == 'true'
+        run: |
+          echo "=== 依存関係互換性テスト実行 ==="
+
+          uv run python -c "
+          import sys
+          try:
+              import setup_repo
+              print('✅ setup_repo モジュールのインポート成功')
+          except ImportError as e:
+              print(f'❌ setup_repo モジュールのインポート失敗: {e}')
+              sys.exit(1)
+          "
+
+      - name: Wait for required checks
+        if: steps.security-check.outputs.auto-merge == 'true'
+        uses: lewagon/wait-on-check-action@v1.3.4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          check-name: 'Security Vulnerability Scan'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 30
+          allowed-conclusions: success,neutral
+
+      - name: Auto-approve and merge PR
+        if: steps.security-check.outputs.auto-merge == 'true'
+        run: |
+          if [[ "${{ steps.security-check.outputs.is-security }}" == "true" ]]; then
+            approval_message="🔒 **セキュリティ更新の自動承認**
+
+            このPRはセキュリティ脆弱性の修正を含むため、自動承認されました。
+
+            **更新内容:**
+            - 依存関係: ${{ steps.metadata.outputs.dependency-names }}
+            - 更新タイプ: ${{ steps.metadata.outputs.update-type }}
+
+            CIチェック通過後に自動マージされます。"
+          else
+            approval_message="✅ **パッチ/マイナー更新の自動承認**
+
+            このPRは安全な更新のため、自動承認されました。
+
+            **更新内容:**
+            - 依存関係: ${{ steps.metadata.outputs.dependency-names }}
+            - 更新タイプ: ${{ steps.metadata.outputs.update-type }}
+
+            CIチェック通過後に自動マージされます。"
+          fi
+
+          gh pr review --approve "${{ github.event.pull_request.number }}" --body "$approval_message"
+
+          gh pr merge --auto --squash "${{ github.event.pull_request.number }}" \
+            --subject "deps: ${{ steps.metadata.outputs.dependency-names }}" \
+            --body "Dependabotによる自動更新
+
+          **更新タイプ:** ${{ steps.metadata.outputs.update-type }}
+          **セキュリティ更新:** ${{ steps.security-check.outputs.is-security }}
+
+          このPRは自動テストとセキュリティチェックに合格したため、自動マージされました。"
+
+          echo "✅ 自動マージが有効化されました"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Handle manual review cases
+        if: steps.security-check.outputs.auto-merge == 'false'
+        run: |
+          echo "=== 手動レビュー必要な更新の分析 ==="
+
+          if [[ "${{ steps.security-check.outputs.is-security }}" == "true" ]]; then
+            comment_body="🚨 **セキュリティ更新（メジャーバージョン）**
+
+            この更新はセキュリティ脆弱性の修正を含みますが、メジャーバージョンアップのため手動レビューが必要です。
+
+            **⚠️ 緊急度: HIGH - セキュリティ脆弱性あり**
+
+            **更新内容:**
+            - 依存関係: ${{ steps.metadata.outputs.dependency-names }}
+            - 更新タイプ: ${{ steps.metadata.outputs.update-type }}
+
+            セキュリティ脆弱性のため、可能な限り迅速にレビューしてマージしてください。"
+
+            gh pr edit "${{ github.event.pull_request.number }}" \
+              --add-label "security,high-priority,breaking-change"
+          else
+            comment_body="⚠️ **メジャーバージョン更新検出**
+
+            この更新はメジャーバージョンアップのため、手動レビューが必要です。
+
+            **更新内容:**
+            - 依存関係: ${{ steps.metadata.outputs.dependency-names }}
+            - 更新タイプ: ${{ steps.metadata.outputs.update-type }}
+
+            問題がなければ手動でマージしてください。"
+
+            gh pr edit "${{ github.event.pull_request.number }}" \
+              --add-label "breaking-change,manual-review"
+          fi
+
+          gh pr comment "${{ github.event.pull_request.number }}" --body "$comment_body"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  security-monitor:
+    name: Security Status Monitor
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'schedule' && github.event.schedule == '0 23 * * *') ||
+      (github.event_name == 'workflow_dispatch' && (inputs.security_mode == 'monitor' || inputs.security_mode == 'full' || inputs.force_check == 'true'))
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: Create virtual environment
+        run: uv venv --python ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: uv sync --dev
+
+      - name: Check security advisories
+        id: security-advisories
+        run: |
+          echo "=== セキュリティアドバイザリチェック ==="
+
+          advisories=$(gh api repos/:owner/:repo/security-advisories --jq '.[] | select(.state == "published")' || echo "")
+
+          if [[ -n "$advisories" ]]; then
+            echo "open-advisories=true" >> $GITHUB_OUTPUT
+            echo "🚨 オープンなセキュリティアドバイザリが見つかりました"
+          else
+            echo "open-advisories=false" >> $GITHUB_OUTPUT
+            echo "✅ オープンなセキュリティアドバイザリはありません"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check pending Dependabot PRs
+        id: pending-prs
+        run: |
+          echo "=== 保留中のDependabot PRチェック ==="
+
+          pending_prs=$(gh pr list --author "dependabot[bot]" --state open --json number,title,labels)
+          security_prs=$(echo "$pending_prs" | jq '[.[] | select(.labels[]?.name == "security")]')
+
+          pr_count=$(echo "$pending_prs" | jq 'length')
+          security_pr_count=$(echo "$security_prs" | jq 'length')
+
+          echo "pending-pr-count=$pr_count" >> $GITHUB_OUTPUT
+          echo "security-pr-count=$security_pr_count" >> $GITHUB_OUTPUT
+
+          echo "保留中のDependabot PR: $pr_count 件"
+          echo "セキュリティ関連PR: $security_pr_count 件"
+
+          if [[ "$security_pr_count" -gt 0 ]]; then
+            echo "security-prs-pending=true" >> $GITHUB_OUTPUT
+            echo "🔴 セキュリティ関連のPRが保留中です"
+          else
+            echo "security-prs-pending=false" >> $GITHUB_OUTPUT
+            echo "✅ セキュリティ関連のPRはありません"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run vulnerability scan
+        id: vulnerability-scan
+        run: |
+          echo "=== 依存関係脆弱性スキャン ==="
+
+          if command -v safety &> /dev/null; then
+            safety_result=$(uv run safety check --json || echo "[]")
+            vulnerability_count=$(echo "$safety_result" | jq 'length')
+          else
+            vulnerability_count=0
+          fi
+
+          echo "vulnerability-count=$vulnerability_count" >> $GITHUB_OUTPUT
+
+          if [[ "$vulnerability_count" -gt 0 ]]; then
+            echo "vulnerabilities-found=true" >> $GITHUB_OUTPUT
+            echo "🚨 $vulnerability_count 件の脆弱性が見つかりました"
+          else
+            echo "vulnerabilities-found=false" >> $GITHUB_OUTPUT
+            echo "✅ 脆弱性は見つかりませんでした"
+          fi
+
+      - name: Generate security status report
+        run: |
+          echo "=== セキュリティ状況レポート生成 ==="
+
+          current_date=$(date '+%Y-%m-%d %H:%M:%S UTC')
+
+          cat > security-status-report.md << EOF
+          # 🔒 セキュリティ状況レポート
+
+          **生成日時:** $current_date
+
+          ## 📊 現在の状況
+
+          ### セキュリティアドバイザリ
+          - オープンなアドバイザリ: ${{ steps.security-advisories.outputs.open-advisories == 'true' && '🔴 あり' || '✅ なし' }}
+
+          ### Dependabot PR
+          - 保留中のPR総数: ${{ steps.pending-prs.outputs.pending-pr-count }} 件
+          - セキュリティ関連PR: ${{ steps.pending-prs.outputs.security-pr-count }} 件
+
+          ### 依存関係脆弱性
+          - 検出された脆弱性: ${{ steps.vulnerability-scan.outputs.vulnerability-count }} 件
+
+          ## 🎯 推奨アクション
+          EOF
+
+          if [[ "${{ steps.security-advisories.outputs.open-advisories }}" == "true" ]] || \
+             [[ "${{ steps.pending-prs.outputs.security-prs-pending }}" == "true" ]] || \
+             [[ "${{ steps.vulnerability-scan.outputs.vulnerabilities-found }}" == "true" ]]; then
+            echo "" >> security-status-report.md
+            echo "⚠️ **即座の対応が必要です:**" >> security-status-report.md
+            echo "- セキュリティ関連のPRを優先的にレビュー" >> security-status-report.md
+            echo "- 脆弱性のある依存関係を更新" >> security-status-report.md
+            echo "- セキュリティテストの実行" >> security-status-report.md
+          else
+            echo "" >> security-status-report.md
+            echo "✅ **現在のセキュリティ状況は良好です:**" >> security-status-report.md
+            echo "- 定期的な監視を継続" >> security-status-report.md
+            echo "- 依存関係の最新状態を維持" >> security-status-report.md
+          fi
+
+      - name: Create or update security status issue
+        if: |
+          steps.security-advisories.outputs.open-advisories == 'true' ||
+          steps.pending-prs.outputs.security-prs-pending == 'true' ||
+          steps.vulnerability-scan.outputs.vulnerabilities-found == 'true'
+        run: |
+          echo "=== セキュリティ状況イシューの作成/更新 ==="
+
+          existing_issue=$(gh issue list --label "security-status" --state open --json number | jq -r '.[0].number // empty')
+          report_content=$(cat security-status-report.md)
+
+          if [[ -n "$existing_issue" ]]; then
+            gh issue edit "$existing_issue" --body "$report_content"
+            echo "✅ 既存のセキュリティ状況イシュー #$existing_issue を更新しました"
+          else
+            gh issue create \
+              --title "🔒 セキュリティ状況監視レポート" \
+              --body "$report_content" \
+              --label "security-status,monitoring,automated"
+            echo "✅ 新しいセキュリティ状況イシューを作成しました"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Close security status issue if all clear
+        if: |
+          steps.security-advisories.outputs.open-advisories == 'false' &&
+          steps.pending-prs.outputs.security-prs-pending == 'false' &&
+          steps.vulnerability-scan.outputs.vulnerabilities-found == 'false'
+        run: |
+          echo "=== セキュリティ状況良好 - イシューのクローズ確認 ==="
+
+          existing_issue=$(gh issue list --label "security-status" --state open --json number | jq -r '.[0].number // empty')
+
+          if [[ -n "$existing_issue" ]]; then
+            gh issue close "$existing_issue" --comment "✅ セキュリティ状況が改善されました。すべてのセキュリティ問題が解決されています。
+
+            **確認済み項目:**
+            - セキュリティアドバイザリ: なし
+            - セキュリティ関連PR: なし
+            - 依存関係脆弱性: なし
+
+            定期監視は継続されます。"
+            echo "✅ セキュリティ状況イシュー #$existing_issue をクローズしました"
+          else
+            echo "✅ セキュリティ状況は良好です（オープンなイシューなし）"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   security-summary:
     name: Security Summary
     runs-on: ubuntu-latest
-    needs: [security-scan, codeql-analysis, secret-scan, license-check]
+    needs: [security-scan, dependabot-auto-merge, security-monitor]
     if: always()
 
     steps:
-    - name: Download all artifacts
-      uses: actions/download-artifact@v4
-      with:
-        path: security-reports
+      - name: Download security artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: "*-${{ github.sha }}"
+          merge-multiple: true
+        continue-on-error: true
 
-    - name: Generate security summary
-      run: |
-        echo "# セキュリティスキャン結果サマリー" > security-summary.md
-        echo "" >> security-summary.md
-        echo "## 実行日時: $(date)" >> security-summary.md
-        echo "" >> security-summary.md
+      - name: Generate comprehensive security summary
+        run: |
+          echo "📊 包括的セキュリティサマリー生成中..."
 
-        # 各レポートの結果をサマリーに追加
-        if [ -d "security-reports/security-scan-results" ]; then
-          echo "## 脆弱性スキャン結果" >> security-summary.md
+          cat > comprehensive-security-summary.md << 'EOF'
+          # 🔒 包括的セキュリティサマリー
 
-          if [ -f "security-reports/security-scan-results/safety-report.json" ]; then
-            SAFETY_COUNT=$(jq '.vulnerabilities | length' security-reports/security-scan-results/safety-report.json 2>/dev/null || echo "0")
-            echo "- Safety: $SAFETY_COUNT 件の既知の脆弱性" >> security-summary.md
+          ## 実行日時
+          EOF
+
+          echo "$(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> comprehensive-security-summary.md
+          echo "" >> comprehensive-security-summary.md
+
+          # セキュリティスキャン結果
+          if [ -f "security-summary.md" ]; then
+            echo "## セキュリティスキャン結果" >> comprehensive-security-summary.md
+            echo "" >> comprehensive-security-summary.md
+            tail -n +3 security-summary.md >> comprehensive-security-summary.md
+            echo "" >> comprehensive-security-summary.md
           fi
 
-          if [ -f "security-reports/security-scan-results/bandit-report.json" ]; then
-            BANDIT_HIGH=$(jq '[.results[] | select(.issue_severity == "HIGH")] | length' security-reports/security-scan-results/bandit-report.json 2>/dev/null || echo "0")
-            BANDIT_MEDIUM=$(jq '[.results[] | select(.issue_severity == "MEDIUM")] | length' security-reports/security-scan-results/bandit-report.json 2>/dev/null || echo "0")
-            echo "- Bandit: $BANDIT_HIGH 件の高リスク、$BANDIT_MEDIUM 件の中リスク" >> security-summary.md
+          # セキュリティ監視結果
+          if [ -f "security-status-report.md" ]; then
+            echo "## セキュリティ監視結果" >> comprehensive-security-summary.md
+            echo "" >> comprehensive-security-summary.md
+            tail -n +3 security-status-report.md >> comprehensive-security-summary.md
           fi
 
-          if [ -f "security-reports/security-scan-results/semgrep-report.json" ]; then
-            SEMGREP_ERRORS=$(jq '[.results[] | select(.extra.severity == "ERROR")] | length' security-reports/security-scan-results/semgrep-report.json 2>/dev/null || echo "0")
-            echo "- Semgrep: $SEMGREP_ERRORS 件のセキュリティエラー" >> security-summary.md
-          fi
-        fi
+      - name: Publish security summary
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            try {
+              let summary = '';
 
-        if [ -d "security-reports/secret-scan-results" ]; then
-          echo "" >> security-summary.md
-          echo "## シークレットスキャン結果" >> security-summary.md
+              if (fs.existsSync('comprehensive-security-summary.md')) {
+                summary = fs.readFileSync('comprehensive-security-summary.md', 'utf8');
+              } else if (fs.existsSync('security-summary.md')) {
+                summary = fs.readFileSync('security-summary.md', 'utf8');
+              }
 
-          if [ -f "security-reports/secret-scan-results/trufflehog-report.json" ]; then
-            SECRET_COUNT=$(jq '. | length' security-reports/secret-scan-results/trufflehog-report.json 2>/dev/null || echo "0")
-            echo "- TruffleHog: $SECRET_COUNT 件の潜在的なシークレット" >> security-summary.md
-          fi
-        fi
+              if (summary) {
+                github.rest.issues.createComment({
+                  issue_number: context.issue.number,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body: summary
+                });
+              }
+            } catch (error) {
+              console.log('セキュリティサマリーの投稿に失敗:', error);
+            }
 
-        if [ -d "security-reports/license-report" ]; then
-          echo "" >> security-summary.md
-          echo "## ライセンスチェック結果" >> security-summary.md
-
-          if [ -f "security-reports/license-report/licenses-report.json" ]; then
-            TOTAL_PACKAGES=$(jq '. | length' security-reports/license-report/licenses-report.json 2>/dev/null || echo "0")
-            echo "- 総パッケージ数: $TOTAL_PACKAGES" >> security-summary.md
-          fi
-        fi
-
-        echo "" >> security-summary.md
-        echo "詳細な結果は各ジョブのアーティファクトを確認してください。" >> security-summary.md
-
-    - name: Upload security summary
-      uses: actions/upload-artifact@v4
-      with:
-        name: security-summary
-        path: security-summary.md
-
-    - name: Comment security summary on PR
-      if: github.event_name == 'pull_request'
-      uses: actions/github-script@v7
-      with:
-        script: |
-          const fs = require('fs');
-          const summary = fs.readFileSync('security-summary.md', 'utf8');
-
-          github.rest.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: summary
-          });
+      - name: Upload comprehensive security summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: comprehensive-security-summary-${{ github.run_number }}
+          path: |
+            comprehensive-security-summary.md
+            security-status-report.md
+          retention-days: 90
