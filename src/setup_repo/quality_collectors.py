@@ -179,22 +179,9 @@ def collect_pytest_metrics(
             f"--cov-fail-under={effective_threshold}",  # カバレッジ閾値をここで設定
         ]
 
-        # pytest-json-reportプラグインが利用可能かチェック
-        try:
-            check_result = safe_subprocess(
-                ["uv", "run", "python", "-c", "import pytest_jsonreport"],
-                cwd=project_root,
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            if check_result.returncode == 0:
-                cmd.extend(["--json-report", "--json-report-file=test-report.json"])
-                logger.info("pytest-json-reportプラグインを使用してJSONレポートを生成")
-            else:
-                logger.info("pytest-json-reportプラグインが利用できません。基本レポートのみ生成")
-        except Exception:
-            logger.info("pytest-json-reportプラグインチェックに失敗。基本レポートのみ生成")
+        # pytest-json-reportプラグインのチェックを削除（依存関係に含まれているため）
+        # CI環境では依存関係が正しくインストールされていることを前提とする
+        logger.info("基本レポートのみ生成（JSON レポートは無効化）")
 
         # テストマーカーの設定
         if skip_integration_tests or unit_tests_only or is_ci:
