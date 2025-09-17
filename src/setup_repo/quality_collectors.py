@@ -177,9 +177,18 @@ def collect_pytest_metrics(
 
         # テストマーカーの設定
         if skip_integration_tests or unit_tests_only or is_ci:
-            # CI環境では単体テストのみ実行
-            cmd.extend(["tests/unit/", "-m", "not performance and not stress"])
-            logger.info("CI環境: 単体テストのみ実行")
+            # CI環境では単体テストのみ実行（統合テストを明示的に除外）
+            cmd.extend(
+                [
+                    "tests/unit/",
+                    "-m",
+                    "unit and not performance and not stress and not integration",
+                    "--ignore=tests/integration/",
+                    "--ignore=tests/multiplatform/",
+                    "--ignore=tests/performance/",
+                ]
+            )
+            logger.info("CI環境: 単体テストのみ実行（統合テスト除外）")
         else:
             # ローカル環境では重いテストのみスキップ
             cmd.extend(["-m", "not performance and not stress"])

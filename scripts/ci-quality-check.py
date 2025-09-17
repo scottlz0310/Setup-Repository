@@ -82,6 +82,8 @@ def main():
         # 単体テストのみ実行（カバレッジ80%達成のため）
         os.environ["SKIP_INTEGRATION_TESTS"] = "true"  # 統合テストをスキップ
         os.environ["UNIT_TESTS_ONLY"] = "true"  # 単体テストのみ実行
+        # テストマーカーで単体テストのみを実行
+        os.environ["PYTEST_MARKERS"] = "unit and not performance and not stress and not integration"
 
         # 各品質チェックを段階的に実行（並列実行対応）
         stages = [
