@@ -25,7 +25,8 @@ class TestPlatformDetection:
         """Windows検出テスト（実環境）."""
         result = detect_platform()
         assert result.name == "windows"
-        assert result.display_name == "Windows"
+        # CI環境では "Windows (GitHub Actions)" のように表示される
+        assert "Windows" in result.display_name
         assert len(result.package_managers) > 0
         assert result.shell in ["powershell", "cmd"]
         assert result.python_cmd in ["python", "python3"]
@@ -36,7 +37,8 @@ class TestPlatformDetection:
         """Linux検出テスト（実環境）."""
         result = detect_platform()
         assert result.name == "linux"
-        assert result.display_name == "Linux"
+        # CI環境では "Linux (GitHub Actions)" のように表示される
+        assert "Linux" in result.display_name
         assert len(result.package_managers) > 0
         assert result.shell in ["bash", "sh", "zsh"]
         assert result.python_cmd in ["python3", "python"]
@@ -47,7 +49,8 @@ class TestPlatformDetection:
         """macOS検出テスト（実環境）."""
         result = detect_platform()
         assert result.name == "macos"
-        assert result.display_name == "macOS"
+        # CI環境では "macOS (GitHub Actions)" のように表示される
+        assert "macOS" in result.display_name
         assert len(result.package_managers) > 0
         assert result.shell in ["bash", "zsh"]
         assert result.python_cmd in ["python3", "python"]
@@ -78,7 +81,7 @@ class TestPlatformDetection:
         result = _detect_windows_platform(False)
 
         assert result.name == "windows"
-        assert result.display_name == "Windows"
+        assert "Windows" in result.display_name
         assert len(result.package_managers) > 0
         # 実環境では利用可能なパッケージマネージャーが含まれる
         common_managers = ["winget", "scoop", "choco", "pip", "uv"]
@@ -93,7 +96,7 @@ class TestPlatformDetection:
         result = _detect_linux_platform(False, False)
 
         assert result.name == "linux"
-        assert result.display_name == "Linux"
+        assert "Linux" in result.display_name
         assert len(result.package_managers) > 0
         # 実環境では利用可能なパッケージマネージャーが含まれる
         common_managers = ["apt", "yum", "dnf", "pacman", "zypper", "pip", "uv"]
@@ -108,7 +111,7 @@ class TestPlatformDetection:
         result = _detect_macos_platform(False)
 
         assert result.name == "macos"
-        assert result.display_name == "macOS"
+        assert "macOS" in result.display_name
         assert len(result.package_managers) > 0
         # 実環境では利用可能なパッケージマネージャーが含まれる
         common_managers = ["brew", "port", "pip", "uv"]
