@@ -1,5 +1,7 @@
 name: Monthly Quality Review
 
+run-name: "Monthly Quality Review - ${{ github.event_name == 'schedule' && format('{0}-{1:02d}', github.run_number, github.run_attempt) || 'Manual Review' }}"
+
 on:
   schedule:
     # 毎月1日の午前9時（UTC）に実行

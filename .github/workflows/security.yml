@@ -1,5 +1,7 @@
 name: Security Scan
 
+run-name: "Security Scan - ${{ github.event_name == 'schedule' && 'Scheduled' || github.event_name == 'pull_request' && format('PR #{0}', github.event.number) || format('{0} ({1})', github.ref_name, github.sha[0:7]) }}"
+
 on:
   push:
     branches: [ main, develop ]

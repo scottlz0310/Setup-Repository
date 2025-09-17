@@ -1,5 +1,7 @@
 name: Quality Gate
 
+run-name: "Quality Gate - ${{ github.event_name == 'pull_request' && format('PR #{0}', github.event.number) || 'Manual Check' }}"
+
 on:
   pull_request:
     branches: [ main, develop ]

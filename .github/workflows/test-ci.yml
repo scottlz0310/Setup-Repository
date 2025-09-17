@@ -1,5 +1,7 @@
 name: Test CI Pipeline
 
+run-name: "Test CI Pipeline - ${{ github.event.inputs.test_type || 'basic' }} tests"
+
 on:
   workflow_dispatch:
     inputs:

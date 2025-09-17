@@ -1,5 +1,7 @@
 name: Performance Tests
 
+run-name: "Performance Tests - ${{ github.event_name == 'schedule' && 'Scheduled' || github.event_name == 'pull_request' && format('PR #{0}', github.event.number) || github.event_name == 'workflow_dispatch' && format('Manual ({0})', github.event.inputs.test_scale || 'medium') || format('{0} ({1})', github.ref_name, github.sha[0:7]) }}"
+
 on:
   push:
     branches: [ main ]

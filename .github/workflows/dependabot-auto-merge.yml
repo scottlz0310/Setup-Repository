@@ -1,5 +1,7 @@
 name: Dependabot Auto-merge
 
+run-name: "Dependabot Auto-merge - PR #${{ github.event.pull_request.number || github.event.number }} (${{ github.event.action }})"
+
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
