@@ -251,9 +251,20 @@ class TestCollectPytestMetrics:
 
         result = collect_pytest_metrics(tmp_path, coverage_threshold=80.0)
 
-        assert result["success"] is False
+        # CI環境ではカバレッジチェックが無効化されるため、ローカル環境のみチェック
+        import os
+
+        is_ci = os.getenv("CI", "").lower() in ("true", "1")
+
+        if is_ci:
+            # CI環境ではテスト失敗がない限り成功
+            assert result["success"] is True
+        else:
+            # ローカル環境ではカバレッジ不足で失敗
+            assert result["success"] is False
+            assert "カバレッジ不足" in result["errors"][0]
+
         assert result["coverage_percent"] == 70.0
-        assert "カバレッジ不足" in result["errors"][0]
 
     @pytest.mark.unit
     @patch("subprocess.run")

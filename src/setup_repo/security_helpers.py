@@ -73,8 +73,9 @@ def safe_subprocess(cmd: list[str], **kwargs) -> subprocess.CompletedProcess:
             raise FileNotFoundError(f"Executable not found: {cmd[0]}")
         cmd = [executable] + cmd[1:]
 
-    # デフォルトタイムアウト設定
-    kwargs.setdefault("timeout", 30)
+    # デフォルトタイムアウト設定（CI環境では3分に延長）
+    default_timeout = 180 if os.getenv("CI", "").lower() in ("true", "1") else 30
+    kwargs.setdefault("timeout", default_timeout)
     kwargs.setdefault("check", True)
 
     return subprocess.run(cmd, **kwargs)
