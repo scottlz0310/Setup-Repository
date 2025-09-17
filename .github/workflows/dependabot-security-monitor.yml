@@ -1,5 +1,7 @@
 name: Dependabot Security Monitor
 
+run-name: "Dependabot Security Monitor - ${{ github.event_name == 'schedule' && 'Scheduled' || github.event_name == 'workflow_dispatch' && format('Manual ({0})', github.event.inputs.force_check || 'false') || 'Triggered' }}"
+
 on:
   schedule:
     # 毎日午前8時（JST）にセキュリティ状況をチェック

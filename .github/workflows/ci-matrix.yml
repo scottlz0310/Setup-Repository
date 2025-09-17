@@ -1,5 +1,7 @@
 name: Extended CI Matrix
 
+run-name: "Extended CI Matrix - ${{ github.event_name == 'schedule' && 'Scheduled' || github.event_name == 'workflow_dispatch' && 'Manual' || format('{0} ({1})', github.ref_name, substring(github.sha, 0, 7)) }}"
+
 on:
   schedule:
     # 毎日午前2時（UTC）に実行

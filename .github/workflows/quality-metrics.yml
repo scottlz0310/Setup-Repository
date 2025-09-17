@@ -1,5 +1,7 @@
 name: Quality Metrics Collection
 
+run-name: "Quality Metrics Collection - ${{ github.event_name == 'schedule' && 'Scheduled' || github.event_name == 'pull_request' && format('PR #{0}', github.event.number) || github.event_name == 'workflow_dispatch' && 'Manual' || format('{0} ({1})', github.ref_name, substring(github.sha, 0, 7)) }}"
+
 on:
   push:
     branches: [main, develop]

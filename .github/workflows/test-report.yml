@@ -1,5 +1,7 @@
 name: Test Report
 
+run-name: "Test Report - Workflow Run #${{ github.event.workflow_run.run_number }} (${{ github.event.workflow_run.conclusion }})"
+
 on:
   workflow_run:
     workflows: ["CI/CD Pipeline"]
