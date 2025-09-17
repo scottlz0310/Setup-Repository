@@ -97,8 +97,8 @@ jobs:
         PYTEST_XDIST_WORKER_COUNT: "auto"
         CI_PLATFORM_DIAGNOSTICS: "true"
         PRE_COMMIT: "1"
-        SKIP_INTEGRATION_TESTS: "true"
-        UNIT_TESTS_ONLY: "true"
+        SKIP_INTEGRATION_TESTS: "false"
+        UNIT_TESTS_ONLY: "false"
         PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
         PYTEST_CURRENT_TEST: "1"
         PYTEST_TIMEOUT: "300"
@@ -143,7 +143,7 @@ jobs:
           --cov-report=xml \
           --cov-report=html \
           --cov-report=json \
-          --cov-fail-under=75 \
+          --cov-fail-under=80 \
           --junit-xml=test-results.xml \
           --json-report \
           --json-report-file=test-report.json \
@@ -388,7 +388,7 @@ jobs:
           --cov-report=term-missing `
           --cov-report=html `
           --cov-report=xml `
-          --cov-fail-under=75 `
+          --cov-fail-under=80 `
           --junit-xml=test-results.xml `
           -v --tb=short `
           -x --maxfail=10 `
@@ -445,7 +445,7 @@ jobs:
           --cov-report=term-missing \
           --cov-report=html \
           --cov-report=xml \
-          --cov-fail-under=75 \
+          --cov-fail-under=80 \
           --junit-xml=test-results.xml \
           -v --tb=short \
           -x --maxfail=10 \

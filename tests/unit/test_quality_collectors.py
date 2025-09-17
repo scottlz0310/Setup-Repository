@@ -313,7 +313,7 @@ class TestCollectPytestMetrics:
 
         assert result["is_ci_environment"] is True
         assert result["unit_tests_only"] is True
-        assert result["effective_threshold"] == 70.0  # CI環境では閾値が下がる
+        assert result["effective_threshold"] == 80.0  # CI環境でも80%を維持
 
     @pytest.mark.unit
     @patch("subprocess.run")

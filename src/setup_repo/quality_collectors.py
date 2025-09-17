@@ -246,25 +246,16 @@ def collect_pytest_metrics(
                 logger.warning(f"カバレッジデータ解析エラー: {e}")
                 coverage_percent = 0.0
 
-        # CI環境ではカバレッジ闾値を緩和
+        # カバレッジ閾値は常に80%を維持（単体テストのみでも達成可能）
         effective_threshold = coverage_threshold
         if is_ci and unit_tests_only:
-            # 単体テストのみの場合はカバレッジ闾値を下げる
-            effective_threshold = 70.0
-            logger.info(f"CI環境(単体テストのみ): カバレッジ闾値を{effective_threshold}%に調整")
+            logger.info(f"CI環境(単体テストのみ): カバレッジ閾値{effective_threshold}%を維持")
 
-        # テスト実行時のカバレッジチェックを無効化（CI環境でのみ）
-        if is_ci:
-            # CI環境ではテスト実行時のカバレッジチェックを無効化
-            cmd = [c for c in cmd if not c.startswith("--cov-fail-under")]
+        # カバレッジ閾値をコマンドに追加
+        cmd.append(f"--cov-fail-under={effective_threshold}")
 
-        # CI環境ではカバレッジチェックを緩和（テスト実行時のみ）
-        if is_ci:
-            # CI環境ではテスト失敗のみをチェック
-            success = result.returncode == 0 and failed == 0
-        else:
-            # ローカル環境ではカバレッジもチェック
-            success = result.returncode == 0 and failed == 0 and coverage_percent >= effective_threshold
+        # 全環境でカバレッジチェックを有効化（単体テストのみで80%達成可能）
+        success = result.returncode == 0 and failed == 0 and coverage_percent >= effective_threshold
 
         metrics_result = {
             "success": success,
