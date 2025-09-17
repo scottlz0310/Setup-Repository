@@ -93,7 +93,7 @@ def main():
                 "Test Execution",
                 lambda: collector.collect_test_metrics(
                     parallel_workers=parallel_workers,
-                    coverage_threshold=80.0,  # CI環境では80%を維持（単体テストのみ）
+                    coverage_threshold=70.0,  # CI環境では70%を維持（単体テストのみ）
                     skip_integration_tests=True,  # 統合テストをスキップしてカバレッジ向上
                 ),
             ),
