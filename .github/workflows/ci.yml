@@ -488,11 +488,11 @@ jobs:
             from src.setup_repo.platform_detector import PlatformDetector
             detector = PlatformDetector()
             info = detector.get_platform_info()
-            print(f'💻 検出されたプラットフォーム: {info.display_name}')
-            print(f'🐚 シェル: {info.shell}')
-            print(f'📦 パッケージマネージャー: {", ".join(info.package_managers)}')
+            print('💻 検出されたプラットフォーム: ' + info.display_name)
+            print('🐚 シェル: ' + info.shell)
+            print('📦 パッケージマネージャー: ' + ', '.join(info.package_managers))
         except Exception as e:
-            print(f'⚠️ プラットフォーム情報取得エラー: {e}')
+            print('⚠️ プラットフォーム情報取得エラー: ' + str(e))
             print('ℹ️ テストが成功しているため、機能は正常です')
         "
 
