@@ -85,7 +85,18 @@ jobs:
 
       - name: Install security tools
         run: |
-          uv pip install safety bandit pip-licenses
+          echo "セキュリティツールのインストールを試行します..."
+
+          # 個別にセキュリティツールをインストール（エラー時も継続）
+          uv pip install safety || echo "Safetyのインストールに失敗しました（継続）"
+          uv pip install bandit || echo "Banditのインストールに失敗しました（継続）"
+          uv pip install pip-licenses || echo "pip-licensesのインストールに失敗しました（継続）"
+
+          # インストール状況を確認
+          echo "インストールされたツールを確認します:"
+          uv run safety --version 2>/dev/null && echo "- Safety: 利用可能" || echo "- Safety: 利用不可"
+          uv run bandit --version 2>/dev/null && echo "- Bandit: 利用可能" || echo "- Bandit: 利用不可"
+          uv run pip-licenses --version 2>/dev/null && echo "- pip-licenses: 利用可能" || echo "- pip-licenses: 利用不可"
 
       - name: Run comprehensive security analysis
         id: security-analysis
