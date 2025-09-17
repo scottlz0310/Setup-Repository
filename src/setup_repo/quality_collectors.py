@@ -175,11 +175,26 @@ def collect_pytest_metrics(
             "--cov-report=json",
             "--cov-report=xml",  # XMLカバレッジレポートも生成
             "--cov-report=html",  # HTMLカバレッジレポートも生成
-            "--json-report",
-            "--json-report-file=test-report.json",
             "--junit-xml=test-results.xml",  # JUnit XML形式のテスト結果を生成
             f"--cov-fail-under={effective_threshold}",  # カバレッジ閾値をここで設定
         ]
+
+        # pytest-json-reportプラグインが利用可能かチェック
+        try:
+            check_result = safe_subprocess(
+                ["uv", "run", "python", "-c", "import pytest_jsonreport"],
+                cwd=project_root,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if check_result.returncode == 0:
+                cmd.extend(["--json-report", "--json-report-file=test-report.json"])
+                logger.info("pytest-json-reportプラグインを使用してJSONレポートを生成")
+            else:
+                logger.info("pytest-json-reportプラグインが利用できません。基本レポートのみ生成")
+        except Exception:
+            logger.info("pytest-json-reportプラグインチェックに失敗。基本レポートのみ生成")
 
         # テストマーカーの設定
         if skip_integration_tests or unit_tests_only or is_ci:
@@ -252,6 +267,8 @@ def collect_pytest_metrics(
             test_report_file = None
         passed = failed = 0
         failed_tests = []
+
+        # JSONレポートファイルが存在する場合は読み取り
         if test_report_file and test_report_file.exists():
             try:
                 with open(test_report_file, encoding="utf-8") as f:
@@ -264,14 +281,15 @@ def collect_pytest_metrics(
                     for test in test_data.get("tests", []):
                         if test.get("outcome") == "failed":
                             failed_tests.append(test.get("nodeid", "unknown"))
-
+                logger.info(f"JSONレポートから取得: {passed}件成功, {failed}件失敗")
             except (json.JSONDecodeError, KeyError) as e:
                 logger.warning(f"テストレポート解析エラー: {e}")
-        else:
-            # テストレポートファイルが存在しない場合、pytestの出力から情報を抽出
-            logger.warning("テストレポートファイルが見つかりません。pytest出力から情報を抽出します")
+                test_report_file = None  # フォールバック処理へ
+
+        # JSONレポートが利用できない場合、pytest出力から情報を抽出
+        if not test_report_file or not test_report_file.exists():
+            logger.info("pytest出力から情報を抽出します")
             if result.stdout:
-                # pytest出力から成功/失敗数を抽出
                 import re
 
                 # "749 passed, 35 skipped" のような形式を検索
@@ -281,6 +299,7 @@ def collect_pytest_metrics(
                     passed = int(passed_match.group(1))
                 if failed_match:
                     failed = int(failed_match.group(1))
+                logger.info(f"pytest出力から取得: {passed}件成功, {failed}件失敗")
 
         # カバレッジチェックを有効化（カバレッジが閾値以上であれば成功とする）
         success = coverage_percent >= effective_threshold and failed == 0
@@ -332,30 +351,17 @@ def collect_pytest_metrics(
                 )
             else:
                 if failed > 0:
-                    test_error = TestFailureError(
-                        f"テストで{failed}件の失敗がありました",
-                        failed_tests,
-                        coverage_percent,
+                    logger.log_quality_check_failure(
+                        "Tests",
+                        TestFailureError(f"{failed}件のテストが失敗しました", failed_tests),
                     )
-                    logger.log_quality_check_failure("Tests", test_error)
 
         return metrics_result
 
     except (subprocess.CalledProcessError, FileNotFoundError) as e:
-        test_error = TestFailureError(f"テストメトリクス収集エラー: {str(e)}")
-        logger.log_quality_check_failure("Tests", test_error)
-        import os
-
-        return {
-            "success": False,
-            "coverage_percent": 0.0,
-            "tests_passed": 0,
-            "tests_failed": 0,
-            "errors": [str(e)],
-            "effective_threshold": 70.0 if os.getenv("CI", "").lower() in ("true", "1") else coverage_threshold,
-            "is_ci_environment": os.getenv("CI", "").lower() in ("true", "1"),
-            "unit_tests_only": os.getenv("UNIT_TESTS_ONLY", "").lower() in ("true", "1"),
-        }
+        error = TestFailureError(f"テストメトリクス収集エラー: {str(e)}")
+        logger.log_quality_check_failure("Tests", error)
+        return {"success": False, "coverage_percent": 0.0, "tests_passed": 0, "tests_failed": 0, "errors": [str(e)]}
 
 
 def collect_coverage_metrics(
