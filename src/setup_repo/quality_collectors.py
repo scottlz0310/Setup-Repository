@@ -183,9 +183,22 @@ def collect_pytest_metrics(
             f"--cov-fail-under={effective_threshold}",  # カバレッジ閾値をここで設定
         ]
 
-        # pytest-json-reportプラグインを使用してJSONレポートを生成
-        cmd.extend(["--json-report", "--json-report-file=test-report.json"])
-        logger.info("pytest-json-reportプラグインを使用してJSONレポートを生成")
+        # pytest-json-reportプラグインの利用可能性をチェック
+        try:
+            check_result = safe_subprocess(
+                ["uv", "run", "python", "-c", "import pytest_jsonreport"],
+                cwd=project_root,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if check_result.returncode == 0:
+                cmd.extend(["--json-report", "--json-report-file=test-report.json"])
+                logger.info("pytest-json-reportプラグインを使用してJSONレポートを生成")
+            else:
+                logger.info("pytest-json-reportプラグインが利用できません。基本的なテスト実行のみ行います")
+        except Exception:
+            logger.info("pytest-json-reportプラグインのチェックに失敗。基本的なテスト実行のみ行います")
 
         # テストマーカーの設定
         if skip_integration_tests or unit_tests_only or is_ci:
@@ -292,8 +305,13 @@ def collect_pytest_metrics(
                     failed = int(failed_match.group(1))
                 logger.info(f"pytest出力から取得: {passed}件成功, {failed}件失敗")
 
-        # カバレッジチェックを有効化（カバレッジが閾値以上であれば成功とする）
-        success = coverage_percent >= effective_threshold and failed == 0
+        # 成功判定: カバレッジが閾値以上かつテスト失敗がない場合
+        # ただし、CI環境でカバレッジが0%の場合は、テスト実行自体に問題があると判定
+        if is_ci and coverage_percent == 0.0:
+            success = False
+            logger.warning("CI環境でカバレッジが0%のため、テスト実行に問題があると判定")
+        else:
+            success = coverage_percent >= effective_threshold and failed == 0
 
         metrics_result = {
             "success": success,
@@ -313,6 +331,9 @@ def collect_pytest_metrics(
                     f"カバレッジ不足: {coverage_percent:.1f}% < {effective_threshold}%"
                     if coverage_percent < effective_threshold
                     else None,
+                    "CI環境でテスト実行に問題が発生しました"
+                    if is_ci and coverage_percent == 0.0 and failed == 0
+                    else None,
                 ]
                 if msg is not None
             ],
@@ -330,8 +351,18 @@ def collect_pytest_metrics(
                 },
             )
         else:
-            # カバレッジ不足の場合は専用エラー
-            if coverage_percent < effective_threshold:
+            # 失敗の原因に応じてエラーを分類
+            if is_ci and coverage_percent == 0.0 and failed == 0:
+                # CI環境でカバレッジが0%かつテスト失敗もない場合は、テスト実行自体の問題
+                logger.log_quality_check_failure(
+                    "Tests",
+                    TestFailureError(
+                        "CI環境でテスト実行に問題が発生しました（カバレッジ0%）",
+                        ["pytest実行エラーまたはプラグイン問題の可能性があります"],
+                    ),
+                )
+            elif coverage_percent < effective_threshold:
+                # カバレッジ不足の場合は専用エラー
                 logger.log_quality_check_failure(
                     "Tests",
                     CoverageError(
@@ -340,12 +371,12 @@ def collect_pytest_metrics(
                         effective_threshold,
                     ),
                 )
-            else:
-                if failed > 0:
-                    logger.log_quality_check_failure(
-                        "Tests",
-                        TestFailureError(f"{failed}件のテストが失敗しました", failed_tests),
-                    )
+            elif failed > 0:
+                # テスト失敗の場合
+                logger.log_quality_check_failure(
+                    "Tests",
+                    TestFailureError(f"{failed}件のテストが失敗しました", failed_tests),
+                )
 
         return metrics_result
 

@@ -17,8 +17,6 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-
-
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -32,24 +30,6 @@ dependencies = [
     "psutil>=5.9.0",
 ]
 
-[project.optional-dependencies]
-dev = [
-    "pytest>=8.4.2",
-    "pytest-cov>=7.0.0",
-    "pytest-xdist>=3.8.0",
-    "pytest-json-report>=1.5.0",
-    "pytest-benchmark>=4.0.0",
-    "pytest-timeout>=2.4.0",
-    "pre-commit>=4.3.0",
-    "ruff>=0.8.0",
-    "mypy>=1.13.0",
-    "coverage>=7.6.0",
-    "tomli-w>=1.0.0",
-    "black>=25.1.0",
-    "types-psutil>=7.0.0.20250822",
-    "types-requests>=2.32.4.20250809",
-]
-
 [project.scripts]
 setup-repo = "setup_repo.cli:main"
 
@@ -57,6 +37,29 @@ setup-repo = "setup_repo.cli:main"
 Homepage = "https://github.com/scottlz0310/Setup-Repository"
 Repository = "https://github.com/scottlz0310/Setup-Repository"
 Issues = "https://github.com/scottlz0310/Setup-Repository/issues"
+
+[dependency-groups]
+dev = [
+    "coverage>=7.10.6",
+    "mypy>=1.18.1",
+    "pre-commit>=4.3.0",
+    "pytest>=8.4.2",
+    "pytest-cov>=7.0.0",
+    "pytest-json-report>=1.5.0",
+    "pytest-xdist>=3.8.0",
+    "pytest-benchmark>=4.0.0",
+    "pytest-timeout>=2.4.0",
+    "ruff>=0.13.0",
+    "black>=25.1.0",
+    "tomli-w>=1.0.0",
+    "types-psutil>=7.0.0.20250822",
+    "types-requests>=2.32.4.20250809",
+]
+security = [
+    "safety>=3.6.0",
+    "bandit>=1.8.6",
+    "pip-licenses>=5.0.0",
+]
 
 [tool.ruff]
 target-version = "py311"
@@ -125,6 +128,10 @@ python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = "-v --tb=short --disable-warnings -p xdist -p pytest_cov -n auto --dist=worksteal --cov=src/setup_repo --cov-report=term-missing --cov-report=html:htmlcov --cov-fail-under=80"
+required_plugins = [
+    "pytest-cov",
+    "pytest-xdist",
+]
 markers = [
     "unit: 単体テスト",
     "integration: 統合テスト",
@@ -154,8 +161,8 @@ omit = [
 ]
 
 [tool.coverage.report]
-# production段階要件（ルール5.2準拠）
-fail_under = 70
+# production段階要件（ルール5.2準拠）- 80%に統一
+fail_under = 80
 show_missing = true
 skip_covered = false
 skip_empty = false
@@ -209,19 +216,3 @@ skips = ["*_test.py", "test_*.py"]
 name = "safety"
 url = "https://pkgs.safetycli.com/repository/scottlz-team/project/setup-repository/pypi/simple/"
 default = false
-[dependency-groups]
-dev = [
-    "coverage>=7.10.6",
-    "mypy>=1.18.1",
-    "pre-commit>=4.3.0",
-    "pytest>=8.4.2",
-    "pytest-cov>=7.0.0",
-    "pytest-json-report>=1.5.0",
-    "pytest-xdist>=3.8.0",
-    "ruff>=0.13.0",
-]
-security = [
-    "safety>=3.6.0",
-    "bandit>=1.8.6",
-    "pip-licenses>=5.0.0",
-]

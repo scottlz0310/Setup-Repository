@@ -43,8 +43,17 @@ jobs:
 
     - name: Install dependencies
       run: |
-        # 開発依存をインストール
+        # 開発依存をインストール（pytest-json-reportを含む）
         uv sync --dev
+
+        # pytest-json-reportプラグインの確認
+        echo "pytest-json-reportプラグインの確認:"
+        if uv run python -c "import pytest_jsonreport; print('pytest-json-report available')"; then
+          echo "✅ pytest-json-report: 利用可能"
+        else
+          echo "❌ pytest-json-report: 利用不可 - 個別インストールを試行"
+          uv add pytest-json-report || echo "pytest-json-reportの個別インストールに失敗"
+        fi
 
         # セキュリティ依存関係グループをインストール（フォールバック付き）
         echo "セキュリティツールのインストールを試行します..."
@@ -59,7 +68,9 @@ jobs:
         fi
 
         # インストールされたツールを確認
-        echo "インストールされたセキュリティツールを確認します:"
+        echo "インストールされたツールを確認します:"
+        uv run pytest --version && echo "- pytest: 利用可能" || echo "- pytest: 利用不可"
+        uv run python -c "import pytest_jsonreport" && echo "- pytest-json-report: 利用可能" || echo "- pytest-json-report: 利用不可"
         uv run bandit --version 2>/dev/null && echo "- Bandit: 利用可能" || echo "- Bandit: 利用不可"
         uv run safety --version 2>/dev/null && echo "- Safety: 利用可能" || echo "- Safety: 利用不可"
 
@@ -101,7 +112,6 @@ jobs:
         PRE_COMMIT: "1"
         SKIP_INTEGRATION_TESTS: "false"
         UNIT_TESTS_ONLY: "false"
-        PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
         PYTEST_CURRENT_TEST: "1"
         PYTEST_TIMEOUT: "300"
         PYTHONPATH: "src"
