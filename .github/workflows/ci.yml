@@ -7,7 +7,24 @@ on:
     branches: [ main, develop ]
   pull_request:
     branches: [ main, develop ]
+  schedule:
+    # 毎日午前2時（UTC）に拡張マトリックステスト実行
+    - cron: '0 2 * * *'
   workflow_dispatch:
+    inputs:
+      test_scope:
+        description: 'Test scope (basic/extended/quality-gate)'
+        required: false
+        default: 'basic'
+        type: choice
+        options:
+        - basic
+        - extended
+        - quality-gate
+      python_versions:
+        description: 'Python versions to test (comma-separated)'
+        required: false
+        default: '3.11,3.12,3.13'
   workflow_call:
 
 permissions:
@@ -587,6 +604,156 @@ jobs:
           # 品質ゲート未達成でもワークフローは継続（警告のみ）
           exit 0
         fi
+
+  extended-matrix-test:
+    name: Extended Matrix Test
+    runs-on: ${{ matrix.os }}
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.test_scope == 'extended')
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python-version: "3.11"
+          - os: ubuntu-latest
+            python-version: "3.12"
+          - os: ubuntu-latest
+            python-version: "3.13"
+          - os: windows-latest
+            python-version: "3.11"
+          - os: windows-latest
+            python-version: "3.12"
+          - os: windows-latest
+            python-version: "3.13"
+          - os: macos-latest
+            python-version: "3.11"
+          - os: macos-latest
+            python-version: "3.12"
+          - os: macos-latest
+            python-version: "3.13"
+      fail-fast: false
+      max-parallel: 6
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install uv (Unix)
+      if: runner.os != 'Windows'
+      run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+    - name: Add uv to PATH (Unix)
+      if: runner.os != 'Windows'
+      run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+    - name: Install uv (Windows)
+      if: runner.os == 'Windows'
+      run: irm https://astral.sh/uv/install.ps1 | iex
+      shell: pwsh
+
+    - name: Set up Python ${{ matrix.python-version }}
+      run: uv python install ${{ matrix.python-version }}
+
+    - name: Create virtual environment
+      run: uv venv --python ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: uv sync --dev
+
+    - name: Run real environment tests
+      run: |
+        echo "Running real environment tests (rule-compliant)..."
+        uv run pytest tests/unit/test_platform_detector_real.py tests/platform_specific/ -v --tb=short
+
+        echo "Running external dependency mock tests..."
+        uv run pytest tests/unit/test_platform_detector_external.py -v --tb=short
+
+        echo "Testing main script help..."
+        uv run python main.py --help
+      shell: bash
+
+    - name: Test platform-specific functionality
+      run: |
+        echo "Testing platform-specific functionality..."
+        uv run python -c "
+        try:
+            from setup_repo.platform_detector import detect_platform
+            platform = detect_platform()
+            print(f'Platform: {platform.name} - {platform.display_name}')
+            print(f'Shell: {platform.shell}')
+            print(f'Python command: {platform.python_cmd}')
+            print('✅ Platform detection successful')
+        except Exception as e:
+            print(f'❌ Platform detection failed: {e}')
+            import sys
+            sys.exit(1)
+        "
+
+  quality-gate:
+    name: Quality Gate Check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && github.event.inputs.test_scope == 'quality-gate')
+    env:
+      PYTHON_VERSION: "3.11"
+      COVERAGE_THRESHOLD: "80"
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install uv
+      run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+    - name: Add uv to PATH
+      run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+    - name: Set up Python
+      run: uv python install ${{ env.PYTHON_VERSION }}
+
+    - name: Create virtual environment
+      run: uv venv --python ${{ env.PYTHON_VERSION }}
+
+    - name: Install dependencies with reproducibility check
+      run: |
+        uv sync --dev
+        if ! uv lock --check; then
+          echo "❌ uv.lockファイルが最新ではありません"
+          exit 1
+        fi
+        echo "✅ 依存関係の再現性が確認されました"
+
+    - name: Run quality checks in parallel
+      run: |
+        echo "=== Parallel Quality Checks ==="
+
+        # Ruff checks
+        uv run ruff check . --output-format=github &
+        RUFF_PID=$!
+
+        # Format checks
+        uv run ruff format --check . &
+        FORMAT_PID=$!
+
+        # Type checks
+        uv run mypy src/ &
+        MYPY_PID=$!
+
+        # Wait for all checks
+        wait $RUFF_PID && echo "✅ Ruff lint完了" || { echo "❌ Ruff lint失敗"; exit 1; }
+        wait $FORMAT_PID && echo "✅ Format check完了" || { echo "❌ Format check失敗"; exit 1; }
+        wait $MYPY_PID && echo "✅ MyPy完了" || { echo "❌ MyPy失敗"; exit 1; }
+
+    - name: Run tests with coverage
+      run: |
+        uv run pytest tests/ \
+          --cov=src/setup_repo \
+          --cov-report=term-missing \
+          --cov-report=xml \
+          --cov-report=html \
+          --cov-fail-under=${{ env.COVERAGE_THRESHOLD }} \
+          --junit-xml=test-results.xml \
+          -n auto --dist=worksteal \
+          -x --maxfail=5
+        echo "✅ テスト+カバレッジチェック完了（${{ env.COVERAGE_THRESHOLD }}%以上）"
 
   security-scan:
     name: Security Scan
