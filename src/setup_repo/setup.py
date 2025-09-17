@@ -65,8 +65,8 @@ def setup_repository_environment(config_path: str | None = None, dry_run: bool =
     try:
         # プラットフォーム検出
         platform_detector = PlatformDetector()
-        platform = platform_detector.detect_platform()
-        result["platform"] = platform
+        platform_info = platform_detector.get_platform_info()
+        result["platform"] = platform_info.name
 
         # GitHub API接続テスト
         github_api = GitHubAPI(token=config["github_token"], username=config["github_username"])

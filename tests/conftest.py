@@ -92,18 +92,8 @@ def mock_git_operations():
     return mock
 
 
-@pytest.fixture
-def mock_platform_detector():
-    """プラットフォーム検出モックフィクスチャ"""
-
-    class MockPlatformDetector:
-        def detect_platform(self):
-            return "linux"
-
-        def get_package_manager(self):
-            return "apt"
-
-    return MockPlatformDetector()
+# mock_platform_detectorフィクスチャを削除 - ルールに従い実環境でのテストのみ実行
+# プラットフォーム依存のテストは実環境で実行し、合わない場合はスキップする
 
 
 @pytest.fixture

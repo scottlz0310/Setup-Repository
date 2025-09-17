@@ -1,7 +1,6 @@
 """セットアップ機能のテスト"""
 
 import json
-import platform
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -182,7 +181,14 @@ class TestSetupRepositoryEnvironment:
 
         # 実際のプラットフォーム情報を確認
         assert "platform" in result
-        assert result["platform"].lower() == platform.system().lower()
+
+        # setup_repository_environmentが返すプラットフォーム名を確認
+        # macOSでは'macos'、Windowsでは'windows'、Linuxでは'linux'が返される
+        from src.setup_repo.platform_detector import PlatformDetector
+
+        detector = PlatformDetector()
+        expected_platform = detector.get_platform_info().name
+        assert result["platform"] == expected_platform
 
         # 実際のファイルシステム操作を確認
         # ディレクトリ作成は実装に依存するため、必須ではない
@@ -324,7 +330,7 @@ class TestSetupRepositoryEnvironment:
             patch("src.setup_repo.setup.PlatformDetector") as mock_platform_detector_class,
         ):
             mock_platform_detector = Mock()
-            mock_platform_detector.detect_platform.side_effect = Exception("Platform detection failed")
+            mock_platform_detector.get_platform_info.side_effect = Exception("Platform detection failed")
             mock_platform_detector_class.return_value = mock_platform_detector
 
             with pytest.raises(Exception, match="Platform detection failed"):
