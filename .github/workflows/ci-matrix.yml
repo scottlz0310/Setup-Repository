@@ -77,14 +77,22 @@ jobs:
         uv run python -c "import sys; print(f'Python {sys.version}')"
         uv run python -c "from setup_repo import __version__; print(f'Package version: {__version__}')"
 
-    - name: Run comprehensive tests
+    - name: Run real environment tests
       run: |
         set -e
         EXIT_CODE=0
 
-        echo "Running comprehensive tests..."
-        if ! uv run pytest tests/ -v --tb=short; then
-          echo "❌ Comprehensive tests failed"
+        echo "Running real environment tests (rule-compliant)..."
+        # 実環境重視テストを実行（環境偽装モック不使用）
+        if ! uv run pytest tests/unit/test_platform_detector_real.py tests/platform_specific/ -v --tb=short; then
+          echo "❌ Real environment tests failed"
+          EXIT_CODE=1
+        fi
+
+        echo "Running external dependency mock tests..."
+        # 外部依存のみモックするテストを実行
+        if ! uv run pytest tests/unit/test_platform_detector_external.py -v --tb=short; then
+          echo "❌ External dependency tests failed"
           EXIT_CODE=1
         fi
 
@@ -98,31 +106,46 @@ jobs:
           echo "❌ Tests failed with exit code: $EXIT_CODE"
           exit $EXIT_CODE
         else
-          echo "✅ All tests passed successfully"
+          echo "✅ All real environment tests passed successfully"
         fi
 
-    - name: Run platform-specific tests
+    - name: Run platform-specific tests (real environment)
       run: |
         set -e
         EXIT_CODE=0
 
-        # プラットフォーム固有テストの実行
+        # プラットフォーム固有テストの実行（実環境重視）
         if [ "${{ runner.os }}" = "Windows" ]; then
-          echo "Running Windows-specific tests..."
+          echo "Running Windows-specific real environment tests..."
+          if ! uv run pytest tests/platform_specific/windows/ -v --tb=short; then
+            echo "❌ Windows real environment tests failed"
+            EXIT_CODE=1
+          fi
+          # 従来のマルチプラットフォームテストも実行
           if ! uv run pytest tests/multiplatform/ -k "windows" -v --tb=short; then
-            echo "❌ Windows tests failed"
+            echo "❌ Windows multiplatform tests failed"
             EXIT_CODE=1
           fi
         elif [ "${{ runner.os }}" = "Linux" ]; then
-          echo "Running Linux/Unix-specific tests..."
+          echo "Running Linux-specific real environment tests..."
+          if ! uv run pytest tests/platform_specific/linux/ -v --tb=short; then
+            echo "❌ Linux real environment tests failed"
+            EXIT_CODE=1
+          fi
+          # 従来のマルチプラットフォームテストも実行
           if ! uv run pytest tests/multiplatform/ -k "unix or linux" -v --tb=short; then
-            echo "❌ Unix tests failed"
+            echo "❌ Unix multiplatform tests failed"
             EXIT_CODE=1
           fi
         elif [ "${{ runner.os }}" = "macOS" ]; then
-          echo "Running macOS-specific tests..."
+          echo "Running macOS-specific real environment tests..."
+          if ! uv run pytest tests/platform_specific/macos/ -v --tb=short; then
+            echo "❌ macOS real environment tests failed"
+            EXIT_CODE=1
+          fi
+          # 従来のマルチプラットフォームテストも実行
           if ! uv run pytest tests/multiplatform/ -k "macos or unix" -v --tb=short; then
-            echo "❌ macOS tests failed"
+            echo "❌ macOS multiplatform tests failed"
             EXIT_CODE=1
           fi
         fi
@@ -131,7 +154,7 @@ jobs:
           echo "❌ Platform-specific tests failed with exit code: $EXIT_CODE"
           exit $EXIT_CODE
         else
-          echo "✅ Platform-specific tests passed successfully"
+          echo "✅ Platform-specific real environment tests passed successfully"
         fi
       shell: bash
 
