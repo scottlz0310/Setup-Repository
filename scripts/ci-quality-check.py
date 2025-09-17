@@ -79,11 +79,11 @@ def main():
         # CI環境変数を設定
         os.environ["CI"] = "true"
         os.environ["PYTEST_CURRENT_TEST"] = "ci-quality-check"  # テスト環境フラグ
-        # 単体テストのみ実行（カバレッジ80%達成のため）
-        os.environ["SKIP_INTEGRATION_TESTS"] = "true"  # 統合テストをスキップ
-        os.environ["UNIT_TESTS_ONLY"] = "true"  # 単体テストのみ実行
-        # テストマーカーで単体テストのみを実行
-        os.environ["PYTEST_MARKERS"] = "unit and not performance and not stress and not integration"
+        # 全テスト実行（パフォーマンステストを除く）
+        os.environ["SKIP_INTEGRATION_TESTS"] = "false"  # 統合テストも実行
+        os.environ["UNIT_TESTS_ONLY"] = "false"  # 全テスト実行
+        # テストマーカーでパフォーマンステストのみ除外
+        os.environ["PYTEST_MARKERS"] = "not performance and not stress"
 
         # 各品質チェックを段階的に実行（並列実行対応）
         stages = [
@@ -93,8 +93,8 @@ def main():
                 "Test Execution",
                 lambda: collector.collect_test_metrics(
                     parallel_workers=parallel_workers,
-                    coverage_threshold=70.0,  # CI環境では70%を維持（単体テストのみ）
-                    skip_integration_tests=True,  # 統合テストをスキップしてカバレッジ向上
+                    coverage_threshold=70.0,  # CI環境では70%を維持
+                    skip_integration_tests=False,  # 全テスト実行
                 ),
             ),
             ("Security Scan", collector.collect_security_metrics),

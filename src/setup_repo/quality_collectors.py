@@ -176,8 +176,8 @@ def collect_pytest_metrics(
         ]
 
         # テストマーカーの設定
-        if skip_integration_tests or unit_tests_only or is_ci:
-            # CI環境では単体テストのみ実行（統合テストを明示的に除外）
+        if skip_integration_tests or unit_tests_only:
+            # 明示的に単体テストのみ実行が指定された場合
             cmd.extend(
                 [
                     "tests/unit/",
@@ -188,11 +188,11 @@ def collect_pytest_metrics(
                     "--ignore=tests/performance/",
                 ]
             )
-            logger.info("CI環境: 単体テストのみ実行（統合テスト除外）")
+            logger.info("単体テストのみ実行（統合テスト除外）")
         else:
-            # ローカル環境では重いテストのみスキップ
-            cmd.extend(["-m", "not performance and not stress"])
-            logger.info("ローカル環境: 全テスト実行")
+            # 全テスト実行（パフォーマンステストのみ除外）
+            cmd.extend(["tests/", "-m", "not performance and not stress", "--ignore=tests/performance/"])
+            logger.info("全テスト実行（パフォーマンステストを除く）")
 
         # 並列実行設定
         if parallel_workers != "1" and parallel_workers != 1:
@@ -255,15 +255,17 @@ def collect_pytest_metrics(
                 logger.warning(f"カバレッジデータ解析エラー: {e}")
                 coverage_percent = 0.0
 
-        # カバレッジ閾値は常に80%を維持（単体テストのみでも達成可能）
+        # カバレッジ閾値設定
         effective_threshold = coverage_threshold
-        if is_ci and unit_tests_only:
-            logger.info(f"CI環境(単体テストのみ): カバレッジ閾値{effective_threshold}%を維持")
+        if unit_tests_only:
+            logger.info(f"単体テストのみ: カバレッジ閾値{effective_threshold}%を維持")
+        else:
+            logger.info(f"全テスト実行: カバレッジ閾値{effective_threshold}%を維持")
 
         # カバレッジ閾値をコマンドに追加
         cmd.append(f"--cov-fail-under={effective_threshold}")
 
-        # 全環境でカバレッジチェックを有効化（単体テストのみで80%達成可能）
+        # カバレッジチェックを有効化
         success = result.returncode == 0 and failed == 0 and coverage_percent >= effective_threshold
 
         metrics_result = {
