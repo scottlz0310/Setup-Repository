@@ -547,13 +547,17 @@ jobs:
       with:
         pattern: cross-platform-test-results-*
         path: coverage-artifacts/
-        merge-multiple: true
+        merge-multiple: false
 
     - name: List downloaded artifacts
       run: |
         echo "📁 ダウンロードされたアーティファクト:"
+        echo "ディレクトリ構造:"
+        find coverage-artifacts/ -type d | head -10
+        echo "カバレッジファイル:"
         find coverage-artifacts/ -name "*.json" -o -name "*.xml" -o -name ".coverage" | head -20
         echo "総ファイル数: $(find coverage-artifacts/ -type f | wc -l)"
+        echo "カバレッジファイル数: $(find coverage-artifacts/ \( -name "*.json" -o -name "*.xml" -o -name ".coverage" \) | wc -l)"
 
     - name: Merge platform coverage
       run: |

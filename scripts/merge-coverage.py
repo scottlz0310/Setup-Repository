@@ -66,39 +66,120 @@ class CoverageMerger:
         coverage_files = []
 
         # 各プラットフォームのカバレッジファイルを検索
-        patterns = ["coverage-*.json", "**/coverage.json", "cross-platform-test-results-*/coverage.json"]
+        patterns = [
+            "coverage-*.json",
+            "**/coverage.json",
+            "cross-platform-test-results-*/coverage.json",
+            "**/coverage.xml",  # XML形式も対象
+            "**/.coverage",  # .coverageファイルも対象
+        ]
 
         for pattern in patterns:
-            coverage_files.extend(self.coverage_dir.glob(pattern))
+            found_files = list(self.coverage_dir.glob(pattern))
+            coverage_files.extend(found_files)
+            if found_files:
+                logger.info(f"パターン '{pattern}' で {len(found_files)} 個のファイルを発見")
+
+        # 重複を除去
+        coverage_files = list(set(coverage_files))
 
         logger.info(f"発見されたカバレッジファイル: {len(coverage_files)}個")
+
+        # デバッグ用: 見つからない場合は詳細情報を出力
+        if not coverage_files:
+            logger.warning("カバレッジファイルが見つかりません。ディレクトリ構造を確認します:")
+            if self.coverage_dir.exists():
+                for item in self.coverage_dir.rglob("*"):
+                    if item.is_file():
+                        logger.info(f"  ファイル: {item}")
+            else:
+                logger.error(f"カバレッジディレクトリが存在しません: {self.coverage_dir}")
+
         return coverage_files
 
     def parse_coverage_file(self, file_path: Path) -> CoverageData | None:
         """カバレッジファイルを解析"""
         try:
-            with open(file_path, encoding="utf-8") as f:
-                data = json.load(f)
-
-            # プラットフォーム情報を推定
-            platform = self._extract_platform_info(file_path)
-            python_version = self._extract_python_version(file_path)
-
-            totals = data.get("totals", {})
-
-            return CoverageData(
-                platform=platform,
-                python_version=python_version,
-                total_coverage=totals.get("percent_covered", 0.0),
-                files=data.get("files", {}),
-                statements=totals.get("num_statements", 0),
-                covered=totals.get("covered_lines", 0),
-                missing=totals.get("missing_lines", 0),
-            )
+            if file_path.suffix == ".xml":
+                return self._parse_xml_coverage(file_path)
+            elif file_path.suffix == ".json":
+                return self._parse_json_coverage(file_path)
+            elif file_path.name == ".coverage":
+                logger.warning(f".coverageファイルは現在サポートされていません: {file_path}")
+                return None
+            else:
+                logger.warning(f"サポートされていないファイル形式: {file_path}")
+                return None
 
         except Exception as e:
             logger.error(f"カバレッジファイル解析エラー {file_path}: {e}")
             return None
+
+    def _parse_json_coverage(self, file_path: Path) -> CoverageData | None:
+        """カバレッジJSONファイルを解析"""
+        with open(file_path, encoding="utf-8") as f:
+            data = json.load(f)
+
+        # プラットフォーム情報を推定
+        platform = self._extract_platform_info(file_path)
+        python_version = self._extract_python_version(file_path)
+
+        totals = data.get("totals", {})
+
+        return CoverageData(
+            platform=platform,
+            python_version=python_version,
+            total_coverage=totals.get("percent_covered", 0.0),
+            files=data.get("files", {}),
+            statements=totals.get("num_statements", 0),
+            covered=totals.get("covered_lines", 0),
+            missing=totals.get("missing_lines", 0),
+        )
+
+    def _parse_xml_coverage(self, file_path: Path) -> CoverageData | None:
+        """カバレッジXMLファイルを解析"""
+        import xml.etree.ElementTree as ET
+
+        tree = ET.parse(file_path)
+        root = tree.getroot()
+
+        # プラットフォーム情報を推定
+        platform = self._extract_platform_info(file_path)
+        python_version = self._extract_python_version(file_path)
+
+        # XMLからカバレッジ情報を抽出
+        line_rate = float(root.get("line-rate", 0.0))
+        total_coverage = line_rate * 100
+
+        lines_covered = int(root.get("lines-covered", 0))
+        lines_valid = int(root.get("lines-valid", 0))
+
+        # ファイル情報を抽出
+        files = {}
+        for package in root.findall(".//package"):
+            for class_elem in package.findall("classes/class"):
+                filename = class_elem.get("filename", "")
+                if filename:
+                    class_line_rate = float(class_elem.get("line-rate", 0.0))
+                    files[filename] = {
+                        "summary": {
+                            "percent_covered": class_line_rate * 100,
+                            "num_statements": len(class_elem.findall(".//line")),
+                            "covered_lines": len(
+                                [line for line in class_elem.findall(".//line") if line.get("hits", "0") != "0"]
+                            ),
+                        }
+                    }
+
+        return CoverageData(
+            platform=platform,
+            python_version=python_version,
+            total_coverage=total_coverage,
+            files=files,
+            statements=lines_valid,
+            covered=lines_covered,
+            missing=lines_valid - lines_covered,
+        )
 
     def _extract_platform_info(self, file_path: Path) -> str:
         """ファイルパスからプラットフォーム情報を抽出"""
