@@ -146,7 +146,7 @@ jobs:
     - name: Generate coverage report
       if: matrix.python-version == '3.11'
       run: |
-        uv run coverage report --show-missing
+        uv run coverage report --show-missing --fail-under=70
         uv run coverage html
         uv run coverage xml
 

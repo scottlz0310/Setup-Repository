@@ -200,7 +200,18 @@ jobs:
           with open('quality-metrics.json', 'w') as f:
               json.dump(metrics, f, indent=2)
 
-          # GitHub Actions出力に設定
+          # GitHub Actions出力ファイルに書き込み
+          import os
+          github_output = os.environ.get('GITHUB_OUTPUT')
+          if github_output:
+              with open(github_output, 'a') as f:
+                  f.write(f'quality_score={quality_score:.1f}\\n')
+                  f.write(f'coverage={metrics[\"test_coverage\"]:.2f}\\n')
+                  f.write(f'ruff_issues={metrics[\"ruff_issues\"]}\\n')
+                  f.write(f'mypy_errors={metrics[\"mypy_errors\"]}\\n')
+                  f.write(f'security_vulnerabilities={metrics[\"security_vulnerabilities\"]}\\n')
+
+          # コンソール出力（デバッグ用）
           print(f'quality_score={quality_score:.1f}')
           print(f'coverage={metrics[\"test_coverage\"]:.2f}')
           print(f'ruff_issues={metrics[\"ruff_issues\"]}')
@@ -233,7 +244,7 @@ jobs:
                   f.write('❌ **要改善**: 品質基準を下回っています\\n')
 
           print('品質メトリクスサマリーを生成しました')
-          " | tee -a $GITHUB_OUTPUT
+          "
 
       - name: Store metrics history
         run: |
