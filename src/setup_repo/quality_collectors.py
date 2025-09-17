@@ -67,6 +67,9 @@ def collect_ruff_metrics(
 
         success = result.returncode == 0
 
+        # 成功判定: 実行が成功し、かつ問題が0件の場合
+        success = result.returncode == 0 and issue_count == 0
+
         metrics_result = {
             "success": success,
             "issue_count": issue_count,
@@ -116,7 +119,8 @@ def collect_mypy_metrics(
         error_lines = [line for line in result.stdout.split("\n") if line.strip() and "error:" in line]
         error_count = len(error_lines)
 
-        success = result.returncode == 0
+        # 成功判定: 実行が成功し、かつエラーが0件の場合
+        success = result.returncode == 0 and error_count == 0
 
         metrics_result = {
             "success": success,
@@ -179,9 +183,9 @@ def collect_pytest_metrics(
             f"--cov-fail-under={effective_threshold}",  # カバレッジ閾値をここで設定
         ]
 
-        # pytest-json-reportプラグインのチェックを削除（依存関係に含まれているため）
-        # CI環境では依存関係が正しくインストールされていることを前提とする
-        logger.info("基本レポートのみ生成（JSON レポートは無効化）")
+        # pytest-json-reportプラグインを使用してJSONレポートを生成
+        cmd.extend(["--json-report", "--json-report-file=test-report.json"])
+        logger.info("pytest-json-reportプラグインを使用してJSONレポートを生成")
 
         # テストマーカーの設定
         if skip_integration_tests or unit_tests_only or is_ci:
