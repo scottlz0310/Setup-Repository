@@ -22,16 +22,37 @@ jobs:
     name: Dependency Review
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: write
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Check dependency files
+      id: check-deps
+      run: |
+        echo "Checking for dependency files..."
+        if [ -f "pyproject.toml" ]; then
+          echo "Found pyproject.toml"
+          echo "has_deps=true" >> $GITHUB_OUTPUT
+        elif [ -f "requirements.txt" ]; then
+          echo "Found requirements.txt"
+          echo "has_deps=true" >> $GITHUB_OUTPUT
+        else
+          echo "No dependency files found"
+          echo "has_deps=false" >> $GITHUB_OUTPUT
+        fi
+
     - name: Dependency Review
+      if: steps.check-deps.outputs.has_deps == 'true'
       uses: actions/dependency-review-action@v4
       with:
         fail-on-severity: moderate
         deny-licenses: GPL-2.0, GPL-3.0, AGPL-3.0, LGPL-2.1, LGPL-3.0
+        allow-licenses: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, MPL-2.0
+        config-file: '.github/dependency-review-config.yml'
 
   security-scan:
     name: Security Vulnerability Scan

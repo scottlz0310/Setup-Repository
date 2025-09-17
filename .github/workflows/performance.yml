@@ -214,6 +214,9 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     needs: performance-tests
+    permissions:
+      contents: read
+      pull-requests: write
 
     steps:
     - name: Checkout code
