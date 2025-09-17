@@ -52,10 +52,14 @@ jobs:
       if: runner.os != 'Windows'
       run: curl -LsSf https://astral.sh/uv/install.sh | sh
 
+    - name: Add uv to PATH (Unix)
+      if: runner.os != 'Windows'
+      run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+
     - name: Install uv (Windows)
       if: runner.os == 'Windows'
       run: irm https://astral.sh/uv/install.ps1 | iex
-      shell: powershell
+      shell: pwsh
 
     - name: Verify uv installation
       run: |
