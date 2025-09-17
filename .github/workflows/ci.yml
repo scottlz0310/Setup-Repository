@@ -112,63 +112,7 @@ jobs:
         path: ci-reports/
         retention-days: 30
 
-    - name: Fallback - Run individual quality checks
-      if: failure()
-      run: |
-        echo "::warning::Comprehensive quality check failed, running individual checks for debugging"
-        FALLBACK_EXIT_CODE=0
 
-        echo "::group::Ruff Linting"
-        if ! uv run ruff check . --output-format=github; then
-          echo "❌ Ruff linting failed"
-          FALLBACK_EXIT_CODE=1
-        fi
-        if ! uv run ruff format --check .; then
-          echo "❌ Ruff format check failed"
-          FALLBACK_EXIT_CODE=1
-        fi
-        echo "::endgroup::"
-
-        echo "::group::MyPy Type Checking"
-        if ! uv run mypy src/; then
-          echo "❌ MyPy type checking failed"
-          FALLBACK_EXIT_CODE=1
-        fi
-        echo "::endgroup::"
-
-        echo "::group::Pytest Unit Tests Only"
-        if ! uv run pytest tests/unit/ \
-          --cov=src/setup_repo \
-          --cov-report=term-missing \
-          --cov-report=xml \
-          --cov-report=html \
-          --cov-report=json \
-          --cov-fail-under=70 \
-          --junit-xml=test-results.xml \
-          --json-report \
-          --json-report-file=test-report.json \
-          -n auto \
-          --dist=worksteal \
-          --tb=short \
-          -x \
-          --maxfail=5 \
-          -m "unit and not performance and not stress and not integration" \
-          --ignore=tests/integration/ \
-          --ignore=tests/multiplatform/ \
-          --ignore=tests/performance/ \
-          --ignore=tests/unit/test_platform_detector_comprehensive.py \
-          --ignore=tests/unit/test_platform_detector_edge_cases.py; then
-          echo "❌ Pytest unit tests failed"
-          FALLBACK_EXIT_CODE=1
-        fi
-        echo "::endgroup::"
-
-        if [ $FALLBACK_EXIT_CODE -ne 0 ]; then
-          echo "❌ Fallback quality checks failed with exit code: $FALLBACK_EXIT_CODE"
-          exit $FALLBACK_EXIT_CODE
-        else
-          echo "✅ Fallback quality checks passed"
-        fi
 
     - name: Generate coverage report
       if: matrix.python-version == '3.11'
@@ -386,9 +330,9 @@ jobs:
         $env:PRE_COMMIT = "1"
         $exitCode = 0
 
-        # 単体テストのみ実行（CI環境でのカバレッジ向上）
-        Write-Host "Running unit tests only (CI environment coverage improvement)..." -ForegroundColor Cyan
-        & uv run pytest tests/unit/ `
+        # 全テスト実行（パフォーマンステストを除く）
+        Write-Host "Running comprehensive test suite (excluding performance tests)..." -ForegroundColor Cyan
+        & uv run pytest tests/ `
           --cov=src/setup_repo `
           --cov-report=term-missing `
           --cov-report=html `
@@ -397,12 +341,8 @@ jobs:
           --junit-xml=test-results.xml `
           -v --tb=short `
           -x --maxfail=10 `
-          -m "unit and not performance and not stress and not integration" `
-          --ignore=tests/integration/ `
-          --ignore=tests/multiplatform/ `
-          --ignore=tests/performance/ `
-          --ignore=tests/unit/test_platform_detector_comprehensive.py `
-          --ignore=tests/unit/test_platform_detector_edge_cases.py
+          -m "not performance and not stress" `
+          --ignore=tests/performance/
 
         if ($LASTEXITCODE -ne 0) {
           Write-Host "Comprehensive test suite failed with exit code: $LASTEXITCODE" -ForegroundColor Red
@@ -446,9 +386,9 @@ jobs:
         export PRE_COMMIT="1"
         EXIT_CODE=0
 
-        # 単体テストのみ実行（CI環境でのカバレッジ向上）
-        echo "単体テストのみを実行します（CI環境でのカバレッジ向上）"
-        if ! uv run pytest tests/unit/ \
+        # 全テスト実行（パフォーマンステストを除く）
+        echo "包括的テストスイートを実行します（パフォーマンステストを除く）"
+        if ! uv run pytest tests/ \
           --cov=src/setup_repo \
           --cov-report=term-missing \
           --cov-report=html \
@@ -457,12 +397,8 @@ jobs:
           --junit-xml=test-results.xml \
           -v --tb=short \
           -x --maxfail=10 \
-          -m "unit and not performance and not stress and not integration" \
-          --ignore=tests/integration/ \
-          --ignore=tests/multiplatform/ \
-          --ignore=tests/performance/ \
-          --ignore=tests/unit/test_platform_detector_comprehensive.py \
-          --ignore=tests/unit/test_platform_detector_edge_cases.py; then
+          -m "not performance and not stress" \
+          --ignore=tests/performance/; then
           echo "❌ 単体テストが失敗しました"
           EXIT_CODE=1
         fi
@@ -563,7 +499,7 @@ jobs:
       run: |
         echo "🔄 プラットフォーム統合カバレッジ処理を開始します"
 
-        # 統合カバレッジヘルパー実行
+        # 統合カバレッジヘルパー実行（全テスト実行で目標達成期待）
         uv run python scripts/merge-coverage.py \
           --coverage-dir coverage-artifacts \
           --fail-under 80 \
