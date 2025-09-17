@@ -1,6 +1,6 @@
 name: CI/CD Pipeline
 
-run-name: "CI/CD Pipeline - ${{ github.event_name == 'pull_request' && format('PR #{0}', github.event.number) || format('{0} ({1})', github.ref_name, substring(github.sha, 0, 7)) }}"
+run-name: "CI/CD Pipeline - ${{ github.event_name == 'pull_request' && format('PR #{0}', github.event.number) || github.ref_name }}"
 
 on:
   push:
