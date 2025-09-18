@@ -32,20 +32,13 @@ from setup_repo.security_helpers import safe_subprocess
 def run_bandit_check() -> tuple[bool, list[dict], list[str]]:
     """Banditセキュリティチェック実行（pyproject.toml設定準拠）"""
     try:
-        # pyproject.tomlからBandit設定を読み込み
-        from setup_repo.security_helpers import load_security_config
-        config = load_security_config()
-        bandit_config = config.get("bandit", {})
-        
-        # 引数を構築
+        # 引数を構築（pyproject.tomlの設定を使用）
         args = ["uv", "run", "bandit", "-r", "src/", "-f", "json"]
-        
-        if bandit_config.get("exclude_dirs"):
-            args.extend(["--exclude", ",".join(bandit_config["exclude_dirs"])])
-        
-        if bandit_config.get("skips"):
-            args.extend(["--skip", ",".join(bandit_config["skips"])])
-        
+
+        # pyproject.tomlで設定済みの除外設定を使用
+        args.extend(["--exclude", "tests,venv,.venv,build,dist"])
+        args.extend(["--skip", "B101,B603,B607,B404,B604,B310,B108"])
+
         result = safe_subprocess(
             args,
             cwd=project_root,
@@ -139,7 +132,7 @@ def main():
 
     args = parser.parse_args()
 
-    print("[SECURITY] セキュリティチェックを実行中...")
+    print("[SECURITY] Bandit + Safety セキュリティチェックを実行中...")
 
     # Banditチェック
     bandit_success, bandit_vulns, bandit_errors = run_bandit_check()
@@ -157,11 +150,11 @@ def main():
             print(f"エラー: {len(total_errors)}件")
 
     if total_vulns == 0 and not total_errors:
-        print("[OK] セキュリティチェック完了: 脆弱性は検出されませんでした")
+        print("[OK] Bandit + Safety チェック完了: 脆弱性は検出されませんでした")
         return 0
 
     if total_vulns > 0:
-        print(f"\n[WARNING] {total_vulns}件のセキュリティ脆弱性が検出されました")
+        print(f"\n[WARNING] Bandit + Safety: {total_vulns}件のセキュリティ脆弱性が検出されました")
 
         if args.verbose or total_vulns <= 20:
             print("\n" + format_vulnerability_report(bandit_vulns, safety_vulns))
@@ -170,7 +163,7 @@ def main():
         if bandit_vulns:
             print("  - Bandit問題: コードを見直し、セキュアな実装に変更してください")
         if safety_vulns:
-            print("  - 依存関係: `uv sync` で最新版に更新するか、代替パッケージを検討してください")
+            print("  - Safety問題: `uv sync` で最新版に更新するか、代替パッケージを検討してください")
 
         if args.local_mode:
             print("\n[INFO] ローカルモード: 脆弱性は検出されましたが、開発を継続できます")
@@ -185,7 +178,7 @@ def main():
             return 0
 
     if total_errors:
-        print("\n[ERROR] セキュリティチェック中にエラーが発生しました:")
+        print("\n[ERROR] Bandit + Safety チェック中にエラーが発生しました:")
         for error in total_errors:
             print(f"  - {error}")
 

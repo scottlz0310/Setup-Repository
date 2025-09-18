@@ -77,8 +77,8 @@ repos:
   - repo: local
     hooks:
       - id: security-check
-        name: "セキュリティチェック"
-        description: "ローカル環境でのセキュリティ脆弱性チェック（pyproject.toml設定準拠）"
+        name: "Security (Bandit + Safety)"
+        description: "Bandit（コード脆弱性）+ Safety（依存関係脆弱性）チェック（pyproject.toml設定準拠）"
         entry: uv run python scripts/security-check.py --config pyproject.toml --local-mode
         language: system
         pass_filenames: false
