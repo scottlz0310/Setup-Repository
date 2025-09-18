@@ -18,13 +18,13 @@ def verify_current_platform():
 
     if current_system == "Windows":
         assert platform_info.name == "windows"
-        assert platform_info.shell == "powershell"
+        assert platform_info.shell == "cmd"  # セキュリティ修正後の新しい設定
     elif current_system == "Linux":
         assert platform_info.name in ["linux", "wsl"]
-        assert platform_info.shell == "bash"
+        assert platform_info.shell == "sh"  # セキュリティ修正後の新しい設定
     elif current_system == "Darwin":
         assert platform_info.name == "macos"
-        assert platform_info.shell == "zsh"
+        assert platform_info.shell == "sh"  # セキュリティ修正後の新しい設定
     else:
         pytest.skip(f"未対応のプラットフォーム: {current_system}")
 
@@ -69,7 +69,7 @@ def get_platform_specific_config():
     if platform_info.name == "windows":
         return {
             "path_separator": "\\",
-            "shell": "powershell",
+            "shell": "cmd",  # セキュリティ修正後の新しい設定
             "python_cmd": "python",
             "concurrent_limit": 4,
             "timeout": 30,

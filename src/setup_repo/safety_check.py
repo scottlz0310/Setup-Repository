@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """安全性チェックモジュール"""
 
-import subprocess
 from pathlib import Path
 
 
@@ -14,48 +13,38 @@ def check_unpushed_changes(repo_path: Path) -> tuple[bool, list[str]]:
 
     try:
         # 未コミットの変更
-        result = subprocess.run(
-            ["git", "status", "--porcelain"],
-            cwd=repo_path,
-            capture_output=True,
-            text=True,
-            check=True,
+        from .security_helpers import safe_subprocess_run
+
+        result = safe_subprocess_run(
+            ["git", "status", "--porcelain"], cwd=repo_path, capture_output=True, text=True, timeout=10
         )
         if result.stdout.strip():
             issues.append("未コミットの変更があります")
 
         # 未pushのコミット
-        result = subprocess.run(
+        result = safe_subprocess_run(
             ["git", "log", "@{u}..HEAD", "--oneline"],
             cwd=repo_path,
             capture_output=True,
             text=True,
+            timeout=10,
+            check=False,
         )
         if result.returncode == 0 and result.stdout.strip():
             issues.append("未pushのコミットがあります")
 
         # stashの存在
-        result = subprocess.run(
-            ["git", "stash", "list"],
-            cwd=repo_path,
-            capture_output=True,
-            text=True,
-            check=True,
+        result = safe_subprocess_run(
+            ["git", "stash", "list"], cwd=repo_path, capture_output=True, text=True, timeout=10
         )
         if result.stdout.strip():
             issues.append("stashがあります")
 
-    except subprocess.CalledProcessError as e:
+    except Exception as e:
         import logging
 
         logger = logging.getLogger(__name__)
         logger.debug(f"Gitコマンド実行エラー: {e}")
-    except Exception as e:
-        # 予期しないエラーの場合もログに記録
-        import logging
-
-        logger = logging.getLogger(__name__)
-        logger.debug(f"予期しないエラー: {e}")
 
     return len(issues) > 0, issues
 

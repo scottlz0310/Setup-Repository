@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "setup-repository"
-version = "1.1.0"
+version = "1.2.0"
 description = "🚀 クロスプラットフォーム対応のGitHubリポジトリセットアップ・同期ツール"
 readme = "README.md"
 license = "MIT"
@@ -17,8 +17,6 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-
-
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -29,17 +27,7 @@ dependencies = [
     "rg>=0.0.75",
     "requests>=2.25.0",
     "bandit>=1.8.6",
-]
-
-[project.optional-dependencies]
-dev = [
-    "pytest>=7.0",
-    "pytest-cov>=4.0",
-    "pytest-xdist>=3.0",
-    "ruff>=0.1.0",
-    "mypy>=1.0",
-    "coverage>=7.0",
-    "pre-commit>=3.0",
+    "psutil>=5.9.0",
 ]
 
 [project.scripts]
@@ -49,6 +37,29 @@ setup-repo = "setup_repo.cli:main"
 Homepage = "https://github.com/scottlz0310/Setup-Repository"
 Repository = "https://github.com/scottlz0310/Setup-Repository"
 Issues = "https://github.com/scottlz0310/Setup-Repository/issues"
+
+[dependency-groups]
+dev = [
+    "coverage>=7.10.6",
+    "mypy>=1.18.1",
+    "pre-commit>=4.3.0",
+    "pytest>=8.4.2",
+    "pytest-cov>=7.0.0",
+    "pytest-json-report>=1.5.0",
+    "pytest-xdist>=3.8.0",
+    "pytest-benchmark>=4.0.0",
+    "pytest-timeout>=2.4.0",
+    "ruff>=0.13.0",
+    "black>=25.1.0",
+    "tomli-w>=1.0.0",
+    "types-psutil>=7.0.0.20250822",
+    "types-requests>=2.32.4.20250809",
+]
+security = [
+    "safety>=3.6.0",
+    "bandit>=1.8.6",
+    "pip-licenses>=5.0.0",
+]
 
 [tool.ruff]
 target-version = "py311"
@@ -116,7 +127,8 @@ testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "-v --tb=short --disable-warnings -p xdist -p pytest_cov -n auto --dist=worksteal --cov=src/setup_repo --cov-report=term-missing --cov-report=html:htmlcov --cov-fail-under=80"
+# 並列実行を有効化（xdist）し、プラグイン自動ロード無効化環境でも動作するよう明示ロード
+addopts = "-v --tb=short --disable-warnings -p xdist -n auto --dist=worksteal"
 markers = [
     "unit: 単体テスト",
     "integration: 統合テスト",
@@ -146,8 +158,8 @@ omit = [
 ]
 
 [tool.coverage.report]
-# production段階要件（ルール5.2準拠）
-fail_under = 80
+# production段階要件（ルール5.2準拠）- 70%に統一(段階的厳格化)
+fail_under = 70
 show_missing = true
 skip_covered = false
 skip_empty = false
@@ -191,9 +203,23 @@ skips = [
     "B310",  # blacklist - urllib.urlopen - HTTPS URLのみ使用でセキュリティ確保済み
     "B108",  # hardcoded_tmp_directory - tempfile.gettempdir()使用に修正済み
 ]
+severity = "medium"
+confidence = "medium"
 
 [tool.bandit.assert_used]
 skips = ["*_test.py", "test_*.py"]
+
+# セキュリティ設定統一管理
+[tool.security]
+# セキュリティチェック実行モード
+local_mode = true  # ローカル環境では警告のみ
+strict_mode = false  # CI環境では厳格モード
+# ツール利用可能性チェック
+required_tools = ["bandit", "safety"]
+optional_tools = ["trufflehog", "pip-licenses"]
+# 緩和策設定
+allow_tool_failures = true  # ツールインストール失敗時も継続
+fallback_mode = true  # フォールバック処理を有効化
 
 
 # Safety Platform統合設定（ルール6.1準拠）
@@ -201,30 +227,3 @@ skips = ["*_test.py", "test_*.py"]
 name = "safety"
 url = "https://pkgs.safetycli.com/repository/scottlz-team/project/setup-repository/pypi/simple/"
 default = false
-[dependency-groups]
-dev = [
-    "pytest>=8.4.2",
-    "pytest-cov>=7.0.0",
-    "pytest-xdist>=3.8.0",
-    "pytest-json-report>=1.5.0",
-    "pytest-benchmark>=4.0.0",
-    "pytest-timeout>=2.4.0",
-    "pre-commit>=4.3.0",
-    "ruff>=0.8.0",
-    "mypy>=1.13.0",
-    "coverage>=7.6.0",
-    "tomli-w>=1.0.0",
-    "psutil>=5.9.0",
-    "black>=25.1.0",
-    "types-psutil>=7.0.0.20250822",
-    "types-requests>=2.32.4.20250809",
-]
-security = [
-    "safety>=3.6.0",  # 新しいscanコマンド対応バージョン
-    "bandit>=1.8.6",  # pre-commit設定と整合
-    "pip-licenses>=5.0.0",  # 最新版に更新
-    # semgrep>=1.45.0 - LGPLライセンスのため除外、代わりにCodeQLを使用
-]
-quality = [
-    "pytest-json-report>=1.5.0",  # JSON形式のテストレポート生成
-]

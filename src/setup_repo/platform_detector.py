@@ -45,7 +45,7 @@ def _detect_windows_platform(github_actions: bool) -> PlatformInfo:
         name="windows",
         display_name="Windows" + (" (GitHub Actions)" if github_actions else ""),
         package_managers=["scoop", "winget", "chocolatey"],
-        shell="powershell",
+        shell="cmd",  # セキュリティ向上のためcmdに変更
         python_cmd="python",
     )
 
@@ -59,7 +59,7 @@ def _detect_linux_platform(is_ci: bool, github_actions: bool) -> PlatformInfo:
             name="linux",
             display_name="Linux (WSL in CI)" + (" (GitHub Actions)" if github_actions else ""),
             package_managers=["apt", "snap", "curl"],
-            shell="bash",
+            shell="sh",  # セキュリティ向上のためshに変更
             python_cmd="python3",
         )
     elif is_wsl:
@@ -67,7 +67,7 @@ def _detect_linux_platform(is_ci: bool, github_actions: bool) -> PlatformInfo:
             name="wsl",
             display_name="WSL (Windows Subsystem for Linux)",
             package_managers=["apt", "snap", "curl"],
-            shell="bash",
+            shell="sh",  # セキュリティ向上のためshに変更
             python_cmd="python3",
         )
 
@@ -78,7 +78,7 @@ def _detect_linux_platform(is_ci: bool, github_actions: bool) -> PlatformInfo:
         name="linux",
         display_name="Linux" + (" (GitHub Actions)" if github_actions else ""),
         package_managers=["apt", "snap", "curl"],
-        shell="bash",
+        shell="sh",  # セキュリティ向上のためshに変更
         python_cmd="python3",
     )
 
@@ -92,7 +92,7 @@ def _detect_macos_platform(github_actions: bool) -> PlatformInfo:
         name="macos",
         display_name="macOS" + (" (GitHub Actions)" if github_actions else ""),
         package_managers=["brew", "curl"],
-        shell="zsh",
+        shell="sh",  # セキュリティ向上のためsh に変更
         python_cmd="python3",
     )
 
@@ -106,7 +106,7 @@ def _detect_default_linux_platform(github_actions: bool) -> PlatformInfo:
         name="linux",
         display_name="Linux" + (" (GitHub Actions)" if github_actions else ""),
         package_managers=["apt", "snap", "curl"],
-        shell="bash",
+        shell="sh",  # セキュリティ向上のためshに変更
         python_cmd="python3",
     )
 

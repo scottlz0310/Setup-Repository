@@ -207,6 +207,7 @@ def check_admin_role(session_data: dict) -> bool:
     if not validate_session_data(session_data):
         return False
 
+    # サーバーサイドセッションから認証情報を取得
     return session_data.get("authenticated_role") == "admin"
 
 

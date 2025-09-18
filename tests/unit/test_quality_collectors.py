@@ -229,16 +229,17 @@ class TestCollectPytestMetrics:
         assert result["errors"] == []
 
     @pytest.mark.unit
-    @patch("subprocess.run")
+    @patch("src.setup_repo.quality_collectors.safe_subprocess")
     @patch("builtins.open", new_callable=mock_open)
     @patch("pathlib.Path.exists")
+    @patch.dict("os.environ", {}, clear=True)  # CI環境変数をクリア
     def test_collect_pytest_metrics_coverage_failure(
-        self, mock_exists, mock_file, mock_run, tmp_path, mock_test_report_data
+        self, mock_exists, mock_file, mock_subprocess, tmp_path, mock_test_report_data
     ):
         """Pytestメトリクス収集（カバレッジ不足）テスト"""
         verify_current_platform()  # プラットフォーム検証
 
-        mock_run.return_value = Mock(returncode=0, stdout="", stderr="")
+        mock_subprocess.return_value = Mock(returncode=0, stdout="", stderr="")
         mock_exists.return_value = True
 
         # 低いカバレッジデータ
@@ -251,19 +252,9 @@ class TestCollectPytestMetrics:
 
         result = collect_pytest_metrics(tmp_path, coverage_threshold=80.0)
 
-        # CI環境ではカバレッジチェックが無効化されるため、ローカル環境のみチェック
-        import os
-
-        is_ci = os.getenv("CI", "").lower() in ("true", "1")
-
-        if is_ci:
-            # CI環境ではテスト失敗がない限り成功
-            assert result["success"] is True
-        else:
-            # ローカル環境ではカバレッジ不足で失敗
-            assert result["success"] is False
-            assert "カバレッジ不足" in result["errors"][0]
-
+        # ローカル環境（CI=False）でのカバレッジ不足テスト
+        assert result["success"] is False
+        assert "カバレッジ不足" in result["errors"][0]
         assert result["coverage_percent"] == 70.0
 
     @pytest.mark.unit
@@ -313,7 +304,7 @@ class TestCollectPytestMetrics:
 
         assert result["is_ci_environment"] is True
         assert result["unit_tests_only"] is True
-        assert result["effective_threshold"] == 70.0  # CI環境では閾値が下がる
+        assert result["effective_threshold"] == 70.0  # CI環境では70%に調整
 
     @pytest.mark.unit
     @patch("subprocess.run")

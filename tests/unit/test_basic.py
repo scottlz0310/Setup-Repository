@@ -21,7 +21,7 @@ def test_platform_detection():
 
     # プラットフォーム情報の検証
     assert platform_info.name in ["windows", "linux", "wsl", "macos"]
-    assert platform_info.shell in ["powershell", "bash", "zsh"]
+    assert platform_info.shell in ["cmd", "sh"]  # セキュリティ修正後の新しい設定
     assert platform_info.python_cmd in ["python", "python3"]
 
 

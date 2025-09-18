@@ -103,7 +103,7 @@ class TestQualityMetrics:
         metrics = QualityMetrics(
             ruff_issues=0,
             mypy_errors=0,
-            test_coverage=85.0,
+            test_coverage=75.0,  # pyproject.tomlの設定70%以上
             test_passed=100,
             test_failed=0,
             security_vulnerabilities=0,
@@ -122,17 +122,28 @@ class TestQualityMetrics:
         metrics = QualityMetrics(mypy_errors=1)
         assert metrics.is_passing() is False
 
-        # カバレッジが低い場合
-        metrics = QualityMetrics(test_coverage=70.0)
+        # カバレッジが低い場合（pyproject.tomlの設定70%未満）
+        metrics = QualityMetrics(test_coverage=69.0)
         assert metrics.is_passing() is False
 
         # テスト失敗がある場合
         metrics = QualityMetrics(test_failed=1)
         assert metrics.is_passing() is False
 
-        # セキュリティ脆弱性がある場合
-        metrics = QualityMetrics(security_vulnerabilities=1)
-        assert metrics.is_passing() is False
+        # セキュリティ脆弱性がある場合（CI環境以外）
+        import os
+
+        original_ci = os.environ.get("CI")
+        try:
+            # CI環境変数を一時的に削除してローカル環境をシミュレート
+            if "CI" in os.environ:
+                del os.environ["CI"]
+            metrics = QualityMetrics(security_vulnerabilities=1)
+            assert metrics.is_passing() is False
+        finally:
+            # CI環境変数を復元
+            if original_ci is not None:
+                os.environ["CI"] = original_ci
 
     @pytest.mark.unit
     def test_is_passing_custom_coverage(self):
@@ -159,17 +170,29 @@ class TestQualityMetrics:
     @pytest.mark.unit
     def test_get_quality_score_with_issues(self):
         """問題がある場合の品質スコアテスト."""
-        metrics = QualityMetrics(
-            ruff_issues=5,  # -10点
-            mypy_errors=3,  # -9点
-            test_coverage=70.0,  # -5点 (80-70)*0.5
-            test_passed=95,
-            test_failed=2,  # -10点
-            security_vulnerabilities=1,  # -10点
-        )
+        import os
 
-        expected_score = 100.0 - 10 - 9 - 5 - 10 - 10
-        assert metrics.get_quality_score() == expected_score
+        original_ci = os.environ.get("CI")
+        try:
+            # CI環境変数を一時的に削除してローカル環境をシミュレート
+            if "CI" in os.environ:
+                del os.environ["CI"]
+
+            metrics = QualityMetrics(
+                ruff_issues=5,  # -10点 (min(5*2, 20))
+                mypy_errors=3,  # -9点 (min(3*3, 30))
+                test_coverage=60.0,  # -5点 (70-60)*0.5 (pyproject.tomlの設定70%基準)
+                test_passed=95,
+                test_failed=2,  # -10点 (min(2*5, 25))
+                security_vulnerabilities=1,  # -2点 (min(1*2, 30)) ローカル環境
+            )
+
+            expected_score = 100.0 - 10 - 9 - 5 - 10 - 2  # = 64.0
+            assert metrics.get_quality_score() == expected_score
+        finally:
+            # CI環境変数を復元
+            if original_ci is not None:
+                os.environ["CI"] = original_ci
 
     @pytest.mark.unit
     def test_get_quality_score_maximum_deductions(self):

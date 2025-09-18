@@ -97,17 +97,17 @@ class CIEnvironmentInfo:
             # Git情報を取得
             git_info = {}
             try:
-                git_commit = subprocess.check_output(
-                    ["git", "rev-parse", "HEAD"], text=True, stderr=subprocess.DEVNULL
-                ).strip()
-                git_info["commit"] = git_commit
+                from .security_helpers import safe_subprocess_run
 
-                git_branch = subprocess.check_output(
-                    ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-                    text=True,
-                    stderr=subprocess.DEVNULL,
-                ).strip()
-                git_info["branch"] = git_branch
+                git_commit_result = safe_subprocess_run(
+                    ["git", "rev-parse", "HEAD"], capture_output=True, text=True, timeout=10
+                )
+                git_info["commit"] = git_commit_result.stdout.strip()
+
+                git_branch_result = safe_subprocess_run(
+                    ["git", "rev-parse", "--abbrev-ref", "HEAD"], capture_output=True, text=True, timeout=10
+                )
+                git_info["branch"] = git_branch_result.stdout.strip()
 
             except (subprocess.CalledProcessError, FileNotFoundError):
                 git_info = {"commit": "unknown", "branch": "unknown"}
@@ -131,8 +131,10 @@ class CIEnvironmentInfo:
             # uv環境情報
             uv_info = {}
             try:
-                uv_version = subprocess.check_output(["uv", "--version"], text=True, stderr=subprocess.DEVNULL).strip()
-                uv_info["version"] = uv_version
+                from .security_helpers import safe_subprocess_run
+
+                uv_result = safe_subprocess_run(["uv", "--version"], capture_output=True, text=True, timeout=10)
+                uv_info["version"] = uv_result.stdout.strip()
 
                 # 仮想環境情報
                 if "VIRTUAL_ENV" in os.environ:
@@ -144,12 +146,12 @@ class CIEnvironmentInfo:
             # Python パッケージ情報
             packages_info = {}
             try:
-                pip_list = subprocess.check_output(
-                    [sys.executable, "-m", "pip", "list", "--format=json"],
-                    text=True,
-                    stderr=subprocess.DEVNULL,
+                from .security_helpers import safe_subprocess_run
+
+                pip_result = safe_subprocess_run(
+                    [sys.executable, "-m", "pip", "list", "--format=json"], capture_output=True, text=True, timeout=30
                 )
-                packages = json.loads(pip_list)
+                packages = json.loads(pip_result.stdout)
                 packages_info = {pkg["name"]: pkg["version"] for pkg in packages}
 
             except (subprocess.CalledProcessError, json.JSONDecodeError):

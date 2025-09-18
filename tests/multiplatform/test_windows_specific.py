@@ -31,7 +31,7 @@ class TestWindowsSpecific:
         """Windows固有のプラットフォーム検出テスト"""
         platform_info = detect_platform()
         assert platform_info.name == "windows"
-        assert platform_info.shell == "powershell"
+        assert platform_info.shell == "cmd"  # セキュリティ修正後の新しい設定
         assert platform_info.python_cmd == "python"
 
     @pytest.mark.skipif(

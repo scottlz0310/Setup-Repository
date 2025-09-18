@@ -1,0 +1,49 @@
+# CODEOWNERS
+# このファイルは、リポジトリの各部分の所有者を定義します。
+# 詳細: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# グローバル所有者 - すべてのファイルのデフォルト所有者
+* @scottlz0310
+
+# コア実装
+/src/ @scottlz0310
+/main.py @scottlz0310
+
+# テスト
+/tests/ @scottlz0310
+
+# CI/CD設定
+/.github/ @scottlz0310
+/scripts/ @scottlz0310
+/Makefile @scottlz0310
+
+# 設定ファイル
+/pyproject.toml @scottlz0310
+/uv.lock @scottlz0310
+/.pre-commit-config.yaml @scottlz0310
+
+# セキュリティ関連
+/SECURITY.md @scottlz0310
+/.bandit @scottlz0310
+/.safety-project.ini @scottlz0310
+
+# ドキュメント
+/README.md @scottlz0310
+/CHANGELOG.md @scottlz0310
+/CONTRIBUTING.md @scottlz0310
+/CODE_OF_CONDUCT.md @scottlz0310
+/GOVERNANCE.md @scottlz0310
+/SUPPORT.md @scottlz0310
+/docs/ @scottlz0310
+
+# プロジェクトルール
+/.amazonq/rules/ @scottlz0310
+/.kiro/ @scottlz0310
+
+# リリース管理
+/RELEASE_NOTES.md @scottlz0310
+
+# 品質管理
+/coverage-improvement-plan.md @scottlz0310
+/quality-report.json @scottlz0310
+/test-report.json @scottlz0310

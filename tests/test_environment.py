@@ -102,27 +102,24 @@ def test_mock_git_operations_fixture(mock_git_operations) -> None:
 
 
 @pytest.mark.unit
-def test_mock_platform_detector_fixture(mock_platform_detector) -> None:
-    """mock_platform_detectorフィクスチャの動作確認"""
-    import os
+def test_real_platform_detection(current_platform) -> None:
+    """実環境でのプラットフォーム検出テスト"""
+    import platform
 
-    # CI環境またはpre-commit環境では、フィクスチャの動作が異なる可能性があるため
-    # 環境に応じてテストをスキップまたは調整
-    if os.getenv("CI") or os.getenv("PRE_COMMIT"):
-        # CI/pre-commit環境では基本的な動作のみテスト
-        assert mock_platform_detector is not None
-        assert hasattr(mock_platform_detector, "detect_platform")
-        assert hasattr(mock_platform_detector, "get_package_manager")
-        return
+    # 実際のプラットフォーム情報を取得
+    system = platform.system().lower()
 
-    # プラットフォーム検出のモックをテスト
-    try:
-        assert mock_platform_detector.detect_platform() == "linux"
-        assert mock_platform_detector.get_package_manager() == "apt"
-        # conftest.pyで定義されているメソッドのみテスト
-    except AttributeError as e:
-        # フィクスチャが正しく設定されていない場合はスキップ
-        pytest.skip(f"モックプラットフォーム検出フィクスチャが正しく設定されていません: {e}")
+    # current_platformフィクスチャの値を検証
+    expected_platforms = ["windows", "linux", "macos"]
+    assert current_platform in expected_platforms, f"未対応のプラットフォーム: {current_platform}"
+
+    # システム情報との整合性を確認
+    if system == "windows":
+        assert current_platform == "windows"
+    elif system == "linux":
+        assert current_platform == "linux"
+    elif system == "darwin":
+        assert current_platform == "macos"
 
 
 @pytest.mark.unit

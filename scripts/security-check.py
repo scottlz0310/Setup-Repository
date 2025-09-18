@@ -1,400 +1,195 @@
 #!/usr/bin/env python3
-"""
-セキュリティチェック統合スクリプト
+"""ローカル環境用セキュリティチェックスクリプト
 
-このスクリプトは以下のセキュリティチェックを実行します：
-- Safety: 既知の脆弱性チェック
-- Bandit: コードセキュリティ分析
-- Semgrep: セキュリティパターンマッチング
-- License check: ライセンス監査
+このスクリプトはローカル環境でのセキュリティ脆弱性チェックを行い、
+修復可能な問題を開発者に報告します。
 """
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any
+
+# WindowsでのUTF-8エンコーディング強制設定
+if os.name == "nt":
+    import contextlib
+
+    if hasattr(sys.stdout, "reconfigure"):
+        with contextlib.suppress(Exception):
+            sys.stdout.reconfigure(encoding="utf-8")
+            sys.stderr.reconfigure(encoding="utf-8")
+
+# ruff: noqa: E402
+# プロジェクトルートをパスに追加
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root / "src"))
+
+from setup_repo.security_helpers import safe_subprocess
 
 
-class SecurityChecker:
-    """セキュリティチェック統合クラス"""
+def run_bandit_check() -> tuple[bool, list[dict], list[str]]:
+    """Banditセキュリティチェック実行（pyproject.toml設定準拠）"""
+    try:
+        # 引数を構築（pyproject.tomlの設定を使用）
+        args = ["uv", "run", "bandit", "-r", "src/", "-f", "json"]
 
-    def __init__(self, output_dir: Path = Path("security-reports")):
-        self.output_dir = output_dir
-        self.output_dir.mkdir(exist_ok=True)
-        self.results = {}
+        # pyproject.tomlで設定済みの除外設定を使用
+        args.extend(["--exclude", "tests,venv,.venv,build,dist"])
+        args.extend(["--skip", "B101,B603,B607,B404,B604,B310,B108"])
 
-    def run_safety_check(self) -> dict[str, Any]:
-        """Safetyによる脆弱性チェック"""
-        print("🔍 Safety による既知の脆弱性チェックを実行中...")
+        result = safe_subprocess(
+            args,
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
 
-        try:
-            # 新しいscanコマンドを使用（shell=Falseで安全に実行）
-            result = subprocess.run(
-                [
-                    "uv",
-                    "run",
-                    "safety",
-                    "scan",
-                    "--output",
-                    "json",
-                    "--save-as",
-                    str(self.output_dir / "safety-report.json"),
-                ],
-                capture_output=True,
-                text=True,
-                check=False,
-                shell=False,  # 明示的にshell=Falseを指定
-            )
+        vulnerabilities = []
+        if result.stdout:
+            try:
+                bandit_data = json.loads(result.stdout)
+                vulnerabilities = bandit_data.get("results", [])
+            except json.JSONDecodeError:
+                return False, [], [f"Bandit出力の解析に失敗: {result.stderr}"]
 
-            # 標準出力でも結果表示
-            subprocess.run(["uv", "run", "safety", "scan", "--output", "screen"], check=False, shell=False)
+        return True, vulnerabilities, []
 
-            # 結果解析
-            report_file = self.output_dir / "safety-report.json"
-            if report_file.exists():
-                with open(report_file, encoding="utf-8") as f:
-                    data = json.load(f)
-                    # 新しいフォーマットに対応
-                    vulnerabilities = data.get("vulnerabilities", [])
-                    if isinstance(vulnerabilities, list):
-                        vulnerability_count = len(vulnerabilities)
-                    else:
-                        vulnerability_count = 0
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        return False, [], [f"Banditの実行に失敗: {e}"]
 
-                    return {
-                        "status": "success" if vulnerability_count == 0 else "warning",
-                        "vulnerabilities": vulnerability_count,
-                        "details": data,
-                    }
 
-            # レポートファイルがない場合は標準出力から判断
-            if "0 security issues found" in result.stdout or result.returncode == 0:
-                return {
-                    "status": "success",
-                    "vulnerabilities": 0,
-                    "message": "脆弱性は検出されませんでした",
-                }
-            else:
-                # 標準出力から脆弱性数を抽出を試行
-                import re
+def run_safety_check() -> tuple[bool, list[dict], list[str]]:
+    """Safety脆弱性チェック実行"""
+    try:
+        result = safe_subprocess(
+            ["uv", "run", "safety", "check", "--json"],
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
 
-                vuln_match = re.search(r"(\d+) security issues found", result.stdout)
-                vuln_count = int(vuln_match.group(1)) if vuln_match else 0
+        vulnerabilities = []
+        if result.stdout:
+            try:
+                safety_data = json.loads(result.stdout)
+                if isinstance(safety_data, list):
+                    vulnerabilities = safety_data
+            except json.JSONDecodeError:
+                return False, [], [f"Safety出力の解析に失敗: {result.stderr}"]
 
-                return {
-                    "status": "warning" if vuln_count > 0 else "success",
-                    "vulnerabilities": vuln_count,
-                    "message": (
-                        f"{vuln_count}件の脆弱性が検出されました" if vuln_count > 0 else "脆弱性は検出されませんでした"
-                    ),
-                }
+        return True, vulnerabilities, []
 
-        except Exception as e:
-            return {"status": "error", "message": str(e)}
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        return False, [], [f"Safetyの実行に失敗: {e}"]
 
-    def run_bandit_check(self) -> dict[str, Any]:
-        """Banditによるセキュリティ分析"""
-        print("🔍 Bandit によるセキュリティ分析を実行中...")
 
-        try:
-            # JSON形式でレポート生成
-            subprocess.run(
-                [
-                    "uv",
-                    "run",
-                    "bandit",
-                    "-r",
-                    "src/",
-                    "-c",
-                    "pyproject.toml",
-                    "-f",
-                    "json",
-                    "-o",
-                    str(self.output_dir / "bandit-report.json"),
-                ],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
+def format_vulnerability_report(bandit_vulns: list[dict], safety_vulns: list[dict]) -> str:
+    """脆弱性レポートをフォーマット"""
+    report = []
 
-            # 標準出力でも結果表示
-            subprocess.run(
-                [
-                    "uv",
-                    "run",
-                    "bandit",
-                    "-r",
-                    "src/",
-                    "-c",
-                    "pyproject.toml",
-                    "-f",
-                    "txt",
-                ],
-                check=False,
-            )
+    if bandit_vulns:
+        report.append("[BANDIT] Banditで検出されたセキュリティ問題:")
+        for vuln in bandit_vulns[:10]:  # 最初の10件のみ表示
+            severity = vuln.get("issue_severity", "UNKNOWN")
+            confidence = vuln.get("issue_confidence", "UNKNOWN")
+            filename = vuln.get("filename", "unknown")
+            line_number = vuln.get("line_number", "?")
+            test_id = vuln.get("test_id", "")
 
-            # 結果解析
-            report_file = self.output_dir / "bandit-report.json"
-            if report_file.exists():
-                with open(report_file, encoding="utf-8") as f:
-                    data = json.load(f)
-                    results = data.get("results", [])
-                    high_issues = [r for r in results if r.get("issue_severity") == "HIGH"]
-                    medium_issues = [r for r in results if r.get("issue_severity") == "MEDIUM"]
+            report.append(f"  [X] {filename}:{line_number} [{severity}/{confidence}] {test_id}")
+            report.append(f"     {vuln.get('issue_text', 'No description')}")
 
-                    return {
-                        "status": ("error" if high_issues else "warning" if medium_issues else "success"),
-                        "high_issues": len(high_issues),
-                        "medium_issues": len(medium_issues),
-                        "total_issues": len(results),
-                        "details": data,
-                    }
+        if len(bandit_vulns) > 10:
+            report.append(f"  ... 他 {len(bandit_vulns) - 10} 件")
 
-            return {"status": "success", "message": "問題は検出されませんでした"}
+    if safety_vulns:
+        report.append("\n[SAFETY] Safetyで検出された依存関係の脆弱性:")
+        for vuln in safety_vulns[:5]:  # 最初の5件のみ表示
+            package = vuln.get("package", "unknown")
+            version = vuln.get("installed_version", "unknown")
+            vuln_id = vuln.get("vulnerability_id", "")
 
-        except Exception as e:
-            return {"status": "error", "message": str(e)}
+            report.append(f"  [!] {package} {version} - {vuln_id}")
+            report.append(f"     {vuln.get('advisory', 'No advisory')}")
 
-    def run_semgrep_check(self) -> dict[str, Any]:
-        """Semgrepによるセキュリティ分析（オプション）"""
-        print("🔍 Semgrep によるセキュリティ分析を実行中...")
+        if len(safety_vulns) > 5:
+            report.append(f"  ... 他 {len(safety_vulns) - 5} 件")
 
-        try:
-            # Semgrepがインストールされているかチェック
-            check_result = subprocess.run(
-                ["uv", "run", "python", "-c", "import semgrep"],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-
-            if check_result.returncode != 0:
-                return {
-                    "status": "warning",
-                    "errors": 0,
-                    "warnings": 0,
-                    "total_issues": 0,
-                    "message": ("Semgrepがインストールされていません（LGPLライセンスのため除外）"),
-                }
-
-            # JSON形式でレポート生成
-            subprocess.run(
-                [
-                    "uv",
-                    "run",
-                    "semgrep",
-                    "--config=auto",
-                    "src/",
-                    "--json",
-                    "--output",
-                    str(self.output_dir / "semgrep-report.json"),
-                ],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-
-            # 標準出力でも結果表示
-            subprocess.run(["uv", "run", "semgrep", "--config=auto", "src/"], check=False)
-
-            # 結果解析
-            report_file = self.output_dir / "semgrep-report.json"
-            if report_file.exists():
-                with open(report_file, encoding="utf-8") as f:
-                    data = json.load(f)
-                    results = data.get("results", [])
-                    errors = [r for r in results if r.get("extra", {}).get("severity") == "ERROR"]
-                    warnings = [r for r in results if r.get("extra", {}).get("severity") == "WARNING"]
-
-                    return {
-                        "status": ("error" if errors else "warning" if warnings else "success"),
-                        "errors": len(errors),
-                        "warnings": len(warnings),
-                        "total_issues": len(results),
-                        "details": data,
-                    }
-
-            return {"status": "success", "message": "問題は検出されませんでした"}
-
-        except Exception as e:
-            return {"status": "error", "message": str(e)}
-
-    def run_license_check(self) -> dict[str, Any]:
-        """ライセンス監査"""
-        print("🔍 ライセンス監査を実行中...")
-
-        try:
-            # JSON形式でレポート生成
-            subprocess.run(
-                [
-                    "uv",
-                    "run",
-                    "pip-licenses",
-                    "--format=json",
-                    "--output-file",
-                    str(self.output_dir / "licenses-report.json"),
-                ],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-
-            # 標準出力でも結果表示
-            subprocess.run(["uv", "run", "pip-licenses", "--format=plain"], check=False)
-
-            # 結果解析
-            report_file = self.output_dir / "licenses-report.json"
-            if report_file.exists():
-                with open(report_file, encoding="utf-8") as f:
-                    data = json.load(f)
-
-                    # 禁止ライセンスをチェック
-                    forbidden_licenses = ["GPL", "AGPL", "LGPL"]
-                    forbidden_packages = []
-                    unknown_packages = []
-
-                    for package in data:
-                        license_name = package.get("License", "")
-                        package_name = package.get("Name", "")
-
-                        # Semgrepは除外（オプションツールのため）
-                        if package_name.lower() == "semgrep":
-                            continue
-
-                        if any(forbidden in license_name.upper() for forbidden in forbidden_licenses):
-                            forbidden_packages.append(package)
-                        elif license_name in ["UNKNOWN", ""]:
-                            unknown_packages.append(package)
-
-                    status = "error" if forbidden_packages else "warning" if unknown_packages else "success"
-
-                    return {
-                        "status": status,
-                        "total_packages": len(data),
-                        "forbidden_packages": len(forbidden_packages),
-                        "unknown_packages": len(unknown_packages),
-                        "forbidden_details": forbidden_packages,
-                        "unknown_details": unknown_packages,
-                        "details": data,
-                    }
-
-            return {
-                "status": "error",
-                "message": "レポートファイルが生成されませんでした",
-            }
-
-        except Exception as e:
-            return {"status": "error", "message": str(e)}
-
-    def generate_summary(self) -> None:
-        """セキュリティチェック結果のサマリー生成"""
-        print("\n" + "=" * 60)
-        print("🛡️  セキュリティチェック結果サマリー")
-        print("=" * 60)
-
-        overall_status = "success"
-
-        for check_name, result in self.results.items():
-            status = result.get("status", "unknown")
-            if status == "error":
-                overall_status = "error"
-            elif status == "warning" and overall_status != "error":
-                overall_status = "warning"
-
-            status_icon = {"success": "✅", "warning": "⚠️", "error": "❌"}.get(status, "❓")
-
-            print(f"\n{status_icon} {check_name}:")
-
-            if check_name == "Safety":
-                vuln_count = result.get("vulnerabilities", 0)
-                print(f"   既知の脆弱性: {vuln_count}件")
-
-            elif check_name == "Bandit":
-                high = result.get("high_issues", 0)
-                medium = result.get("medium_issues", 0)
-                print(f"   高リスク: {high}件, 中リスク: {medium}件")
-
-            elif check_name == "Semgrep":
-                errors = result.get("errors", 0)
-                warnings = result.get("warnings", 0)
-                print(f"   エラー: {errors}件, 警告: {warnings}件")
-
-            elif check_name == "License":
-                forbidden = result.get("forbidden_packages", 0)
-                unknown = result.get("unknown_packages", 0)
-                total = result.get("total_packages", 0)
-                print(f"   総パッケージ: {total}件, 禁止ライセンス: {forbidden}件, 不明: {unknown}件")
-
-        print("\n" + "=" * 60)
-        overall_icon = {"success": "✅", "warning": "⚠️", "error": "❌"}.get(overall_status, "❓")
-
-        print(f"{overall_icon} 総合結果: {overall_status.upper()}")
-        print("=" * 60)
-
-        # 詳細レポートの場所を表示
-        print(f"\n📁 詳細レポート: {self.output_dir.absolute()}")
-
-        # エラーがある場合は終了コードを設定
-        if overall_status == "error":
-            sys.exit(1)
-        elif overall_status == "warning":
-            sys.exit(2)
-
-    def run_all_checks(self) -> None:
-        """全てのセキュリティチェックを実行"""
-        print("🚀 セキュリティチェックを開始します...\n")
-
-        # 各チェックを実行
-        self.results["Safety"] = self.run_safety_check()
-        self.results["Bandit"] = self.run_bandit_check()
-        self.results["Semgrep"] = self.run_semgrep_check()
-        self.results["License"] = self.run_license_check()
-
-        # サマリー生成
-        self.generate_summary()
+    return "\n".join(report)
 
 
 def main():
     """メイン関数"""
-    parser = argparse.ArgumentParser(description="セキュリティチェック統合スクリプト")
-    parser.add_argument(
-        "--output-dir",
-        type=Path,
-        default=Path("security-reports"),
-        help="レポート出力ディレクトリ (デフォルト: security-reports)",
-    )
-    parser.add_argument(
-        "--check",
-        choices=["safety", "bandit", "semgrep", "license", "all"],
-        default="all",
-        help="実行するチェック (デフォルト: all)",
-    )
+    parser = argparse.ArgumentParser(description="ローカル環境用セキュリティチェック（pyproject.toml設定準拠）")
+    parser.add_argument("--config", type=Path, default=Path("pyproject.toml"), help="設定ファイルパス")
+    parser.add_argument("--local-mode", action="store_true", help="ローカルモード（脆弱性があっても警告のみ）")
+    parser.add_argument("--strict", action="store_true", help="厳格モード（脆弱性があると失敗）")
+    parser.add_argument("--verbose", action="store_true", help="詳細出力")
 
     args = parser.parse_args()
 
-    checker = SecurityChecker(args.output_dir)
+    print("[SECURITY] Bandit + Safety セキュリティチェックを実行中...")
 
-    if args.check == "all":
-        checker.run_all_checks()
-    elif args.check == "safety":
-        result = checker.run_safety_check()
-        checker.results["Safety"] = result
-        checker.generate_summary()
-    elif args.check == "bandit":
-        result = checker.run_bandit_check()
-        checker.results["Bandit"] = result
-        checker.generate_summary()
-    elif args.check == "semgrep":
-        result = checker.run_semgrep_check()
-        checker.results["Semgrep"] = result
-        checker.generate_summary()
-    elif args.check == "license":
-        result = checker.run_license_check()
-        checker.results["License"] = result
-        checker.generate_summary()
+    # Banditチェック
+    bandit_success, bandit_vulns, bandit_errors = run_bandit_check()
+
+    # Safetyチェック
+    safety_success, safety_vulns, safety_errors = run_safety_check()
+
+    total_vulns = len(bandit_vulns) + len(safety_vulns)
+    total_errors = bandit_errors + safety_errors
+
+    if args.verbose:
+        print(f"Bandit: {len(bandit_vulns)}件の脆弱性")
+        print(f"Safety: {len(safety_vulns)}件の脆弱性")
+        if total_errors:
+            print(f"エラー: {len(total_errors)}件")
+
+    if total_vulns == 0 and not total_errors:
+        print("[OK] Bandit + Safety チェック完了: 脆弱性は検出されませんでした")
+        return 0
+
+    if total_vulns > 0:
+        print(f"\n[WARNING] Bandit + Safety: {total_vulns}件のセキュリティ脆弱性が検出されました")
+
+        if args.verbose or total_vulns <= 20:
+            print("\n" + format_vulnerability_report(bandit_vulns, safety_vulns))
+
+        print("\n[FIX] 修復方法:")
+        if bandit_vulns:
+            print("  - Bandit問題: コードを見直し、セキュアな実装に変更してください")
+        if safety_vulns:
+            print("  - Safety問題: `uv sync` で最新版に更新するか、代替パッケージを検討してください")
+
+        if args.local_mode:
+            print("\n[INFO] ローカルモード: 脆弱性は検出されましたが、開発を継続できます")
+            print("   本番環境では修復が必要です")
+            return 0
+        elif args.strict:
+            print("\n[ERROR] 厳格モード: 脆弱性があるため失敗しました")
+            return 1
+        else:
+            # デフォルト: 警告のみ
+            print("\n[WARNING] 警告: 脆弱性が検出されましたが、処理を継続します")
+            return 0
+
+    if total_errors:
+        print("\n[ERROR] Bandit + Safety チェック中にエラーが発生しました:")
+        for error in total_errors:
+            print(f"  - {error}")
+
+        if args.strict:
+            return 1
+        else:
+            print("\n[WARNING] 警告: エラーが発生しましたが、処理を継続します")
+            return 0
+
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

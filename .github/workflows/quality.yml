@@ -1,0 +1,736 @@
+name: Quality Management
+
+run-name: "Quality Management - ${{ github.event_name == 'schedule' && (github.event.schedule == '0 2 * * *' && 'Daily Metrics' || github.event.schedule == '0 0 * * *' && 'Daily Report' || github.event.schedule == '0 9 1 * *' && 'Monthly Review') || github.event_name == 'pull_request' && format('PR #{0}', github.event.number) || github.event_name == 'workflow_dispatch' && 'Manual' || github.ref_name }}"
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    # 毎日午前2時（UTC）- メトリクス収集
+    - cron: "0 2 * * *"
+    # 毎日午前0時（UTC）- 品質レポート
+    - cron: "0 0 * * *"
+    # 毎月1日午前9時（UTC）- 月次レビュー
+    - cron: "0 9 1 * *"
+  workflow_dispatch:
+    inputs:
+      quality_mode:
+        description: "品質チェックモード"
+        required: false
+        default: "full"
+        type: choice
+        options:
+          - "metrics"
+          - "report"
+          - "coverage"
+          - "monthly"
+          - "full"
+      force_review:
+        description: "強制的にレビューを実行"
+        required: false
+        default: "false"
+        type: boolean
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+env:
+  PYTHON_VERSION: "3.11"
+  # カバレッジ闾値はpyproject.tomlで管理
+  QUALITY_THRESHOLD: "70"
+
+jobs:
+  quality-metrics:
+    name: Quality Metrics Collection
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'push' ||
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'schedule' && github.event.schedule == '0 2 * * *') ||
+      (github.event_name == 'workflow_dispatch' && (inputs.quality_mode == 'metrics' || inputs.quality_mode == 'full'))
+
+    outputs:
+      quality_score: ${{ steps.metrics.outputs.quality_score }}
+      coverage: ${{ steps.metrics.outputs.coverage }}
+      ruff_issues: ${{ steps.metrics.outputs.ruff_issues }}
+      mypy_errors: ${{ steps.metrics.outputs.mypy_errors }}
+      security_vulnerabilities: ${{ steps.metrics.outputs.security_vulnerabilities }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: Create virtual environment
+        run: uv venv --python ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: uv sync --dev
+
+      - name: Run quality analysis
+        id: metrics
+        run: |
+          echo "🔍 品質メトリクス収集中..."
+
+          # カバレッジ監視システムでレポート生成
+          uv run python scripts/coverage-monitor.py --generate-report
+
+          # 並列品質チェック実行
+          echo "📝 品質チェック実行中..."
+
+          # Ruffによるコード品質チェック
+          if ! uv run ruff check . --output-format=json > ruff-report.json; then
+            echo "❌ Ruffリンティングでエラーが発生しました"
+            exit 1
+          fi
+
+          # MyPyによる型チェック
+          if ! uv run mypy src/ --no-error-summary > mypy-report.txt; then
+            echo "❌ MyPy型チェックでエラーが発生しました"
+            exit 1
+          fi
+
+          # テスト実行とメトリクス収集
+          if ! uv run pytest tests/ \
+            --json-report --json-report-file=test-report.json \
+            --cov=src/setup_repo \
+            --cov-report=json:coverage.json \
+            --cov-report=xml \
+            --cov-report=html \
+            --junit-xml=test-results.xml \
+            -v; then
+            echo "❌ テストが失敗しました"
+            exit 1
+          fi
+
+          # セキュリティチェック（オプション）
+          uv run bandit -r src/ -f json -o security-report.json || echo "セキュリティチェック完了"
+
+      - name: Generate quality metrics summary
+        run: |
+          echo "📊 品質メトリクスサマリー生成中..."
+
+          uv run python -c "
+          import json
+          import os
+          from datetime import datetime
+          from pathlib import Path
+
+          # メトリクスデータを収集
+          metrics = {
+              'timestamp': datetime.now().isoformat(),
+              'commit_sha': os.environ.get('GITHUB_SHA', 'unknown'),
+              'branch': os.environ.get('GITHUB_REF_NAME', 'unknown'),
+              'ruff_issues': 0,
+              'mypy_errors': 0,
+              'test_passed': 0,
+              'test_failed': 0,
+              'test_coverage': 0.0,
+              'security_vulnerabilities': 0
+          }
+
+          # Ruffレポートを解析
+          try:
+              with open('ruff-report.json', 'r') as f:
+                  ruff_data = json.load(f)
+              metrics['ruff_issues'] = len(ruff_data)
+          except:
+              pass
+
+          # MyPyレポートを解析
+          try:
+              with open('mypy-report.txt', 'r') as f:
+                  mypy_lines = f.readlines()
+              # エラー行をカウント（簡易的）
+              metrics['mypy_errors'] = len([line for line in mypy_lines if 'error:' in line])
+          except:
+              pass
+
+          # テストレポートを解析
+          try:
+              with open('test-report.json', 'r') as f:
+                  test_data = json.load(f)
+              summary = test_data.get('summary', {})
+              metrics['test_passed'] = summary.get('passed', 0)
+              metrics['test_failed'] = summary.get('failed', 0)
+          except:
+              pass
+
+          # カバレッジデータを解析
+          try:
+              with open('coverage.json', 'r') as f:
+                  cov_data = json.load(f)
+              metrics['test_coverage'] = cov_data['totals']['percent_covered']
+          except:
+              pass
+
+          # セキュリティレポートを解析
+          try:
+              with open('security-report.json', 'r') as f:
+                  sec_data = json.load(f)
+              metrics['security_vulnerabilities'] = len(sec_data.get('results', []))
+          except:
+              pass
+
+          # 品質スコアを計算
+          quality_score = 100
+          if metrics['test_coverage'] < 80:
+              quality_score -= (80 - metrics['test_coverage']) * 2
+          quality_score -= metrics['ruff_issues'] * 0.5
+          quality_score -= metrics['mypy_errors'] * 1
+          quality_score -= metrics['test_failed'] * 5
+          quality_score -= metrics['security_vulnerabilities'] * 2
+          quality_score = max(0, quality_score)
+          metrics['quality_score'] = quality_score
+
+          # メトリクスファイルを保存
+          with open('quality-metrics.json', 'w') as f:
+              json.dump(metrics, f, indent=2)
+
+          # GitHub Actions出力ファイルに書き込み
+          import os
+          github_output = os.environ.get('GITHUB_OUTPUT')
+          if github_output:
+              with open(github_output, 'a') as f:
+                  f.write(f'quality_score={quality_score:.1f}\\n')
+                  f.write(f'coverage={metrics[\"test_coverage\"]:.2f}\\n')
+                  f.write(f'ruff_issues={metrics[\"ruff_issues\"]}\\n')
+                  f.write(f'mypy_errors={metrics[\"mypy_errors\"]}\\n')
+                  f.write(f'security_vulnerabilities={metrics[\"security_vulnerabilities\"]}\\n')
+
+          # コンソール出力（デバッグ用）
+          print(f'quality_score={quality_score:.1f}')
+          print(f'coverage={metrics[\"test_coverage\"]:.2f}')
+          print(f'ruff_issues={metrics[\"ruff_issues\"]}')
+          print(f'mypy_errors={metrics[\"mypy_errors\"]}')
+          print(f'security_vulnerabilities={metrics[\"security_vulnerabilities\"]}')
+
+          # サマリーをMarkdown形式で生成
+          with open('quality-summary.md', 'w') as f:
+              f.write('# 📊 品質メトリクスサマリー\\n\\n')
+              f.write(f'**実行日時**: {metrics[\"timestamp\"]}\\n')
+              f.write(f'**コミット**: {metrics[\"commit_sha\"][:8]}\\n')
+              f.write(f'**ブランチ**: {metrics[\"branch\"]}\\n\\n')
+
+              f.write('## メトリクス\\n\\n')
+              f.write(f'- **テストカバレッジ**: {metrics[\"test_coverage\"]:.2f}%\\n')
+              f.write(f'- **テスト結果**: {metrics[\"test_passed\"]} 成功, {metrics[\"test_failed\"]} 失敗\\n')
+              f.write(f'- **Ruff問題**: {metrics[\"ruff_issues\"]} 件\\n')
+              f.write(f'- **MyPyエラー**: {metrics[\"mypy_errors\"]} 件\\n')
+              f.write(f'- **セキュリティ脆弱性**: {metrics[\"security_vulnerabilities\"]} 件\\n\\n')
+
+              f.write(f'## 品質スコア: {quality_score:.1f}/100\\n\\n')
+
+              if quality_score >= 90:
+                  f.write('✅ **優秀**: 品質基準を大幅に上回っています\\n')
+              elif quality_score >= 80:
+                  f.write('✅ **良好**: 品質基準を満たしています\\n')
+              elif quality_score >= 70:
+                  f.write('⚠️ **注意**: 品質改善が推奨されます\\n')
+              else:
+                  f.write('❌ **要改善**: 品質基準を下回っています\\n')
+
+          print('品質メトリクスサマリーを生成しました')
+          "
+
+      - name: Store metrics history
+        run: |
+          echo "📈 メトリクス履歴を保存中..."
+
+          mkdir -p quality-history
+
+          # 日付付きファイル名でメトリクスを保存
+          DATE=$(date +%Y%m%d_%H%M%S)
+          cp quality-metrics.json quality-history/metrics_${DATE}.json
+
+          # 最新のメトリクスファイルも更新
+          cp quality-metrics.json quality-history/latest-metrics.json
+
+      - name: Upload quality artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: quality-metrics-${{ github.sha }}
+          path: |
+            quality-metrics.json
+            quality-summary.md
+            quality-history/
+            ruff-report.json
+            mypy-report.txt
+            test-report.json
+            coverage.json
+            coverage.xml
+            htmlcov/
+            security-report.json
+          retention-days: 90
+
+  coverage-analysis:
+    name: Coverage Analysis
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'push' ||
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'schedule' && github.event.schedule == '0 0 * * *') ||
+      (github.event_name == 'workflow_dispatch' && (inputs.quality_mode == 'coverage' || inputs.quality_mode == 'full'))
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: Create virtual environment
+        run: uv venv --python ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: uv sync --dev
+
+      - name: Run comprehensive coverage analysis
+        run: |
+          echo "🔍 包括的カバレッジ分析を実行中..."
+
+          if ! uv run pytest tests/ \
+            --cov=src/setup_repo \
+            --cov-report=term-missing \
+            --cov-report=xml \
+            --cov-report=html \
+            --cov-report=json \
+            --junit-xml=test-results.xml \
+            -v; then
+            echo "❌ テストが失敗しました"
+            exit 1
+          fi
+
+          # カバレッジ監視システムを使用してレポート生成
+          if ! uv run python scripts/coverage-monitor.py --generate-report; then
+            echo "❌ カバレッジ監視システムでエラーが発生しました"
+            exit 1
+          fi
+
+      - name: Generate coverage summary
+        if: always()
+        run: |
+          echo "📊 カバレッジサマリー生成中..."
+
+          if [ -f "coverage.json" ]; then
+            cat > coverage-summary.md << 'EOF'
+          # 📊 カバレッジレポート
+
+          ## 全体サマリー
+          EOF
+
+            uv run python -c "
+          import json
+          from datetime import datetime
+
+          try:
+              with open('coverage.json', 'r', encoding='utf-8') as f:
+                  data = json.load(f)
+
+              total_coverage = data['totals']['percent_covered']
+              total_statements = data['totals']['num_statements']
+              covered_statements = data['totals']['covered_lines']
+              missing_statements = data['totals']['missing_lines']
+
+              print(f'**全体カバレッジ**: {total_coverage:.2f}%')
+              print(f'**総ステートメント数**: {total_statements}')
+              print(f'**カバー済み**: {covered_statements}')
+              print(f'**未カバー**: {missing_statements}')
+              print(f'**生成日時**: {datetime.now().strftime(\"%Y-%m-%d %H:%M:%S\")}')
+              print()
+
+              if total_coverage >= 80:
+                  print('✅ **品質ゲート**: 通過 (80%以上)')
+              elif total_coverage >= 70:
+                  print('⚠️ **品質ゲート**: 警告 (70%以上、80%未満)')
+              else:
+                  print('❌ **品質ゲート**: 未達成 (70%未満)')
+
+              print()
+              print('## ファイル別カバレッジ')
+              print()
+
+              files = data.get('files', {})
+              for filepath, file_data in sorted(files.items()):
+                  if 'src/setup_repo' in filepath:
+                      filename = filepath.split('/')[-1]
+                      file_coverage = file_data['summary']['percent_covered']
+                      status = '✅' if file_coverage >= 90 else '⚠️' if file_coverage >= 70 else '❌'
+                      print(f'{status} **{filename}**: {file_coverage:.2f}%')
+
+          except Exception as e:
+              print(f'カバレッジレポート解析エラー: {e}')
+          " >> coverage-summary.md
+          fi
+
+      - name: Check coverage trend
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "📈 カバレッジトレンド分析中..."
+
+          set +e
+          CURRENT_BRANCH=${{ github.event.pull_request.head.sha }}
+
+          if git checkout ${{ github.event.pull_request.base.sha }}; then
+            echo "✅ ベースブランチに切り替えました"
+
+            if ! uv run pytest tests/ --cov=src/setup_repo --cov-report=json:base-coverage.json -x --tb=no -q; then
+              echo "⚠️ ベースブランチのテストでエラーが発生しました（比較をスキップします）"
+              exit 0
+            fi
+
+            if git checkout $CURRENT_BRANCH; then
+              if [ -f "base-coverage.json" ] && [ -f "coverage.json" ]; then
+                uv run python -c "
+          import json
+
+          try:
+              with open('base-coverage.json', 'r') as f:
+                  base_cov = json.load(f)
+              with open('coverage.json', 'r') as f:
+                  current_cov = json.load(f)
+
+              base_percent = base_cov['totals']['percent_covered']
+              current_percent = current_cov['totals']['percent_covered']
+              diff = current_percent - base_percent
+
+              print(f'ベースブランチ: {base_percent:.2f}%')
+              print(f'現在のブランチ: {current_percent:.2f}%')
+              print(f'差分: {diff:+.2f}%')
+
+              if diff >= 0:
+                  print('✅ カバレッジが向上または維持されています')
+              else:
+                  print('⚠️ カバレッジが低下しています')
+                  if abs(diff) > 5:
+                      print('❌ カバレッジが5%以上低下しています')
+
+              with open('coverage-trend.txt', 'w') as f:
+                  f.write(f'ベースブランチ: {base_percent:.2f}%\\n')
+                  f.write(f'現在のブランチ: {current_percent:.2f}%\\n')
+                  f.write(f'差分: {diff:+.2f}%\\n')
+
+          except Exception as e:
+              print(f'カバレッジ比較に失敗: {e}')
+              with open('coverage-trend.txt', 'w') as f:
+                  f.write('トレンド分析データが利用できません\\n')
+          "
+              fi
+            fi
+          fi
+          set -e
+
+      - name: Upload coverage artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report-${{ github.sha }}
+          path: |
+            htmlcov/
+            coverage.xml
+            coverage.json
+            coverage-summary.md
+            test-results.xml
+            coverage-reports/
+            coverage-trend.txt
+          retention-days: 30
+
+  quality-report:
+    name: Quality Report
+    runs-on: ubuntu-latest
+    needs: [quality-metrics, coverage-analysis]
+    if: |
+      always() &&
+      (github.event_name == 'push' ||
+       github.event_name == 'pull_request' ||
+       (github.event_name == 'schedule' && github.event.schedule == '0 0 * * *') ||
+       (github.event_name == 'workflow_dispatch' && (inputs.quality_mode == 'report' || inputs.quality_mode == 'full')))
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download quality artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: "*-${{ github.sha }}"
+          merge-multiple: true
+
+      - name: Generate comprehensive quality report
+        run: |
+          echo "📊 包括的品質レポート生成中..."
+
+          # 品質レポートを統合
+          cat > quality-report.md << 'EOF'
+          # 📊 包括的品質レポート
+
+          EOF
+
+          # 品質サマリーを追加
+          if [ -f "quality-summary.md" ]; then
+            cat quality-summary.md >> quality-report.md
+            echo "" >> quality-report.md
+          fi
+
+          # カバレッジサマリーを追加
+          if [ -f "coverage-summary.md" ]; then
+            echo "---" >> quality-report.md
+            echo "" >> quality-report.md
+            cat coverage-summary.md >> quality-report.md
+          fi
+
+      - name: Publish quality report
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            try {
+              let report = '';
+
+              if (fs.existsSync('quality-report.md')) {
+                report = fs.readFileSync('quality-report.md', 'utf8');
+              } else if (fs.existsSync('quality-summary.md')) {
+                report = fs.readFileSync('quality-summary.md', 'utf8');
+              }
+
+              if (report) {
+                github.rest.issues.createComment({
+                  issue_number: context.issue.number,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body: report
+                });
+              }
+            } catch (error) {
+              console.log('品質レポートの投稿に失敗:', error);
+            }
+
+  monthly-review:
+    name: Monthly Quality Review
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'schedule' && github.event.schedule == '0 9 1 * *') ||
+      (github.event_name == 'workflow_dispatch' && (inputs.quality_mode == 'monthly' || inputs.force_review == 'true'))
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: Create virtual environment
+        run: uv venv --python ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: uv sync --dev
+
+      - name: Generate comprehensive monthly report
+        run: |
+          echo "📊 月次品質レビューレポート生成中..."
+
+          # 品質メトリクス収集
+          uv run python scripts/quality-monitor.py --collect-metrics || echo "品質監視システムが利用できません"
+
+          # 月次レポート生成
+          cat > monthly-quality-report.md << 'EOF'
+          # 📊 月次品質レビューレポート
+
+          **生成日時**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          **レビュー期間**: 過去30日間
+
+          ## 🎯 品質目標の達成状況
+
+          EOF
+
+          # 現在の品質メトリクスを取得
+          if [ -f "quality-history/latest-metrics.json" ]; then
+            uv run python -c "
+          import json
+
+          with open('quality-history/latest-metrics.json', 'r') as f:
+              metrics = json.load(f)
+
+          coverage = metrics.get('test_coverage', 0)
+          quality_score = metrics.get('quality_score', 0)
+          ruff_issues = metrics.get('ruff_issues', 0)
+          mypy_errors = metrics.get('mypy_errors', 0)
+
+          print(f'**現在のテストカバレッジ**: {coverage:.2f}% (目標: 80%)')
+          print(f'**品質スコア**: {quality_score:.1f}/100 (目標: 80)')
+          print(f'**Ruff問題**: {ruff_issues}件 (目標: ≤10件)')
+          print(f'**MyPyエラー**: {mypy_errors}件 (目標: ≤5件)')
+          print()
+
+          goals_met = 0
+          total_goals = 4
+
+          if coverage >= 80:
+              print('✅ カバレッジ目標達成')
+              goals_met += 1
+          else:
+              print('❌ カバレッジ目標未達成')
+
+          if quality_score >= 80:
+              print('✅ 品質スコア目標達成')
+              goals_met += 1
+          else:
+              print('❌ 品質スコア目標未達成')
+
+          if ruff_issues <= 10:
+              print('✅ Ruff問題目標達成')
+              goals_met += 1
+          else:
+              print('❌ Ruff問題目標未達成')
+
+          if mypy_errors <= 5:
+              print('✅ MyPyエラー目標達成')
+              goals_met += 1
+          else:
+              print('❌ MyPyエラー目標未達成')
+
+          print()
+          print(f'**目標達成率**: {goals_met}/{total_goals} ({goals_met/total_goals*100:.1f}%)')
+          " >> monthly-quality-report.md
+          else
+            echo "品質メトリクスデータが利用できません" >> monthly-quality-report.md
+          fi
+
+          echo "" >> monthly-quality-report.md
+          echo "## 📋 次月のアクションプラン" >> monthly-quality-report.md
+          echo "" >> monthly-quality-report.md
+          echo "1. 🎯 テストカバレッジの継続的向上" >> monthly-quality-report.md
+          echo "2. 🔧 品質スコア向上のためのリファクタリング" >> monthly-quality-report.md
+          echo "3. 🧹 コード品質問題の解決" >> monthly-quality-report.md
+          echo "4. 📊 月次品質メトリクス監視の継続" >> monthly-quality-report.md
+
+      - name: Create GitHub Issue for monthly review
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+
+            try {
+              const report = fs.readFileSync('monthly-quality-report.md', 'utf8');
+              const currentDate = new Date().toISOString().slice(0, 7);
+
+              const issueTitle = `月次品質レビュー - ${currentDate}`;
+              const issueBody = `${report}
+
+            ## 📎 関連リンク
+            - [品質ダッシュボードデータ](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})
+
+            ## 👥 レビュー担当者
+            @${context.repo.owner}
+
+            このIssueは自動生成されました。レビュー完了後にクローズしてください。`;
+
+              const issue = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: issueTitle,
+                body: issueBody,
+                labels: ['quality-review', 'monthly-review', 'automated']
+              });
+
+              console.log(`月次品質レビューIssueを作成しました: #${issue.data.number}`);
+            } catch (error) {
+              console.log('Issue作成に失敗:', error);
+            }
+
+      - name: Upload monthly review artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: monthly-quality-review-${{ github.run_number }}
+          path: |
+            monthly-quality-report.md
+            quality-history/
+          retention-days: 365
+
+  quality-gate:
+    name: Quality Gate
+    runs-on: ubuntu-latest
+    needs: [quality-metrics]
+    if: always() && needs.quality-metrics.result != 'skipped'
+
+    steps:
+      - name: Check quality gates
+        run: |
+          echo "🚪 品質ゲートチェック中..."
+
+          COVERAGE="${{ needs.quality-metrics.outputs.coverage }}"
+          QUALITY_SCORE="${{ needs.quality-metrics.outputs.quality_score }}"
+          RUFF_ISSUES="${{ needs.quality-metrics.outputs.ruff_issues }}"
+          MYPY_ERRORS="${{ needs.quality-metrics.outputs.mypy_errors }}"
+          SECURITY_VULNS="${{ needs.quality-metrics.outputs.security_vulnerabilities }}"
+
+          echo "品質メトリクス:"
+          echo "  カバレッジ: ${COVERAGE}%"
+          echo "  品質スコア: ${QUALITY_SCORE}"
+          echo "  Ruff問題: ${RUFF_ISSUES}件"
+          echo "  MyPyエラー: ${MYPY_ERRORS}件"
+          echo "  セキュリティ脆弱性: ${SECURITY_VULNS}件"
+
+          GATE_PASSED=true
+
+          # pyproject.tomlからカバレッジ闾値を取得
+          COVERAGE_THRESHOLD=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['tool']['coverage']['report']['fail_under'])" 2>/dev/null || echo "70")
+
+          if (( $(echo "$COVERAGE < $COVERAGE_THRESHOLD" | bc -l) )); then
+            echo "❌ カバレッジが${COVERAGE_THRESHOLD}%を下回っています: ${COVERAGE}%"
+            GATE_PASSED=false
+          fi
+
+          if (( $(echo "$QUALITY_SCORE < ${{ env.QUALITY_THRESHOLD }}" | bc -l) )); then
+            echo "❌ 品質スコアが${{ env.QUALITY_THRESHOLD }}を下回っています: ${QUALITY_SCORE}"
+            GATE_PASSED=false
+          fi
+
+          if [ "$RUFF_ISSUES" -gt 10 ]; then
+            echo "⚠️ Ruff問題が多すぎます: ${RUFF_ISSUES}件"
+          fi
+
+          if [ "$MYPY_ERRORS" -gt 5 ]; then
+            echo "⚠️ MyPyエラーが多すぎます: ${MYPY_ERRORS}件"
+          fi
+
+          if [ "$SECURITY_VULNS" -gt 0 ]; then
+            echo "❌ セキュリティ脆弱性が検出されました: ${SECURITY_VULNS}件"
+            GATE_PASSED=false
+          fi
+
+          if [ "$GATE_PASSED" = true ]; then
+            echo "✅ 品質ゲートを通過しました"
+          else
+            echo "❌ 品質ゲートを通過できませんでした"
+            exit 1
+          fi
