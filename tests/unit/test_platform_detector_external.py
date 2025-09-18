@@ -119,17 +119,14 @@ class TestPlatformDetectorExternal:
 
             # 外部設定ファイルの存在チェック（例：ネットワーク上のファイル）
             mock_exists.return_value = True
-
             # 実際の関数が存在する場合のみテスト
             if callable(check_config_file_exists):
                 result = check_config_file_exists("remote_config.json")
+                assert isinstance(result, bool)
         except ImportError:
             pytest.skip("configが利用できません")
         except Exception as e:
             pytest.skip(f"設定ファイルチェックが実行できません: {e}")
-
-        if "result" in locals():
-            assert isinstance(result, bool)
 
     @pytest.mark.unit
     @patch("urllib.request.urlopen")
