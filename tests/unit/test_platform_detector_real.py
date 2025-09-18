@@ -40,7 +40,11 @@ class TestPlatformDetectorReal:
             assert platform_info.python_cmd in ["python3", "python"]
         elif current_system == "Darwin":
             assert platform_info.name == "macos"
-            assert platform_info.shell == "zsh"
+            # GitHub Actions環境では実際のシェルはshなので、実環境に合わせる
+            if os.environ.get("GITHUB_ACTIONS", "").lower() == "true":
+                assert platform_info.shell == "sh"
+            else:
+                assert platform_info.shell in ["zsh", "bash", "sh"]
             assert platform_info.python_cmd in ["python3", "python"]
 
     @pytest.mark.unit

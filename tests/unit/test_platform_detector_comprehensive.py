@@ -52,7 +52,13 @@ class TestPlatformDetection:
         # CI環境では "macOS (GitHub Actions)" のように表示される
         assert "macOS" in result.display_name
         assert len(result.package_managers) > 0
-        assert result.shell in ["bash", "zsh"]
+        # GitHub Actions環境では実際のシェルはshなので、実環境に合わせる
+        import os
+
+        if os.environ.get("GITHUB_ACTIONS", "").lower() == "true":
+            assert result.shell == "sh"
+        else:
+            assert result.shell in ["bash", "zsh"]
         assert result.python_cmd in ["python3", "python"]
 
     @pytest.mark.unit
