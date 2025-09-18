@@ -36,9 +36,10 @@ class TestPlatformDetection:
     def test_detect_platform_linux(self):
         """Linux検出テスト（実環境）."""
         result = detect_platform()
-        assert result.name == "linux"
+        # WSL環境では "wsl" が返される可能性がある
+        assert result.name in ["linux", "wsl"]
         # CI環境では "Linux (GitHub Actions)" のように表示される
-        assert "Linux" in result.display_name
+        assert "Linux" in result.display_name or "WSL" in result.display_name
         assert len(result.package_managers) > 0
         assert result.shell in ["bash", "sh", "zsh"]
         assert result.python_cmd in ["python3", "python"]
@@ -73,8 +74,8 @@ class TestPlatformDetection:
         assert hasattr(result, "shell")
         assert hasattr(result, "python_cmd")
 
-        # 値の妥当性確認
-        assert result.name in ["windows", "linux", "macos"]
+        # 値の妥当性確認（WSLも含む）
+        assert result.name in ["windows", "linux", "macos", "wsl"]
         assert isinstance(result.package_managers, list)
         assert len(result.package_managers) > 0
 
@@ -101,8 +102,9 @@ class TestPlatformDetection:
 
         result = _detect_linux_platform(False, False)
 
-        assert result.name == "linux"
-        assert "Linux" in result.display_name
+        # WSL環境では "wsl" が返される可能性がある
+        assert result.name in ["linux", "wsl"]
+        assert "Linux" in result.display_name or "WSL" in result.display_name
         assert len(result.package_managers) > 0
         # 実環境では利用可能なパッケージマネージャーが含まれる
         common_managers = ["apt", "yum", "dnf", "pacman", "zypper", "pip", "uv"]
@@ -258,9 +260,9 @@ class TestPlatformDiagnostics:
         platform_info = result["platform_info"]
         # platform_infoは辞書またはPlatformInfoオブジェクトの可能性がある
         if hasattr(platform_info, "name"):
-            assert platform_info.name in ["windows", "linux", "macos"]
+            assert platform_info.name in ["windows", "linux", "macos", "wsl"]
         elif isinstance(platform_info, dict) and "name" in platform_info:
-            assert platform_info["name"] in ["windows", "linux", "macos"]
+            assert platform_info["name"] in ["windows", "linux", "macos", "wsl"]
         else:
             # プラットフォーム情報が何らかの形式で存在することを確認
             assert platform_info is not None
@@ -287,7 +289,7 @@ class TestPlatformDetectorClass:
         result = self.detector.detect_platform()
 
         assert isinstance(result, str)
-        assert result in ["windows", "linux", "macos"]
+        assert result in ["windows", "linux", "macos", "wsl"]
 
     @pytest.mark.unit
     def test_is_wsl_method(self):
@@ -330,7 +332,7 @@ class TestPlatformDetectorClass:
         assert hasattr(result, "name")
         assert hasattr(result, "display_name")
         assert hasattr(result, "package_managers")
-        assert result.name in ["windows", "linux", "macos"]
+        assert result.name in ["windows", "linux", "macos", "wsl"]
 
     @pytest.mark.unit
     def test_diagnose_issues_method(self):

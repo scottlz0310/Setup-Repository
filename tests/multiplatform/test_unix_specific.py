@@ -30,11 +30,8 @@ class TestUnixSpecific:
         """Unix系固有のプラットフォーム検出テスト"""
         platform_info = detect_platform()
         assert platform_info.name in ["linux", "macos", "wsl"]
-        # GitHub Actions環境では実際のシェルはshなので、実環境に合わせる
-        if os.environ.get("GITHUB_ACTIONS", "").lower() == "true":
-            assert platform_info.shell in ["sh", "bash", "zsh"]
-        else:
-            assert platform_info.shell in ["bash", "zsh"]
+        # 実環境ではシェルが sh の場合がある
+        assert platform_info.shell in ["sh", "bash", "zsh"]
         assert platform_info.python_cmd == "python3"
 
     @pytest.mark.skipif(

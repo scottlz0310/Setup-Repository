@@ -221,7 +221,7 @@ class TestPlatformDetectorExternal:
                 assert hasattr(platform_info, "package_managers")
             else:
                 # 文字列の場合は有効なプラットフォーム名であることを確認
-                assert platform_info in ["windows", "linux", "macos"]
+                assert platform_info in ["windows", "linux", "macos", "wsl"]
             # 外部依存を含む機能は別途テスト
             # （この関数では外部依存をモックしてテスト）
         except ImportError:
