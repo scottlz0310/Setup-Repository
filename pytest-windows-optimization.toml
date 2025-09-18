@@ -1,0 +1,40 @@
+# Windows環境向けpytest最適化設定
+
+[tool.pytest.ini_options.windows]
+# Windows固有の最適化設定
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+# Windows最適化: 並列度を制限、ワーカー数を固定
+addopts = [
+    "-v",
+    "--tb=short",
+    "--disable-warnings",
+    "-p", "xdist",
+    "-n", "4",  # Windows環境では固定4並列
+    "--dist=loadscope",  # workstealより軽量
+    "--maxfail=5",  # 早期終了
+    "--timeout=300",  # タイムアウト設定
+]
+
+# Windows向けマーカー最適化
+markers = [
+    "unit: 単体テスト（高速）",
+    "integration: 統合テスト（中速）",
+    "slow: 実行時間の長いテスト（低速）",
+    "windows_fast: Windows高速テスト",
+    "windows_slow: Windows低速テスト",
+]
+
+# Windows向けフィルタリング
+filterwarnings = [
+    "ignore::UserWarning",
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]
+
+# Windows向けテンポラリディレクトリ最適化
+tmp_path_retention_count = 1
+tmp_path_retention_policy = "failed"
