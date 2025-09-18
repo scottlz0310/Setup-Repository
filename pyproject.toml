@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "setup-repository"
-version = "1.1.0"
+version = "1.2.0"
 description = "🚀 クロスプラットフォーム対応のGitHubリポジトリセットアップ・同期ツール"
 readme = "README.md"
 license = "MIT"
