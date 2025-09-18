@@ -246,7 +246,7 @@ if: |
 - **依存関係インストール**: 個別インストール対応
 - **エラーハンドリング**: 失敗時も継続する仕組み
 - **ツール利用可能性**: 事前確認機能追加
-- **Dependency Review Action**: プライベートリポジトリでは実行しないよう条件分岐修正（`github.repository_visibility == 'public'`使用）
+- **Dependency Review Action**: プライベートリポジトリでは完全に無効化（GitHub Advanced Securityが必要なため）
 
 #### カバレッジ閾値一元化
 - **pyproject.toml一元管理**: 全ワークフローでpyproject.tomlの設定を参照

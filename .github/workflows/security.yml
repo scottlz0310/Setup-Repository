@@ -171,12 +171,13 @@ jobs:
           echo "  潜在的シークレット: $SECRET_COUNT 件"
           echo "  ライセンス違反: $FORBIDDEN_LICENSES 件"
 
-      - name: Run dependency review
-        if: github.event_name == 'pull_request' && github.repository_visibility == 'public'
-        uses: actions/dependency-review-action@v4
-        with:
-          fail-on-severity: moderate
-          deny-licenses: GPL-2.0, GPL-3.0, AGPL-3.0, LGPL-2.1, LGPL-3.0
+      # Dependency Review Action is disabled for private repositories
+      # - name: Run dependency review
+      #   if: github.event_name == 'pull_request' && github.repository_visibility == 'public'
+      #   uses: actions/dependency-review-action@v4
+      #   with:
+      #     fail-on-severity: moderate
+      #     deny-licenses: GPL-2.0, GPL-3.0, AGPL-3.0, LGPL-2.1, LGPL-3.0
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
