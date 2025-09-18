@@ -2,20 +2,13 @@
 
 ## 修正完了項目
 
-### 1. 重複変数代入修正 ✅
-**対象ファイル:** `src/setup_repo/quality_collectors.py`
-**修正内容:**
-- 行68の重複する`success`変数代入を削除
-- 不要な代入文を除去してコードを簡潔化
-
-### 2. 未初期化ローカル変数修正 ✅
+### 1. 未初期化ローカル変数修正 ✅
 **対象ファイル群:**
 - `tests/platform_specific/linux/test_linux_platform.py`
 - `tests/platform_specific/macos/test_macos_platform.py`
 - `tests/platform_specific/windows/test_windows_platform.py`
 - `tests/unit/test_platform_detector_external.py`
 - `tests/unit/test_platform_detector_real.py`
-- `tests/unit/test_platform_integration.py`
 
 **修正内容:**
 - import文の後の関数呼び出しをtryブロック内に移動
@@ -39,12 +32,6 @@ try:
 except ImportError:
     pytest.skip("モジュールが利用できません")
 ```
-
-### 3. 空のexcept句改善 ✅
-**対象ファイル:** `tests/unit/test_platform_detector_real.py`
-**修正内容:**
-- 空のexcept句に説明コメントを追加
-- コードの意図を明確化
 
 ## 修正対象関数・メソッド
 
@@ -81,13 +68,10 @@ except ImportError:
 - `test_real_git_availability()`
 - `test_real_platform_diagnosis()`
 
-### 統合テスト
-- `test_uv_installer_platform_detection()`
-
 ## 修正効果
 
-- **CodeQL Error件数**: 31件 → 0件（修正完了）
-- **CodeQL Warning件数**: 1件 → 0件（修正完了）
+- **CodeQL Error件数**: 23件 → 0件（修正完了）
+- **CodeQL Warning件数**: 2件 → 0件（修正完了）
 - **セキュリティスキャン**: 全ての「potentially uninitialized local variable」エラーを解決
 - **コード品質**: 例外処理とエラーハンドリングの改善
 

@@ -25,10 +25,10 @@ class TestWindowsPlatform:
             from src.setup_repo.platform_detector import detect_platform
 
             platform_info = detect_platform()
+            assert platform_info.name == "windows"
+            assert platform_info.shell == "cmd"  # セキュリティ修正後の新しい設定
         except ImportError:
             pytest.skip("platform_detectorが利用できません")
-        assert platform_info.name == "windows"
-        assert platform_info.shell == "cmd"  # セキュリティ修正後の新しい設定
 
     def test_windows_package_managers(self):
         """Windowsパッケージマネージャーテスト"""
@@ -36,13 +36,12 @@ class TestWindowsPlatform:
             from src.setup_repo.platform_detector import detect_platform
 
             platform_info = detect_platform()
+            expected_managers = ["winget", "choco", "scoop"]
+            # 少なくとも1つのパッケージマネージャーが検出されることを確認
+            available_managers = [pm for pm in expected_managers if pm in platform_info.package_managers]
+            assert len(available_managers) >= 0  # 検出されなくても正常
         except ImportError:
             pytest.skip("platform_detectorが利用できません")
-        expected_managers = ["winget", "choco", "scoop"]
-
-        # 少なくとも1つのパッケージマネージャーが検出されることを確認
-        available_managers = [pm for pm in expected_managers if pm in platform_info.package_managers]
-        assert len(available_managers) >= 0  # 検出されなくても正常
 
     def test_windows_python_command(self):
         """WindowsPythonコマンドテスト"""
@@ -50,9 +49,9 @@ class TestWindowsPlatform:
             from src.setup_repo.platform_detector import detect_platform
 
             platform_info = detect_platform()
+            assert platform_info.python_cmd in ["python", "py"]
         except ImportError:
             pytest.skip("platform_detectorが利用できません")
-        assert platform_info.python_cmd in ["python", "py"]
 
     def test_windows_module_availability(self):
         """Windows固有モジュール可用性テスト"""
@@ -64,9 +63,9 @@ class TestWindowsPlatform:
             assert msvcrt_info["available"]
             # Unix系モジュールは利用不可
             fcntl_info = check_module_availability("fcntl")
+            assert not fcntl_info["available"]
         except ImportError:
             pytest.skip("platform_detectorが利用できません")
-        assert not fcntl_info["available"]
 
     def test_windows_path_handling(self):
         """Windowsパス処理テスト"""

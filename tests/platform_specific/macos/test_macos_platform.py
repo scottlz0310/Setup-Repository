@@ -25,14 +25,14 @@ class TestMacOSPlatform:
             from src.setup_repo.platform_detector import detect_platform
 
             platform_info = detect_platform()
+            assert platform_info.name == "macos"
+            # GitHub Actions環境では実際のシェルはshなので、実環境に合わせる
+            if os.environ.get("GITHUB_ACTIONS", "").lower() == "true":
+                assert platform_info.shell == "sh"
+            else:
+                assert platform_info.shell in ["zsh", "bash", "sh"]
         except ImportError:
             pytest.skip("platform_detectorが利用できません")
-        assert platform_info.name == "macos"
-        # GitHub Actions環境では実際のシェルはshなので、実環境に合わせる
-        if os.environ.get("GITHUB_ACTIONS", "").lower() == "true":
-            assert platform_info.shell == "sh"
-        else:
-            assert platform_info.shell in ["zsh", "bash", "sh"]
 
     def test_macos_package_managers(self):
         """macOSパッケージマネージャーテスト"""
@@ -40,14 +40,13 @@ class TestMacOSPlatform:
             from src.setup_repo.platform_detector import detect_platform
 
             platform_info = detect_platform()
+            expected_managers = ["brew", "port", "conda"]
+            # 少なくとも1つのパッケージマネージャーが検出されることを期待
+            available_managers = [pm for pm in expected_managers if pm in platform_info.package_managers]
+            # macOSではHomebrewが一般的
+            assert len(available_managers) >= 0
         except ImportError:
             pytest.skip("platform_detectorが利用できません")
-        expected_managers = ["brew", "port", "conda"]
-
-        # 少なくとも1つのパッケージマネージャーが検出されることを期待
-        available_managers = [pm for pm in expected_managers if pm in platform_info.package_managers]
-        # macOSではHomebrewが一般的
-        assert len(available_managers) >= 0
 
     def test_macos_python_command(self):
         """macOSPythonコマンドテスト"""
@@ -55,9 +54,9 @@ class TestMacOSPlatform:
             from src.setup_repo.platform_detector import detect_platform
 
             platform_info = detect_platform()
+            assert platform_info.python_cmd in ["python3", "python"]
         except ImportError:
             pytest.skip("platform_detectorが利用できません")
-        assert platform_info.python_cmd in ["python3", "python"]
 
     def test_macos_module_availability(self):
         """macOS固有モジュール可用性テスト"""
@@ -69,9 +68,9 @@ class TestMacOSPlatform:
             assert fcntl_info["available"]
             # Windows固有モジュールは利用不可
             msvcrt_info = check_module_availability("msvcrt")
+            assert not msvcrt_info["available"]
         except ImportError:
             pytest.skip("platform_detectorが利用できません")
-        assert not msvcrt_info["available"]
 
     def test_macos_path_handling(self):
         """macOSパス処理テスト"""

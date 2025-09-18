@@ -21,31 +21,30 @@ class TestPlatformDetectorReal:
             from src.setup_repo.platform_detector import detect_platform
 
             platform_info = detect_platform()
+            current_system = platform.system()
+            # 実環境での検証
+            if current_system == "Windows":
+                assert platform_info.name == "windows"
+                assert platform_info.shell == "cmd"  # セキュリティ修正後の新しい設定
+                assert platform_info.python_cmd in ["python", "py"]
+            elif current_system == "Linux":
+                assert platform_info.name in ["linux", "wsl"]
+                # GitHub Actions環境では実際のシェルはshなので、実環境に合わせる
+                if os.environ.get("GITHUB_ACTIONS", "").lower() == "true":
+                    assert platform_info.shell == "sh"
+                else:
+                    assert platform_info.shell in ["bash", "sh"]
+                assert platform_info.python_cmd in ["python3", "python"]
+            elif current_system == "Darwin":
+                assert platform_info.name == "macos"
+                # GitHub Actions環境では実際のシェルはshなので、実環境に合わせる
+                if os.environ.get("GITHUB_ACTIONS", "").lower() == "true":
+                    assert platform_info.shell == "sh"
+                else:
+                    assert platform_info.shell in ["zsh", "bash", "sh"]
+                assert platform_info.python_cmd in ["python3", "python"]
         except ImportError:
             pytest.skip("platform_detectorが利用できません")
-        current_system = platform.system()
-
-        # 実環境での検証
-        if current_system == "Windows":
-            assert platform_info.name == "windows"
-            assert platform_info.shell == "cmd"  # セキュリティ修正後の新しい設定
-            assert platform_info.python_cmd in ["python", "py"]
-        elif current_system == "Linux":
-            assert platform_info.name in ["linux", "wsl"]
-            # GitHub Actions環境では実際のシェルはshなので、実環境に合わせる
-            if os.environ.get("GITHUB_ACTIONS", "").lower() == "true":
-                assert platform_info.shell == "sh"
-            else:
-                assert platform_info.shell in ["bash", "sh"]
-            assert platform_info.python_cmd in ["python3", "python"]
-        elif current_system == "Darwin":
-            assert platform_info.name == "macos"
-            # GitHub Actions環境では実際のシェルはshなので、実環境に合わせる
-            if os.environ.get("GITHUB_ACTIONS", "").lower() == "true":
-                assert platform_info.shell == "sh"
-            else:
-                assert platform_info.shell in ["zsh", "bash", "sh"]
-            assert platform_info.python_cmd in ["python3", "python"]
 
     @pytest.mark.unit
     def test_real_package_manager_detection(self):
@@ -56,17 +55,16 @@ class TestPlatformDetectorReal:
             from src.setup_repo.platform_detector import check_package_manager, detect_platform
 
             platform_info = detect_platform()
+            # 実環境で利用可能なパッケージマネージャーをテスト
+            for pm in platform_info.package_managers:
+                # 実際にコマンドが利用可能かチェック
+                is_available = check_package_manager(pm)
+                # 検出されたパッケージマネージャーは実際に利用可能であることを期待
+                # ただし、環境によっては利用できない場合もあるため、警告レベル
+                if not is_available:
+                    print(f"警告: 検出されたパッケージマネージャー '{pm}' が実際には利用できません")
         except ImportError:
             pytest.skip("platform_detectorが利用できません")
-
-        # 実環境で利用可能なパッケージマネージャーをテスト
-        for pm in platform_info.package_managers:
-            # 実際にコマンドが利用可能かチェック
-            is_available = check_package_manager(pm)
-            # 検出されたパッケージマネージャーは実際に利用可能であることを期待
-            # ただし、環境によっては利用できない場合もあるため、警告レベル
-            if not is_available:
-                print(f"警告: 検出されたパッケージマネージャー '{pm}' が実際には利用できません")
 
     @pytest.mark.unit
     def test_real_environment_variables(self):
@@ -102,21 +100,19 @@ class TestPlatformDetectorReal:
             from src.setup_repo.platform_detector import detect_platform
 
             platform_info = detect_platform()
+            python_cmd = platform_info.python_cmd
+            # 実際にPythonコマンドが実行可能かテスト
+            import shutil
+
+            python_path = shutil.which(python_cmd)
+            if python_path:
+                assert os.path.exists(python_path)
+                assert os.access(python_path, os.X_OK)
+            else:
+                # Pythonコマンドが見つからない場合は警告
+                print(f"警告: 検出されたPythonコマンド '{python_cmd}' が見つかりません")
         except ImportError:
             pytest.skip("platform_detectorが利用できません")
-        python_cmd = platform_info.python_cmd
-
-        # 実際にPythonコマンドが実行可能かテスト
-        import shutil
-
-        python_path = shutil.which(python_cmd)
-
-        if python_path:
-            assert os.path.exists(python_path)
-            assert os.access(python_path, os.X_OK)
-        else:
-            # Pythonコマンドが見つからない場合は警告
-            print(f"警告: 検出されたPythonコマンド '{python_cmd}' が見つかりません")
 
     @pytest.mark.unit
     def test_real_module_availability(self):
@@ -164,41 +160,37 @@ class TestPlatformDetectorReal:
             from src.setup_repo.platform_detector import PlatformDetector
 
             detector = PlatformDetector()
+            # 実環境でのCI環境判定
+            is_ci = detector.is_ci_environment()
+            assert isinstance(is_ci, bool)
+            # GitHub Actions環境の場合
+            if os.environ.get("GITHUB_ACTIONS", "").lower() == "true":
+                assert is_ci, "GitHub Actions環境でCI検出が失敗しました"
+                assert detector.is_github_actions(), "GitHub Actions検出が失敗しました"
+                # RUNNER_OSとの整合性チェック
+                runner_os = os.environ.get("RUNNER_OS", "").lower()
+                if runner_os:
+                    platform_info = detector.detect_platform()
+                    expected_mappings = {
+                        "windows": "windows",
+                        "linux": ["linux", "wsl"],
+                        "macos": "macos",
+                    }
+                    expected = expected_mappings.get(runner_os)
+                    if expected:
+                        # platform_infoが文字列の場合とオブジェクトの場合を処理
+                        if hasattr(platform_info, "name"):
+                            platform_name = platform_info.name
+                        elif isinstance(platform_info, str):
+                            platform_name = platform_info
+                        else:
+                            platform_name = str(platform_info)
+                        if isinstance(expected, list):
+                            assert platform_name in expected
+                        else:
+                            assert platform_name == expected
         except ImportError:
             pytest.skip("PlatformDetectorが利用できません")
-
-        # 実環境でのCI環境判定
-        is_ci = detector.is_ci_environment()
-        assert isinstance(is_ci, bool)
-
-        # GitHub Actions環境の場合
-        if os.environ.get("GITHUB_ACTIONS", "").lower() == "true":
-            assert is_ci, "GitHub Actions環境でCI検出が失敗しました"
-            assert detector.is_github_actions(), "GitHub Actions検出が失敗しました"
-
-            # RUNNER_OSとの整合性チェック
-            runner_os = os.environ.get("RUNNER_OS", "").lower()
-            if runner_os:
-                platform_info = detector.detect_platform()
-                expected_mappings = {
-                    "windows": "windows",
-                    "linux": ["linux", "wsl"],
-                    "macos": "macos",
-                }
-                expected = expected_mappings.get(runner_os)
-                if expected:
-                    # platform_infoが文字列の場合とオブジェクトの場合を処理
-                    if hasattr(platform_info, "name"):
-                        platform_name = platform_info.name
-                    elif isinstance(platform_info, str):
-                        platform_name = platform_info
-                    else:
-                        platform_name = str(platform_info)
-
-                    if isinstance(expected, list):
-                        assert platform_name in expected
-                    else:
-                        assert platform_name == expected
 
     @pytest.mark.unit
     @skip_if_no_command("git")
@@ -286,32 +278,28 @@ class TestPlatformDetectorReal:
 
             detector = PlatformDetector()
             diagnosis = detector.diagnose_issues()
+            # 診断結果の基本構造をチェック
+            assert isinstance(diagnosis, dict)
+            # 実環境での診断結果の妥当性をチェック
+            if "platform_info" in diagnosis:
+                platform_info = diagnosis["platform_info"]
+                current_system = platform.system()
+                if hasattr(platform_info, "name"):
+                    platform_name = platform_info.name
+                elif isinstance(platform_info, dict):
+                    platform_name = platform_info.get("name")
+                elif isinstance(platform_info, str):
+                    platform_name = platform_info
+                else:
+                    # プラットフォーム情報が不明な形式の場合はスキップ
+                    print(f"警告: プラットフォーム情報の形式が不明: {type(platform_info)}")
+                    return
+                # 実環境との整合性チェック
+                if current_system == "Windows":
+                    assert platform_name == "windows"
+                elif current_system == "Linux":
+                    assert platform_name in ["linux", "wsl"]
+                elif current_system == "Darwin":
+                    assert platform_name == "macos"
         except ImportError:
             pytest.skip("PlatformDetectorが利用できません")
-
-        # 診断結果の基本構造をチェック
-        assert isinstance(diagnosis, dict)
-
-        # 実環境での診断結果の妥当性をチェック
-        if "platform_info" in diagnosis:
-            platform_info = diagnosis["platform_info"]
-            current_system = platform.system()
-
-            if hasattr(platform_info, "name"):
-                platform_name = platform_info.name
-            elif isinstance(platform_info, dict):
-                platform_name = platform_info.get("name")
-            elif isinstance(platform_info, str):
-                platform_name = platform_info
-            else:
-                # プラットフォーム情報が不明な形式の場合はスキップ
-                print(f"警告: プラットフォーム情報の形式が不明: {type(platform_info)}")
-                return
-
-            # 実環境との整合性チェック
-            if current_system == "Windows":
-                assert platform_name == "windows"
-            elif current_system == "Linux":
-                assert platform_name in ["linux", "wsl"]
-            elif current_system == "Darwin":
-                assert platform_name == "macos"
