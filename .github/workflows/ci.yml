@@ -818,18 +818,20 @@ jobs:
           echo "- Safety: 利用不可"
         fi
 
-        # Banditスキャンを実行
+        # Banditスキャンを実行（pyproject.toml設定準拠）
         if [ "$BANDIT_AVAILABLE" = "true" ]; then
-          echo "Banditセキュリティスキャンを実行します..."
-          uv run bandit -r src/ -f json -o bandit-report.json || echo "Banditスキャンが警告付きで終了しました"
+          echo "Banditセキュリティスキャンを実行します（pyproject.toml設定準拠）..."
+          BANDIT_ARGS=$(uv run python -c "from scripts.security_config import generate_bandit_args; print(' '.join(generate_bandit_args()))" 2>/dev/null || echo "-r src/ -f json")
+          uv run bandit $BANDIT_ARGS -o bandit-report.json || echo "Banditスキャンが警告付きで終了しました"
         else
           echo "Banditが利用できないため、スキップします"
         fi
 
-        # Safetyチェックを実行
+        # Safetyチェックを実行（pyproject.toml設定準拠）
         if [ "$SAFETY_AVAILABLE" = "true" ]; then
-          echo "Safety依存関係チェックを実行します..."
-          uv run safety check --json --output safety-report.json || echo "Safetyチェックが警告付きで終了しました"
+          echo "Safety依存関係チェックを実行します（pyproject.toml設定準拠）..."
+          SAFETY_ARGS=$(uv run python -c "from scripts.security_config import generate_safety_args; print(' '.join(generate_safety_args()))" 2>/dev/null || echo "check --json --output safety-report.json")
+          uv run safety $SAFETY_ARGS || echo "Safetyチェックが警告付きで終了しました"
         else
           echo "Safetyが利用できないため、スキップします"
         fi

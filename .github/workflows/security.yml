@@ -87,7 +87,11 @@ jobs:
         run: |
           echo "セキュリティツールのインストールを試行します..."
 
-          # 個別にセキュリティツールをインストール（エラー時も継続）
+          # pyproject.tomlからセキュリティ設定を読み込み
+          SECURITY_CONFIG=$(uv run python scripts/security-config.py 2>/dev/null || echo '{}')
+          echo "セキュリティ設定: $SECURITY_CONFIG"
+
+          # 個別にセキュリティツールをインストール（pyproject.toml設定準拠）
           uv pip install safety || echo "Safetyのインストールに失敗しました（継続）"
           uv pip install bandit || echo "Banditのインストールに失敗しました（継続）"
           uv pip install pip-licenses || echo "pip-licensesのインストールに失敗しました（継続）"
@@ -105,7 +109,7 @@ jobs:
         run: |
           echo "🔍 包括的セキュリティ分析を実行中..."
 
-          # Safety check for known vulnerabilities
+          # Safety check for known vulnerabilities (pyproject.toml設定準拠)
           echo "=== Safety Check ==="
           if [ -n "${SAFETY_API_KEY}" ]; then
             echo "Safety API Key detected"
@@ -113,17 +117,19 @@ jobs:
             echo "Safety API Key not set (free mode)"
           fi
 
-          if uv run safety scan --output json --save-as safety-report.json; then
-            echo "✅ Safetyスキャン成功"
+          SAFETY_ARGS=$(uv run python -c "from scripts.security_config import generate_safety_args; print(' '.join(generate_safety_args()))" 2>/dev/null || echo "check --json --output safety-report.json")
+          if uv run safety $SAFETY_ARGS; then
+            echo "✅ Safetyスキャン成功（pyproject.toml設定準拠）"
           else
             echo "⚠️ Safetyスキャン失敗（継続）"
             echo '{"vulnerabilities": []}' > safety-report.json
           fi
 
-          # Bandit security linter
+          # Bandit security linter (pyproject.toml設定準拠)
           echo "=== Bandit Security Linter ==="
-          if uv run bandit -r src/ -f json -o bandit-report.json; then
-            echo "✅ Banditスキャン成功"
+          BANDIT_ARGS=$(uv run python -c "from scripts.security_config import generate_bandit_args; print(' '.join(generate_bandit_args()))" 2>/dev/null || echo "-r src/ -f json")
+          if uv run bandit $BANDIT_ARGS -o bandit-report.json; then
+            echo "✅ Banditスキャン成功（pyproject.toml設定準拠）"
           else
             echo "⚠️ Banditスキャン失敗（継続）"
             echo '{"results": []}' > bandit-report.json

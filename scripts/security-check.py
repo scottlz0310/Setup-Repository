@@ -7,9 +7,19 @@
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
+
+# WindowsでのUTF-8エンコーディング強制設定
+if os.name == "nt":
+    import contextlib
+
+    if hasattr(sys.stdout, "reconfigure"):
+        with contextlib.suppress(Exception):
+            sys.stdout.reconfigure(encoding="utf-8")
+            sys.stderr.reconfigure(encoding="utf-8")
 
 # ruff: noqa: E402
 # プロジェクトルートをパスに追加
@@ -20,10 +30,24 @@ from setup_repo.security_helpers import safe_subprocess
 
 
 def run_bandit_check() -> tuple[bool, list[dict], list[str]]:
-    """Banditセキュリティチェック実行"""
+    """Banditセキュリティチェック実行（pyproject.toml設定準拠）"""
     try:
+        # pyproject.tomlからBandit設定を読み込み
+        from setup_repo.security_helpers import load_security_config
+        config = load_security_config()
+        bandit_config = config.get("bandit", {})
+        
+        # 引数を構築
+        args = ["uv", "run", "bandit", "-r", "src/", "-f", "json"]
+        
+        if bandit_config.get("exclude_dirs"):
+            args.extend(["--exclude", ",".join(bandit_config["exclude_dirs"])])
+        
+        if bandit_config.get("skips"):
+            args.extend(["--skip", ",".join(bandit_config["skips"])])
+        
         result = safe_subprocess(
-            ["uv", "run", "bandit", "-r", "src/", "-f", "json"],
+            args,
             cwd=project_root,
             capture_output=True,
             text=True,
@@ -75,7 +99,7 @@ def format_vulnerability_report(bandit_vulns: list[dict], safety_vulns: list[dic
     report = []
 
     if bandit_vulns:
-        report.append("🔍 Banditで検出されたセキュリティ問題:")
+        report.append("[BANDIT] Banditで検出されたセキュリティ問題:")
         for vuln in bandit_vulns[:10]:  # 最初の10件のみ表示
             severity = vuln.get("issue_severity", "UNKNOWN")
             confidence = vuln.get("issue_confidence", "UNKNOWN")
@@ -83,20 +107,20 @@ def format_vulnerability_report(bandit_vulns: list[dict], safety_vulns: list[dic
             line_number = vuln.get("line_number", "?")
             test_id = vuln.get("test_id", "")
 
-            report.append(f"  ❌ {filename}:{line_number} [{severity}/{confidence}] {test_id}")
+            report.append(f"  [X] {filename}:{line_number} [{severity}/{confidence}] {test_id}")
             report.append(f"     {vuln.get('issue_text', 'No description')}")
 
         if len(bandit_vulns) > 10:
             report.append(f"  ... 他 {len(bandit_vulns) - 10} 件")
 
     if safety_vulns:
-        report.append("\n📦 Safetyで検出された依存関係の脆弱性:")
+        report.append("\n[SAFETY] Safetyで検出された依存関係の脆弱性:")
         for vuln in safety_vulns[:5]:  # 最初の5件のみ表示
             package = vuln.get("package", "unknown")
             version = vuln.get("installed_version", "unknown")
             vuln_id = vuln.get("vulnerability_id", "")
 
-            report.append(f"  ⚠️  {package} {version} - {vuln_id}")
+            report.append(f"  [!] {package} {version} - {vuln_id}")
             report.append(f"     {vuln.get('advisory', 'No advisory')}")
 
         if len(safety_vulns) > 5:
@@ -107,14 +131,15 @@ def format_vulnerability_report(bandit_vulns: list[dict], safety_vulns: list[dic
 
 def main():
     """メイン関数"""
-    parser = argparse.ArgumentParser(description="ローカル環境用セキュリティチェック")
+    parser = argparse.ArgumentParser(description="ローカル環境用セキュリティチェック（pyproject.toml設定準拠）")
+    parser.add_argument("--config", type=Path, default=Path("pyproject.toml"), help="設定ファイルパス")
     parser.add_argument("--local-mode", action="store_true", help="ローカルモード（脆弱性があっても警告のみ）")
     parser.add_argument("--strict", action="store_true", help="厳格モード（脆弱性があると失敗）")
     parser.add_argument("--verbose", action="store_true", help="詳細出力")
 
     args = parser.parse_args()
 
-    print("🔒 セキュリティチェックを実行中...")
+    print("[SECURITY] セキュリティチェックを実行中...")
 
     # Banditチェック
     bandit_success, bandit_vulns, bandit_errors = run_bandit_check()
@@ -132,42 +157,42 @@ def main():
             print(f"エラー: {len(total_errors)}件")
 
     if total_vulns == 0 and not total_errors:
-        print("✅ セキュリティチェック完了: 脆弱性は検出されませんでした")
+        print("[OK] セキュリティチェック完了: 脆弱性は検出されませんでした")
         return 0
 
     if total_vulns > 0:
-        print(f"\n⚠️  {total_vulns}件のセキュリティ脆弱性が検出されました")
+        print(f"\n[WARNING] {total_vulns}件のセキュリティ脆弱性が検出されました")
 
         if args.verbose or total_vulns <= 20:
             print("\n" + format_vulnerability_report(bandit_vulns, safety_vulns))
 
-        print("\n🔧 修復方法:")
+        print("\n[FIX] 修復方法:")
         if bandit_vulns:
-            print("  • Bandit問題: コードを見直し、セキュアな実装に変更してください")
+            print("  - Bandit問題: コードを見直し、セキュアな実装に変更してください")
         if safety_vulns:
-            print("  • 依存関係: `uv sync` で最新版に更新するか、代替パッケージを検討してください")
+            print("  - 依存関係: `uv sync` で最新版に更新するか、代替パッケージを検討してください")
 
         if args.local_mode:
-            print("\n💡 ローカルモード: 脆弱性は検出されましたが、開発を継続できます")
+            print("\n[INFO] ローカルモード: 脆弱性は検出されましたが、開発を継続できます")
             print("   本番環境では修復が必要です")
             return 0
         elif args.strict:
-            print("\n❌ 厳格モード: 脆弱性があるため失敗しました")
+            print("\n[ERROR] 厳格モード: 脆弱性があるため失敗しました")
             return 1
         else:
             # デフォルト: 警告のみ
-            print("\n⚠️  警告: 脆弱性が検出されましたが、処理を継続します")
+            print("\n[WARNING] 警告: 脆弱性が検出されましたが、処理を継続します")
             return 0
 
     if total_errors:
-        print("\n❌ セキュリティチェック中にエラーが発生しました:")
+        print("\n[ERROR] セキュリティチェック中にエラーが発生しました:")
         for error in total_errors:
-            print(f"  • {error}")
+            print(f"  - {error}")
 
         if args.strict:
             return 1
         else:
-            print("\n⚠️  警告: エラーが発生しましたが、処理を継続します")
+            print("\n[WARNING] 警告: エラーが発生しましたが、処理を継続します")
             return 0
 
     return 0

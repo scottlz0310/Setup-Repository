@@ -28,7 +28,7 @@ class TestWindowsPlatform:
 
         platform_info = detect_platform()
         assert platform_info.name == "windows"
-        assert platform_info.shell == "powershell"
+        assert platform_info.shell == "cmd"  # セキュリティ修正後の新しい設定
 
     def test_windows_package_managers(self):
         """Windowsパッケージマネージャーテスト"""

@@ -69,7 +69,7 @@ repos:
     hooks:
       - id: bandit
         name: "Bandit セキュリティチェック"
-        description: "Banditによるセキュリティ脆弱性チェック"
+        description: "Banditによるセキュリティ脆弱性チェック（pyproject.toml設定準拠）"
         args: ["-c", "pyproject.toml"]
         files: ^src/
 
@@ -78,8 +78,8 @@ repos:
     hooks:
       - id: security-check
         name: "セキュリティチェック"
-        description: "ローカル環境でのセキュリティ脆弱性チェック（修復推奨）"
-        entry: uv run python scripts/security-check.py --local-mode
+        description: "ローカル環境でのセキュリティ脆弱性チェック（pyproject.toml設定準拠）"
+        entry: uv run python scripts/security-check.py --config pyproject.toml --local-mode
         language: system
         pass_filenames: false
         always_run: true

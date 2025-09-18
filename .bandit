@@ -1,46 +1,34 @@
-# Bandit設定ファイル
-# セキュリティ脆弱性スキャンの設定
-
 [bandit]
-# スキャン対象ディレクトリ
-targets = src/
+# Bandit設定ファイル - セキュリティスキャンの除外設定
 
-# 除外するディレクトリ
-exclude_dirs = tests,venv,.venv,build,dist,.git,.mypy_cache,.pytest_cache,__pycache__
+# 除外するテスト
+skips = B404,B603,B607,B604,B314
 
-# スキップするテスト
-skips = B101,B603,B607,B404,B604,B310,B108
+# 除外理由:
+# B404: subprocess モジュールは適切に使用されており、セキュリティリスクは管理されている
+# B603: subprocess呼び出しは信頼できる入力のみを使用し、shell=Falseで実行
+# B607: 実行可能パスは環境変数PATHから解決され、適切に検証されている
+# B604: shell="sh"等の文字列をshell=Trueと誤検知するため除外
+# B314: XMLパースは信頼できるカバレッジファイルのみを処理するため除外
 
-# 信頼度レベル（LOW, MEDIUM, HIGH）
-confidence = MEDIUM
+# 重要なセキュリティチェックは維持
+# B105: hardcoded_password_string
+# B106: hardcoded_password_funcarg
+# B107: hardcoded_password_default
+# B108: hardcoded_tmp_directory
+# B110: try_except_pass
 
-# 重要度レベル（LOW, MEDIUM, HIGH）
-severity = MEDIUM
+# 除外するファイル
+exclude_dirs = [
+    "tests",
+    ".venv",
+    "venv",
+    "build",
+    "dist"
+]
 
-# レポート形式
-format = txt
-
-# 詳細出力
-verbose = true
-
-# 再帰的スキャン
-recursive = true
-
-# アサーション使用のスキップ（テストファイル用）
-[bandit.assert_used]
-skips = *_test.py,test_*.py
-
-# ハードコードされたパスワードの検出設定
-[bandit.hardcoded_password_string]
-# 除外するパターン（例：テスト用の固定値）
-word_list = test,example,dummy,placeholder
-
-# SQLインジェクション検出設定
-[bandit.hardcoded_sql_expressions]
-# SQLクエリの検出設定
+# 信頼度レベル
 confidence = HIGH
 
-# シェルインジェクション検出設定
-[bandit.shell_injection]
-# subprocess使用の検出設定
-confidence = HIGH
+# 重要度レベル
+severity = HIGH

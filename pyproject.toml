@@ -203,9 +203,23 @@ skips = [
     "B310",  # blacklist - urllib.urlopen - HTTPS URLのみ使用でセキュリティ確保済み
     "B108",  # hardcoded_tmp_directory - tempfile.gettempdir()使用に修正済み
 ]
+severity = "medium"
+confidence = "medium"
 
 [tool.bandit.assert_used]
 skips = ["*_test.py", "test_*.py"]
+
+# セキュリティ設定統一管理
+[tool.security]
+# セキュリティチェック実行モード
+local_mode = true  # ローカル環境では警告のみ
+strict_mode = false  # CI環境では厳格モード
+# ツール利用可能性チェック
+required_tools = ["bandit", "safety"]
+optional_tools = ["trufflehog", "pip-licenses"]
+# 緩和策設定
+allow_tool_failures = true  # ツールインストール失敗時も継続
+fallback_mode = true  # フォールバック処理を有効化
 
 
 # Safety Platform統合設定（ルール6.1準拠）
