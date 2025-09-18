@@ -236,7 +236,7 @@ class TestPlatformDetectorReal:
                     content = test_file_lower.read_text()
                     assert content == "upper content"
             except Exception:
-                # ファイルシステムによっては区別する場合もあるため、例外を無視して続行
+                # 空のexcept句: ファイルシステムによる動作の違いを許容
                 pass
 
         elif current_platform in ["linux", "wsl"]:
@@ -259,7 +259,7 @@ class TestPlatformDetectorReal:
                     test_file_lower.write_text("lower content")
                     assert test_file_upper.read_text() != test_file_lower.read_text()
             except Exception:
-                # macOSのファイルシステム設定による動作の違いを許容
+                # 空のexcept句: macOSのファイルシステム設定による動作の違いを許容
                 pass
 
     @pytest.mark.unit

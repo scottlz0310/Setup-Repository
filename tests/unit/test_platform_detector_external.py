@@ -48,12 +48,12 @@ class TestPlatformDetectorExternal:
 
             # Git コマンド成功ケース
             mock_subprocess.return_value = Mock(returncode=0, stdout="git version 2.30.0", stderr="")
-
             result = run_git_command(["git", "--version"])
         except ImportError:
             pytest.skip("git_operationsが利用できません")
         except Exception as e:
             pytest.skip(f"Git操作テストが実行できません: {e}")
+            return
 
             assert result is not None
 
@@ -76,12 +76,12 @@ class TestPlatformDetectorExternal:
                 "ssh_url": "git@github.com:user/test-repo.git",
             }
             mock_requests.return_value = mock_response
-
             repo_info = get_repository_info("user/test-repo")
         except ImportError:
             pytest.skip("github_apiが利用できません")
         except Exception as e:
             pytest.skip(f"GitHub APIテストが実行できません: {e}")
+            return
 
             assert repo_info is not None
             assert repo_info.get("name") == "test-repo"
@@ -157,6 +157,7 @@ class TestPlatformDetectorExternal:
             pytest.skip("network connectivity checkが利用できません")
         except Exception as e:
             pytest.skip(f"ネットワーク接続チェックが実行できません: {e}")
+            return
 
         if "result" in locals():
             assert isinstance(result, bool)
@@ -180,6 +181,7 @@ class TestPlatformDetectorExternal:
             pytest.skip("timeout機能が利用できません")
         except Exception as e:
             pytest.skip(f"タイムアウト機能テストが実行できません: {e}")
+            return
 
         if "result" in locals():
             assert isinstance(result, bool)
@@ -222,7 +224,6 @@ class TestPlatformDetectorExternal:
             from src.setup_repo.platform_detector import PlatformDetector
 
             detector = PlatformDetector()
-
             # 内部ロジックのテスト（外部依存なし）
             platform_info = detector.detect_platform()
         except ImportError:

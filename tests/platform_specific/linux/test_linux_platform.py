@@ -67,7 +67,6 @@ class TestLinuxPlatform:
             # Unix系モジュール
             fcntl_info = check_module_availability("fcntl")
             assert fcntl_info["available"]
-
             # Windows固有モジュールは利用不可
             msvcrt_info = check_module_availability("msvcrt")
         except ImportError:

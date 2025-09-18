@@ -65,8 +65,6 @@ def collect_ruff_metrics(
             issues = []
             issue_count = 0
 
-        success = result.returncode == 0
-
         # 成功判定: 実行が成功し、かつ問題が0件の場合
         success = result.returncode == 0 and issue_count == 0
 

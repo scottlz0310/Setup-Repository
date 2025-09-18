@@ -62,7 +62,6 @@ class TestWindowsPlatform:
             # Windows固有モジュール
             msvcrt_info = check_module_availability("msvcrt")
             assert msvcrt_info["available"]
-
             # Unix系モジュールは利用不可
             fcntl_info = check_module_availability("fcntl")
         except ImportError:
