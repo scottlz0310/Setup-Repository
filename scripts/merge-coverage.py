@@ -17,6 +17,14 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
+try:
+    import tomllib
+except ImportError:
+    try:
+        import tomli as tomllib
+    except ImportError:
+        tomllib = None
+
 # ログ設定
 logging.basicConfig(
     level=logging.INFO,
@@ -53,13 +61,37 @@ class MergedCoverage:
     platform_contributions: dict[str, float]
 
 
+def load_coverage_config(config_path: Path = Path("pyproject.toml")) -> float:
+    """pyproject.tomlからカバレッジ閾値を読み取り"""
+    if not config_path.exists():
+        logger.warning(f"設定ファイルが見つかりません: {config_path}")
+        return 70.0
+
+    if tomllib is None:
+        logger.warning("tomlライブラリが利用できません。デフォルト値を使用します。")
+        return 70.0
+
+    try:
+        with open(config_path, "rb") as f:
+            config = tomllib.load(f)
+
+        fail_under = config.get("tool", {}).get("coverage", {}).get("report", {}).get("fail_under", 70.0)
+        logger.info(f"pyproject.tomlからカバレッジ閾値を読み込み: {fail_under}%")
+        return float(fail_under)
+
+    except Exception as e:
+        logger.warning(f"設定ファイル読み込みエラー: {e}。デフォルト値を使用します。")
+        return 70.0
+
+
 class CoverageMerger:
     """プラットフォーム統合カバレッジ処理"""
 
-    def __init__(self, coverage_dir: Path = Path("coverage-artifacts")):
+    def __init__(self, coverage_dir: Path = Path("coverage-artifacts"), fail_under: float = 70.0):
         self.coverage_dir = coverage_dir
         self.merged_dir = Path("merged-coverage")
         self.merged_dir.mkdir(exist_ok=True)
+        self.fail_under = fail_under
 
     def collect_coverage_files(self) -> list[Path]:
         """カバレッジファイルを収集"""
@@ -288,9 +320,9 @@ class CoverageMerger:
                 },
             },
             "quality_gate": {
-                "target": 80.0,
-                "passed": merged.total_coverage >= 80.0,
-                "status": "PASS" if merged.total_coverage >= 80.0 else "FAIL",
+                "target": self.fail_under,
+                "passed": merged.total_coverage >= self.fail_under,
+                "status": "PASS" if merged.total_coverage >= self.fail_under else "FAIL",
             },
             "platform_contributions": merged.platform_contributions,
             "file_coverage": merged.file_coverage,
@@ -444,9 +476,10 @@ class CoverageMerger:
 
             # 結果出力
             logger.info(f"統合カバレッジ: {merged.total_coverage:.2f}%")
-            logger.info(f"品質ゲート (80%): {'通過' if merged.total_coverage >= 80 else '未達成'}")
+            status = "通過" if merged.total_coverage >= self.fail_under else "未達成"
+            logger.info(f"品質ゲート ({self.fail_under}%): {status}")
 
-            return merged.total_coverage >= 80, report
+            return merged.total_coverage >= self.fail_under, report
 
         except Exception as e:
             logger.error(f"統合処理エラー: {e}")
@@ -459,7 +492,8 @@ def main():
     parser.add_argument(
         "--coverage-dir", type=Path, default=Path("coverage-artifacts"), help="カバレッジファイルディレクトリ"
     )
-    parser.add_argument("--fail-under", type=float, default=80.0, help="品質ゲート閾値 (デフォルト: 80%)")
+    parser.add_argument("--fail-under", type=float, help="品質ゲート閾値 (デフォルト: pyproject.tomlから読み込み)")
+    parser.add_argument("--config", type=Path, default=Path("pyproject.toml"), help="設定ファイルパス")
     parser.add_argument("--generate-summary", action="store_true", help="Markdownサマリーのみ生成")
     parser.add_argument("--verbose", "-v", action="store_true", help="詳細ログ出力")
 
@@ -513,8 +547,11 @@ def main():
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
 
+    # 闾値を決定（--fail-underが指定されていない場合はpyproject.tomlから読み込み）
+    fail_under = args.fail_under if args.fail_under is not None else load_coverage_config(args.config)
+
     # 統合処理実行
-    merger = CoverageMerger(args.coverage_dir)
+    merger = CoverageMerger(args.coverage_dir, fail_under)
     passed, report = merger.run_merge()
 
     if report:
