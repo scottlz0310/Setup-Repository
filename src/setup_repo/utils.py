@@ -303,7 +303,7 @@ class ProcessLock:
 
         try:
             proc_version = safe_path_join(Path("/"), "proc/version")
-            with open(proc_version) as f:
+            with open(proc_version, encoding="utf-8") as f:
                 return "microsoft" in f.read().lower()
         except (FileNotFoundError, PermissionError, ValueError):
             return False

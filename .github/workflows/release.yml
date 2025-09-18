@@ -61,20 +61,23 @@ jobs:
 
       - name: 🔍 バージョン情報を抽出
         id: extract-version
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+          INPUT_PRERELEASE: ${{ github.event.inputs.prerelease }}
         run: |
           # 入力値のサニタイズとバリデーション
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            # ユーザー入力をサニタイズ（英数字、ドット、ハイフンのみ許可）
-            RAW_VERSION="${{ github.event.inputs.version }}"
+            # 環境変数経由で安全に値を取得
+            RAW_VERSION="${INPUT_VERSION}"
             VERSION=$(echo "$RAW_VERSION" | sed 's/[^a-zA-Z0-9.-]//g')
 
             # バージョン形式の検証
             if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-(alpha|beta|rc)\.[0-9]+)?$ ]]; then
-              echo "❌ 無効なバージョン形式: $VERSION"
+              echo "無効なバージョン形式: $VERSION"
               exit 1
             fi
 
-            IS_PRERELEASE="${{ github.event.inputs.prerelease }}"
+            IS_PRERELEASE="${INPUT_PRERELEASE}"
           else
             # タグからバージョンを抽出 (v1.0.0 -> 1.0.0)
             RAW_TAG="${GITHUB_REF#refs/tags/v}"
@@ -90,8 +93,8 @@ jobs:
 
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "is-prerelease=$IS_PRERELEASE" >> $GITHUB_OUTPUT
-          echo "🏷️ バージョン: $VERSION"
-          echo "🧪 プレリリース: $IS_PRERELEASE"
+          echo "バージョン: $VERSION"
+          echo "プレリリース: $IS_PRERELEASE"
 
       - name: 📋 バージョン一貫性チェックスクリプトを作成
         run: |

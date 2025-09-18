@@ -170,9 +170,11 @@ class TestUtils:
             if acquired:
                 # 成功した場合は正常にリリース
                 lock.release()
-        except Exception:
+        except Exception as e:
             # エラーが発生した場合も適切に処理されることを確認
-            pass
+            import logging
+
+            logging.getLogger(__name__).debug(f"Lock test error: {e}")
 
     def test_wsl_detection(self):
         """WSL環境検出のテスト"""
@@ -206,9 +208,11 @@ class TestUtils:
                 result = impl.acquire(invalid_fd)
                 assert isinstance(result, bool)
                 impl.release(invalid_fd)
-            except Exception:
+            except Exception as e:
                 # 例外が発生しても適切に処理されることを確認
-                pass
+                import logging
+
+                logging.getLogger(__name__).debug(f"Implementation test error: {e}")
 
     def test_tee_logger_error_handling(self):
         """TeeLoggerのエラーハンドリングテスト"""

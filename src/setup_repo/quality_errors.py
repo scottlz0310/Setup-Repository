@@ -207,7 +207,14 @@ class ErrorReporter:
         if hasattr(error, "details"):
             error_info["error_details"] = error.details
 
-        formatted_error = json.dumps(error_info, ensure_ascii=False, indent=2)
+        from .security_helpers import safe_html_escape
+
+        # JSONダンプ前にHTMLエスケープを適用
+        escaped_error_info = {
+            key: safe_html_escape(value) if isinstance(value, str) else value for key, value in error_info.items()
+        }
+
+        formatted_error = json.dumps(escaped_error_info, ensure_ascii=False, indent=2)
 
         if include_traceback:
             formatted_error += f"\nスタックトレース: {traceback.format_exc()}"
