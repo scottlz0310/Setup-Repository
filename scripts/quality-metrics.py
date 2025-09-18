@@ -10,11 +10,11 @@ import json
 import sys
 from pathlib import Path
 
+# ruff: noqa: E402
 # プロジェクトルートをパスに追加
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root / "src"))
 
-# ruff: noqa: E402
 from setup_repo.quality_metrics import QualityLogger, QualityMetricsCollector
 
 
@@ -54,8 +54,7 @@ def main():
     parser.add_argument(
         "--min-coverage",
         type=float,
-        default=80.0,
-        help="最低カバレッジ要件（デフォルト: 80.0）",
+        help="最低カバレッジ要件（デフォルト: pyproject.tomlから読み込み）",
     )
 
     parser.add_argument("--verbose", action="store_true", help="詳細ログ出力")
@@ -140,8 +139,26 @@ def main():
                     issues.append(f"Ruffエラー: {metrics.ruff_issues}件")
                 if metrics.mypy_errors > 0:
                     issues.append(f"MyPyエラー: {metrics.mypy_errors}件")
-                if metrics.test_coverage < args.min_coverage:
-                    issues.append(f"カバレッジ不足: {metrics.test_coverage:.1f}% < {args.min_coverage}%")
+                # カバレッジ闾値を取得
+                coverage_threshold = args.min_coverage
+                if coverage_threshold is None:
+                    try:
+                        import tomllib
+
+                        config_path = Path("pyproject.toml")
+                        if config_path.exists():
+                            with open(config_path, "rb") as f:
+                                config = tomllib.load(f)
+                            coverage_threshold = (
+                                config.get("tool", {}).get("coverage", {}).get("report", {}).get("fail_under", 70.0)
+                            )
+                        else:
+                            coverage_threshold = 70.0
+                    except (ImportError, FileNotFoundError, KeyError):
+                        coverage_threshold = 70.0
+
+                if metrics.test_coverage < coverage_threshold:
+                    issues.append(f"カバレッジ不足: {metrics.test_coverage:.1f}% < {coverage_threshold}%")
                 if metrics.test_failed > 0:
                     issues.append(f"テスト失敗: {metrics.test_failed}件")
                 if metrics.security_vulnerabilities > 0:

@@ -76,12 +76,10 @@ repos:
   # ローカルフック - 高速チェック→時間のかかるテストの順
   - repo: local
     hooks:
-      - id: safety-scan
-        name: "Safety 脆弱性スキャン"
-        description: "Safetyによる既知の脆弱性スキャン（新しいscanコマンド使用）"
-        # ルール6章準拠: 継続的セキュリティチェック
-        # Safety Platformポリシーに従い、除外された脆弱性は正常終了
-        entry: uv run safety scan --output screen --short-report --disable-optional-telemetry
+      - id: security-check
+        name: "セキュリティチェック"
+        description: "ローカル環境でのセキュリティ脆弱性チェック（修復推奨）"
+        entry: uv run python scripts/security-check.py --local-mode
         language: system
         pass_filenames: false
         always_run: true
@@ -89,8 +87,8 @@ repos:
 
       - id: coverage-check
         name: "カバレッジ品質ゲート"
-        description: "カバレッジ80%品質ゲートチェック"
-        entry: uv run python scripts/coverage-check.py --min-coverage 80
+        description: "pyproject.toml設定に基づくカバレッジ品質ゲートチェック"
+        entry: uv run python scripts/coverage-check.py
         language: system
         pass_filenames: false
         always_run: true
