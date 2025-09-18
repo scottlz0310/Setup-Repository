@@ -42,9 +42,8 @@ def optimize_pytest_args():
         "auto",  # 自動並列度（最適）
         "--dist=worksteal",  # 効率的な作業分散
         "--maxfail=10",
-        # Windows固有の最適化（実際に効果があるもの）
-        "--no-cov-on-fail",  # 失敗時カバレッジ計算スキップ
         "--durations=10",  # 遅いテストを特定
+        "-x",  # 最初の失敗で停止（高速化）
     ]
 
     return args
@@ -81,19 +80,32 @@ def run_optimized_tests():
         "--ignore=tests/performance/",
     ]
 
-    # カバレッジ設定（軽量化）
-    coverage_args = [
-        "--cov=src/setup_repo",
-        "--cov-report=term-missing",
-        "--cov-report=xml",
-        "--cov-config=pyproject.toml",
-    ]
+    # カバレッジ設定（軽量化） - pytest-covが利用可能な場合のみ
+    coverage_args = []
+    try:
+        # pytest-covの利用可能性をチェック
+        import importlib.util
+
+        if importlib.util.find_spec("pytest_cov") is not None:
+            coverage_args = [
+                "--cov=src/setup_repo",
+                "--cov-report=term-missing",
+                "--cov-report=xml",
+            ]
+        else:
+            print("⚠️ pytest-covが利用できません。カバレッジなしで実行します。")
+    except ImportError:
+        print("⚠️ pytest-covが利用できません。カバレッジなしで実行します。")
 
     # 最終コマンド構築
     cmd = base_cmd + optimized_args + exclude_args + coverage_args + test_paths
 
     print(f"🔧 実行コマンド: {' '.join(cmd[:10])}...")
-    print(f"📊 並列度: {optimized_args[optimized_args.index('-n') + 1]}")
+    try:
+        n_index = optimized_args.index("-n")
+        print(f"📊 並列度: {optimized_args[n_index + 1]}")
+    except (ValueError, IndexError):
+        print("📊 並列度: 設定なし")
 
     try:
         # テスト実行
