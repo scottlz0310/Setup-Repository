@@ -146,15 +146,17 @@ jobs:
     - name: Generate coverage report
       if: matrix.python-version == '3.11'
       run: |
-        uv run coverage report --show-missing --fail-under=70
+        # pyproject.tomlの設定を使用
+        uv run coverage report --show-missing
         uv run coverage html
         uv run coverage xml
 
     - name: Coverage quality gate
       if: matrix.python-version == '3.11'
       run: |
-        uv run coverage report --fail-under=70
-        echo "✅ カバレッジ品質ゲート通過: 70%以上"
+        # pyproject.tomlの設定を使用
+        uv run coverage report
+        echo "✅ カバレッジ品質ゲート通過: pyproject.toml設定準拠"
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v4
@@ -422,7 +424,7 @@ jobs:
           --cov-report=term-missing \
           --cov-report=html \
           --cov-report=xml \
-          --cov-fail-under=70 \
+          --cov-config=pyproject.toml \
           --junit-xml=test-results.xml \
           -v --tb=short \
           -x --maxfail=10 \
@@ -528,10 +530,10 @@ jobs:
       run: |
         echo "🔄 プラットフォーム統合カバレッジ処理を開始します"
 
-        # 統合カバレッジヘルパー実行（現実的な目標設定）
+        # 統合カバレッジヘルパー実行（pyproject.toml設定準拠）
         uv run python scripts/merge-coverage.py \
           --coverage-dir coverage-artifacts \
-          --fail-under 70 \
+          --config pyproject.toml \
           --verbose
 
         MERGE_EXIT_CODE=$?
@@ -749,11 +751,11 @@ jobs:
           --cov-report=term-missing \
           --cov-report=xml \
           --cov-report=html \
-          --cov-fail-under=${{ env.COVERAGE_THRESHOLD }} \
+          --cov-config=pyproject.toml \
           --junit-xml=test-results.xml \
           -n auto --dist=worksteal \
           -x --maxfail=5
-        echo "✅ テスト+カバレッジチェック完了（${{ env.COVERAGE_THRESHOLD }}%以上）"
+        echo "✅ テスト+カバレッジチェック完了（pyproject.toml設定準拠）"
 
   security-scan:
     name: Security Scan

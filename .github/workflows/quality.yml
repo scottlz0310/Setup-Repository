@@ -40,7 +40,7 @@ permissions:
 
 env:
   PYTHON_VERSION: "3.11"
-  COVERAGE_THRESHOLD: "70"
+  # カバレッジ闾値はpyproject.tomlで管理
   QUALITY_THRESHOLD: "70"
 
 jobs:
@@ -702,8 +702,11 @@ jobs:
 
           GATE_PASSED=true
 
-          if (( $(echo "$COVERAGE < ${{ env.COVERAGE_THRESHOLD }}" | bc -l) )); then
-            echo "❌ カバレッジが${{ env.COVERAGE_THRESHOLD }}%を下回っています: ${COVERAGE}%"
+          # pyproject.tomlからカバレッジ闾値を取得
+          COVERAGE_THRESHOLD=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['tool']['coverage']['report']['fail_under'])" 2>/dev/null || echo "70")
+
+          if (( $(echo "$COVERAGE < $COVERAGE_THRESHOLD" | bc -l) )); then
+            echo "❌ カバレッジが${COVERAGE_THRESHOLD}%を下回っています: ${COVERAGE}%"
             GATE_PASSED=false
           fi
 

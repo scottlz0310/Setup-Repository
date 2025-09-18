@@ -172,7 +172,7 @@ jobs:
           echo "  ライセンス違反: $FORBIDDEN_LICENSES 件"
 
       - name: Run dependency review
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && github.repository_visibility == 'public'
         uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: moderate
