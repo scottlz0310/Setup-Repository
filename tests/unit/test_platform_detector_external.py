@@ -18,12 +18,12 @@ class TestPlatformDetectorExternal:
 
         try:
             from src.setup_repo.platform_detector import check_package_manager
+
+            # 成功ケース
+            mock_subprocess.return_value = Mock(returncode=0)
+            result = check_package_manager("test_package_manager")
         except ImportError:
             pytest.skip("platform_detectorが利用できません")
-
-        # 成功ケース
-        mock_subprocess.return_value = Mock(returncode=0)
-        result = check_package_manager("test_package_manager")
         # 実装によってはwhichも使用するため、結果の型のみチェック
         assert isinstance(result, bool)
 
@@ -45,17 +45,17 @@ class TestPlatformDetectorExternal:
 
         try:
             from src.setup_repo.git_operations import run_git_command
+
+            # Git コマンド成功ケース
+            mock_subprocess.return_value = Mock(returncode=0, stdout="git version 2.30.0", stderr="")
+
+            result = run_git_command(["git", "--version"])
         except ImportError:
             pytest.skip("git_operationsが利用できません")
-
-        # Git コマンド成功ケース
-        mock_subprocess.return_value = Mock(returncode=0, stdout="git version 2.30.0", stderr="")
-
-        try:
-            result = run_git_command(["git", "--version"])
-            assert result is not None
         except Exception as e:
             pytest.skip(f"Git操作テストが実行できません: {e}")
+
+            assert result is not None
 
     @pytest.mark.unit
     @patch("requests.get")
@@ -65,26 +65,26 @@ class TestPlatformDetectorExternal:
 
         try:
             from src.setup_repo.github_api import get_repository_info
+
+            # GitHub API レスポンスのモック
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.json.return_value = {
+                "name": "test-repo",
+                "full_name": "user/test-repo",
+                "clone_url": "https://github.com/user/test-repo.git",
+                "ssh_url": "git@github.com:user/test-repo.git",
+            }
+            mock_requests.return_value = mock_response
+
+            repo_info = get_repository_info("user/test-repo")
         except ImportError:
             pytest.skip("github_apiが利用できません")
-
-        # GitHub API レスポンスのモック
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "name": "test-repo",
-            "full_name": "user/test-repo",
-            "clone_url": "https://github.com/user/test-repo.git",
-            "ssh_url": "git@github.com:user/test-repo.git",
-        }
-        mock_requests.return_value = mock_response
-
-        try:
-            repo_info = get_repository_info("user/test-repo")
-            assert repo_info is not None
-            assert repo_info.get("name") == "test-repo"
         except Exception as e:
             pytest.skip(f"GitHub APIテストが実行できません: {e}")
+
+            assert repo_info is not None
+            assert repo_info.get("name") == "test-repo"
 
     @pytest.mark.unit
     @patch("shutil.which")
@@ -94,12 +94,12 @@ class TestPlatformDetectorExternal:
 
         try:
             from src.setup_repo.platform_detector import check_package_manager
+
+            # コマンドが見つかる場合
+            mock_which.return_value = "/usr/bin/test_command"
+            result = check_package_manager("test_command")
         except ImportError:
             pytest.skip("platform_detectorが利用できません")
-
-        # コマンドが見つかる場合
-        mock_which.return_value = "/usr/bin/test_command"
-        result = check_package_manager("test_command")
         # 実装によってはwhichの結果だけでなくsubprocessも使用する場合がある
         # そのため、結果の型のみチェック
         assert isinstance(result, bool)
@@ -120,19 +120,20 @@ class TestPlatformDetectorExternal:
 
         try:
             from src.setup_repo.config import check_config_file_exists
-        except ImportError:
-            pytest.skip("configが利用できません")
 
-        # 外部設定ファイルの存在チェック（例：ネットワーク上のファイル）
-        mock_exists.return_value = True
+            # 外部設定ファイルの存在チェック（例：ネットワーク上のファイル）
+            mock_exists.return_value = True
 
-        try:
             # 実際の関数が存在する場合のみテスト
             if callable(check_config_file_exists):
                 result = check_config_file_exists("remote_config.json")
-                assert isinstance(result, bool)
+        except ImportError:
+            pytest.skip("configが利用できません")
         except Exception as e:
             pytest.skip(f"設定ファイルチェックが実行できません: {e}")
+
+        if "result" in locals():
+            assert isinstance(result, bool)
 
     @pytest.mark.unit
     @patch("urllib.request.urlopen")
@@ -148,16 +149,17 @@ class TestPlatformDetectorExternal:
 
         try:
             from src.setup_repo.utils import check_network_connectivity
-        except ImportError:
-            pytest.skip("network connectivity checkが利用できません")
 
-        try:
             # ネットワーク接続チェック（外部依存）
             if callable(check_network_connectivity):
                 result = check_network_connectivity("https://api.github.com")
-                assert isinstance(result, bool)
+        except ImportError:
+            pytest.skip("network connectivity checkが利用できません")
         except Exception as e:
             pytest.skip(f"ネットワーク接続チェックが実行できません: {e}")
+
+        if "result" in locals():
+            assert isinstance(result, bool)
 
     @pytest.mark.unit
     @patch("time.sleep")
@@ -170,18 +172,19 @@ class TestPlatformDetectorExternal:
 
         try:
             from src.setup_repo.platform_detector import check_package_manager_with_timeout
-        except ImportError:
-            pytest.skip("timeout機能が利用できません")
 
-        try:
             # タイムアウト付きパッケージマネージャーチェック
             if callable(check_package_manager_with_timeout):
                 result = check_package_manager_with_timeout("test_command", timeout=1)
-                assert isinstance(result, bool)
-                # sleepが呼ばれていないことを確認（タイムアウト前に完了）
-                mock_sleep.assert_not_called()
+        except ImportError:
+            pytest.skip("timeout機能が利用できません")
         except Exception as e:
             pytest.skip(f"タイムアウト機能テストが実行できません: {e}")
+
+        if "result" in locals():
+            assert isinstance(result, bool)
+            # sleepが呼ばれていないことを確認（タイムアウト前に完了）
+            mock_sleep.assert_not_called()
 
     @pytest.mark.unit
     def test_no_environment_mocking(self):
@@ -217,13 +220,13 @@ class TestPlatformDetectorExternal:
 
         try:
             from src.setup_repo.platform_detector import PlatformDetector
+
+            detector = PlatformDetector()
+
+            # 内部ロジックのテスト（外部依存なし）
+            platform_info = detector.detect_platform()
         except ImportError:
             pytest.skip("PlatformDetectorが利用できません")
-
-        detector = PlatformDetector()
-
-        # 内部ロジックのテスト（外部依存なし）
-        platform_info = detector.detect_platform()
 
         # プラットフォーム情報の基本構造をチェック
         # detect_platform()は文字列を返す場合もある

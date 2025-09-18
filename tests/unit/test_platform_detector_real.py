@@ -19,10 +19,10 @@ class TestPlatformDetectorReal:
 
         try:
             from src.setup_repo.platform_detector import detect_platform
+
+            platform_info = detect_platform()
         except ImportError:
             pytest.skip("platform_detectorが利用できません")
-
-        platform_info = detect_platform()
         current_system = platform.system()
 
         # 実環境での検証
@@ -54,10 +54,10 @@ class TestPlatformDetectorReal:
 
         try:
             from src.setup_repo.platform_detector import check_package_manager, detect_platform
+
+            platform_info = detect_platform()
         except ImportError:
             pytest.skip("platform_detectorが利用できません")
-
-        platform_info = detect_platform()
 
         # 実環境で利用可能なパッケージマネージャーをテスト
         for pm in platform_info.package_managers:
@@ -100,10 +100,10 @@ class TestPlatformDetectorReal:
 
         try:
             from src.setup_repo.platform_detector import detect_platform
+
+            platform_info = detect_platform()
         except ImportError:
             pytest.skip("platform_detectorが利用できません")
-
-        platform_info = detect_platform()
         python_cmd = platform_info.python_cmd
 
         # 実際にPythonコマンドが実行可能かテスト
@@ -125,35 +125,35 @@ class TestPlatformDetectorReal:
 
         try:
             from src.setup_repo.platform_detector import check_module_availability
+
+            current_platform = get_current_platform()
+
+            # プラットフォーム固有モジュールのテスト
+            if current_platform == "windows":
+                # Windows固有モジュール
+                msvcrt_info = check_module_availability("msvcrt")
+                assert msvcrt_info["available"], "Windows環境でmsvcrtが利用できません"
+
+                # Unix系モジュールは利用不可
+                fcntl_info = check_module_availability("fcntl")
+                assert not fcntl_info["available"], "Windows環境でfcntlが利用可能になっています"
+
+            elif current_platform in ["linux", "wsl", "macos"]:
+                # Unix系モジュール
+                fcntl_info = check_module_availability("fcntl")
+                assert fcntl_info["available"], "Unix系環境でfcntlが利用できません"
+
+                # Windows固有モジュールは利用不可
+                msvcrt_info = check_module_availability("msvcrt")
+                assert not msvcrt_info["available"], "Unix系環境でmsvcrtが利用可能になっています"
+
+            # 共通モジュールのテスト
+            common_modules = ["os", "sys", "platform", "pathlib", "subprocess"]
+            for module in common_modules:
+                module_info = check_module_availability(module)
+                assert module_info["available"], f"共通モジュール '{module}' が利用できません"
         except ImportError:
             pytest.skip("platform_detectorが利用できません")
-
-        current_platform = get_current_platform()
-
-        # プラットフォーム固有モジュールのテスト
-        if current_platform == "windows":
-            # Windows固有モジュール
-            msvcrt_info = check_module_availability("msvcrt")
-            assert msvcrt_info["available"], "Windows環境でmsvcrtが利用できません"
-
-            # Unix系モジュールは利用不可
-            fcntl_info = check_module_availability("fcntl")
-            assert not fcntl_info["available"], "Windows環境でfcntlが利用可能になっています"
-
-        elif current_platform in ["linux", "wsl", "macos"]:
-            # Unix系モジュール
-            fcntl_info = check_module_availability("fcntl")
-            assert fcntl_info["available"], "Unix系環境でfcntlが利用できません"
-
-            # Windows固有モジュールは利用不可
-            msvcrt_info = check_module_availability("msvcrt")
-            assert not msvcrt_info["available"], "Unix系環境でmsvcrtが利用可能になっています"
-
-        # 共通モジュールのテスト
-        common_modules = ["os", "sys", "platform", "pathlib", "subprocess"]
-        for module in common_modules:
-            module_info = check_module_availability(module)
-            assert module_info["available"], f"共通モジュール '{module}' が利用できません"
 
     @pytest.mark.unit
     def test_real_ci_environment_detection(self):
@@ -162,10 +162,10 @@ class TestPlatformDetectorReal:
 
         try:
             from src.setup_repo.platform_detector import PlatformDetector
+
+            detector = PlatformDetector()
         except ImportError:
             pytest.skip("PlatformDetectorが利用できません")
-
-        detector = PlatformDetector()
 
         # 実環境でのCI環境判定
         is_ci = detector.is_ci_environment()
@@ -208,12 +208,12 @@ class TestPlatformDetectorReal:
 
         try:
             from src.setup_repo.platform_detector import check_package_manager
+
+            # Gitコマンドの可用性をテスト
+            git_available = check_package_manager("git")
+            assert git_available, "Git コマンドが利用できません"
         except ImportError:
             pytest.skip("platform_detectorが利用できません")
-
-        # Gitコマンドの可用性をテスト
-        git_available = check_package_manager("git")
-        assert git_available, "Git コマンドが利用できません"
 
     @pytest.mark.unit
     def test_real_file_system_behavior(self, temp_dir):
@@ -236,7 +236,7 @@ class TestPlatformDetectorReal:
                     content = test_file_lower.read_text()
                     assert content == "upper content"
             except Exception:
-                # ファイルシステムによっては区別する場合もある
+                # ファイルシステムによっては区別する場合もあるため、例外を無視して続行
                 pass
 
         elif current_platform in ["linux", "wsl"]:
@@ -259,6 +259,7 @@ class TestPlatformDetectorReal:
                     test_file_lower.write_text("lower content")
                     assert test_file_upper.read_text() != test_file_lower.read_text()
             except Exception:
+                # macOSのファイルシステム設定による動作の違いを許容
                 pass
 
     @pytest.mark.unit
@@ -282,11 +283,11 @@ class TestPlatformDetectorReal:
 
         try:
             from src.setup_repo.platform_detector import PlatformDetector
+
+            detector = PlatformDetector()
+            diagnosis = detector.diagnose_issues()
         except ImportError:
             pytest.skip("PlatformDetectorが利用できません")
-
-        detector = PlatformDetector()
-        diagnosis = detector.diagnose_issues()
 
         # 診断結果の基本構造をチェック
         assert isinstance(diagnosis, dict)

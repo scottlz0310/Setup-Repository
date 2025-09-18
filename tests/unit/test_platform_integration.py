@@ -122,16 +122,16 @@ class TestPlatformIntegration:
 
         try:
             from src.setup_repo.uv_installer import ensure_uv
+
+            # 実環境でのuvチェック（安全なテスト）
+            ensure_uv()
         except ImportError:
             pytest.skip("uv_installerが利用できません")
-
-        # 実環境でのuvチェック（安全なテスト）
-        try:
-            ensure_uv()
-            assert True  # エラーが発生しないことを確認
         except Exception as e:
             # uvがインストールされていない場合はスキップ
             pytest.skip(f"uvが利用できません: {e}")
+
+        assert True  # エラーが発生しないことを確認
 
     @pytest.mark.unit
     def test_safety_check_platform_specific(self, temp_dir):

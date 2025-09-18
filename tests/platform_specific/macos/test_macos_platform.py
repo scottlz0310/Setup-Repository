@@ -23,10 +23,10 @@ class TestMacOSPlatform:
         """macOSシェル検出テスト"""
         try:
             from src.setup_repo.platform_detector import detect_platform
+
+            platform_info = detect_platform()
         except ImportError:
             pytest.skip("platform_detectorが利用できません")
-
-        platform_info = detect_platform()
         assert platform_info.name == "macos"
         # GitHub Actions環境では実際のシェルはshなので、実環境に合わせる
         if os.environ.get("GITHUB_ACTIONS", "").lower() == "true":
@@ -38,10 +38,10 @@ class TestMacOSPlatform:
         """macOSパッケージマネージャーテスト"""
         try:
             from src.setup_repo.platform_detector import detect_platform
+
+            platform_info = detect_platform()
         except ImportError:
             pytest.skip("platform_detectorが利用できません")
-
-        platform_info = detect_platform()
         expected_managers = ["brew", "port", "conda"]
 
         # 少なくとも1つのパッケージマネージャーが検出されることを期待
@@ -53,25 +53,25 @@ class TestMacOSPlatform:
         """macOSPythonコマンドテスト"""
         try:
             from src.setup_repo.platform_detector import detect_platform
+
+            platform_info = detect_platform()
         except ImportError:
             pytest.skip("platform_detectorが利用できません")
-
-        platform_info = detect_platform()
         assert platform_info.python_cmd in ["python3", "python"]
 
     def test_macos_module_availability(self):
         """macOS固有モジュール可用性テスト"""
         try:
             from src.setup_repo.platform_detector import check_module_availability
+
+            # Unix系モジュール
+            fcntl_info = check_module_availability("fcntl")
+            assert fcntl_info["available"]
+
+            # Windows固有モジュールは利用不可
+            msvcrt_info = check_module_availability("msvcrt")
         except ImportError:
             pytest.skip("platform_detectorが利用できません")
-
-        # Unix系モジュール
-        fcntl_info = check_module_availability("fcntl")
-        assert fcntl_info["available"]
-
-        # Windows固有モジュールは利用不可
-        msvcrt_info = check_module_availability("msvcrt")
         assert not msvcrt_info["available"]
 
     def test_macos_path_handling(self):
