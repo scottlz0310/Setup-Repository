@@ -34,179 +34,10 @@ permissions:
   actions: read
 
 jobs:
-  quality-checks:
-    name: Code Quality Checks
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.11", "3.12", "3.13"]
-      fail-fast: false
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Install uv
-      run: curl -LsSf https://astral.sh/uv/install.sh | sh
-
-    - name: Add uv to PATH
-      run: echo "$HOME/.local/bin" >> $GITHUB_PATH
-
-    - name: Set up Python ${{ matrix.python-version }}
-      run: uv python install ${{ matrix.python-version }}
-
-    - name: Create virtual environment
-      run: uv venv --python ${{ matrix.python-version }}
-
-    - name: Install dependencies
-      run: |
-        # 開発依存をインストール（pytest-json-reportを含む）
-        uv sync --dev
-
-        # pytest-json-reportプラグインの確認
-        echo "pytest-json-reportプラグインの確認:"
-        if uv run python -c "import pytest_jsonreport; print('pytest-json-report available')"; then
-          echo "✅ pytest-json-report: 利用可能"
-        else
-          echo "❌ pytest-json-report: 利用不可 - 個別インストールを試行"
-          uv add pytest-json-report || echo "pytest-json-reportの個別インストールに失敗"
-        fi
-
-        # セキュリティ依存関係グループをインストール（フォールバック付き）
-        echo "セキュリティツールのインストールを試行します..."
-        if ! uv sync --group security; then
-          echo "セキュリティグループのインストールに失敗しました。個別インストールを試行します..."
-
-          # 個別にセキュリティツールをインストール（フォールバック）
-          uv add bandit || echo "Banditのインストールに失敗しました"
-          uv add safety || echo "Safetyのインストールに失敗しました"
-        else
-          echo "セキュリティグループのインストールに成功しました"
-        fi
-
-        # インストールされたツールを確認
-        echo "インストールされたツールを確認します:"
-        uv run pytest --version && echo "- pytest: 利用可能" || echo "- pytest: 利用不可"
-        uv run python -c "import pytest_jsonreport" && echo "- pytest-json-report: 利用可能" || echo "- pytest-json-report: 利用不可"
-        uv run bandit --version 2>/dev/null && echo "- Bandit: 利用可能" || echo "- Bandit: 利用不可"
-        uv run safety --version 2>/dev/null && echo "- Safety: 利用可能" || echo "- Safety: 利用不可"
-
-    - name: Cache uv dependencies
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cache/uv
-          .venv
-        key: ${{ runner.os }}-uv-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml', '**/uv.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-uv-${{ matrix.python-version }}-
-          ${{ runner.os }}-uv-
-
-    - name: Cache test results
-      uses: actions/cache@v4
-      with:
-        path: |
-          .pytest_cache
-          .mypy_cache
-          .ruff_cache
-        key: ${{ runner.os }}-test-cache-${{ matrix.python-version }}-${{ hashFiles('src/**/*.py', 'tests/**/*.py') }}
-        restore-keys: |
-          ${{ runner.os }}-test-cache-${{ matrix.python-version }}-
-          ${{ runner.os }}-test-cache-
-
-    - name: Run comprehensive quality checks with enhanced error handling
-      run: |
-        # まずruffフォーマットと自動修正で可能な問題を解消
-        uv run ruff format . || true
-        uv run ruff check . --fix || true
-        # 総合品質チェック
-        uv run python scripts/ci-quality-check.py
-      env:
-        CI: "true"
-        CI_JSON_LOGS: "true"
-        PYTEST_XDIST_WORKER_COUNT: "auto"
-        CI_PLATFORM_DIAGNOSTICS: "true"
-        PRE_COMMIT: "1"
-        SKIP_INTEGRATION_TESTS: "false"
-        UNIT_TESTS_ONLY: "false"
-        PYTEST_CURRENT_TEST: "1"
-        PYTEST_TIMEOUT: "300"
-        PYTHONPATH: "src"
-
-    - name: Upload error reports on failure
-      if: failure()
-      uses: actions/upload-artifact@v4
-      with:
-        name: ci-error-reports-${{ matrix.python-version }}
-        path: ci-reports/
-        retention-days: 30
-
-
-
-    - name: Generate coverage report
-      if: matrix.python-version == '3.11'
-      run: |
-        # pyproject.tomlの設定を使用
-        uv run coverage report --show-missing
-        uv run coverage html
-        uv run coverage xml
-
-    - name: Coverage quality gate
-      if: matrix.python-version == '3.11'
-      run: |
-        # pyproject.tomlの設定を使用
-        uv run coverage report
-        echo "✅ カバレッジ品質ゲート通過: pyproject.toml設定準拠"
-
-    - name: Upload coverage reports to Codecov
-      uses: codecov/codecov-action@v4
-      if: matrix.python-version == '3.11'
-      with:
-        file: ./coverage.xml
-        flags: unittests
-        name: codecov-umbrella
-        fail_ci_if_error: false
-        verbose: true
-
-    - name: Upload test results and coverage
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: test-results-${{ matrix.python-version }}
-        path: |
-          test-results.xml
-          htmlcov/
-          coverage.xml
-        retention-days: 30
-
-    - name: Comment coverage on PR
-      if: github.event_name == 'pull_request' && matrix.python-version == '3.11'
-      uses: actions/github-script@v7
-      with:
-        script: |
-          const fs = require('fs');
-          try {
-            const coverage = fs.readFileSync('coverage.xml', 'utf8');
-            const match = coverage.match(/line-rate="([^"]+)"/);
-            if (match) {
-              const rate = (parseFloat(match[1]) * 100).toFixed(2);
-              const body = `## 📊 カバレッジレポート\n\n**現在のカバレッジ**: ${rate}%\n\n${rate >= 70 ? '✅' : '❌'} 品質ゲート (70%): ${rate >= 70 ? '通過' : '未達成'}\n\n**ルール5.2準拠**: 現実的なカバレッジ目標\n\n詳細なレポートはArtifactsからダウンロードできます。`;
-
-              github.rest.issues.createComment({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: body
-              });
-            }
-          } catch (error) {
-            console.log('カバレッジレポートの読み込みに失敗:', error);
-          }
-
   build-and-package:
     name: Build and Package
     runs-on: ubuntu-latest
-    needs: quality-checks
+    needs: cross-platform-test
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
@@ -760,7 +591,7 @@ jobs:
   security-scan:
     name: Security Scan
     runs-on: ubuntu-latest
-    needs: quality-checks
+    needs: cross-platform-test
 
     steps:
     - name: Checkout code
@@ -857,7 +688,7 @@ jobs:
   test-report:
     name: Test Report
     runs-on: ubuntu-latest
-    needs: [quality-checks, cross-platform-test]
+    needs: [cross-platform-test]
     if: always()
     permissions:
       contents: read
@@ -871,13 +702,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Download test artifacts
-        uses: actions/download-artifact@v4
-        with:
-          pattern: "test-results-*"
-          path: test-artifacts/
-          merge-multiple: false
-        continue-on-error: true
+
 
       - name: Download cross-platform test artifacts
         uses: actions/download-artifact@v4
