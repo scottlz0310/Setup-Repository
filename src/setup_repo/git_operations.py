@@ -77,33 +77,13 @@ def choose_clone_url(repo: dict, use_https: bool = False) -> str:
     ssh_keys = [Path.home() / ".ssh" / "id_rsa", Path.home() / ".ssh" / "id_ed25519"]
 
     if any(key.exists() for key in ssh_keys):
-        # SSH接続テスト
-        try:
-            result = safe_subprocess(
-                [
-                    "ssh",
-                    "-o",
-                    "BatchMode=yes",
-                    "-o",
-                    "ConnectTimeout=3",
-                    "git@github.com",
-                ],
-                capture_output=True,
-                timeout=5,
-            )
-            if result.returncode in [0, 1]:  # 0=成功, 1=認証成功だが接続拒否
-                full_name = repo.get("full_name")
-                if full_name and isinstance(full_name, str):
-                    return ssh_url or f"git@github.com:{full_name}.git"
-                else:
-                    # full_nameが無効な場合はHTTPSにフォールバック
-                    return clone_url
-        except (subprocess.TimeoutExpired, subprocess.CalledProcessError) as e:
-            # SSH接続失敗時はHTTPSにフォールバック
-            import logging
-
-            logger = logging.getLogger(__name__)
-            logger.debug(f"SSH接続テスト失敗、HTTPSにフォールバック: {e}")
+        # SSH鍵が存在する場合はSSHを優先使用
+        full_name = repo.get("full_name")
+        if full_name and isinstance(full_name, str):
+            return ssh_url or f"git@github.com:{full_name}.git"
+        else:
+            # full_nameが無効な場合はHTTPSにフォールバック
+            return clone_url
 
     return clone_url  # HTTPSにフォールバック
 

@@ -39,6 +39,11 @@ test:
 	@echo "🧪 テストを実行しています..."
 	uv run pytest -q
 
+# ⚡ 高速テスト実行（Windows最適化）
+test-fast:
+	@echo "⚡ 高速テストを実行しています..."
+	uv run python scripts/windows-fast-test.py
+
 # 📊 カバレッジ測定
 cov:
 	@echo "📊 カバレッジ測定を実行しています..."
@@ -91,6 +96,7 @@ help:
 	@echo "  format        - コードフォーマッティング"
 	@echo "  typecheck     - 型チェック"
 	@echo "  test          - テスト実行"
+	@echo "  test-fast     - 高速テスト実行（Windows最適化）"
 	@echo "  cov           - カバレッジ測定"
 	@echo "  merge-coverage - 統合カバレッジ処理"
 	@echo "  security      - セキュリティチェック"

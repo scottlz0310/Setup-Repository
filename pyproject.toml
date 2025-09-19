@@ -128,7 +128,8 @@ python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 # 並列実行を有効化（xdist）し、プラグイン自動ロード無効化環境でも動作するよう明示ロード
-addopts = "-v --tb=short --disable-warnings -p xdist -n auto --dist=worksteal --junit-xml=output/test-results.xml --json-report --json-report-file=output/test-report.json"
+# Windows環境での最適化: 並列数制限とタイムアウト設定
+addopts = "-v --tb=short --disable-warnings -p xdist -n auto --dist=worksteal --junit-xml=output/test-results.xml --json-report --json-report-file=output/test-report.json --cov=src/setup_repo --cov-report=term-missing --cov-report=html:output/htmlcov --timeout=120"
 markers = [
     "unit: 単体テスト",
     "integration: 統合テスト",
@@ -147,6 +148,7 @@ filterwarnings = [
     "ignore::UserWarning",
     "ignore::DeprecationWarning",
 ]
+
 
 [tool.coverage.run]
 source = ["src/setup_repo"]
