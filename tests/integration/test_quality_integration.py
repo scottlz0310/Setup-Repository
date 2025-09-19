@@ -172,13 +172,17 @@ class TestQualityIntegration:
 
             mock_run.side_effect = mock_subprocess_side_effect
 
+            # outputディレクトリを作成
+            output_dir = project_root / "output"
+            output_dir.mkdir(exist_ok=True)
+
             # カバレッジファイルとテストレポートファイルを作成
-            coverage_file = project_root / "coverage.json"
+            coverage_file = output_dir / "coverage.json"
             coverage_data = {"totals": {"percent_covered": 92.5}}
             with open(coverage_file, "w") as f:
                 json.dump(coverage_data, f)
 
-            test_report_file = project_root / "test-report.json"
+            test_report_file = output_dir / "test-report.json"
             test_data = {"summary": {"passed": 25, "failed": 0}}
             with open(test_report_file, "w") as f:
                 json.dump(test_data, f)
