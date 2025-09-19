@@ -121,6 +121,7 @@ uv run python -m pytest      # 仮想環境で実行
 
 ### 3.3 設定管理
 - 全ツール設定は pyproject.toml に統合（ruff, mypy, pytest, coverage 等）。
+- テスト設定も統合し、カバレッジ目標も一元管理できるようにテストファイルを構成する。
 - requirements.txt は互換性維持のため自動同期生成可。setup.py 等の旧式構成は禁止。
 
 ### 3.4 Makefile と DX（開発者体験）
@@ -182,6 +183,7 @@ pytest -q
 ### 5.2 カバレッジ目標
 - 最終目標: 80%以上（production）
 - CI で閾値を設定し、未達はブロック
+- カバレッジ設定は段階的厳格化がしやすいようにpyproject.tomlで一元管理する。
 
 ### 5.3 段階別方針
 ```
