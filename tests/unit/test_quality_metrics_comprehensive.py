@@ -176,7 +176,8 @@ class TestQualityMetrics:
 
     @pytest.mark.unit
     def test_is_passing_custom_coverage(self):
-        """カスタムカバレッジ閾値のテスト."""
+        """カスタムカバレッジ閾値のテスト（意図的にハードコード値を使用）."""
+        # このテストは明示的な閾値指定機能をテストするため、意図的にハードコード値を使用
         metrics = QualityMetrics(test_coverage=75.0)
 
         assert metrics.is_passing(min_coverage=70.0) is True
@@ -385,7 +386,23 @@ class TestQualityMetricsCollector:
         result = self.collector.collect_test_metrics()
 
         assert result == expected_result
-        mock_collect.assert_called_once_with(self.temp_dir, self.mock_logger, "auto", 80.0, False)
+        # pyproject.tomlから動的に閾値を取得
+        try:
+            import tomllib
+
+            config_path = Path("pyproject.toml")
+            if config_path.exists():
+                with open(config_path, "rb") as f:
+                    config = tomllib.load(f)
+                expected_threshold = (
+                    config.get("tool", {}).get("coverage", {}).get("report", {}).get("fail_under", 70.0)
+                )
+            else:
+                expected_threshold = 70.0
+        except (ImportError, FileNotFoundError, KeyError):
+            expected_threshold = 70.0
+
+        mock_collect.assert_called_once_with(self.temp_dir, self.mock_logger, "auto", expected_threshold, False)
 
     @pytest.mark.unit
     @patch("setup_repo.quality_metrics.collect_pytest_metrics")
