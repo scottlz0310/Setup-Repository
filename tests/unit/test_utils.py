@@ -4,6 +4,7 @@
 マルチプラットフォームテスト方針に準拠したユーティリティ機能のテスト
 """
 
+import platform
 import tempfile
 from pathlib import Path
 
@@ -12,6 +13,7 @@ import pytest
 from setup_repo.utils import (
     ProcessLock,
     TeeLogger,
+    ensure_directory,
     get_platform_lock_info,
     log_platform_compatibility_warning,
 )
@@ -228,6 +230,227 @@ class TestUtils:
 
         # クリーンアップ
         tee.close()
+
+    def test_ensure_directory_creates_path(self):
+        """ensure_directory関数のテスト"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            test_path = Path(temp_dir) / "new" / "nested" / "directory"
+            assert not test_path.exists()
+
+            ensure_directory(test_path)
+
+            assert test_path.exists()
+            assert test_path.is_dir()
+
+    def test_ensure_directory_existing_path(self):
+        """既存ディレクトリでのensure_directory関数のテスト"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            test_path = Path(temp_dir) / "existing"
+            test_path.mkdir()
+
+            ensure_directory(test_path)
+
+            assert test_path.exists()
+            assert test_path.is_dir()
+
+    def test_module_availability_logging(self):
+        """モジュール可用性ログ機能のテスト"""
+        from setup_repo.utils import _log_platform_module_availability
+
+        # モジュール可用性ログが正常に実行されることを確認
+        _log_platform_module_availability()
+
+    def test_get_recommended_implementation(self):
+        """推奨実装取得のテスト"""
+        from setup_repo.utils import _get_recommended_implementation
+
+        # 各プラットフォームでの推奨実装を確認
+        windows_impl = _get_recommended_implementation("windows")
+        linux_impl = _get_recommended_implementation("linux")
+        darwin_impl = _get_recommended_implementation("darwin")
+        unknown_impl = _get_recommended_implementation("unknown")
+
+        assert windows_impl in ["msvcrt", "fallback"]
+        assert linux_impl in ["fcntl", "fallback"]
+        assert darwin_impl in ["fcntl", "fallback"]
+        assert unknown_impl == "fallback"
+
+    def test_has_platform_specific_lock(self):
+        """プラットフォーム固有ロック可用性のテスト"""
+        from setup_repo.utils import _has_platform_specific_lock
+
+        # 各プラットフォームでのロック可用性を確認
+        windows_available = _has_platform_specific_lock("windows")
+        linux_available = _has_platform_specific_lock("linux")
+        darwin_available = _has_platform_specific_lock("darwin")
+        unknown_available = _has_platform_specific_lock("unknown")
+
+        assert isinstance(windows_available, bool)
+        assert isinstance(linux_available, bool)
+        assert isinstance(darwin_available, bool)
+        assert unknown_available is False
+
+    def test_unix_lock_implementation_unavailable(self):
+        """fcntl利用不可時のUnixLock実装テスト"""
+        from unittest.mock import patch
+
+        from setup_repo.utils import UnixLockImplementation
+
+        with patch("setup_repo.utils.FCNTL_AVAILABLE", False):
+            impl = UnixLockImplementation()
+
+            # fcntl利用不可時はFalseを返す
+            result = impl.acquire(1)
+            assert result is False
+
+            # releaseは何もしない
+            impl.release(1)
+
+            # 利用不可を報告
+            assert impl.is_available() is False
+
+    def test_windows_lock_implementation_unavailable(self):
+        """msvcrt利用不可時のWindowsLock実装テスト"""
+        from unittest.mock import patch
+
+        from setup_repo.utils import WindowsLockImplementation
+
+        with patch("setup_repo.utils.MSVCRT_AVAILABLE", False):
+            impl = WindowsLockImplementation()
+
+            # msvcrt利用不可時はFalseを返す
+            result = impl.acquire(1)
+            assert result is False
+
+            # releaseは何もしない
+            impl.release(1)
+
+            # 利用不可を報告
+            assert impl.is_available() is False
+
+    @pytest.mark.skipif(platform.system() != "Linux", reason="WSL検出はLinux環境でのみ実行")
+    def test_process_lock_wsl_detection(self):
+        """ProcessLockのWSL検出テスト（実環境重視）"""
+
+        lock = ProcessLock.create_test_lock("wsl_test")
+
+        # 実環境でのWSL検出テスト
+        is_wsl = lock._is_wsl()
+        assert isinstance(is_wsl, bool)
+
+        # 実際の環境に応じた検証
+        # WSL環境では/proc/versionにMicrosoftが含まれる
+        try:
+            with open("/proc/version") as f:
+                version_info = f.read().lower()
+                expected_wsl = "microsoft" in version_info or "wsl" in version_info
+                assert is_wsl == expected_wsl
+        except (FileNotFoundError, PermissionError):
+            # /proc/versionが読めない場合はFalseであることを確認
+            assert is_wsl is False
+
+    def test_process_lock_platform_specific_recommendations(self):
+        """プラットフォーム固有推奨事項ログのテスト"""
+        lock = ProcessLock.create_test_lock("recommendations")
+
+        # Windows環境での推奨事項
+        platform_info = {"platform": "windows", "msvcrt_available": False, "fallback_required": True}
+
+        # 権限エラーをシミュレート
+        permission_error = PermissionError("Access denied")
+        lock._log_platform_specific_recommendations(platform_info, permission_error)
+
+        # Linux環境での推奨事項
+        platform_info = {"platform": "linux", "fcntl_available": False, "fallback_required": True}
+
+        lock._log_platform_specific_recommendations(platform_info, permission_error)
+
+    def test_tee_logger_setup_error(self):
+        """TeeLoggerセットアップエラーのテスト"""
+        from unittest.mock import patch
+
+        # ファイルオープンエラーをシミュレート
+        with patch("builtins.open", side_effect=PermissionError("Access denied")):
+            tee = TeeLogger("/invalid/path/test.log")
+
+            # エラーが適切に処理されることを確認
+            assert tee.file_handle is None
+
+            tee.close()
+
+    def test_tee_logger_write_with_closed_file(self):
+        """ファイルが閉じられた状態でのTeeLogger書き込みテスト"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            log_file = Path(temp_dir) / "closed_test.log"
+
+            tee = TeeLogger(str(log_file))
+
+            # ファイルを手動で閉じる
+            if tee.file_handle:
+                tee.file_handle.close()
+
+            # 閉じられたファイルでの書き込みテスト
+            if hasattr(tee, "tee_stdout") and tee.tee_stdout:
+                # 例外が発生しないことを確認
+                tee.tee_stdout.write("test message")
+                tee.tee_stdout.flush()
+
+            tee.close()
+
+    def test_process_lock_acquire_failure_cleanup(self):
+        """ProcessLockの取得失敗時クリーンアップテスト"""
+        from unittest.mock import patch
+
+        lock = ProcessLock.create_test_lock("cleanup_test")
+
+        # ロック実装のacquireが失敗するようにモック
+        with (
+            patch.object(lock.lock_implementation, "acquire", return_value=False),
+            patch("os.open", return_value=5),  # 有効なファイルディスクリプタ
+            patch("os.close") as mock_close,
+        ):
+            result = lock.acquire()
+
+            # 取得失敗時はFalseを返す
+            assert result is False
+
+            # ファイルディスクリプタがクリーンアップされる
+            mock_close.assert_called_once_with(5)
+
+            # lock_fdがNoneにリセットされる
+            assert lock.lock_fd is None
+
+    def test_process_lock_os_error_handling(self):
+        """ProcessLockのOSエラーハンドリングテスト"""
+        from unittest.mock import patch
+
+        lock = ProcessLock.create_test_lock("os_error_test")
+
+        # os.openでOSErrorが発生するようにモック
+        with patch("os.open", side_effect=OSError("File system error")):
+            result = lock.acquire()
+
+            # エラー時はFalseを返す
+            assert result is False
+
+            # lock_fdはNoneのまま
+            assert lock.lock_fd is None
+
+    def test_process_lock_release_with_unlink_error(self):
+        """ProcessLockのファイル削除エラー時のreleaseテスト"""
+        from unittest.mock import patch
+
+        lock = ProcessLock.create_test_lock("unlink_error_test")
+
+        # ロックを取得
+        if lock.acquire():
+            # pathlib.Path.unlinkをモック
+            with patch("pathlib.Path.unlink", side_effect=OSError("Permission denied")):
+                # エラーが発生してもreleaseが正常に完了することを確認
+                lock.release()
+
+                # lock_fdがNoneにリセットされる
+                assert lock.lock_fd is None
 
     @pytest.mark.integration
     def test_utils_integration(self):

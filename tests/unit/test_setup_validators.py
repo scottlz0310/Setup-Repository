@@ -302,6 +302,25 @@ class TestSetupValidators:
         assert "executable" in python_info
         assert "valid" in python_info
 
+    def test_validate_setup_prerequisites_old_python(self):
+        """古いPythonバージョンのテスト"""
+        with patch("sys.version_info", (3, 8, 0)):
+            result = validate_setup_prerequisites()
+
+            assert result["valid"] is False
+            assert any("Python 3.9以上が必要" in error for error in result["errors"])
+
+    def test_validate_setup_prerequisites_git_not_found(self):
+        """Gitがインストールされていない場合のテスト"""
+        with patch("setup_repo.setup_validators.safe_subprocess") as mock_subprocess:
+            mock_subprocess.side_effect = FileNotFoundError("git not found")
+
+            result = validate_setup_prerequisites()
+
+            assert result["valid"] is False
+            assert any("Git がインストールされていません" in error for error in result["errors"])
+            assert result["git"]["available"] is False
+
     @pytest.mark.unit
     def test_validate_environment_network_check(self):
         """ネットワーク接続チェックの環境検証テスト"""
@@ -336,3 +355,88 @@ class TestSetupValidators:
             assert "network" in result["environment"]
             assert result["environment"]["network"]["github_accessible"] is False
             assert any("GitHub への接続" in warning for warning in result["warnings"])
+
+    def test_validate_directory_path_parent_not_exists(self):
+        """親ディレクトリが存在しない場合のテスト"""
+        # 存在しない親ディレクトリを指定
+        invalid_path = "/nonexistent/parent/directory/child"
+
+        result = validate_directory_path(invalid_path)
+
+        assert result["valid"] is False
+        assert "親ディレクトリが存在しません" in result["error"]
+
+    def test_validate_directory_path_mkdir_error(self):
+        """ディレクトリ作成エラーのテスト"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            test_path = Path(temp_dir) / "test_dir"
+
+            with patch("pathlib.Path.mkdir") as mock_mkdir:
+                mock_mkdir.side_effect = OSError("Permission denied")
+
+                result = validate_directory_path(str(test_path))
+
+                assert result["valid"] is False
+                assert "ディレクトリを作成できません" in result["error"]
+
+    def test_validate_directory_path_not_directory(self):
+        """ファイルをディレクトリとして指定した場合のテスト"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # ファイルを作成
+            test_file = Path(temp_dir) / "test_file.txt"
+            test_file.write_text("test")
+
+            result = validate_directory_path(str(test_file))
+
+            assert result["valid"] is False
+            assert "ディレクトリではありません" in result["error"]
+
+    def test_validate_user_input_empty_required(self):
+        """空入力で必須の場合のテスト"""
+        with patch("builtins.input") as mock_input:
+            mock_input.return_value = ""  # 空入力
+
+            result = validate_user_input("入力: ", "string", required=True)
+
+            assert result["valid"] is False
+            assert "入力が必要" in result["error"]
+
+    def test_validate_user_input_boolean_no(self):
+        """ブール入力でNoのテスト"""
+        with patch("builtins.input") as mock_input:
+            mock_input.return_value = "n"
+
+            result = validate_user_input("はい/いいえ: ", "boolean")
+
+            assert result["valid"] is True
+            assert result["value"] is False
+
+    def test_validate_user_input_boolean_invalid(self):
+        """ブール入力で無効な値のテスト"""
+        with patch("builtins.input") as mock_input:
+            mock_input.return_value = "invalid"
+
+            result = validate_user_input("はい/いいえ: ", "boolean")
+
+            assert result["valid"] is False
+            assert "y/n で回答" in result["error"]
+
+    def test_validate_user_input_unknown_type(self):
+        """不明な入力タイプのテスト"""
+        with patch("builtins.input") as mock_input:
+            mock_input.return_value = "test"
+
+            result = validate_user_input("入力: ", "unknown_type")
+
+            assert result["valid"] is False
+            assert "不明な入力タイプ" in result["error"]
+
+    def test_validate_user_input_keyboard_interrupt(self):
+        """キーボード中断のテスト"""
+        with patch("builtins.input") as mock_input:
+            mock_input.side_effect = KeyboardInterrupt()
+
+            result = validate_user_input("入力: ", "string")
+
+            assert result["valid"] is False
+            assert "入力が中断" in result["error"]
