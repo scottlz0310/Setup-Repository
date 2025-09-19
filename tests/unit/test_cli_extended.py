@@ -7,14 +7,8 @@
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from setup_repo.cli import (
-    backup_cli,
-    monitor_cli,
-    template_cli,
-)
-from tests.multiplatform.helpers import (
-    verify_current_platform,
-)
+from setup_repo.cli import backup_cli, monitor_cli, template_cli
+from tests.multiplatform.helpers import verify_current_platform
 
 
 class TestTemplateCLI:

@@ -18,10 +18,7 @@ from setup_repo.git_operations import (
     sync_repository,
     sync_repository_with_retries,
 )
-from tests.multiplatform.helpers import (
-    get_platform_specific_config,
-    verify_current_platform,
-)
+from tests.multiplatform.helpers import get_platform_specific_config, verify_current_platform
 
 
 class TestGitOperations:

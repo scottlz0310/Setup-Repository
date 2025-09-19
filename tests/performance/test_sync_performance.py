@@ -9,11 +9,7 @@ from unittest.mock import patch
 
 import pytest
 
-from ..multiplatform.helpers import (
-    get_test_performance_config,
-    optimize_for_platform,
-    verify_current_platform,
-)
+from ..multiplatform.helpers import get_test_performance_config, optimize_for_platform, verify_current_platform
 
 
 class TestSyncPerformance:

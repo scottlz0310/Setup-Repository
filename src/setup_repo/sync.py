@@ -10,11 +10,7 @@ from .github_api import get_repositories
 from .gitignore_manager import GitignoreManager
 from .platform_detector import PlatformDetector
 from .python_env import setup_python_environment
-from .safety_check import (
-    check_unpushed_changes,
-    create_emergency_backup,
-    prompt_user_action,
-)
+from .safety_check import check_unpushed_changes, create_emergency_backup, prompt_user_action
 from .utils import ProcessLock, TeeLogger
 from .uv_installer import ensure_uv
 from .vscode_setup import apply_vscode_template

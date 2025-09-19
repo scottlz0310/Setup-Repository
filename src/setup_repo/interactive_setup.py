@@ -4,11 +4,7 @@ import json
 import subprocess
 from pathlib import Path
 
-from .platform_detector import (
-    PlatformDetector,
-    get_available_package_managers,
-    get_install_commands,
-)
+from .platform_detector import PlatformDetector, get_available_package_managers, get_install_commands
 from .security_helpers import safe_subprocess
 from .setup_validators import (
     check_system_requirements,

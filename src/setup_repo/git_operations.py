@@ -57,6 +57,45 @@ class GitOperations:
         except subprocess.CalledProcessError:
             return False
 
+    def is_clean(self) -> bool:
+        """作業ディレクトリがクリーンかどうかを確認"""
+        try:
+            result = safe_subprocess(
+                ["git", "status", "--porcelain"],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            return not result.stdout.strip()
+        except subprocess.CalledProcessError:
+            return False
+
+    def get_current_branch(self) -> str:
+        """現在のブランチ名を取得"""
+        try:
+            result = safe_subprocess(
+                ["git", "branch", "--show-current"],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            return result.stdout.strip()
+        except subprocess.CalledProcessError:
+            return "unknown"
+
+    def get_current_commit(self) -> str:
+        """現在のコミットハッシュを取得"""
+        try:
+            result = safe_subprocess(
+                ["git", "rev-parse", "HEAD"],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            return result.stdout.strip()
+        except subprocess.CalledProcessError:
+            return "unknown"
+
 
 def choose_clone_url(repo: dict, use_https: bool = False) -> str:
     """SSH/HTTPSを選択してクローンURLを決定"""

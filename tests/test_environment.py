@@ -152,11 +152,7 @@ def test_fixture_files_exist() -> None:
 def test_custom_assertions(temp_dir: Path, sample_config: dict[str, Any]) -> None:
     """カスタムアサーション関数のテスト"""
     try:
-        from tests.conftest import (
-            assert_config_valid,
-            assert_directory_structure,
-            assert_file_exists_with_content,
-        )
+        from tests.conftest import assert_config_valid, assert_directory_structure, assert_file_exists_with_content
 
         # 設定の妥当性チェック
         assert_config_valid(sample_config)

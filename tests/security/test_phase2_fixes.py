@@ -12,11 +12,7 @@ from unittest.mock import patch
 from src.setup_repo.ci_error_handler import CIErrorHandler
 from src.setup_repo.logging_config import check_logging_permissions
 from src.setup_repo.quality_errors import ErrorReporter
-from src.setup_repo.security_helpers import (
-    check_admin_role,
-    sanitize_user_input,
-    validate_session_data,
-)
+from src.setup_repo.security_helpers import check_admin_role, sanitize_user_input, validate_session_data
 
 
 class TestAuthenticationSecurity:

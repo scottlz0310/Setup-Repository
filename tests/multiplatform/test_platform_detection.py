@@ -10,11 +10,7 @@ import platform
 
 import pytest
 
-from setup_repo.platform_detector import (
-    PlatformDetector,
-    check_package_manager,
-    detect_platform,
-)
+from setup_repo.platform_detector import PlatformDetector, check_package_manager, detect_platform
 
 
 @pytest.mark.unit

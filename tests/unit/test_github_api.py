@@ -9,11 +9,7 @@ from unittest.mock import Mock, patch
 import pytest
 import requests
 
-from setup_repo.github_api import (
-    GitHubAPI,
-    GitHubAPIError,
-    get_repositories,
-)
+from setup_repo.github_api import GitHubAPI, GitHubAPIError, get_repositories
 from tests.multiplatform.helpers import verify_current_platform
 
 

@@ -21,6 +21,7 @@ sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 from setup_repo.cli import (
     backup_cli,
+    deploy_cli,
     migration_cli,
     monitor_cli,
     quality_cli,
@@ -53,6 +54,9 @@ def main():
   python main.py monitor health      # システムヘルスチェック
   python main.py monitor performance # パフォーマンス監視
   python main.py monitor alerts      # アラート確認
+  python main.py deploy prepare      # デプロイ準備
+  python main.py deploy execute      # デプロイ実行
+  python main.py deploy rollback     # ロールバック
         """,
     )
 
@@ -155,6 +159,13 @@ def main():
     monitor_parser.add_argument("--watch", action="store_true", help="継続監視モード")
     monitor_parser.add_argument("--interval", type=int, default=60, help="監視間隔（秒、デフォルト: 60）")
     monitor_parser.set_defaults(func=monitor_cli)
+
+    # deployサブコマンド
+    deploy_parser = subparsers.add_parser("deploy", help="デプロイメント管理を実行")
+    deploy_parser.add_argument("action", choices=["prepare", "execute", "rollback", "list"], help="実行するアクション")
+    deploy_parser.add_argument("--environment", help="デプロイ環境（デフォルト: production）")
+    deploy_parser.add_argument("--deploy-id", help="ロールバック対象のデプロイID")
+    deploy_parser.set_defaults(func=deploy_cli)
 
     args = parser.parse_args()
 

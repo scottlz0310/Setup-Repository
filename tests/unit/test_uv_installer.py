@@ -9,13 +9,8 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from setup_repo.uv_installer import (
-    ensure_uv,
-)
-from tests.multiplatform.helpers import (
-    get_platform_specific_config,
-    verify_current_platform,
-)
+from setup_repo.uv_installer import ensure_uv
+from tests.multiplatform.helpers import get_platform_specific_config, verify_current_platform
 
 
 class TestUvInstaller:

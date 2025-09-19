@@ -77,10 +77,7 @@ class TestCrossPlatformCommon:
     )
     def test_comprehensive_platform_detection(self):
         """包括的プラットフォーム検出テスト（CI環境のみ）"""
-        from setup_repo.platform_detector import (
-            diagnose_platform_issues,
-            get_ci_environment_info,
-        )
+        from setup_repo.platform_detector import diagnose_platform_issues, get_ci_environment_info
 
         # プラットフォーム診断実行
         diagnosis = diagnose_platform_issues()

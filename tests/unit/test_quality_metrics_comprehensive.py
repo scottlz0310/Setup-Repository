@@ -7,12 +7,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from setup_repo.quality_logger import QualityLogger
-from setup_repo.quality_metrics import (
-    BuildResult,
-    QualityCheckStatus,
-    QualityMetrics,
-    QualityMetricsCollector,
-)
+from setup_repo.quality_metrics import BuildResult, QualityCheckStatus, QualityMetrics, QualityMetricsCollector
 
 
 class TestQualityCheckStatus:

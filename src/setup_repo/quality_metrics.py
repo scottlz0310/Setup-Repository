@@ -22,13 +22,8 @@ from .quality_collectors import (
     collect_pytest_metrics,
     collect_ruff_metrics,
 )
-from .quality_errors import (
-    SecurityScanError,
-)
-from .quality_logger import (
-    QualityLogger,
-    get_quality_logger,
-)
+from .quality_errors import SecurityScanError
+from .quality_logger import QualityLogger, get_quality_logger
 from .security_helpers import safe_subprocess
 
 

@@ -24,11 +24,7 @@ from .quality_errors import (
     SecurityScanError,
     TestFailureError,
 )
-from .quality_formatters import (
-    ColoredFormatter,
-    JSONFormatter,
-    format_metrics_summary,
-)
+from .quality_formatters import ColoredFormatter, JSONFormatter, format_metrics_summary
 
 
 class LogLevel(Enum):

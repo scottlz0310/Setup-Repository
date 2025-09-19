@@ -9,16 +9,8 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from setup_repo.cli import (
-    migration_cli,
-    quality_cli,
-    setup_cli,
-    sync_cli,
-    trend_cli,
-)
-from tests.multiplatform.helpers import (
-    verify_current_platform,
-)
+from setup_repo.cli import migration_cli, quality_cli, setup_cli, sync_cli, trend_cli
+from tests.multiplatform.helpers import verify_current_platform
 
 
 class TestCLI:

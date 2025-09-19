@@ -10,11 +10,7 @@ import platform
 from pathlib import Path
 from typing import Any
 
-from .logging_handlers import (
-    create_ci_handler,
-    create_development_handler,
-    create_testing_handler,
-)
+from .logging_handlers import create_ci_handler, create_development_handler, create_testing_handler
 from .quality_logger import LogLevel, QualityLogger, configure_quality_logging
 
 

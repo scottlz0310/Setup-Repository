@@ -13,10 +13,7 @@ import pytest
 from setup_repo.config import load_config
 from setup_repo.git_operations import GitOperations, sync_repository
 from setup_repo.github_api import GitHubAPI, get_repositories
-from tests.multiplatform.helpers import (
-    get_platform_specific_config,
-    verify_current_platform,
-)
+from tests.multiplatform.helpers import get_platform_specific_config, verify_current_platform
 
 
 class TestEndToEndWorkflow:

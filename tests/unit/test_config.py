@@ -9,16 +9,8 @@ from unittest.mock import patch
 
 import pytest
 
-from setup_repo.config import (
-    auto_detect_config,
-    get_github_token,
-    get_github_user,
-    load_config,
-)
-from tests.multiplatform.helpers import (
-    get_platform_specific_config,
-    verify_current_platform,
-)
+from setup_repo.config import auto_detect_config, get_github_token, get_github_user, load_config
+from tests.multiplatform.helpers import get_platform_specific_config, verify_current_platform
 
 
 class TestConfig:

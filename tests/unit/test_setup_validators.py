@@ -18,10 +18,7 @@ from setup_repo.setup_validators import (
     validate_setup_prerequisites,
     validate_user_input,
 )
-from tests.multiplatform.helpers import (
-    get_platform_specific_config,
-    verify_current_platform,
-)
+from tests.multiplatform.helpers import get_platform_specific_config, verify_current_platform
 
 
 class TestSetupValidators:

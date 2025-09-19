@@ -17,10 +17,7 @@ from setup_repo.utils import (
     get_platform_lock_info,
     log_platform_compatibility_warning,
 )
-from tests.multiplatform.helpers import (
-    get_platform_specific_config,
-    verify_current_platform,
-)
+from tests.multiplatform.helpers import get_platform_specific_config, verify_current_platform
 
 
 class TestUtils:
@@ -102,11 +99,7 @@ class TestUtils:
 
     def test_lock_implementation_selection(self):
         """ロック実装選択ロジックのテスト"""
-        from setup_repo.utils import (
-            FallbackLockImplementation,
-            UnixLockImplementation,
-            WindowsLockImplementation,
-        )
+        from setup_repo.utils import FallbackLockImplementation, UnixLockImplementation, WindowsLockImplementation
 
         # 各実装の可用性テスト
         unix_impl = UnixLockImplementation()
@@ -192,11 +185,7 @@ class TestUtils:
 
     def test_lock_implementation_error_paths(self):
         """ロック実装のエラーパステスト"""
-        from setup_repo.utils import (
-            FallbackLockImplementation,
-            UnixLockImplementation,
-            WindowsLockImplementation,
-        )
+        from setup_repo.utils import FallbackLockImplementation, UnixLockImplementation, WindowsLockImplementation
 
         # 各実装でのエラーハンドリングテスト
         implementations = [UnixLockImplementation(), WindowsLockImplementation(), FallbackLockImplementation()]

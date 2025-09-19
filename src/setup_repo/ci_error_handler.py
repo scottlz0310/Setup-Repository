@@ -14,11 +14,7 @@ from typing import Any
 
 from .ci_environment import CIEnvironmentInfo
 from .quality_errors import ErrorReporter
-from .quality_logger import (
-    LogLevel,
-    QualityLogger,
-    get_quality_logger,
-)
+from .quality_logger import LogLevel, QualityLogger, get_quality_logger
 
 # 後方互換性のためのエイリアス
 __all__ = [
@@ -70,10 +66,7 @@ class CIErrorHandler:
         self.errors.append(error)
 
         # プラットフォーム固有のエラーメッセージを作成
-        from .logging_config import (
-            create_platform_specific_error_message,
-            get_platform_debug_info,
-        )
+        from .logging_config import create_platform_specific_error_message, get_platform_debug_info
         from .platform_detector import detect_platform
 
         platform_info = detect_platform()
@@ -111,10 +104,7 @@ class CIErrorHandler:
         self.errors.append(error)
 
         # プラットフォーム固有のエラーメッセージを作成
-        from .logging_config import (
-            create_platform_specific_error_message,
-            get_platform_debug_info,
-        )
+        from .logging_config import create_platform_specific_error_message, get_platform_debug_info
         from .platform_detector import detect_platform
 
         platform_info = detect_platform()

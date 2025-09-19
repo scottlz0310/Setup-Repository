@@ -4,6 +4,7 @@ from pathlib import Path
 
 from .backup_manager import BackupManager
 from .config import load_config
+from .deploy_manager import DeployManager
 from .migration_manager import MigrationManager
 from .monitor_manager import MonitorManager
 from .quality_metrics import QualityMetricsCollector
@@ -602,3 +603,64 @@ def migration_cli(args) -> None:
 
     else:
         print("エラー: 不正なアクション。check/run/rollback のいずれかを指定してください")
+
+
+def deploy_cli(args) -> None:
+    """デプロイメント管理コマンド"""
+    config = load_config()
+    manager = DeployManager(config)
+
+    if args.action == "prepare":
+        # デプロイ準備
+        print("\n🚀 デプロイ準備を開始します...")
+        if manager.prepare():
+            print("✅ デプロイ準備が完了しました")
+        else:
+            print("❌ デプロイ準備に失敗しました")
+            exit(1)
+
+    elif args.action == "execute":
+        # デプロイ実行
+        environment = args.environment or "production"
+        print(f"\n🚀 環境 '{environment}' へのデプロイを開始します...")
+        if manager.execute(environment):
+            print("✅ デプロイが正常に完了しました")
+        else:
+            print("❌ デプロイに失敗しました")
+            exit(1)
+
+    elif args.action == "rollback":
+        # ロールバック実行
+        print("\n⏪ ロールバックを開始します...")
+        if manager.rollback(args.deploy_id):
+            print("✅ ロールバックが正常に完了しました")
+        else:
+            print("❌ ロールバックに失敗しました")
+            exit(1)
+
+    elif args.action == "list":
+        # デプロイ履歴一覧
+        deployments = manager.list_deployments()
+
+        if not deployments:
+            print("デプロイ履歴が見つかりません")
+            return
+
+        print("\n📋 デプロイ履歴:")
+        print("=" * 80)
+
+        for deployment in reversed(deployments[-10:]):  # 最新10件
+            status_icon = "✅" if deployment["status"] == "success" else "❌"
+            timestamp = deployment["timestamp"][:19].replace("T", " ")
+            print(f"\n{status_icon} {deployment['deploy_id']}")
+            print(f"  環境: {deployment['environment']}")
+            print(f"  ステータス: {deployment['status']}")
+            print(f"  時刻: {timestamp}")
+            print(f"  コミット: {deployment['commit_hash'][:8]}")
+            print(f"  ブランチ: {deployment['branch']}")
+
+            if deployment.get("rollback_target"):
+                print(f"  ロールバック対象: {deployment['rollback_target']}")
+
+    else:
+        print("エラー: 不正なアクション。prepare/execute/rollback/list のいずれかを指定してください")

@@ -11,13 +11,8 @@ from unittest.mock import patch
 
 import pytest
 
-from setup_repo.vscode_setup import (
-    apply_vscode_template,
-)
-from tests.multiplatform.helpers import (
-    get_platform_specific_config,
-    verify_current_platform,
-)
+from setup_repo.vscode_setup import apply_vscode_template
+from tests.multiplatform.helpers import get_platform_specific_config, verify_current_platform
 
 
 class TestVscodeSetup:
