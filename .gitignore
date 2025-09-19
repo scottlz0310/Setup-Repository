@@ -1,14 +1,3 @@
-# Personal configuration files
-config.local.json
-
-# Environment files
-.env
-.env.local
-
-# Log files
-*.log
-logs/
-
 # Python
 __pycache__/
 *.py[cod]
@@ -30,182 +19,66 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-*.pyc
+MANIFEST
 
-# Virtual environments
-.venv/
-venv/
-env/
-ENV/
+# PyInstaller
+*.manifest
+*.spec
 
-# Python tools cache
-.mypy_cache/
-.ruff_cache/
-.pytest_cache/
+# Unit test / coverage reports
+htmlcov/
 .tox/
 .nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
 .hypothesis/
+.pytest_cache/
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# mypy
+.mypy_cache/
+.dmypy.json
 dmypy.json
 
-# Testing and coverage
-.coverage
-coverage.*
-htmlcov/
-.benchmarks/
-coverage-reports/
-coverage_badge.json
-coverage_alert.txt
-coverage-trend.txt
-trends.txt
-test-results.xml
+# Ruff
+.ruff_cache/
 
-# Security tools
-.bandit/
-.safety/
-.safety-*
-.safety-project.ini
-*.safety-cache
-safety-cache/
-safety-report.*
-
-# Package managers
-uv.lock
-requirements.txt
-
-# OS specific
-.DS_Store
-Thumbs.db
-Desktop.ini
-$RECYCLE.BIN/
-.Trashes
-._*
-
-# IDE and editors
-.vscode/settings.json
-.vscode/launch.json
-.vscode/tasks.json
-.idea/
-*.swp
-*.swo
-*~
-
-# Temporary files
-*.tmp
-*.temp
-temp/
-tmp/
-.cache/
-scratch/
-playground/
-temp_*
-tmp_*
-debug_*
-
-# Backup files
-*.backup
-*.bak
-*.orig
-.pre-commit-config.yaml.bak
-
-# Migration and backup files
-.migration_checkpoints/
-backup_*/
-checkpoint_*/
-
-# Performance test artifacts
-benchmark_results/
-performance_logs/
-
-# Generated reports and documentation
-*-report.md
-*-verification-report.md
-final-*.md
-test-issues-*.md
+# Cython debug symbols
+cython_debug/
 
 # Project specific
-error-reports/
+config.local.json
+backups/
+logs/
 quality-history/
-security-reports/
-test-report.json
-quality-report.json
 ci-reports/
+error-reports/
+temp/
+tmp/
+custom/
+output/
+*.log
+*.json
+!pyproject.toml
+!config.json.template
+!package*.json
+!tests/**/*.json
+!.vscode/
+!.vscode/**
+.gitignore.backup
 
-# Auto-generated entries from templates
-**/*.rs.bk
-*.7z
-*.cover
-*.dll
-*.dylib
-*.exe
-*.exe~
-*.lcov
-*.manifest
-*.out
-*.pdb
-*.pid
-*.pid.lock
-*.py,cover
-*.rar
-*.seed
-*.spec
-*.sublime-project
-*.sublime-workspace
-*.tar.gz
-*.test
-*.tgz
-*.tsbuildinfo
-*.vsix
-*.zip
-.DS_Store?
-.Spotlight-V100
-.cache
-.coverage.*
-.dmypy.json
-.env.development.local
-.env.production.local
-.env.test
-.env.test.local
-.eslintcache
-.grunt
-.history/
-.lock-wscript
-.next
-.node_repl_history
-.npm
-.nuxt
-.nyc_output
-.out
-.parcel-cache
-.rpt2_cache/
-.rts2_cache_cjs/
-.rts2_cache_es/
-.rts2_cache_umd/
-.storybook-out
-.venv
-.vscode/
-.vscode/*.code-snippets
-.vscode/extensions.json
-.yarn-integrity
-/target/
-Cargo.lock
-MANIFEST
-bower_components
-build/Release
-coverage.xml
-coverage/
-cython_debug/
-dist
-ehthumbs.db
-env.bak/
-go.work
-jspm_packages/
-lerna-debug.log*
-node_modules/
-nosetests.xml
-npm-debug.log*
-pids
-public
-vendor/
-venv.bak/
-yarn-debug.log*
-yarn-error.log*
+# Windows paths (invalid)
+C:\*

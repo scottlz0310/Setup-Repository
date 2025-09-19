@@ -37,6 +37,11 @@ except ImportError:
 logger = setup_project_logging()
 
 
+def ensure_directory(path: Path) -> None:
+    """ディレクトリが存在することを確認し、必要に応じて作成"""
+    path.mkdir(parents=True, exist_ok=True)
+
+
 # プラットフォーム固有モジュールの可用性をログに記録
 def _log_platform_module_availability():
     """プラットフォーム固有モジュールの可用性をログに記録"""

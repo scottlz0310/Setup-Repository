@@ -19,7 +19,7 @@ if os.name == "nt":
 # srcディレクトリをパスに追加
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from setup_repo.cli import quality_cli, setup_cli, sync_cli, trend_cli
+from setup_repo.cli import backup_cli, quality_cli, setup_cli, sync_cli, template_cli, trend_cli
 
 
 def main():
@@ -34,6 +34,10 @@ def main():
   python main.py sync --dry-run     # 実行内容確認
   python main.py quality            # 品質メトリクス収集
   python main.py trend analyze      # 品質トレンド分析
+  python main.py template list      # テンプレート一覧
+  python main.py template apply --type gitignore --name python  # gitignoreテンプレート適用
+  python main.py backup create      # バックアップ作成
+  python main.py backup list        # バックアップ一覧
         """,
     )
 
@@ -87,6 +91,30 @@ def main():
     )
     trend_parser.add_argument("--keep-days", type=int, help="保持する日数（cleanアクション用）")
     trend_parser.set_defaults(func=trend_cli)
+
+    # templateサブコマンド
+    template_parser = subparsers.add_parser("template", help="テンプレート管理を実行")
+    template_parser.add_argument("action", choices=["list", "apply", "create", "remove"], help="実行するアクション")
+    template_parser.add_argument("--name", help="テンプレート名")
+    template_parser.add_argument("--type", choices=["gitignore", "vscode", "custom"], help="テンプレートタイプ")
+    template_parser.add_argument("--source", help="ソースパス（createアクション用）")
+    template_parser.add_argument("--target", help="適用先パス（applyアクション用）")
+    template_parser.add_argument(
+        "--project-root",
+        help="プロジェクトルートディレクトリ（デフォルト: カレントディレクトリ）",
+    )
+    template_parser.set_defaults(func=template_cli)
+
+    # backupサブコマンド
+    backup_parser = subparsers.add_parser("backup", help="バックアップ管理を実行")
+    backup_parser.add_argument("action", choices=["create", "list", "restore", "remove"], help="実行するアクション")
+    backup_parser.add_argument("--name", help="バックアップ名")
+    backup_parser.add_argument("--target", help="復元先パス（restoreアクション用）")
+    backup_parser.add_argument(
+        "--project-root",
+        help="プロジェクトルートディレクトリ（デフォルト: カレントディレクトリ）",
+    )
+    backup_parser.set_defaults(func=backup_cli)
 
     args = parser.parse_args()
 

@@ -2,12 +2,14 @@
 
 from pathlib import Path
 
+from .backup_manager import BackupManager
 from .config import load_config
 from .quality_metrics import QualityMetricsCollector
 from .quality_trends import QualityTrendManager
 from .security_helpers import safe_path_join
 from .setup import run_interactive_setup
 from .sync import sync_repositories
+from .template_manager import TemplateManager
 
 
 def setup_cli(args) -> None:
@@ -158,3 +160,185 @@ def trend_cli(args) -> None:
             print(f"{removed_count}件の古いデータを削除しました")
         else:
             print("--keep-daysオプションを指定してください")
+
+
+def template_cli(args) -> None:
+    """テンプレート管理コマンド"""
+    if args.project_root:
+        try:
+            project_root = safe_path_join(Path.cwd(), args.project_root)
+        except ValueError as e:
+            raise ValueError(f"不正なプロジェクトルートパス: {e}") from e
+    else:
+        project_root = Path.cwd()
+
+    if args.action == "list":
+        manager = TemplateManager(project_root)
+        # テンプレート一覧表示
+        templates = manager.list_templates()
+
+        print("\n利用可能なテンプレート:")
+        print("=" * 40)
+
+        if templates["gitignore"]:
+            print("\n📄 Gitignoreテンプレート:")
+            for template in templates["gitignore"]:
+                print(f"  - {template}")
+
+        if templates["vscode"]:
+            print("\n🔧 VS Codeテンプレート:")
+            for template in templates["vscode"]:
+                print(f"  - {template}")
+
+        if templates["custom"]:
+            print("\n🎨 カスタムテンプレート:")
+            for template in templates["custom"]:
+                print(f"  - {template}")
+
+        if not any(templates.values()):
+            print("テンプレートが見つかりません")
+
+    elif args.action == "apply":
+        # テンプレート適用
+        if not args.name:
+            print("エラー: テンプレート名を指定してください")
+            return
+
+        target_path = Path.cwd()
+        if args.target:
+            try:
+                target_path = safe_path_join(Path.cwd(), args.target)
+            except ValueError as e:
+                raise ValueError(f"不正なターゲットパス: {e}") from e
+
+        # project_rootとtarget_pathを分離して使用
+        manager = TemplateManager(project_root)
+
+        try:
+            if args.type == "gitignore":
+                result_path = manager.apply_gitignore_template(args.name, target_path)
+                print(f"✅ Gitignoreテンプレート '{args.name}' を適用しました: {result_path}")
+            elif args.type == "vscode":
+                result_path = manager.apply_vscode_template(args.name, target_path)
+                print(f"✅ VS Codeテンプレート '{args.name}' を適用しました: {result_path}")
+            elif args.type == "custom":
+                result_path = manager.apply_custom_template(args.name, target_path)
+                print(f"✅ カスタムテンプレート '{args.name}' を適用しました: {result_path}")
+            else:
+                print("エラー: テンプレートタイプを指定してください (gitignore/vscode/custom)")
+        except FileNotFoundError as e:
+            print(f"エラー: {e}")
+        except Exception as e:
+            print(f"エラー: テンプレート適用に失敗しました: {e}")
+
+    elif args.action == "create":
+        # カスタムテンプレート作成
+        if not args.name or not args.source:
+            print("エラー: テンプレート名とソースパスを指定してください")
+            return
+
+        manager = TemplateManager(project_root)
+        try:
+            source_path = safe_path_join(project_root, args.source)
+            result_path = manager.create_custom_template(args.name, source_path)
+            print(f"✅ カスタムテンプレート '{args.name}' を作成しました: {result_path}")
+        except (FileNotFoundError, FileExistsError) as e:
+            print(f"エラー: {e}")
+        except Exception as e:
+            print(f"エラー: テンプレート作成に失敗しました: {e}")
+
+    elif args.action == "remove":
+        # カスタムテンプレート削除
+        if not args.name:
+            print("エラー: テンプレート名を指定してください")
+            return
+
+        manager = TemplateManager(project_root)
+        if manager.remove_template(args.name):
+            print(f"✅ カスタムテンプレート '{args.name}' を削除しました")
+        else:
+            print(f"エラー: テンプレート '{args.name}' が見つかりません")
+
+    else:
+        print("エラー: 不正なアクション。list/apply/create/remove のいずれかを指定してください")
+
+
+def backup_cli(args) -> None:
+    """バックアップ管理コマンド"""
+    if args.project_root:
+        try:
+            project_root = safe_path_join(Path.cwd(), args.project_root)
+        except ValueError as e:
+            raise ValueError(f"不正なプロジェクトルートパス: {e}") from e
+    else:
+        project_root = Path.cwd()
+
+    manager = BackupManager(project_root)
+
+    if args.action == "create":
+        # バックアップ作成
+        try:
+            backup_path = manager.create_backup(args.name)
+            print(f"✅ バックアップを作成しました: {backup_path}")
+        except Exception as e:
+            print(f"エラー: バックアップ作成に失敗しました: {e}")
+
+    elif args.action == "list":
+        # バックアップ一覧
+        backups = manager.list_backups()
+
+        if not backups:
+            print("バックアップが見つかりません")
+            return
+
+        print("\n利用可能なバックアップ:")
+        print("=" * 60)
+
+        for backup in backups:
+            size_mb = backup["file_size"] / (1024 * 1024)
+            created_at = backup["created_at"][:19].replace("T", " ")
+            print(f"\n💾 {backup['name']}")
+            print(f"  作成日時: {created_at}")
+            print(f"  ファイルサイズ: {size_mb:.1f} MB")
+
+            if backup.get("targets"):
+                print("  バックアップ対象:")
+                for target in backup["targets"]:
+                    target_size = target["size"] / 1024 if target["size"] > 0 else 0
+                    print(f"    - {target['path']} ({target['type']}, {target_size:.1f} KB)")
+
+    elif args.action == "restore":
+        # バックアップ復元
+        if not args.name:
+            print("エラー: バックアップ名を指定してください")
+            return
+
+        target_path = None
+        if args.target:
+            try:
+                target_path = safe_path_join(Path.cwd(), args.target)
+            except ValueError as e:
+                raise ValueError(f"不正なターゲットパス: {e}") from e
+
+        try:
+            success = manager.restore_backup(args.name, target_path)
+            if success:
+                restore_path = target_path or project_root
+                print(f"✅ バックアップ '{args.name}' を復元しました: {restore_path}")
+                print("⚠️  既存ファイルは .restore_backup ディレクトリにバックアップされました")
+        except (FileNotFoundError, RuntimeError) as e:
+            print(f"エラー: {e}")
+
+    elif args.action == "remove":
+        # バックアップ削除
+        if not args.name:
+            print("エラー: バックアップ名を指定してください")
+            return
+
+        if manager.remove_backup(args.name):
+            print(f"✅ バックアップ '{args.name}' を削除しました")
+        else:
+            print(f"エラー: バックアップ '{args.name}' が見つかりません")
+
+    else:
+        print("エラー: 不正なアクション。create/list/restore/remove のいずれかを指定してください")
