@@ -19,7 +19,16 @@ if os.name == "nt":
 # srcディレクトリをパスに追加
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from setup_repo.cli import backup_cli, monitor_cli, quality_cli, setup_cli, sync_cli, template_cli, trend_cli
+from setup_repo.cli import (
+    backup_cli,
+    migration_cli,
+    monitor_cli,
+    quality_cli,
+    setup_cli,
+    sync_cli,
+    template_cli,
+    trend_cli,
+)
 
 
 def main():
@@ -38,6 +47,9 @@ def main():
   python main.py template apply --type gitignore --name python  # gitignoreテンプレート適用
   python main.py backup create      # バックアップ作成
   python main.py backup list        # バックアップ一覧
+  python main.py migration check     # マイグレーション必要性チェック
+  python main.py migration run       # マイグレーション実行
+  python main.py migration rollback  # ロールバック
   python main.py monitor health      # システムヘルスチェック
   python main.py monitor performance # パフォーマンス監視
   python main.py monitor alerts      # アラート確認
@@ -118,6 +130,17 @@ def main():
         help="プロジェクトルートディレクトリ（デフォルト: カレントディレクトリ）",
     )
     backup_parser.set_defaults(func=backup_cli)
+
+    # migrationサブコマンド
+    migration_parser = subparsers.add_parser("migration", help="マイグレーション管理を実行")
+    migration_parser.add_argument("action", choices=["check", "run", "rollback"], help="実行するアクション")
+    migration_parser.add_argument("--backup-name", help="ロールバック用バックアップ名")
+    migration_parser.add_argument("--no-backup", action="store_true", help="バックアップを作成しない")
+    migration_parser.add_argument(
+        "--project-root",
+        help="プロジェクトルートディレクトリ（デフォルト: カレントディレクトリ）",
+    )
+    migration_parser.set_defaults(func=migration_cli)
 
     # monitorサブコマンド
     monitor_parser = subparsers.add_parser("monitor", help="システム監視・ヘルスチェックを実行")

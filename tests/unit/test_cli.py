@@ -10,6 +10,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from setup_repo.cli import (
+    migration_cli,
     quality_cli,
     setup_cli,
     sync_cli,
@@ -280,3 +281,105 @@ class TestCLI:
                 quality_cli(args)
 
             mock_exit.assert_called_once_with(1)
+
+    def test_migration_cli_check(self):
+        """マイグレーションCLI チェックテスト"""
+        args = Mock()
+        args.project_root = None
+        args.action = "check"
+
+        with (
+            patch("setup_repo.cli.MigrationManager") as mock_manager,
+            patch("builtins.print"),
+        ):
+            mock_instance = Mock()
+            mock_result = {
+                "current_version": "1.0.0",
+                "target_version": "1.2.0",
+                "migration_needed": True,
+                "changes": [{"description": "新しい設定項目", "type": "config_update"}],
+            }
+            mock_instance.check_migration_needed.return_value = mock_result
+            mock_manager.return_value = mock_instance
+
+            migration_cli(args)
+
+            mock_instance.check_migration_needed.assert_called_once()
+
+    def test_migration_cli_run(self):
+        """マイグレーションCLI 実行テスト"""
+        args = Mock()
+        args.project_root = None
+        args.action = "run"
+        args.no_backup = False
+
+        with (
+            patch("setup_repo.cli.MigrationManager") as mock_manager,
+            patch("builtins.print"),
+        ):
+            mock_instance = Mock()
+            mock_result = {
+                "success": True,
+                "message": "マイグレーションが完了しました",
+                "backup_path": "/path/to/backup.tar.gz",
+                "migration_result": {"migrations": [{"description": "設定ファイルを更新しました"}]},
+            }
+            mock_instance.run_migration.return_value = mock_result
+            mock_manager.return_value = mock_instance
+
+            migration_cli(args)
+
+            mock_instance.run_migration.assert_called_once_with(backup=True)
+
+    def test_migration_cli_rollback(self):
+        """マイグレーションCLI ロールバックテスト"""
+        args = Mock()
+        args.project_root = None
+        args.action = "rollback"
+        args.backup_name = "test_backup"
+
+        with (
+            patch("setup_repo.cli.MigrationManager") as mock_manager,
+            patch("builtins.print"),
+        ):
+            mock_instance = Mock()
+            mock_result = {"success": True, "message": "バックアップ 'test_backup' からロールバックしました"}
+            mock_instance.rollback_migration.return_value = mock_result
+            mock_manager.return_value = mock_instance
+
+            migration_cli(args)
+
+            mock_instance.rollback_migration.assert_called_once_with("test_backup")
+
+    def test_migration_cli_run_failure(self):
+        """マイグレーションCLI 実行失敗テスト"""
+        args = Mock()
+        args.project_root = None
+        args.action = "run"
+        args.no_backup = False
+
+        with (
+            patch("setup_repo.cli.MigrationManager") as mock_manager,
+            patch("builtins.print"),
+            patch("builtins.exit") as mock_exit,
+        ):
+            mock_instance = Mock()
+            mock_result = {"success": False, "error": "マイグレーション失敗", "backup_path": "/path/to/backup.tar.gz"}
+            mock_instance.run_migration.return_value = mock_result
+            mock_manager.return_value = mock_instance
+
+            migration_cli(args)
+
+            mock_exit.assert_called_once_with(1)
+
+    def test_migration_cli_invalid_project_root(self):
+        """マイグレーションCLI 不正なプロジェクトルートエラーテスト"""
+        args = Mock()
+        args.project_root = "../../../etc/passwd"
+        args.action = "check"
+
+        with (
+            patch("setup_repo.cli.safe_path_join", side_effect=ValueError("不正なパス")),
+            pytest.raises(ValueError, match="不正なプロジェクトルートパス"),
+        ):
+            migration_cli(args)

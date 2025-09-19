@@ -4,6 +4,7 @@ from pathlib import Path
 
 from .backup_manager import BackupManager
 from .config import load_config
+from .migration_manager import MigrationManager
 from .monitor_manager import MonitorManager
 from .quality_metrics import QualityMetricsCollector
 from .quality_trends import QualityTrendManager
@@ -533,3 +534,71 @@ def monitor_cli(args) -> None:
 
     else:
         print("エラー: 不正なアクション。health/performance/alerts/dashboard のいずれかを指定してください")
+
+
+def migration_cli(args) -> None:
+    """マイグレーション管理コマンド"""
+    if args.project_root:
+        try:
+            project_root = safe_path_join(Path.cwd(), args.project_root)
+        except ValueError as e:
+            raise ValueError(f"不正なプロジェクトルートパス: {e}") from e
+    else:
+        project_root = Path.cwd()
+
+    manager = MigrationManager(project_root)
+
+    if args.action == "check":
+        # マイグレーション必要性チェック
+        result = manager.check_migration_needed()
+
+        print("\n" + "=" * 60)
+        print("🔄 マイグレーションチェック")
+        print("=" * 60)
+        print(f"現在のバージョン: {result['current_version']}")
+        print(f"ターゲットバージョン: {result['target_version']}")
+        print(f"マイグレーション必要: {'はい' if result['migration_needed'] else 'いいえ'}")
+
+        if result["changes"]:
+            print("\n📋 検出された変更:")
+            for change in result["changes"]:
+                print(f"  - {change['description']}")
+                print(f"    タイプ: {change['type']}")
+        else:
+            print("\n✅ 変更は検出されませんでした")
+
+    elif args.action == "run":
+        # マイグレーション実行
+        print("\n🔄 マイグレーションを実行中...")
+        result = manager.run_migration(backup=not args.no_backup)
+
+        if result["success"]:
+            print(f"✅ {result['message']}")
+            if result.get("backup_path"):
+                print(f"📦 バックアップ: {result['backup_path']}")
+
+            if result.get("migration_result", {}).get("migrations"):
+                print("\n📋 実行されたマイグレーション:")
+                for migration in result["migration_result"]["migrations"]:
+                    print(f"  - {migration['description']}")
+                    if migration.get("backup_file"):
+                        print(f"    バックアップ: {migration['backup_file']}")
+        else:
+            print(f"❌ マイグレーション失敗: {result['error']}")
+            if result.get("backup_path"):
+                print(f"📦 バックアップから復元可能: {result['backup_path']}")
+            exit(1)
+
+    elif args.action == "rollback":
+        # マイグレーションロールバック
+        print("\n⏪ マイグレーションロールバックを実行中...")
+        result = manager.rollback_migration(args.backup_name)
+
+        if result["success"]:
+            print(f"✅ {result['message']}")
+        else:
+            print(f"❌ ロールバック失敗: {result['error']}")
+            exit(1)
+
+    else:
+        print("エラー: 不正なアクション。check/run/rollback のいずれかを指定してください")
