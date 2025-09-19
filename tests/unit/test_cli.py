@@ -7,6 +7,8 @@ CLI機能のテスト
 from pathlib import Path
 from unittest.mock import Mock, patch
 
+import pytest
+
 from setup_repo.cli import (
     quality_cli,
     setup_cli,
@@ -161,3 +163,120 @@ class TestCLI:
                 trend_cli(args)
 
             mock_instance.generate_html_report.assert_called_once()
+
+    def test_trend_cli_clean_action_basic(self):
+        """トレンドCLI クリーンアクション基本テスト"""
+        args = Mock()
+        args.project_root = None
+        args.trend_file = None
+        args.action = "clean"
+        args.keep_days = 30
+
+        with (
+            patch("setup_repo.cli.QualityTrendManager") as mock_manager,
+            patch("setup_repo.cli.safe_path_join") as mock_path_join,
+        ):
+            mock_path_join.side_effect = [Path.cwd(), Path("output/quality-trends"), Path("trend-data.json")]
+            mock_instance = Mock()
+            mock_instance.load_trend_data.return_value = []
+            mock_manager.return_value = mock_instance
+
+            with patch("builtins.print"):
+                trend_cli(args)
+
+            mock_instance.load_trend_data.assert_called_once()
+
+    def test_trend_cli_clean_action_without_keep_days(self):
+        """トレンドCLI クリーンアクション（保持日数未指定）テスト"""
+        args = Mock()
+        args.project_root = None
+        args.trend_file = None
+        args.action = "clean"
+        args.keep_days = None
+
+        with (
+            patch("setup_repo.cli.QualityTrendManager") as mock_manager,
+            patch("setup_repo.cli.safe_path_join") as mock_path_join,
+        ):
+            mock_path_join.side_effect = [Path.cwd(), Path("output/quality-trends"), Path("trend-data.json")]
+            mock_instance = Mock()
+            mock_manager.return_value = mock_instance
+
+            with patch("builtins.print") as mock_print:
+                trend_cli(args)
+
+            mock_print.assert_called_with("--keep-daysオプションを指定してください")
+
+    def test_quality_cli_invalid_project_root(self):
+        """品質CLI 不正なプロジェクトルートエラーテスト"""
+        args = Mock()
+        args.project_root = "../../../etc/passwd"
+        args.output = None
+        args.save_trend = False
+
+        with (
+            patch("setup_repo.cli.safe_path_join", side_effect=ValueError("不正なパス")),
+            pytest.raises(ValueError, match="不正なプロジェクトルートパス"),
+        ):
+            quality_cli(args)
+
+    def test_quality_cli_with_save_trend(self):
+        """品質CLI トレンドデータ保存テスト"""
+        args = Mock()
+        args.project_root = None
+        args.output = None
+        args.save_trend = True
+
+        with (
+            patch("setup_repo.cli.QualityMetricsCollector") as mock_collector,
+            patch("setup_repo.cli.QualityTrendManager") as mock_trend_manager,
+            patch("setup_repo.cli.safe_path_join") as mock_path_join,
+        ):
+            mock_path_join.side_effect = [Path.cwd(), Path("output/quality-trends"), Path("trend-data.json")]
+            mock_instance = Mock()
+            mock_metrics = Mock()
+            mock_metrics.get_quality_score.return_value = 85.0
+            mock_metrics.test_coverage = 90.0
+            mock_metrics.ruff_issues = 0
+            mock_metrics.mypy_errors = 0
+            mock_metrics.security_vulnerabilities = 0
+            mock_metrics.is_passing.return_value = True
+            mock_instance.collect_all_metrics.return_value = mock_metrics
+            mock_instance.save_metrics_report.return_value = "report.json"
+            mock_collector.return_value = mock_instance
+
+            mock_trend_instance = Mock()
+            mock_trend_manager.return_value = mock_trend_instance
+
+            with patch("builtins.print"):
+                quality_cli(args)
+
+            mock_trend_instance.add_data_point.assert_called_once_with(mock_metrics)
+
+    def test_quality_cli_failing_quality_gate(self):
+        """品質CLI 品質基準未達成テスト"""
+        args = Mock()
+        args.project_root = None
+        args.output = None
+        args.save_trend = False
+
+        with (
+            patch("setup_repo.cli.QualityMetricsCollector") as mock_collector,
+            patch("builtins.exit") as mock_exit,
+        ):
+            mock_instance = Mock()
+            mock_metrics = Mock()
+            mock_metrics.get_quality_score.return_value = 50.0
+            mock_metrics.test_coverage = 60.0
+            mock_metrics.ruff_issues = 10
+            mock_metrics.mypy_errors = 5
+            mock_metrics.security_vulnerabilities = 2
+            mock_metrics.is_passing.return_value = False
+            mock_instance.collect_all_metrics.return_value = mock_metrics
+            mock_instance.save_metrics_report.return_value = "report.json"
+            mock_collector.return_value = mock_instance
+
+            with patch("builtins.print"):
+                quality_cli(args)
+
+            mock_exit.assert_called_once_with(1)

@@ -1,5 +1,6 @@
 """対話型セットアップのテスト"""
 
+import subprocess
 from pathlib import Path
 from unittest.mock import Mock, mock_open, patch
 
@@ -478,3 +479,207 @@ class TestSetupWizard:
         assert result is False
         captured = capsys.readouterr()
         assert "予期しないエラーが発生しました" in captured.out
+
+    @pytest.mark.unit
+    def test_show_prerequisite_help_current_platform(self, setup_wizard, capsys):
+        """現在のプラットフォーム用前提条件ヘルプ表示テスト"""
+        verify_current_platform()  # プラットフォーム検証
+
+        setup_wizard._show_prerequisite_help()
+
+        captured = capsys.readouterr()
+        assert "インストール方法" in captured.out
+
+    @pytest.mark.unit
+    def test_show_package_manager_help_current_platform(self, setup_wizard, capsys):
+        """現在のプラットフォーム用パッケージマネージャーヘルプ表示テスト"""
+        verify_current_platform()  # プラットフォーム検証
+
+        setup_wizard._show_package_manager_help()
+
+        captured = capsys.readouterr()
+        assert "推奨パッケージマネージャー" in captured.out
+
+    @pytest.mark.unit
+    @patch("src.setup_repo.interactive_setup.get_available_package_managers")
+    @patch("src.setup_repo.interactive_setup.get_install_commands")
+    @patch("src.setup_repo.interactive_setup.safe_subprocess")
+    def test_install_uv_curl_command(self, mock_safe_subprocess, mock_get_commands, mock_get_managers, setup_wizard):
+        """curlコマンドでのuvインストールテスト"""
+        verify_current_platform()  # プラットフォーム検証
+
+        mock_get_managers.return_value = ["curl"]
+        mock_get_commands.return_value = {"curl": ["curl -LsSf https://astral.sh/uv/install.sh | sh"]}
+        mock_safe_subprocess.return_value = Mock(returncode=0)
+
+        result = setup_wizard._install_uv()
+
+        assert result is True
+        # shlex.splitが使用されることを確認
+        mock_safe_subprocess.assert_called()
+
+    @pytest.mark.unit
+    @patch("src.setup_repo.interactive_setup.get_available_package_managers")
+    @patch("src.setup_repo.interactive_setup.get_install_commands")
+    @patch("src.setup_repo.interactive_setup.safe_subprocess")
+    def test_install_uv_failure_all_methods(
+        self, mock_safe_subprocess, mock_get_commands, mock_get_managers, setup_wizard
+    ):
+        """全インストール方法失敗時のテスト"""
+        verify_current_platform()  # プラットフォーム検証
+
+        mock_get_managers.return_value = ["scoop"]
+        mock_get_commands.return_value = {"scoop": ["scoop install uv"]}
+        # 全てのsubprocessが失敗
+        mock_safe_subprocess.side_effect = subprocess.CalledProcessError(1, "cmd")
+
+        result = setup_wizard._install_uv()
+
+        assert result is False
+
+    @pytest.mark.unit
+    @patch("src.setup_repo.interactive_setup.get_available_package_managers")
+    @patch("src.setup_repo.interactive_setup.get_install_commands")
+    @patch("src.setup_repo.interactive_setup.safe_subprocess")
+    def test_install_gh_success(self, mock_safe_subprocess, mock_get_commands, mock_get_managers, setup_wizard):
+        """GitHub CLIインストール成功テスト"""
+        verify_current_platform()  # プラットフォーム検証
+
+        mock_get_managers.return_value = ["scoop"]
+        mock_get_commands.return_value = {"scoop": ["scoop install uv", "scoop install gh"]}
+        mock_safe_subprocess.return_value = Mock(returncode=0)
+
+        result = setup_wizard._install_gh()
+
+        assert result is True
+
+    @pytest.mark.unit
+    @patch("src.setup_repo.interactive_setup.get_available_package_managers")
+    @patch("src.setup_repo.interactive_setup.get_install_commands")
+    @patch("src.setup_repo.interactive_setup.safe_subprocess")
+    def test_install_gh_failure(self, mock_safe_subprocess, mock_get_commands, mock_get_managers, setup_wizard):
+        """GitHub CLIインストール失敗テスト"""
+        verify_current_platform()  # プラットフォーム検証
+
+        mock_get_managers.return_value = ["scoop"]
+        mock_get_commands.return_value = {"scoop": ["scoop install uv", "scoop install gh"]}
+        mock_safe_subprocess.side_effect = subprocess.CalledProcessError(1, "cmd")
+
+        result = setup_wizard._install_gh()
+
+        assert result is False
+
+    @pytest.mark.unit
+    @patch("src.setup_repo.interactive_setup.validate_github_credentials")
+    @patch("src.setup_repo.interactive_setup.validate_user_input")
+    @patch("src.setup_repo.interactive_setup.safe_subprocess")
+    def test_configure_github_gh_auth_success(self, mock_subprocess, mock_validate_input, mock_validate, setup_wizard):
+        """GitHub CLI認証成功テスト"""
+        verify_current_platform()  # プラットフォーム検証
+
+        # 初回はトークンなし、認証後はトークンあり
+        mock_validate.side_effect = [
+            {"username": "test_user", "token": None},
+            {"username": "test_user", "token": "new_token"},
+        ]
+        mock_validate_input.return_value = {"valid": True, "value": True}
+        mock_subprocess.return_value = Mock(returncode=0)
+
+        setup_wizard.configure_github()
+
+        assert setup_wizard.config["github_token"] == "new_token"
+
+    @pytest.mark.unit
+    @patch("src.setup_repo.interactive_setup.validate_github_credentials")
+    @patch("src.setup_repo.interactive_setup.validate_user_input")
+    @patch("src.setup_repo.interactive_setup.safe_subprocess")
+    def test_configure_github_gh_auth_failure(self, mock_subprocess, mock_validate_input, mock_validate, setup_wizard):
+        """GitHub CLI認証失敗テスト"""
+        verify_current_platform()  # プラットフォーム検証
+
+        mock_validate.return_value = {"username": "test_user", "token": None}
+        mock_validate_input.return_value = {"valid": True, "value": True}
+        mock_subprocess.side_effect = subprocess.CalledProcessError(1, "gh")
+
+        setup_wizard.configure_github()
+
+        assert setup_wizard.config["github_token"] == "YOUR_GITHUB_TOKEN"
+
+    @pytest.mark.unit
+    @patch("src.setup_repo.interactive_setup.validate_user_input")
+    @patch("src.setup_repo.interactive_setup.validate_directory_path")
+    def test_configure_workspace_path_validation_failure(self, mock_validate_path, mock_validate_input, setup_wizard):
+        """ワークスペースパス検証失敗テスト"""
+        verify_current_platform()  # プラットフォーム検証
+
+        custom_path = "/invalid/path"
+        mock_validate_input.return_value = {"valid": True, "value": custom_path}
+        mock_validate_path.return_value = {"valid": False, "error": "パスが無効です"}
+
+        setup_wizard.configure_workspace()
+
+        # デフォルトパスが使用されることを確認
+        default_workspace = str(Path.home() / "workspace")
+        assert setup_wizard.config["dest"] == default_workspace
+
+    @pytest.mark.unit
+    @patch("src.setup_repo.interactive_setup.validate_user_input")
+    def test_configure_workspace_input_validation_failure(self, mock_validate_input, setup_wizard):
+        """ワークスペース入力検証失敗テスト"""
+        verify_current_platform()  # プラットフォーム検証
+
+        mock_validate_input.return_value = {"valid": False}
+
+        setup_wizard.configure_workspace()
+
+        # デフォルトパスが使用されることを確認
+        default_workspace = str(Path.home() / "workspace")
+        assert setup_wizard.config["dest"] == default_workspace
+
+    @pytest.mark.unit
+    @patch.object(SetupWizard, "setup_package_managers")
+    @patch.object(SetupWizard, "welcome_message")
+    @patch.object(SetupWizard, "check_prerequisites")
+    def test_run_package_managers_failure(self, mock_check_prereq, mock_welcome, mock_setup_managers, setup_wizard):
+        """パッケージマネージャーセットアップ失敗時のテスト"""
+        verify_current_platform()  # プラットフォーム検証
+
+        mock_check_prereq.return_value = True
+        mock_setup_managers.return_value = False
+
+        result = setup_wizard.run()
+
+        assert result is False
+
+    @pytest.mark.unit
+    @patch.object(SetupWizard, "install_tools")
+    @patch.object(SetupWizard, "setup_package_managers")
+    @patch.object(SetupWizard, "welcome_message")
+    @patch.object(SetupWizard, "check_prerequisites")
+    def test_run_install_tools_failure(
+        self, mock_check_prereq, mock_welcome, mock_setup_managers, mock_install_tools, setup_wizard
+    ):
+        """ツールインストール失敗時のテスト"""
+        verify_current_platform()  # プラットフォーム検証
+
+        mock_check_prereq.return_value = True
+        mock_setup_managers.return_value = True
+        mock_install_tools.return_value = False
+
+        result = setup_wizard.run()
+
+        assert result is False
+
+    @pytest.mark.unit
+    @patch.object(SetupWizard, "_check_tool")
+    @patch("builtins.input")
+    def test_install_tools_gh_install_declined(self, mock_input, mock_check_tool, setup_wizard):
+        """GitHub CLIインストール拒否時のテスト"""
+        verify_current_platform()  # プラットフォーム検証
+
+        mock_check_tool.side_effect = [True, False]  # uv available, gh not available
+        mock_input.return_value = "n"  # Decline gh installation
+
+        result = setup_wizard.install_tools()
+
+        assert result is True
