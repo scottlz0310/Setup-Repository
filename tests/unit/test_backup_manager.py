@@ -243,7 +243,7 @@ class TestBackupManager:
                 os.chdir(temp_dir)
 
                 manager = BackupManager()
-                assert manager.project_root == Path(temp_dir)
+                assert manager.project_root.resolve() == Path(temp_dir).resolve()
             finally:
                 # 元のディレクトリに戻る
                 os.chdir(original_cwd)
