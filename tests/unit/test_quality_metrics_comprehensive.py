@@ -100,10 +100,25 @@ class TestQualityMetrics:
     @pytest.mark.unit
     def test_is_passing_all_good(self):
         """全て良好な場合のテスト."""
+        # pyproject.tomlから動的に閾値を取得
+        try:
+            import tomllib
+            from pathlib import Path
+
+            config_path = Path("pyproject.toml")
+            if config_path.exists():
+                with open(config_path, "rb") as f:
+                    config = tomllib.load(f)
+                min_coverage = config.get("tool", {}).get("coverage", {}).get("report", {}).get("fail_under", 70.0)
+            else:
+                min_coverage = 70.0
+        except (ImportError, FileNotFoundError, KeyError):
+            min_coverage = 70.0
+
         metrics = QualityMetrics(
             ruff_issues=0,
             mypy_errors=0,
-            test_coverage=75.0,  # pyproject.tomlの設定70%以上
+            test_coverage=min_coverage + 5.0,  # 閾値より5%高い値で確実に合格
             test_passed=100,
             test_failed=0,
             security_vulnerabilities=0,
@@ -122,8 +137,22 @@ class TestQualityMetrics:
         metrics = QualityMetrics(mypy_errors=1)
         assert metrics.is_passing() is False
 
-        # カバレッジが低い場合（pyproject.tomlの設定70%未満）
-        metrics = QualityMetrics(test_coverage=69.0)
+        # カバレッジが低い場合（pyproject.tomlの設定未満）
+        try:
+            import tomllib
+            from pathlib import Path
+
+            config_path = Path("pyproject.toml")
+            if config_path.exists():
+                with open(config_path, "rb") as f:
+                    config = tomllib.load(f)
+                min_coverage = config.get("tool", {}).get("coverage", {}).get("report", {}).get("fail_under", 70.0)
+            else:
+                min_coverage = 70.0
+        except (ImportError, FileNotFoundError, KeyError):
+            min_coverage = 70.0
+
+        metrics = QualityMetrics(test_coverage=min_coverage - 1.0)  # 閾値より1%低い値
         assert metrics.is_passing() is False
 
         # テスト失敗がある場合
@@ -178,16 +207,36 @@ class TestQualityMetrics:
             if "CI" in os.environ:
                 del os.environ["CI"]
 
+            # pyproject.tomlから動的に閾値を取得
+            try:
+                import tomllib
+                from pathlib import Path
+
+                config_path = Path("pyproject.toml")
+                if config_path.exists():
+                    with open(config_path, "rb") as f:
+                        config = tomllib.load(f)
+                    coverage_threshold = (
+                        config.get("tool", {}).get("coverage", {}).get("report", {}).get("fail_under", 70.0)
+                    )
+                else:
+                    coverage_threshold = 70.0
+            except (ImportError, FileNotFoundError, KeyError):
+                coverage_threshold = 70.0
+
+            test_coverage = 60.0
+            coverage_deduction = (coverage_threshold - test_coverage) * 0.5
+
             metrics = QualityMetrics(
                 ruff_issues=5,  # -10点 (min(5*2, 20))
                 mypy_errors=3,  # -9点 (min(3*3, 30))
-                test_coverage=60.0,  # -5点 (70-60)*0.5 (pyproject.tomlの設定70%基準)
+                test_coverage=test_coverage,  # 動的計算による減点
                 test_passed=95,
                 test_failed=2,  # -10点 (min(2*5, 25))
                 security_vulnerabilities=1,  # -2点 (min(1*2, 30)) ローカル環境
             )
 
-            expected_score = 100.0 - 10 - 9 - 5 - 10 - 2  # = 64.0
+            expected_score = 100.0 - 10 - 9 - coverage_deduction - 10 - 2
             assert metrics.get_quality_score() == expected_score
         finally:
             # CI環境変数を復元
