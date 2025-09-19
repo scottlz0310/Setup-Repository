@@ -232,7 +232,7 @@ class TestCLIEdgeCases:
                 quality_cli(args)
 
             # トレンドマネージャーが正しく初期化されることを確認（パス正規化で比較）
-            expected_trend_file = project_dir / "quality-trends" / "trend-data.json"
+            expected_trend_file = project_dir / "output" / "quality-trends" / "trend-data.json"
             called_path = mock_trend_class.call_args[0][0]
             assert called_path.resolve() == expected_trend_file.resolve()
 
@@ -309,7 +309,7 @@ class TestCLIEdgeCases:
                 trend_cli(args)
 
             # HTMLレポート生成が実行されることを確認（パス正規化で比較）
-            expected_output = project_dir / "quality-trends" / "trend-report.html"
+            expected_output = project_dir / "output" / "trend-report.html"
             called_path = mock_trend_manager.generate_html_report.call_args[0][0]
             assert called_path.resolve() == expected_output.resolve()
 

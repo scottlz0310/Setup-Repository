@@ -423,7 +423,9 @@ class QualityMetricsCollector:
         from .security_helpers import safe_path_join, validate_file_path
 
         if output_file is None:
-            output_file = safe_path_join(self.project_root, "quality-report.json")
+            output_dir = safe_path_join(self.project_root, "output")
+            output_dir.mkdir(parents=True, exist_ok=True)
+            output_file = safe_path_join(output_dir, "quality-report.json")
 
         # ファイルパスの安全性を検証
         if not validate_file_path(output_file, [".json"]):

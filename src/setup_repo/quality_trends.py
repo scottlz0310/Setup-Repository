@@ -63,7 +63,12 @@ class QualityTrendManager:
     """品質トレンド管理クラス"""
 
     def __init__(self, trend_file: Path | None = None, logger: QualityLogger | None = None) -> None:
-        self.trend_file = trend_file or Path("quality-trends/trend-data.json")
+        if trend_file is None:
+            trend_dir = Path("output/quality-trends")
+            trend_dir.mkdir(parents=True, exist_ok=True)
+            self.trend_file = trend_dir / "trend-data.json"
+        else:
+            self.trend_file = trend_file
         self.logger = logger or get_quality_logger("setup_repo.quality_trends")
 
     def load_trend_data(self) -> list[TrendDataPoint]:
@@ -275,7 +280,9 @@ class QualityTrendManager:
     def generate_html_report(self, output_file: Path | None = None) -> Path:
         """HTML形式のトレンドレポートを生成"""
         if output_file is None:
-            output_file = self.trend_file.parent / "trend-report.html"
+            output_dir = Path("output")
+            output_dir.mkdir(parents=True, exist_ok=True)
+            output_file = output_dir / "trend-report.html"
 
         data_points = self.load_trend_data()
         analysis = self.analyze_trend()

@@ -75,7 +75,9 @@ def quality_cli(args) -> None:
 
     # トレンドデータに追加
     if args.save_trend:
-        trend_file = safe_path_join(project_root, "quality-trends/trend-data.json")
+        output_dir = safe_path_join(project_root, "output/quality-trends")
+        output_dir.mkdir(parents=True, exist_ok=True)
+        trend_file = safe_path_join(output_dir, "trend-data.json")
         trend_manager = QualityTrendManager(trend_file)
         trend_manager.add_data_point(metrics)
         print("  トレンドデータを更新しました")
@@ -104,7 +106,9 @@ def trend_cli(args) -> None:
         except ValueError as e:
             raise ValueError(f"不正なトレンドファイルパス: {e}") from e
     else:
-        trend_file = safe_path_join(project_root, "quality-trends/trend-data.json")
+        output_dir = safe_path_join(project_root, "output/quality-trends")
+        output_dir.mkdir(parents=True, exist_ok=True)
+        trend_file = safe_path_join(output_dir, "trend-data.json")
 
     trend_manager = QualityTrendManager(trend_file)
 
@@ -139,7 +143,9 @@ def trend_cli(args) -> None:
             except ValueError as e:
                 raise ValueError(f"不正な出力ファイルパス: {e}") from e
         else:
-            output_file = safe_path_join(project_root, "quality-trends/trend-report.html")
+            output_dir = safe_path_join(project_root, "output")
+            output_dir.mkdir(parents=True, exist_ok=True)
+            output_file = safe_path_join(output_dir, "trend-report.html")
         report_file = trend_manager.generate_html_report(output_file)
         print(f"HTMLレポートを生成しました: {report_file}")
 

@@ -57,7 +57,7 @@ class TestQualityTrendManager:
     def test_init_default_values(self):
         """デフォルト値での初期化テスト."""
         manager = QualityTrendManager()
-        assert manager.trend_file == Path("quality-trends/trend-data.json")
+        assert manager.trend_file == Path("output/quality-trends/trend-data.json")
         assert manager.logger is not None
 
     @pytest.mark.unit
@@ -525,7 +525,7 @@ class TestQualityTrendManager:
         # デフォルトパスでHTMLレポート生成
         result_file = self.manager.generate_html_report()
 
-        expected_path = self.trend_file.parent / "trend-report.html"
+        expected_path = Path("output/trend-report.html")
         assert result_file == expected_path
         assert expected_path.exists()
 
