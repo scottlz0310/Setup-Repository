@@ -174,10 +174,10 @@ def collect_pytest_metrics(
             "run",
             "pytest",
             "--cov=src/setup_repo",
-            "--cov-report=json",
-            "--cov-report=xml",  # XMLカバレッジレポートも生成
-            "--cov-report=html",  # HTMLカバレッジレポートも生成
-            "--junit-xml=test-results.xml",  # JUnit XML形式のテスト結果を生成
+            "--cov-report=json:output/coverage.json",
+            "--cov-report=xml:output/coverage.xml",  # XMLカバレッジレポートも生成
+            "--cov-report=html:output/htmlcov",  # HTMLカバレッジレポートも生成
+            "--junit-xml=output/test-results.xml",  # JUnit XML形式のテスト結果を生成
             f"--cov-fail-under={effective_threshold}",  # カバレッジ閾値をここで設定
         ]
 
@@ -191,7 +191,7 @@ def collect_pytest_metrics(
                 check=False,
             )
             if check_result.returncode == 0:
-                cmd.extend(["--json-report", "--json-report-file=test-report.json"])
+                cmd.extend(["--json-report", "--json-report-file=output/test-report.json"])
                 logger.info("pytest-json-reportプラグインを使用してJSONレポートを生成")
             else:
                 logger.info("pytest-json-reportプラグインが利用できません。基本的なテスト実行のみ行います")
@@ -225,7 +225,7 @@ def collect_pytest_metrics(
                 if is_ci:
                     workers = max(1, min(4, int(cpu_count * 0.5)))
                 else:
-                    workers = max(1, int(cpu_count * 0.75))
+                    workers = max(1, min(8, int(cpu_count * 0.5)))  # ワーカー数を減らして安定性向上
             else:
                 workers = int(parallel_workers.strip()) if isinstance(parallel_workers, str) else parallel_workers
 
@@ -235,7 +235,7 @@ def collect_pytest_metrics(
 
         # Pytestでカバレッジ付きテスト実行
         logger.info(f"テストコマンド: {' '.join(cmd)}")
-        result = safe_subprocess(cmd, cwd=project_root, capture_output=True, text=True, check=False)
+        result = safe_subprocess(cmd, cwd=project_root, capture_output=True, text=True, check=False, timeout=120)
 
         # テスト実行結果をログ出力
         if result.returncode != 0:
@@ -245,7 +245,7 @@ def collect_pytest_metrics(
 
         # カバレッジ情報を読み取り
         try:
-            coverage_file = safe_path_join(project_root, "coverage.json")
+            coverage_file = safe_path_join(project_root, "output/coverage.json")
         except ValueError as e:
             logger.warning(f"カバレッジファイルのパスが不正です: {e}")
             coverage_percent = 0.0
@@ -264,7 +264,7 @@ def collect_pytest_metrics(
 
         # テスト結果を読み取り
         try:
-            test_report_file = safe_path_join(project_root, "test-report.json")
+            test_report_file = safe_path_join(project_root, "output/test-report.json")
         except ValueError:
             test_report_file = None
         passed = failed = 0
@@ -393,7 +393,7 @@ def collect_coverage_metrics(
     logger = logger or get_quality_logger()
 
     try:
-        coverage_file = safe_path_join(project_root, "coverage.json")
+        coverage_file = safe_path_join(project_root, "output/coverage.json")
     except ValueError:
         return {
             "success": False,

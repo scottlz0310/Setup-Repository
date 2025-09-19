@@ -128,7 +128,7 @@ python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 # 並列実行を有効化（xdist）し、プラグイン自動ロード無効化環境でも動作するよう明示ロード
-addopts = "-v --tb=short --disable-warnings -p xdist -n auto --dist=worksteal"
+addopts = "-v --tb=short --disable-warnings -p xdist -n auto --dist=worksteal --junit-xml=output/test-results.xml --json-report --json-report-file=output/test-report.json"
 markers = [
     "unit: 単体テスト",
     "integration: 統合テスト",
@@ -185,11 +185,11 @@ exclude_lines = [
 ]
 
 [tool.coverage.html]
-directory = "htmlcov"
+directory = "output/htmlcov"
 title = "Setup Repository Coverage Report"
 
 [tool.coverage.xml]
-output = "coverage.xml"
+output = "output/coverage.xml"
 
 [tool.bandit]
 # ルール6.1「継続的セキュリティチェック」準拠

@@ -19,7 +19,7 @@ if os.name == "nt":
 # srcディレクトリをパスに追加
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from setup_repo.cli import backup_cli, quality_cli, setup_cli, sync_cli, template_cli, trend_cli
+from setup_repo.cli import backup_cli, monitor_cli, quality_cli, setup_cli, sync_cli, template_cli, trend_cli
 
 
 def main():
@@ -38,6 +38,9 @@ def main():
   python main.py template apply --type gitignore --name python  # gitignoreテンプレート適用
   python main.py backup create      # バックアップ作成
   python main.py backup list        # バックアップ一覧
+  python main.py monitor health      # システムヘルスチェック
+  python main.py monitor performance # パフォーマンス監視
+  python main.py monitor alerts      # アラート確認
         """,
     )
 
@@ -115,6 +118,20 @@ def main():
         help="プロジェクトルートディレクトリ（デフォルト: カレントディレクトリ）",
     )
     backup_parser.set_defaults(func=backup_cli)
+
+    # monitorサブコマンド
+    monitor_parser = subparsers.add_parser("monitor", help="システム監視・ヘルスチェックを実行")
+    monitor_parser.add_argument(
+        "action", choices=["health", "performance", "alerts", "dashboard"], help="実行するアクション"
+    )
+    monitor_parser.add_argument(
+        "--project-root",
+        help="プロジェクトルートディレクトリ（デフォルト: カレントディレクトリ）",
+    )
+    monitor_parser.add_argument("--output", help="出力ファイル")
+    monitor_parser.add_argument("--watch", action="store_true", help="継続監視モード")
+    monitor_parser.add_argument("--interval", type=int, default=60, help="監視間隔（秒、デフォルト: 60）")
+    monitor_parser.set_defaults(func=monitor_cli)
 
     args = parser.parse_args()
 

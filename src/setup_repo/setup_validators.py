@@ -19,7 +19,7 @@ from .security_helpers import safe_subprocess
 class SetupValidator:
     """セットアップ検証クラス"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.platform_detector = PlatformDetector()
         self.platform_info = self.platform_detector.get_platform_info()
         self.errors: list[str] = []

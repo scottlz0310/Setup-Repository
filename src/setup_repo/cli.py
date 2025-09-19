@@ -4,6 +4,7 @@ from pathlib import Path
 
 from .backup_manager import BackupManager
 from .config import load_config
+from .monitor_manager import MonitorManager
 from .quality_metrics import QualityMetricsCollector
 from .quality_trends import QualityTrendManager
 from .security_helpers import safe_path_join
@@ -348,3 +349,187 @@ def backup_cli(args) -> None:
 
     else:
         print("エラー: 不正なアクション。create/list/restore/remove のいずれかを指定してください")
+
+
+def monitor_cli(args) -> None:
+    """監視・ヘルスチェックコマンド"""
+    if args.project_root:
+        try:
+            project_root = safe_path_join(Path.cwd(), args.project_root)
+        except ValueError as e:
+            raise ValueError(f"不正なプロジェクトルートパス: {e}") from e
+    else:
+        project_root = Path.cwd()
+
+    manager = MonitorManager(project_root)
+
+    if args.action == "health":
+        # ヘルスチェック実行
+        health_data = manager.run_health_check()
+
+        print("\n" + "=" * 60)
+        print("🏥 システムヘルスチェック")
+        print("=" * 60)
+        print(f"全体ステータス: {health_data['overall_status'].upper()}")
+        print(f"チェック時刻: {health_data['timestamp'][:19].replace('T', ' ')}")
+
+        # システム情報
+        system = health_data["system"]
+        print("\n💻 システム情報:")
+        print(f"  プラットフォーム: {system['platform']} {system['architecture']}")
+        print(f"  Python: {system['python_version'].split()[0]}")
+
+        # リソース使用状況
+        resources = health_data["resources"]
+        print("\n📊 リソース使用状況:")
+        print(f"  CPU使用率: {resources['cpu_usage_percent']:.1f}%")
+        print(
+            f"  メモリ使用率: {resources['memory_usage_percent']:.1f}% "
+            f"({resources['memory_used_gb']:.1f}GB / {resources['memory_total_gb']:.1f}GB)"
+        )
+        print(
+            f"  ディスク使用率: {resources['disk_usage_percent']:.1f}% "
+            f"({resources['disk_used_gb']:.1f}GB / {resources['disk_total_gb']:.1f}GB)"
+        )
+
+        # 依存関係
+        deps = health_data["dependencies"]
+        print("\n🔧 依存関係:")
+        print(f"  uv: {'✅' if deps['uv_available'] else '❌'}")
+        print(f"  Git: {'✅' if deps['git_available'] else '❌'}")
+        print(f"  Python (>=3.9): {'✅' if deps['python_version_supported'] else '❌'}")
+
+        for tool, info in deps["required_tools"].items():
+            status = "✅" if info["available"] else "❌"
+            version = f" ({info['version']})" if info["version"] else ""
+            print(f"  {tool}: {status}{version}")
+
+        # プロジェクト状態
+        project = health_data["project"]
+        print("\n📁 プロジェクト状態:")
+        print(f"  設定ファイル: {'✅' if project['config_exists'] else '❌'}")
+        print(f"  pyproject.toml: {'✅' if project['pyproject_exists'] else '❌'}")
+        print(f"  Gitリポジトリ: {'✅' if project['git_repo'] else '❌'}")
+
+        if project["quality_metrics"]:
+            qm = project["quality_metrics"]
+            print(f"  品質スコア: {qm['quality_score']:.1f}/100")
+            print(f"  テストカバレッジ: {qm['test_coverage']:.1f}%")
+            print(f"  Ruffエラー: {qm['ruff_issues']}件")
+            print(f"  MyPyエラー: {qm['mypy_errors']}件")
+            print(f"  セキュリティ脆弱性: {qm['security_vulnerabilities']}件")
+
+        # 問題と推奨事項
+        if health_data["issues"]:
+            print("\n🚨 検出された問題:")
+            for issue in health_data["issues"]:
+                print(f"  - {issue}")
+
+        if health_data["recommendations"]:
+            print("\n💡 推奨事項:")
+            for rec in health_data["recommendations"]:
+                print(f"  - {rec}")
+
+        # 出力ファイル保存
+        if args.output:
+            try:
+                output_dir = safe_path_join(project_root, "output")
+                output_dir.mkdir(parents=True, exist_ok=True)
+                output_file = safe_path_join(output_dir, args.output)
+                with open(output_file, "w", encoding="utf-8") as f:
+                    import json
+
+                    json.dump(health_data, f, indent=2, ensure_ascii=False)
+                print(f"\n📄 ヘルスチェック結果を保存しました: {output_file}")
+            except Exception as e:
+                print(f"エラー: 出力ファイルの保存に失敗しました: {e}")
+
+    elif args.action == "performance":
+        # パフォーマンス監視
+        perf_data = manager.run_performance_monitoring()
+
+        print("\n" + "=" * 60)
+        print("⚡ パフォーマンス監視")
+        print("=" * 60)
+        print(f"監視時刻: {perf_data['timestamp'][:19].replace('T', ' ')}")
+
+        # システムパフォーマンス
+        sys_perf = perf_data["system_performance"]
+        print("\n💻 システムパフォーマンス:")
+        print(f"  CPUコア数: {sys_perf['cpu_count']}")
+        print(f"  CPU使用率: {sys_perf['cpu_usage']}")
+        print(f"  メモリ使用率: {sys_perf['memory']['percent']:.1f}%")
+        print(f"  利用可能メモリ: {sys_perf['memory']['available'] / (1024**3):.1f}GB")
+
+        # プロジェクトパフォーマンス
+        proj_perf = perf_data["project_performance"]
+        print("\n📁 プロジェクトメトリクス:")
+        print(f"  総ファイル数: {proj_perf['file_count']:,}")
+        print(f"  総サイズ: {proj_perf['total_size'] / (1024**2):.1f}MB")
+        print(f"  Pythonファイル数: {proj_perf['python_files']:,}")
+        print(f"  テストファイル数: {proj_perf['test_files']:,}")
+
+        print("\n📊 パフォーマンスデータを保存しました: output/monitoring/")
+
+    elif args.action == "alerts":
+        # アラートチェック
+        alerts = manager.run_alert_check()
+
+        print("\n" + "=" * 60)
+        print("🚨 アラートチェック")
+        print("=" * 60)
+
+        if not alerts:
+            print("✅ アクティブなアラートはありません")
+        else:
+            print(f"⚠️  {len(alerts)}件のアラートが検出されました:\n")
+            for alert in alerts:
+                severity_icon = {
+                    "critical": "🔴",
+                    "high": "🟠",
+                    "warning": "🟡",
+                    "info": "🔵",
+                }.get(alert["severity"], "⚪")
+                print(f"  {severity_icon} [{alert['severity'].upper()}] {alert['message']}")
+                print(f"    タイプ: {alert['type']}, 時刻: {alert['timestamp'][:19].replace('T', ' ')}")
+
+            print("\n📄 アラートデータを保存しました: output/alerts/")
+
+    elif args.action == "dashboard":
+        # ダッシュボードデータ生成
+        dashboard_data = manager.generate_dashboard_data()
+
+        print("\n" + "=" * 60)
+        print("📊 システムダッシュボード")
+        print("=" * 60)
+
+        summary = dashboard_data["summary"]
+        print(f"全体ステータス: {summary['overall_status'].upper()}")
+        print(f"アクティブアラート: {summary['active_alerts']}件")
+        print(f"CPU使用率: {summary['cpu_usage']:.1f}%")
+        print(f"メモリ使用率: {summary['memory_usage']:.1f}%")
+        print(f"ディスク使用率: {summary['disk_usage']:.1f}%")
+
+        # 出力ファイル保存
+        output_dir = safe_path_join(project_root, "output")
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        if args.output:
+            try:
+                output_file = safe_path_join(output_dir, args.output)
+            except ValueError as e:
+                raise ValueError(f"不正な出力ファイルパス: {e}") from e
+        else:
+            output_file = safe_path_join(output_dir, "dashboard.json")
+
+        try:
+            with open(output_file, "w", encoding="utf-8") as f:
+                import json
+
+                json.dump(dashboard_data, f, indent=2, ensure_ascii=False)
+            print(f"\n📄 ダッシュボードデータを保存しました: {output_file}")
+        except Exception as e:
+            print(f"エラー: 出力ファイルの保存に失敗しました: {e}")
+
+    else:
+        print("エラー: 不正なアクション。health/performance/alerts/dashboard のいずれかを指定してください")
