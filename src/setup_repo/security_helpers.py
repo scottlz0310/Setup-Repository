@@ -115,7 +115,7 @@ def validate_file_path(file_path: Path, allowed_extensions: list[str] | None = N
         # 絶対パスの危険性チェック（テスト環境以外）
         if not is_test_env and file_path.is_absolute():
             # システムディレクトリへのアクセスを禁止
-            system_dirs = ["/etc", "/root", "/sys", "/proc", "C:\\Windows", "C:\\System32"]
+            system_dirs = ["/etc", "/root", "/sys", "/proc", "/System/Library", "C:\\Windows", "C:\\System32"]
             for sys_dir in system_dirs:
                 if path_str.startswith(sys_dir):
                     logger.warning(f"Access to system directory denied: {path_str}")
@@ -134,8 +134,13 @@ def validate_file_path(file_path: Path, allowed_extensions: list[str] | None = N
             # Windows短縮パス形式（例：RUNNER~1）をチェック
             import re
 
-            windows_short_path = re.compile(r"[A-Z0-9]+~[0-9]+", re.IGNORECASE)
-            if not windows_short_path.search(original_str):
+            # Windows短縮パス形式の正規表現（パス区切り文字も考慮）
+            re.compile(r"[A-Z0-9]+~[0-9]+(?:[/\\]|$)", re.IGNORECASE)
+            # パス全体をチェックして、短縮パス形式が含まれているかを確認
+            path_parts = original_str.replace("\\", "/").split("/")
+            has_valid_short_path = any(re.match(r"[A-Z0-9]+~[0-9]+$", part, re.IGNORECASE) for part in path_parts)
+
+            if not has_valid_short_path:
                 logger.warning(f"Dangerous pattern '~' found in path: {original_str}")
                 return False
 
