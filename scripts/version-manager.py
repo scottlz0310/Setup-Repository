@@ -9,6 +9,7 @@ import re
 import subprocess
 import sys
 import tomllib
+from datetime import datetime
 from pathlib import Path
 
 import tomli_w
@@ -236,6 +237,154 @@ class VersionManager:
             print(f"❌ Gitタグ作成エラー: {e}")
             return False
 
+    def update_changelog(self, version: str, is_prerelease: bool = False) -> bool:
+        """CHANGELOG.mdを更新"""
+        changelog_path = self.root_path / "CHANGELOG.md"
+
+        if not changelog_path.exists():
+            print("⚠️ CHANGELOG.mdが見つかりません")
+            return False
+
+        content = changelog_path.read_text(encoding="utf-8")
+
+        # 既に同じバージョンが存在するかチェック
+        if f"## [{version}]" in content:
+            print(f"ℹ️ バージョン {version} は既にCHANGELOGに存在します")
+            # 日付のみ更新
+            today = datetime.now().strftime("%Y-%m-%d")
+            updated_content = re.sub(
+                f"## \\[{re.escape(version)}\\] - \\d{{4}}-\\d{{2}}-\\d{{2}}", f"## [{version}] - {today}", content
+            )
+
+            if updated_content != content:
+                changelog_path.write_text(updated_content, encoding="utf-8")
+                print(f"✅ CHANGELOG.mdの日付を更新: {today}")
+                return True
+            return False
+
+        return False
+
+    def generate_release_notes(self, version: str, is_prerelease: bool = False) -> str:
+        """リリースノートを生成"""
+        changelog_path = self.root_path / "CHANGELOG.md"
+
+        if not changelog_path.exists():
+            return f"バージョン {version} のリリースです。"
+
+        content = changelog_path.read_text(encoding="utf-8")
+        lines = content.split("\n")
+
+        # バージョンセクションを探す
+        start_index = None
+        end_index = None
+
+        for i, line in enumerate(lines):
+            if f"## [{version}]" in line:
+                start_index = i + 1
+            elif start_index is not None and line.startswith("## ["):
+                end_index = i
+                break
+
+        if start_index is None:
+            return f"バージョン {version} のリリースです。"
+
+        if end_index is None:
+            end_index = len(lines)
+
+        # セクションの内容を抽出
+        section_lines = lines[start_index:end_index]
+        section_content = "\n".join(section_lines).strip()
+
+        if not section_content:
+            return f"バージョン {version} のリリースです。"
+
+        prerelease_notice = ""
+        if is_prerelease:
+            prerelease_notice = """
+> **⚠️ プレリリース版です**
+> このバージョンはテスト目的であり、本番環境での使用は推奨されません。
+
+"""
+
+        release_notes = f"""# 🚀 Setup Repository v{version}
+
+{prerelease_notice}## 📋 変更内容
+
+{section_content}
+
+## 📦 インストール方法
+
+### 🐍 Pythonパッケージとして
+```bash
+pip install setup-repository
+```
+
+### 📥 ソースからインストール
+```bash
+git clone https://github.com/scottlz0310/Setup-Repository.git
+cd Setup-Repository
+uv sync --dev
+uv run main.py setup
+```
+
+## 🔧 使用方法
+
+```bash
+# 初期セットアップ
+setup-repo setup
+
+# リポジトリ同期
+setup-repo sync
+
+# ドライランモード
+setup-repo sync --dry-run
+```
+
+## 🌐 サポートプラットフォーム
+
+- ✅ Windows (Scoop, Winget, Chocolatey)
+- ✅ Linux (Snap, APT)
+- ✅ WSL (Linux互換)
+- ✅ macOS (Homebrew)
+
+## 🐍 Python要件
+
+- Python 3.11以上
+- 対応バージョン: 3.11, 3.12, 3.13
+
+---
+
+**完全な変更履歴**: [CHANGELOG.md](https://github.com/scottlz0310/Setup-Repository/blob/main/CHANGELOG.md)
+"""
+
+        return release_notes
+
+    def create_release(self, version: str, is_prerelease: bool = False, push: bool = False) -> bool:
+        """完全なリリースプロセスを実行"""
+        print(f"🚀 リリースプロセス開始: v{version}")
+
+        # 1. バージョン一貫性チェック
+        if not self.check_consistency():
+            print("❌ バージョン一貫性チェックに失敗しました")
+            return False
+
+        # 2. CHANGELOGを更新
+        self.update_changelog(version, is_prerelease)
+
+        # 3. リリースノートを生成
+        release_notes = self.generate_release_notes(version, is_prerelease)
+        notes_path = self.root_path / "release-notes.md"
+        notes_path.write_text(release_notes, encoding="utf-8")
+        print(f"✅ リリースノートを生成: {notes_path}")
+
+        # 4. Gitタグを作成
+        if not self.create_git_tag(version, push):
+            print("❌ Gitタグ作成に失敗しました")
+            return False
+
+        print(f"🎉 リリース v{version} が正常に作成されました！")
+        return True
+
 
 def main():
     """メイン関数"""
@@ -258,6 +407,16 @@ def main():
 
   # バージョン更新とGitタグ作成
   python scripts/version-manager.py --bump patch --tag --push
+
+  # 完全なリリースプロセス
+  python scripts/version-manager.py --bump patch --release --push
+  python scripts/version-manager.py --set 1.3.0 --release --prerelease
+
+  # CHANGELOG更新のみ
+  python scripts/version-manager.py --update-changelog 1.3.0
+
+  # リリースノート生成のみ
+  python scripts/version-manager.py --generate-notes 1.3.0 --prerelease
         """,
     )
 
@@ -270,10 +429,14 @@ def main():
     )
     parser.add_argument("--tag", action="store_true", help="Gitタグを作成")
     parser.add_argument("--push", action="store_true", help="タグをリモートにプッシュ (--tagと併用)")
+    parser.add_argument("--release", action="store_true", help="完全なリリースプロセスを実行")
+    parser.add_argument("--prerelease", action="store_true", help="プレリリースとしてマーク")
+    parser.add_argument("--update-changelog", metavar="VERSION", help="CHANGELOG.mdの日付を更新")
+    parser.add_argument("--generate-notes", metavar="VERSION", help="リリースノートを生成")
 
     args = parser.parse_args()
 
-    if not any([args.check, args.set, args.bump]):
+    if not any([args.check, args.set, args.bump, args.update_changelog, args.generate_notes, args.release]):
         parser.print_help()
         return 1
 
@@ -282,6 +445,18 @@ def main():
     if args.check:
         if not manager.check_consistency():
             return 1
+        return 0
+
+    if args.update_changelog:
+        if not manager.update_changelog(args.update_changelog, args.prerelease):
+            return 1
+        return 0
+
+    if args.generate_notes:
+        notes = manager.generate_release_notes(args.generate_notes, args.prerelease)
+        notes_path = Path("release-notes.md")
+        notes_path.write_text(notes, encoding="utf-8")
+        print(f"✅ リリースノートを生成: {notes_path}")
         return 0
 
     new_version = None
@@ -297,7 +472,10 @@ def main():
         if not manager.update_version(new_version):
             return 1
 
-        if args.tag and not manager.create_git_tag(new_version, args.push):
+        if args.release:
+            if not manager.create_release(new_version, args.prerelease, args.push):
+                return 1
+        elif args.tag and not manager.create_git_tag(new_version, args.push):
             return 1
 
     return 0

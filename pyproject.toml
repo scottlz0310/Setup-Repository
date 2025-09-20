@@ -1,15 +1,17 @@
 [build-system]
-requires = ["hatchling"]
+requires = [
+    "hatchling",
+]
 build-backend = "hatchling.build"
 
 [project]
 name = "setup-repository"
-version = "1.3.0"
+version = "1.3.1"
 description = "🚀 クロスプラットフォーム対応のGitHubリポジトリセットアップ・同期ツール"
 readme = "README.md"
 license = "MIT"
 authors = [
-    {name = "Setup Repository Contributors"}
+    { name = "Setup Repository Contributors" },
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -68,52 +70,56 @@ line-length = 120
 
 [tool.ruff.lint]
 select = [
-    "E",    # pycodestyle errors
-    "F",    # pyflakes
-    "W",    # pycodestyle warnings
-    "I",    # isort
-    "N",    # pep8-naming
-    "UP",   # pyupgrade
-    "B",    # flake8-bugbear
-    "A",    # flake8-builtins
-    "C4",   # flake8-comprehensions
-    "T20",  # flake8-print (デバッグprint禁止)
-    "SIM",  # flake8-simplify
-    "TCH",  # flake8-type-checking
+    "E",
+    "F",
+    "W",
+    "I",
+    "N",
+    "UP",
+    "B",
+    "A",
+    "C4",
+    "T20",
+    "SIM",
+    "TCH",
 ]
 ignore = [
-    "T201",  # print文の使用を一時的に許可（段階的厳格化）
-    "SIM108",  # 三項演算子の簡素化は自動修正不可のため一旦無効化
+    "T201",
+    "SIM108",
 ]
+
+[tool.ruff.lint.isort]
+known-first-party = [
+    "setup_repo",
+]
+force-single-line = false
+split-on-trailing-comma = true
 
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
 
-[tool.ruff.lint.isort]
-known-first-party = ["setup_repo"]
-force-single-line = false
-split-on-trailing-comma = true
-
 [tool.hatch.build.targets.wheel]
-packages = ["src/setup_repo"]
+packages = [
+    "src/setup_repo",
+]
 
 [tool.mypy]
 python_version = "3.11"
-warn_return_any = false  # 段階的厳格化 - 初期段階では緩和
+warn_return_any = false
 warn_unused_configs = true
-disallow_untyped_defs = false  # 段階的厳格化 - 初期段階では緩和
-disallow_any_unimported = false  # 段階的厳格化 - 初期段階では緩和
-disallow_any_expr = false  # 段階的厳格化 - 初期段階では緩和
-disallow_any_decorated = false  # 段階的厳格化 - 初期段階では緩和
-disallow_any_explicit = false  # 段階的厳格化 - 初期段階では緩和
-disallow_any_generics = false  # 段階的厳格化 - 初期段階では緩和
-disallow_subclassing_any = false  # 段階的厳格化 - 初期段階では緩和
+disallow_untyped_defs = false
+disallow_any_unimported = false
+disallow_any_expr = false
+disallow_any_decorated = false
+disallow_any_explicit = false
+disallow_any_generics = false
+disallow_subclassing_any = false
 warn_redundant_casts = true
-warn_unused_ignores = false  # CI/pre-commit環境の違いによる問題を回避
+warn_unused_ignores = false
 warn_no_return = true
-warn_unreachable = false  # unreachableエラーを無視（Phase 4品質チェック対応）
-strict_optional = false  # 段階的厳格化 - 初期段階では緩和
+warn_unreachable = false
+strict_optional = false
 show_error_codes = true
 show_column_numbers = true
 
@@ -121,15 +127,22 @@ show_column_numbers = true
 module = [
     "tests.*",
 ]
-disallow_untyped_defs = false  # テストコードでは型チェックを緩和
+disallow_untyped_defs = false
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = ["test_*.py", "*_test.py"]
-python_classes = ["Test*"]
-python_functions = ["test_*"]
-# 並列実行を有効化（xdist）し、プラグイン自動ロード無効化環境でも動作するよう明示ロード
-# Windows環境での最適化: 並列数制限とタイムアウト設定
+testpaths = [
+    "tests",
+]
+python_files = [
+    "test_*.py",
+    "*_test.py",
+]
+python_classes = [
+    "Test*",
+]
+python_functions = [
+    "test_*",
+]
 addopts = "-v --tb=short --disable-warnings -p xdist -p pytest_cov -p pytest_jsonreport -p timeout -n auto --dist=worksteal --junit-xml=output/test-results.xml --json-report --json-report-file=output/test-report.json --cov=src/setup_repo --cov-report=term-missing --cov-report=html:output/htmlcov --timeout=120"
 markers = [
     "unit: 単体テスト",
@@ -150,9 +163,10 @@ filterwarnings = [
     "ignore::DeprecationWarning",
 ]
 
-
 [tool.coverage.run]
-source = ["src/setup_repo"]
+source = [
+    "src/setup_repo",
+]
 omit = [
     "*/tests/*",
     "*/test_*",
@@ -161,13 +175,11 @@ omit = [
 ]
 
 [tool.coverage.report]
-# production段階要件（ルール5.2準拠）- 80%に統一(段階的厳格化)
 fail_under = 80
 show_missing = true
 skip_covered = false
 skip_empty = false
 precision = 2
-
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",
@@ -179,11 +191,8 @@ exclude_lines = [
     "if __name__ == .__main__.:",
     "class .*\\bProtocol\\):",
     "@(abc\\.)?abstractmethod",
-    # 型チェック専用のインポート
     "if TYPE_CHECKING:",
-    # プラットフォーム固有のコード
     "if platform.system\\(\\)",
-    # デバッグ用コード
     "if __debug__:",
 ]
 
@@ -195,37 +204,45 @@ title = "Setup Repository Coverage Report"
 output = "output/coverage.xml"
 
 [tool.bandit]
-# ルール6.1「継続的セキュリティチェック」準拠
-exclude_dirs = ["tests", "venv", ".venv", "build", "dist"]
+exclude_dirs = [
+    "tests",
+    "venv",
+    ".venv",
+    "build",
+    "dist",
+]
 skips = [
-    "B101",  # assert_used - テストでのassert使用を許可
-    "B603",  # subprocess_without_shell_equals_true - 必要な場合のsubprocess使用を許可
-    "B607",  # start_process_with_partial_path - git, gh, uvなどの標準ツール使用を許可
-    "B404",  # blacklist - subprocessモジュールの使用を許可（このツールの性質上必要）
-    "B604",  # any_other_function_with_shell_equals_true - プラットフォーム検出での使用を許可
-    "B310",  # blacklist - urllib.urlopen - HTTPS URLのみ使用でセキュリティ確保済み
-    "B108",  # hardcoded_tmp_directory - tempfile.gettempdir()使用に修正済み
+    "B101",
+    "B603",
+    "B607",
+    "B404",
+    "B604",
+    "B310",
+    "B108",
 ]
 severity = "medium"
 confidence = "medium"
 
 [tool.bandit.assert_used]
-skips = ["*_test.py", "test_*.py"]
+skips = [
+    "*_test.py",
+    "test_*.py",
+]
 
-# セキュリティ設定統一管理
 [tool.security]
-# セキュリティチェック実行モード
-local_mode = true  # ローカル環境では警告のみ
-strict_mode = false  # CI環境では厳格モード
-# ツール利用可能性チェック
-required_tools = ["bandit", "safety"]
-optional_tools = ["trufflehog", "pip-licenses"]
-# 緩和策設定
-allow_tool_failures = true  # ツールインストール失敗時も継続
-fallback_mode = true  # フォールバック処理を有効化
+local_mode = true
+strict_mode = false
+required_tools = [
+    "bandit",
+    "safety",
+]
+optional_tools = [
+    "trufflehog",
+    "pip-licenses",
+]
+allow_tool_failures = true
+fallback_mode = true
 
-
-# Safety Platform統合設定（ルール6.1準拠）
 [[tool.uv.index]]
 name = "safety"
 url = "https://pkgs.safetycli.com/repository/scottlz-team/project/setup-repository/pypi/simple/"
