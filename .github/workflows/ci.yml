@@ -288,7 +288,6 @@ jobs:
           test-results.xml
           htmlcov/
           coverage.xml
-          coverage.json
           .coverage
         retention-days: 30
 
