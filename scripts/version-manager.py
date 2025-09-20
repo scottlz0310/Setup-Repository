@@ -259,8 +259,7 @@ class VersionManager:
             if updated_content != content:
                 changelog_path.write_text(updated_content, encoding="utf-8")
                 print(f"✅ CHANGELOG.mdの日付を更新: {today}")
-                return True
-            return False
+            return True  # 既存バージョンが見つかった場合も成功として扱う
 
         return False
 
