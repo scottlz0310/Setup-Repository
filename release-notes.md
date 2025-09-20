@@ -1,42 +1,26 @@
-# 🚀 Setup Repository v1.3.0
+# 🚀 Setup Repository v1.3.1
 
 ## 📋 変更内容
 
 ### ✨ 追加
-- 🏗️ **新機能実装完了**
-  - Deploy管理ワークフロー実装
-  - Migration管理ワークフロー実装
-  - Template・Backup機能追加
-  - システム監視・アラート機能追加
-  - GitHub API認証確認スクリプト追加
-- 🧪 **テスト強化**
-  - validate_file_path関数のセキュリティテスト強化
-  - パストラバーサル攻撃対策テスト追加
-  - プラットフォーム固有テストの改善
-  - Windows環境向け高速テスト実行スクリプト
-- 📊 **品質向上**
-  - Phase 4完了 - エンタープライズ品質達成（87.88%カバレッジ）
-  - カバレッジ要件を80%に引き上げ
-  - テスト設定のpyproject.toml統合
+- 🔧 **統合バージョン管理システム**
+  - version-manager.pyにリリース機能を統合
+  - CHANGELOG自動更新機能
+  - リリースノート自動生成機能
+  - 完全なリリースプロセス自動化
 
 ### 🔄 変更
-- CI/CDパイプライン最適化
-  - 不要なMerge Platform Coverageジョブを削除
-  - coverage.jsonファイルをCI/CDから削除
-  - 実行時間短縮とパイプライン簡素化
-- ファイル出力先をoutputディレクトリに統一
-- ドキュメント構造の整理・分類
+- CI/CDワークフローの簡素化
+  - release.ymlをversion-manager.py依存に変更
+  - インラインスクリプトを削除
+  - 外部依存による保守性向上
+- バージョン管理の統一化
+  - 手動とCI両方で同じツールを使用
+  - コード重複の削除
 
 ### 🐛 修正
-- macOSでのパス解決問題を修正
-- プラットフォーム検出テストのWSL対応
-- テストレポート・カバレッジファイルの出力先修正
-- Windows環境でのpytest最適化
-
-### 🗑️ 削除
-- scripts/merge-coverage.py（統合カバレッジスクリプト）
-- Makefileのmerge-coverageターゲット
-- 関連ログファイル（coverage-merge.log）
+- release.ymlファイルの破損を修復
+- バージョン管理ロジックの一元化
 
 ## 📦 インストール方法
 
