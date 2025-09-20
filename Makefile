@@ -2,7 +2,7 @@
 # プロジェクトルール準拠の統一コマンド群
 
 .PHONY: bootstrap lint format typecheck test cov security build release clean
-.PHONY: merge-coverage setup-dev quality-gate
+.PHONY: setup-dev quality-gate
 
 # 🚀 開発環境セットアップ
 bootstrap:
@@ -49,15 +49,7 @@ cov:
 	@echo "📊 カバレッジ測定を実行しています..."
 	uv run pytest --cov=src/setup_repo --cov-report=term-missing --cov-report=html --cov-report=xml
 
-# 🔄 統合カバレッジ（ローカル開発用）
-merge-coverage:
-	@echo "🔄 統合カバレッジ処理を実行しています..."
-	@if [ -d "coverage-artifacts" ]; then \
-		uv run python scripts/merge-coverage.py --coverage-dir coverage-artifacts --verbose; \
-	else \
-		echo "⚠️ coverage-artifactsディレクトリが見つかりません"; \
-		echo "ℹ️ 各プラットフォームでテストを実行してからこのコマンドを使用してください"; \
-	fi
+
 
 # 🛡️ セキュリティチェック
 security:
@@ -78,8 +70,8 @@ release:
 clean:
 	@echo "🧹 クリーンアップを実行しています..."
 	rm -rf .venv .cache .pytest_cache .ruff_cache .mypy_cache dist build htmlcov .coverage
-	rm -rf coverage-artifacts merged-coverage coverage-reports
-	rm -f coverage.xml coverage.json test-results.xml coverage-merge.log
+	rm -rf coverage-artifacts coverage-reports
+	rm -f coverage.xml coverage.json test-results.xml
 	@echo "✅ クリーンアップが完了しました"
 
 # 🎯 品質ゲート（統合）
@@ -98,7 +90,7 @@ help:
 	@echo "  test          - テスト実行"
 	@echo "  test-fast     - 高速テスト実行（Windows最適化）"
 	@echo "  cov           - カバレッジ測定"
-	@echo "  merge-coverage - 統合カバレッジ処理"
+
 	@echo "  security      - セキュリティチェック"
 	@echo "  build         - パッケージビルド"
 	@echo "  release       - リリース"
