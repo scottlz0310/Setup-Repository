@@ -48,8 +48,8 @@ class TestSetupIntegration:
     ) -> None:
         """無効な設定でのセットアップテスト（実環境）"""
         invalid_config = {
-            "github_token": "",
-            "clone_destination": str(temp_dir / "repos"),
+            "github": {"token": ""},
+            "repositories": {"base_path": str(temp_dir / "repos")},
         }
 
         config_file = temp_dir / "invalid_config.json"

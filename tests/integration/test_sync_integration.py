@@ -38,6 +38,7 @@ class TestSyncIntegration:
             clone_destination = Path(safe_temp_dir) / "repos"
             sample_config["clone_destination"] = str(clone_destination)
             sample_config["dest"] = str(clone_destination)  # destフィールドも更新
+            sample_config["owner"] = "test_user"  # GitHubオーナーを設定
 
             # Git操作とネットワーク通信を完全にモック化
             repos_data = mock_github_api.get_user_repos.return_value
@@ -84,6 +85,7 @@ class TestSyncIntegration:
             clone_destination = Path(safe_temp_dir) / "repos"
             sample_config["clone_destination"] = str(clone_destination)
             sample_config["dest"] = str(clone_destination)  # destフィールドも更新
+            sample_config["owner"] = "test_user"
 
             def mock_sync_with_retries(repo, dest_dir, config):
                 # 実際のファイル作成は行わず、成功をシミュレート
@@ -115,6 +117,7 @@ class TestSyncIntegration:
         with tempfile.TemporaryDirectory() as safe_temp_dir:
             clone_destination = Path(safe_temp_dir) / "repos"
             sample_config["clone_destination"] = str(clone_destination)
+            sample_config["owner"] = "test_user"
 
             repos_data = mock_github_api.get_user_repos.return_value
             with (
@@ -144,6 +147,7 @@ class TestSyncIntegration:
         """ドライランモードでの同期テスト"""
         clone_destination = temp_dir / "repos"
         sample_config["clone_destination"] = str(clone_destination)
+        sample_config["owner"] = "test_user"
 
         repos_data = mock_github_api.get_user_repos.return_value
         with (
@@ -165,6 +169,7 @@ class TestSyncIntegration:
         """Git操作エラー時の同期テスト"""
         clone_destination = temp_dir / "repos"
         sample_config["clone_destination"] = str(clone_destination)
+        sample_config["owner"] = "test_user"
 
         repos_data = mock_github_api.get_user_repos.return_value
         with (
@@ -192,6 +197,7 @@ class TestSyncIntegration:
         """ネットワークエラー時の同期テスト"""
         clone_destination = temp_dir / "repos"
         sample_config["clone_destination"] = str(clone_destination)
+        sample_config["owner"] = "test_user"
 
         # GitHub APIでネットワークエラーをシミュレート
         mock_github_api_error = Mock()
@@ -218,6 +224,7 @@ class TestSyncIntegration:
         """部分的な失敗がある同期テスト"""
         clone_destination = temp_dir / "repos"
         sample_config["clone_destination"] = str(clone_destination)
+        sample_config["owner"] = "test_user"
 
         def mock_sync_side_effect(repo, dest_dir, config):
             # test-repo-1は成功、test-repo-2は失敗
@@ -246,6 +253,7 @@ class TestSyncIntegration:
         with tempfile.TemporaryDirectory() as safe_temp_dir:
             clone_destination = Path(safe_temp_dir) / "repos"
             sample_config["clone_destination"] = str(clone_destination)
+            sample_config["owner"] = "test_user"
 
             # 多数のリポジトリをシミュレート（数を削減してタイムアウト回避）
             many_repos = [
@@ -298,6 +306,7 @@ class TestSyncIntegration:
         with tempfile.TemporaryDirectory() as safe_temp_dir:
             clone_destination = Path(safe_temp_dir) / "repos"
             sample_config["clone_destination"] = str(clone_destination)
+            sample_config["owner"] = "test_user"
 
             # 現在のリポジトリのみを返すようにモックを設定
             current_repos = [
@@ -343,6 +352,7 @@ class TestSyncIntegration:
         """同期結果のシリアライゼーションテスト"""
         clone_destination = temp_dir / "repos"
         sample_config["clone_destination"] = str(clone_destination)
+        sample_config["owner"] = "test_user"
 
         repos_data = mock_github_api.get_user_repos.return_value
         with (

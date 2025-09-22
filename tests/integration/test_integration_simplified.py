@@ -95,11 +95,11 @@ class TestIntegrationSimplified:
         # プラットフォーム検証を統合
         verify_current_platform()  # プラットフォーム検証
 
-        # GitHub APIとオーナー検出をモック
-        with (
-            patch("setup_repo.sync.get_repositories") as mock_get_repos,
-            patch("setup_repo.sync.detect_github_owner", return_value="test_user"),
-        ):
+        # GitHub APIをモックし、設定にオーナーを追加
+        test_config = sample_config.copy()
+        test_config["owner"] = "test_user"
+        
+        with patch("setup_repo.sync.get_repositories") as mock_get_repos:
             mock_get_repos.return_value = [
                 {
                     "name": "test-repo",
@@ -109,7 +109,7 @@ class TestIntegrationSimplified:
                 }
             ]
 
-            result = sync_repositories(sample_config, dry_run=True)
+            result = sync_repositories(test_config, dry_run=True)
 
         # ドライランモードでは成功するはず
         assert isinstance(result, SyncResult)
@@ -233,14 +233,14 @@ class TestIntegrationSimplified:
             for i in range(10)  # 10個のリポジトリ
         ]
 
-        with (
-            patch("setup_repo.sync.get_repositories") as mock_get_repos,
-            patch("setup_repo.sync.detect_github_owner", return_value="test_user"),
-        ):
+        test_config = sample_config.copy()
+        test_config["owner"] = "test_user"
+        
+        with patch("setup_repo.sync.get_repositories") as mock_get_repos:
             mock_get_repos.return_value = many_repos
 
             start_time = time.time()
-            result = sync_repositories(sample_config, dry_run=True)
+            result = sync_repositories(test_config, dry_run=True)
             execution_time = time.time() - start_time
 
         # パフォーマンス要件を緩和: 10リポジトリの同期が10秒以内（ドライランモード）
@@ -267,11 +267,11 @@ class TestIntegrationSimplified:
         clone_destination = temp_dir / "repos"
         sample_config["clone_destination"] = str(clone_destination)
 
-        # 3. GitHub APIとオーナー検出をモック
-        with (
-            patch("setup_repo.sync.get_repositories") as mock_get_repos,
-            patch("setup_repo.sync.detect_github_owner", return_value="test_user"),
-        ):
+        # 3. GitHub APIをモックし、設定にオーナーを追加
+        test_config = sample_config.copy()
+        test_config["owner"] = "test_user"
+        
+        with patch("setup_repo.sync.get_repositories") as mock_get_repos:
             mock_get_repos.return_value = [
                 {
                     "name": "integration-test-repo",
@@ -282,7 +282,7 @@ class TestIntegrationSimplified:
             ]
 
             # 4. 同期実行
-            result = sync_repositories(sample_config, dry_run=True)
+            result = sync_repositories(test_config, dry_run=True)
 
         # 5. 結果検証
         assert isinstance(result, SyncResult)
