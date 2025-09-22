@@ -100,7 +100,7 @@ class TestIntegrationSimplified:
         test_config = sample_config.copy()
         test_config["owner"] = "test_user"
         test_config["clone_destination"] = str(temp_dir / "repos")
-        
+
         with patch("setup_repo.sync.get_repositories") as mock_get_repos:
             mock_get_repos.return_value = [
                 {
@@ -239,7 +239,7 @@ class TestIntegrationSimplified:
         test_config = sample_config.copy()
         test_config["owner"] = "test_user"
         test_config["clone_destination"] = str(temp_dir / "repos")
-        
+
         with patch("setup_repo.sync.get_repositories") as mock_get_repos:
             mock_get_repos.return_value = many_repos
 
@@ -275,7 +275,7 @@ class TestIntegrationSimplified:
         test_config = sample_config.copy()
         test_config["owner"] = "test_user"
         test_config["clone_destination"] = str(clone_destination)
-        
+
         with patch("setup_repo.sync.get_repositories") as mock_get_repos:
             mock_get_repos.return_value = [
                 {

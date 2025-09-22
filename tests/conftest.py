@@ -306,7 +306,7 @@ def assert_config_valid(config: dict[str, Any]) -> None:
     assert "username" in config["github"], "必須キー 'github.username' が設定にありません"
     assert "repositories" in config, "必須キー 'repositories' が設定にありません"
     assert "base_path" in config["repositories"], "必須キー 'repositories.base_path' が設定にありません"
-    
+
     # 値の存在チェック
     assert config["github"]["token"], "キー 'github.token' の値が空です"
     assert config["github"]["username"], "キー 'github.username' の値が空です"

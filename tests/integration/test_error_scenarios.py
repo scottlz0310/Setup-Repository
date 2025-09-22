@@ -488,18 +488,6 @@ class TestErrorScenarios:
         sample_config["clone_destination"] = str(clone_destination)
         sample_config["owner"] = "test_user"  # オーナー設定を追加
 
-        mock_repos = [
-            {
-                "name": "interrupt-test-repo",
-                "full_name": "test_user/interrupt-test-repo",
-                "clone_url": "https://github.com/test_user/interrupt-test-repo.git",
-                "ssh_url": "git@github.com:test_user/interrupt-test-repo.git",
-                "description": "割り込みテスト用リポジトリ",
-                "private": False,
-                "default_branch": "main",
-            },
-        ]
-
         # dry_runモードではKeyboardInterruptは発生しないため、テストをスキップ
         pytest.skip("dry_runモードではKeyboardInterruptテストは実行できません")
 
