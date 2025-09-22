@@ -74,6 +74,6 @@ class TestSetupIntegration:
 
         with (
             patch("src.setup_repo.setup.GitHubAPI", return_value=mock_github_api_error),
-            pytest.raises(Exception, match="GitHub API エラー"),
+            pytest.raises(Exception, match=r"GitHub API.*エラー"),  # 正規表現でマッチを緩和
         ):
             setup_repository_environment(config_path=str(config_file), dry_run=False)

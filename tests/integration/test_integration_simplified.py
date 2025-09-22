@@ -90,14 +90,16 @@ class TestIntegrationSimplified:
     def test_sync_dry_run_mode(
         self,
         sample_config: dict[str, Any],
+        temp_dir: Path,
     ) -> None:
         """ドライランモードでの同期テスト"""
         # プラットフォーム検証を統合
         verify_current_platform()  # プラットフォーム検証
 
-        # GitHub APIをモックし、設定にオーナーを追加
+        # GitHub APIをモックし、設定にオーナーとクローン先を追加
         test_config = sample_config.copy()
         test_config["owner"] = "test_user"
+        test_config["clone_destination"] = str(temp_dir / "repos")
         
         with patch("setup_repo.sync.get_repositories") as mock_get_repos:
             mock_get_repos.return_value = [
@@ -218,6 +220,7 @@ class TestIntegrationSimplified:
     def test_performance_basic(
         self,
         sample_config: dict[str, Any],
+        temp_dir: Path,
     ) -> None:
         """基本的なパフォーマンステスト"""
         import time
@@ -235,6 +238,7 @@ class TestIntegrationSimplified:
 
         test_config = sample_config.copy()
         test_config["owner"] = "test_user"
+        test_config["clone_destination"] = str(temp_dir / "repos")
         
         with patch("setup_repo.sync.get_repositories") as mock_get_repos:
             mock_get_repos.return_value = many_repos
@@ -267,9 +271,10 @@ class TestIntegrationSimplified:
         clone_destination = temp_dir / "repos"
         sample_config["clone_destination"] = str(clone_destination)
 
-        # 3. GitHub APIをモックし、設定にオーナーを追加
+        # 3. GitHub APIをモックし、設定にオーナーとクローン先を追加
         test_config = sample_config.copy()
         test_config["owner"] = "test_user"
+        test_config["clone_destination"] = str(clone_destination)
         
         with patch("setup_repo.sync.get_repositories") as mock_get_repos:
             mock_get_repos.return_value = [

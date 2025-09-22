@@ -153,6 +153,7 @@ class TestCrossPlatformIntegration:
         # 実際のプラットフォームに応じたパス設定
         clone_destination = temp_dir / "repos"
         sample_config["clone_destination"] = str(clone_destination)
+        sample_config["owner"] = "test_user"  # オーナー設定を追加
 
         mock_repos = [
             {
@@ -200,6 +201,7 @@ class TestCrossPlatformIntegration:
 
         clone_destination = temp_dir / "repos"
         sample_config["clone_destination"] = str(clone_destination)
+        sample_config["owner"] = "test_user"  # オーナー設定を追加
 
         mock_repos = [
             {

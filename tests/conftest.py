@@ -26,6 +26,11 @@ def temp_dir() -> Generator[Path, None, None]:
 def sample_config() -> dict[str, Any]:
     """統合テスト用のサンプル設定"""
     return {
+        # setup.pyが期待するフラット構造のフィールド
+        "github_token": "test_token_123",
+        "github_username": "test_user",
+        "clone_destination": "/tmp/test_repos",
+        # 階層構造も維持（後方互換性のため）
         "github": {"username": "test_user", "token": "test_token_123"},
         "repositories": {
             "base_path": "/tmp/test_repos",
