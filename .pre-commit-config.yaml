@@ -97,7 +97,7 @@ repos:
       - id: pytest-check
         name: "Pytest テスト実行"
         description: "Pytestによる全テスト実行（最も時間がかかるため最後に実行）"
-        entry: uv run pytest --tb=short -k "not (test_mock_git_operations_fixture or test_mock_platform_detector_fixture)"
+        entry: uv run pytest --tb=short
         language: system
         pass_filenames: false
         always_run: true
