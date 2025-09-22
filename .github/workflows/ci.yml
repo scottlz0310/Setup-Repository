@@ -45,10 +45,10 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Install uv
-      run: curl -LsSf https://astral.sh/uv/install.sh | sh
-
-    - name: Add uv to PATH
-      run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+      uses: astral-sh/setup-uv@v4
+      with:
+        version: "latest"
+        enable-cache: true
 
     - name: Set up Python
       run: uv python install 3.11
@@ -93,27 +93,11 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Install uv (Unix)
-      if: runner.os != 'Windows'
-      run: curl -LsSf https://astral.sh/uv/install.sh | sh
-
-    - name: Add uv to PATH (Unix)
-      if: runner.os != 'Windows'
-      run: echo "$HOME/.local/bin" >> $GITHUB_PATH
-
-    - name: Install uv (Windows)
-      if: runner.os == 'Windows'
-      shell: pwsh
-      run: irm https://astral.sh/uv/install.ps1 | iex
-
-    - name: Add uv to PATH (Windows)
-      if: runner.os == 'Windows'
-      shell: pwsh
-      run: |
-        $uvPath = "$env:USERPROFILE\.local\bin"
-        echo $uvPath | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-        $env:PATH = "$uvPath;$env:PATH"
-        Write-Host "Added $uvPath to PATH"
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+      with:
+        version: "latest"
+        enable-cache: true
 
 
 
@@ -348,18 +332,11 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Install uv (Unix)
-      if: runner.os != 'Windows'
-      run: curl -LsSf https://astral.sh/uv/install.sh | sh
-
-    - name: Add uv to PATH (Unix)
-      if: runner.os != 'Windows'
-      run: echo "$HOME/.local/bin" >> $GITHUB_PATH
-
-    - name: Install uv (Windows)
-      if: runner.os == 'Windows'
-      run: irm https://astral.sh/uv/install.ps1 | iex
-      shell: pwsh
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+      with:
+        version: "latest"
+        enable-cache: true
 
     - name: Set up Python ${{ matrix.python-version }}
       run: uv python install ${{ matrix.python-version }}
@@ -430,10 +407,10 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Install uv
-      run: curl -LsSf https://astral.sh/uv/install.sh | sh
-
-    - name: Add uv to PATH
-      run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+      uses: astral-sh/setup-uv@v4
+      with:
+        version: "latest"
+        enable-cache: true
 
     - name: Set up Python
       run: uv python install ${{ env.PYTHON_VERSION }}
@@ -494,10 +471,10 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Install uv
-      run: curl -LsSf https://astral.sh/uv/install.sh | sh
-
-    - name: Add uv to PATH
-      run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+      uses: astral-sh/setup-uv@v4
+      with:
+        version: "latest"
+        enable-cache: true
 
     - name: Set up Python
       run: uv python install 3.11
