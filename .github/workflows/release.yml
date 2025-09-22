@@ -106,11 +106,101 @@ jobs:
       contents: read
       pull-requests: write
 
-  # リリース作成
-  create-release:
-    name: 🚀 GitHub Release作成
+  # 自動リリース準備（バージョン更新・ドキュメント生成）
+  prepare-release:
+    name: 🔧 リリース準備・自動補完
     runs-on: ubuntu-latest
     needs: [version-check, quality-check]
+    outputs:
+      changes-made: ${{ steps.prepare.outputs.changes-made }}
+
+    steps:
+      - name: 📥 リポジトリをチェックアウト
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🐍 Python環境をセットアップ
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: 📦 uvをインストール
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: false
+
+      - name: 📦 依存関係をインストール
+        run: |
+          uv sync --dev
+          uv add tomli-w tomli --dev || echo "tomli dependencies already installed"
+
+      - name: 🔧 リリース準備・自動補完
+        id: prepare
+        env:
+          VERSION: ${{ needs.version-check.outputs.version }}
+          IS_PRERELEASE: ${{ needs.version-check.outputs.is-prerelease }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          echo "🔧 リリース準備開始: v$VERSION"
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          CHANGES_MADE=false
+          
+          # 1. バージョン整合性チェック・自動修正
+          echo "🔍 バージョン整合性をチェック・自動修正"
+          if ! uv run python scripts/version-manager.py --check; then
+            echo "📝 バージョン不整合を検出 - 自動修正中"
+            if [[ "$IS_PRERELEASE" == "true" ]]; then
+              uv run python scripts/version-manager.py --set "$VERSION" --prerelease
+            else
+              uv run python scripts/version-manager.py --set "$VERSION"
+            fi
+            CHANGES_MADE=true
+          fi
+          
+          # 2. CHANGELOG自動生成・更新
+          echo "📝 CHANGELOG自動生成・更新"
+          if [[ "$IS_PRERELEASE" == "true" ]]; then
+            uv run python scripts/version-manager.py --update-changelog "$VERSION" --prerelease
+          else
+            uv run python scripts/version-manager.py --update-changelog "$VERSION"
+          fi
+          
+          # 3. リリースノート生成
+          echo "📋 リリースノート生成"
+          if [[ "$IS_PRERELEASE" == "true" ]]; then
+            uv run python scripts/version-manager.py --generate-notes "$VERSION" --prerelease
+          else
+            uv run python scripts/version-manager.py --generate-notes "$VERSION"
+          fi
+          
+          # 4. 変更をコミット（変更がある場合のみ）
+          if git diff --quiet; then
+            echo "✅ 変更なし - 既に準備完了"
+          else
+            echo "💾 変更をコミット中"
+            git add .
+            git commit -m "🚀 リリース v$VERSION 準備完了
+            
+- バージョン整合性を自動修正
+- CHANGELOG.mdを自動生成・更新
+- リリースノートを自動生成"
+            git push origin main
+            CHANGES_MADE=true
+            echo "✅ リリース準備完了 - 変更をコミット"
+          fi
+          
+          echo "changes-made=$CHANGES_MADE" >> $GITHUB_OUTPUT
+          echo "🎉 リリース v$VERSION の準備が完了しました！"
+
+  # タグ作成・リリース作成
+  create-release:
+    name: 🚀 タグ作成・GitHub Release作成
+    runs-on: ubuntu-latest
+    needs: [version-check, quality-check, prepare-release]
 
     steps:
       - name: 📥 リポジトリをチェックアウト
@@ -132,21 +222,8 @@ jobs:
       - name: 📦 依存関係をインストールとビルド
         run: |
           uv sync --dev
-          # tomli-wとtomliが確実にインストールされるようにする
           uv add tomli-w tomli --dev || echo "tomli dependencies already installed"
           uv build
-
-      - name: 📝 CHANGELOG日付を更新
-        env:
-          VERSION: ${{ needs.version-check.outputs.version }}
-          IS_PRERELEASE: ${{ needs.version-check.outputs.is-prerelease }}
-        run: |
-          echo "📝 CHANGELOG.mdの日付を更新"
-          if [[ "$IS_PRERELEASE" == "true" ]]; then
-            uv run python scripts/version-manager.py --update-changelog "$VERSION" --prerelease
-          else
-            uv run python scripts/version-manager.py --update-changelog "$VERSION"
-          fi
 
       - name: 📋 リリースノートを生成
         env:
@@ -160,19 +237,17 @@ jobs:
             uv run python scripts/version-manager.py --generate-notes "$VERSION"
           fi
 
-      - name: 💾 CHANGELOG変更をコミット
+      - name: 🏷️ タグ作成（手動リリース時のみ）
+        if: github.event_name == 'workflow_dispatch'
         env:
           VERSION: ${{ needs.version-check.outputs.version }}
         run: |
+          echo "🏷️ タグ v$VERSION を作成"
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          if git diff --quiet CHANGELOG.md; then
-            echo "CHANGELOG.mdに変更はありません"
-          else
-            git add CHANGELOG.md
-            git commit -m "📝 CHANGELOG.mdを更新: v$VERSION"
-            git push
-          fi
+          git tag "v$VERSION"
+          git push origin "v$VERSION"
+          echo "✅ タグ v$VERSION を作成・プッシュ完了"
 
       - name: 🚀 GitHub Releaseを作成
         uses: softprops/action-gh-release@v2
@@ -203,7 +278,7 @@ jobs:
   post-release:
     name: 🧹 リリース後処理
     runs-on: ubuntu-latest
-    needs: [version-check, create-release]
+    needs: [version-check, create-release, prepare-release]
     if: always() && needs.create-release.result == 'success'
 
     steps:

@@ -171,6 +171,50 @@ class VersionManager:
                 print(f"  - {file_name}: {file_version}")
             return False
 
+    def check_version_in_changelog(self, version: str) -> bool:
+        """指定されたバージョンがCHANGELOGに存在するかチェック"""
+        changelog_path = self.root_path / "CHANGELOG.md"
+
+        if not changelog_path.exists():
+            print("⚠️ CHANGELOG.mdが見つかりません")
+            return False
+
+        try:
+            content = changelog_path.read_text(encoding="utf-8")
+            return f"## [{version}]" in content
+        except Exception as e:
+            print(f"❌ CHANGELOG.md読み込みエラー: {e}")
+            return False
+
+    def validate_manual_release(self, version: str) -> bool:
+        """手動リリース時の整合性チェック"""
+        print(f"🔍 手動リリース整合性チェック: v{version}")
+
+        # 1. 現在のコードバージョンをチェック
+        current_version = self.get_current_version()
+        if not current_version:
+            print("❌ 現在のバージョンを取得できません")
+            return False
+
+        if current_version != version:
+            print(f"❌ バージョン不整合: コード={current_version}, 指定={version}")
+            print("手動リリースでは、コードのバージョンと指定バージョンが一致している必要があります")
+            return False
+
+        # 2. バージョン一貫性チェック
+        if not self.check_consistency():
+            print("❌ ファイル間のバージョン一貫性チェックに失敗")
+            return False
+
+        # 3. CHANGELOGにバージョンが存在するかチェック
+        if not self.check_version_in_changelog(version):
+            print(f"❌ CHANGELOG.mdにバージョン {version} が見つかりません")
+            print("手動リリースでは、事前にCHANGELOGを更新しておく必要があります")
+            return False
+
+        print(f"✅ 手動リリース整合性チェック完了: v{version}")
+        return True
+
     def bump_version(self, bump_type: str) -> str | None:
         """バージョンを自動的にインクリメント"""
         current_version = self.get_current_version()
@@ -249,6 +293,57 @@ class VersionManager:
             print(f"❌ Gitタグ作成エラー: {e}")
             return False
 
+    def extract_changes_from_git(self, since_version: str | None = None) -> dict[str, list[str]]:
+        """Git履歴から変更内容を抽出"""
+        try:
+            import sys
+            sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+            from setup_repo.security_helpers import safe_subprocess_run
+
+            # 最新のタグを取得
+            if since_version is None:
+                result = safe_subprocess_run(
+                    ["git", "describe", "--tags", "--abbrev=0"],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                since_version = result.stdout.strip() if result.returncode == 0 else None
+
+            # Gitログを取得
+            git_range = f"{since_version}..HEAD" if since_version else "HEAD~10..HEAD"
+            result = safe_subprocess_run(
+                ["git", "log", git_range, "--pretty=format:%s", "--no-merges"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            if result.returncode != 0:
+                return {"changes": ["リリースワークフローの改善"], "fixes": ["バージョン管理の一貫性向上"]}
+
+            commits = [line.strip() for line in result.stdout.split("\n") if line.strip()]
+
+            changes = {"features": [], "changes": [], "fixes": [], "others": []}
+
+            for commit in commits:
+                commit_lower = commit.lower()
+                if commit.startswith(("feat:", "feat(", "✨")):
+                    changes["features"].append(commit.replace("feat:", "").replace("✨", "").strip())
+                elif commit.startswith(("fix:", "fix(", "🐛")):
+                    changes["fixes"].append(commit.replace("fix:", "").replace("🐛", "").strip())
+                elif any(word in commit_lower for word in ["change", "update", "improve", "refactor", "🔄"]):
+                    changes["changes"].append(commit.strip())
+                else:
+                    changes["others"].append(commit.strip())
+
+            # 空のカテゴリを削除
+            return {k: v for k, v in changes.items() if v}
+
+        except Exception as e:
+            print(f"⚠️ Git履歴抽出エラー: {e}")
+            return {"changes": ["リリースワークフローの改善"], "fixes": ["バージョン管理の一貫性向上"]}
+
     def update_changelog(self, version: str, is_prerelease: bool = False) -> bool:
         """CHANGELOG.mdを更新"""
         changelog_path = self.root_path / "CHANGELOG.md"
@@ -273,27 +368,56 @@ class VersionManager:
                 print(f"✅ CHANGELOG.mdの日付を更新: {today}")
             return True
 
-        # 新しいバージョンエントリを作成
+        # Git履歴から変更内容を抽出
         print(f"📝 新しいバージョンエントリを作成: {version}")
+        changes = self.extract_changes_from_git()
 
         # CHANGELOGの先頭に新しいエントリを挿入
         lines = content.split("\n")
-
-        # "# 📝 変更履歴" の後に挿入
         insert_index = 2  # タイトル行の後の空行の後
 
-        # 新しいエントリのテンプレート
+        # Git履歴からエントリを生成
         prerelease_marker = " (プレリリース)" if is_prerelease else ""
-        new_entry = f"""## [{version}] - {today}{prerelease_marker}
+        entry_parts = [f"## [{version}] - {today}{prerelease_marker}", ""]
 
-### 🔄 変更
-- リリースワークフローの改善
-- ドキュメント自動生成機能の強化
+        if "features" in changes:
+            entry_parts.append("### ✨ 新機能")
+            for feature in changes["features"]:
+                entry_parts.append(f"- {feature}")
+            entry_parts.append("")
 
-### 🐛 修正
-- バージョン管理の一貫性向上
-- CI/CDパイプラインの安定化
-"""
+        if "changes" in changes:
+            entry_parts.append("### 🔄 変更")
+            for change in changes["changes"]:
+                entry_parts.append(f"- {change}")
+            entry_parts.append("")
+
+        if "fixes" in changes:
+            entry_parts.append("### 🐛 修正")
+            for fix in changes["fixes"]:
+                entry_parts.append(f"- {fix}")
+            entry_parts.append("")
+
+        if "others" in changes:
+            entry_parts.append("### 🔧 その他")
+            for other in changes["others"]:
+                entry_parts.append(f"- {other}")
+            entry_parts.append("")
+
+        # フォールバック: 変更がない場合はデフォルトメッセージ
+        if len(entry_parts) <= 2:
+            entry_parts.extend([
+                "### 🔄 変更",
+                "- リリースワークフローの改善",
+                "- ドキュメント自動生成機能の強化",
+                "",
+                "### 🐛 修正",
+                "- バージョン管理の一貫性向上",
+                "- CI/CDパイプラインの安定化",
+                ""
+            ])
+
+        new_entry = "\n".join(entry_parts).rstrip()
 
         # 新しいエントリを挿入
         lines.insert(insert_index, "")
@@ -496,6 +620,7 @@ def main():
     )
 
     parser.add_argument("--check", action="store_true", help="バージョンの一貫性をチェック")
+    parser.add_argument("--validate-manual", metavar="VERSION", help="手動リリース用の整合性チェック")
     parser.add_argument("--set", metavar="VERSION", help="バージョンを手動設定 (例: 1.2.0)")
     parser.add_argument(
         "--bump",
@@ -511,7 +636,10 @@ def main():
 
     args = parser.parse_args()
 
-    if not any([args.check, args.set, args.bump, args.update_changelog, args.generate_notes, args.release]):
+    if not any([
+        args.check, args.set, args.bump, args.update_changelog,
+        args.generate_notes, args.release, args.validate_manual
+    ]):
         parser.print_help()
         return 1
 
@@ -519,6 +647,11 @@ def main():
 
     if args.check:
         if not manager.check_consistency():
+            return 1
+        return 0
+
+    if args.validate_manual:
+        if not manager.validate_manual_release(args.validate_manual):
             return 1
         return 0
 

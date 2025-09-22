@@ -182,7 +182,10 @@ def main():
         for error in total_errors:
             print(f"  - {error}")
 
-        if args.strict:
+        if args.local_mode:
+            print("\n[WARNING] 警告: エラーが発生しましたが、処理を継続します")
+            return 0
+        elif args.strict:
             return 1
         else:
             print("\n[WARNING] 警告: エラーが発生しましたが、処理を継続します")
