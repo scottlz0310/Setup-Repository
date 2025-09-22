@@ -28,33 +28,34 @@ flowchart TD
     F --> G
     
     G --> H[バージョン情報抽出]
-    H --> I[バージョン一貫性チェック]
-    I --> J[quality-check ジョブ]
+    H --> I[スマートバージョンチェック]
+    I --> J{バージョン比較}
     
-    J --> K[CI/CDテスト実行]
-    K --> L[prepare-release ジョブ]
+    J -->|現在 > 指定| K[❌ エラーで終了]
+    J -->|現在 = 指定| L[quality-check ジョブ]
+    J -->|現在 < 指定| M[自動バージョン更新]
+    M --> L
     
-    L --> M{バージョン整合性OK?}
-    M -->|No| N[自動修正: pyproject.toml, __init__.py]
-    M -->|Yes| O[CHANGELOG自動生成・更新]
-    N --> O
+    L --> N[CI/CDテスト実行]
+    N --> O[prepare-release ジョブ]
     
-    O --> P[リリースノート生成]
-    P --> Q{変更あり?}
-    Q -->|Yes| R[自動コミット・プッシュ]
-    Q -->|No| S[create-release ジョブ]
-    R --> S
+    O --> P[CHANGELOG自動生成・更新]
+    P --> Q[リリースノート生成]
+    Q --> R{変更あり?}
+    R -->|Yes| S[自動コミット・プッシュ]
+    R -->|No| T[create-release ジョブ]
+    S --> T
     
-    S --> T[パッケージビルド]
-    T --> U{手動実行?}
-    U -->|Yes| V[タグ作成・プッシュ]
-    U -->|No| W[GitHub Release作成]
-    V --> W
+    T --> U[パッケージビルド]
+    U --> V{手動実行?}
+    V -->|Yes| W[タグ作成・プッシュ]
+    V -->|No| X[GitHub Release作成]
+    W --> X
     
-    W --> X[アセット添付]
-    X --> Y[post-release ジョブ]
-    Y --> Z[リリースメトリクス記録]
-    Z --> AA[🎉 リリース完了]
+    X --> Y[アセット添付]
+    Y --> Z[post-release ジョブ]
+    Z --> AA[リリースメトリクス記録]
+    AA --> BB[🎉 リリース完了]
 ```
 
 ## 🚀 手動リリース（推奨）
@@ -78,10 +79,12 @@ sequenceDiagram
     participant Repo as リポジトリ
     
     Dev->>GH: バージョン指定で実行
-    GH->>Repo: バージョン整合性チェック
+    GH->>Repo: スマートバージョンチェック
     
-    alt バージョン不整合
-        GH->>Repo: 自動修正 (pyproject.toml, __init__.py)
+    alt 現在 > 指定
+        GH->>Dev: ❌ エラー: バージョンの後退禁止
+    else 現在 < 指定
+        GH->>Repo: 自動バージョン更新
     end
     
     GH->>Repo: Git履歴からCHANGELOG生成
@@ -116,10 +119,10 @@ sequenceDiagram
     
     Dev->>Repo: git tag v1.3.6 && git push origin v1.3.6
     Repo->>GH: タグプッシュトリガー
-    GH->>Repo: バージョン整合性チェック
+    GH->>Repo: スマートバージョンチェック
     
-    alt バージョン不整合
-        GH->>Repo: 自動修正 (pyproject.toml, __init__.py)
+    alt 現在 < タグバージョン
+        GH->>Repo: 自動バージョン更新
     end
     
     GH->>Repo: Git履歴からCHANGELOG生成
@@ -138,13 +141,16 @@ sequenceDiagram
 
 ### 1. version-check ジョブ
 
-**目的**: バージョン情報の抽出と一貫性チェック
+**目的**: スマートバージョンチェックと自動更新
 
 **処理内容**:
 - トリガー種別の判定（手動 or タグプッシュ）
 - バージョン情報の抽出
 - プレリリースフラグの判定
-- pyproject.tomlと__init__.pyの一貫性チェック
+- **スマートバージョンチェック**:
+  - 現在 > 指定: エラーで終了
+  - 現在 = 指定: 継続
+  - 現在 < 指定: 自動更新
 
 **出力**:
 - `version`: 対象バージョン
@@ -161,21 +167,20 @@ sequenceDiagram
 
 ### 3. prepare-release ジョブ
 
-**目的**: リリース準備と自動補完
+**目的**: リリース準備とドキュメント生成
 
 **処理内容**:
-1. **バージョン整合性チェック・自動修正**
-   - pyproject.tomlと__init__.pyの不整合を検出
-   - 不整合があれば自動修正
-2. **CHANGELOG自動生成・更新**
+1. **CHANGELOG自動生成・更新**
    - Git履歴からConventional Commitsを解析
    - カテゴリ別に変更内容を分類
    - 既存エントリがあれば日付のみ更新
-3. **リリースノート生成**
+2. **リリースノート生成**
    - CHANGELOGから該当バージョンを抽出
    - GitHub Release用のマークダウン生成
-4. **自動コミット**
+3. **自動コミット**
    - 変更があれば自動コミット・プッシュ
+
+> **注意**: バージョン更新はversion-checkジョブで完了済み
 
 **出力**:
 - `changes-made`: 変更有無フラグ
@@ -201,6 +206,41 @@ sequenceDiagram
 **処理内容**:
 - リリースメトリクスの記録
 - 成功通知
+
+## 🤖 スマートバージョンチェック
+
+### バージョン比較ロジック
+
+リリースワークフローの最初に実行されるスマートチェック機能：
+
+```mermaid
+flowchart TD
+    A[スマートバージョンチェック] --> B{バージョン比較}
+    
+    B -->|現在 > 指定| C[❌ エラーで終了]
+    B -->|現在 = 指定| D[✅ 継続]
+    B -->|現在 < 指定| E[🔄 自動更新]
+    
+    C --> F[🚨 バージョン後退禁止]
+    E --> G[✅ 継続]
+    D --> H[✅ 継続]
+    G --> H
+```
+
+### 具体例
+
+| 現在バージョン | 指定バージョン | 動作 | 結果 |
+|---|---|---|---|
+| 1.3.5 | 1.4.0 | 自動更新 | ✅ 1.3.5 → 1.4.0 |
+| 1.4.0 | 1.4.0 | 継続 | ✅ 更新不要 |
+| 1.5.0 | 1.4.0 | エラー | ❌ バージョン後退禁止 |
+| 2.0.0 | 1.9.0 | エラー | ❌ バージョン後退禁止 |
+
+### セキュリティ機能
+
+- **バージョン後退禁止**: セキュリティ上の理由でダウングレードを禁止
+- **自動アップグレード**: 安全なバージョンアップのみ許可
+- **一貫性保証**: pyproject.tomlと__init__.pyの同期更新
 
 ## 🤖 自動CHANGELOG生成
 
@@ -266,8 +306,13 @@ sequenceDiagram
    - YAML構文エラーの可能性
    - mainブランチにプッシュされているか確認
 
-2. **バージョン整合性エラー**
-   - 自動修正機能により解決
+2. **バージョン後退エラー**
+   - 現在のバージョンが指定バージョンより進んでいる
+   - 解決: 指定バージョンを現在より大きくする
+   - 例: 現在 1.5.0 → 指定 1.6.0 以上
+
+3. **バージョン整合性エラー**
+   - スマートチェック機能により自動解決
    - 手動修正が必要な場合はログを確認
 
 3. **CHANGELOG生成が空**
@@ -288,6 +333,7 @@ sequenceDiagram
    ```bash
    # バージョン管理スクリプトのテスト
    uv run python scripts/version-manager.py --check
+   uv run python scripts/version-manager.py --smart-check 1.3.6
    uv run python scripts/version-manager.py --update-changelog 1.3.6
    ```
 
