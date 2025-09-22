@@ -466,6 +466,12 @@ def diagnose_platform_issues() -> dict[str, Any]:
                 "in_path": manager in os.environ.get("PATH", ""),
             }
 
+        # uv の状態も追加でチェック（重要なツールのため）
+        diagnosis["package_managers"]["uv"] = {
+            "available": check_package_manager("uv"),
+            "in_path": "uv" in os.environ.get("PATH", ""),
+        }
+
         # プラットフォーム固有モジュールの可用性をチェック
         critical_modules = ["fcntl", "msvcrt", "subprocess", "pathlib", "platform"]
         for module_name in critical_modules:
@@ -592,13 +598,14 @@ def _generate_platform_recommendations(diagnosis: dict[str, Any], platform_info:
                 "No package manager found on macOS. "
                 'Consider installing Homebrew: /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"'
             )
-        elif platform_info.name == "linux":
+        elif platform_info.name in ["linux", "wsl"]:
             recommendations.append(
                 "No package manager found on Linux. Please check if apt, snap, or curl is available."
             )
 
-    # uv固有の推奨事項
-    if not check_package_manager("uv"):
+    # uv固有の推奨事項（診断データに基づいて判定）
+    uv_available = diagnosis["package_managers"].get("uv", {}).get("available", False)
+    if not uv_available:
         if platform_info.name == "windows":
             recommendations.append(
                 "uv not found in PATH on Windows. "

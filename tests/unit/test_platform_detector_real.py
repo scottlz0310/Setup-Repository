@@ -603,6 +603,12 @@ class TestPlatformDetectorReal:
                     "in_path": False,
                 }
 
+            # uvも利用不可として設定
+            diagnosis["package_managers"]["uv"] = {
+                "available": False,
+                "in_path": False,
+            }
+
             _generate_platform_recommendations(diagnosis, platform_info)
 
             # 推奨事項が生成されることを確認
