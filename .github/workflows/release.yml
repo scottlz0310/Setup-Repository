@@ -83,15 +83,19 @@ jobs:
           echo "バージョン: $VERSION"
           echo "プレリリース: $IS_PRERELEASE"
 
-      - name: ✅ バージョン一貫性チェック
+      - name: 🔍 スマートバージョンチェック
+        env:
+          TARGET_VERSION: ${{ steps.extract-version.outputs.version }}
         run: |
-          echo "🔍 version-manager.pyでバージョン一貫性をチェック"
-          if ! uv run python scripts/version-manager.py --check; then
-            echo "❌ バージョン一貫性チェックに失敗しました"
-            echo "📝 現在のファイル状態:"
-            ls -la pyproject.toml src/setup_repo/__init__.py 2>/dev/null || echo "ファイルが見つかりません"
+          echo "🔍 スマートバージョンチェック: $TARGET_VERSION"
+
+          # スマートバージョンチェック実行
+          if ! uv run python scripts/version-manager.py --smart-check "$TARGET_VERSION"; then
+            echo "❌ スマートバージョンチェック失敗"
             exit 1
           fi
+
+          echo "✅ スマートバージョンチェック完了"
 
   # 品質チェック
   quality-check:
@@ -145,38 +149,26 @@ jobs:
           echo "🔧 リリース準備開始: v$VERSION"
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          
+
           CHANGES_MADE=false
-          
-          # 1. バージョン整合性チェック・自動修正
-          echo "🔍 バージョン整合性をチェック・自動修正"
-          if ! uv run python scripts/version-manager.py --check; then
-            echo "📝 バージョン不整合を検出 - 自動修正中"
-            if [[ "$IS_PRERELEASE" == "true" ]]; then
-              uv run python scripts/version-manager.py --set "$VERSION" --prerelease
-            else
-              uv run python scripts/version-manager.py --set "$VERSION"
-            fi
-            CHANGES_MADE=true
-          fi
-          
-          # 2. CHANGELOG自動生成・更新
+
+          # 1. CHANGELOG自動生成・更新
           echo "📝 CHANGELOG自動生成・更新"
           if [[ "$IS_PRERELEASE" == "true" ]]; then
             uv run python scripts/version-manager.py --update-changelog "$VERSION" --prerelease
           else
             uv run python scripts/version-manager.py --update-changelog "$VERSION"
           fi
-          
-          # 3. リリースノート生成
+
+          # 2. リリースノート生成
           echo "📋 リリースノート生成"
           if [[ "$IS_PRERELEASE" == "true" ]]; then
             uv run python scripts/version-manager.py --generate-notes "$VERSION" --prerelease
           else
             uv run python scripts/version-manager.py --generate-notes "$VERSION"
           fi
-          
-          # 4. 変更をコミット（変更がある場合のみ）
+
+          # 3. 変更をコミット（変更がある場合のみ）
           if git diff --quiet; then
             echo "✅ 変更なし - 既に準備完了"
           else
@@ -184,14 +176,13 @@ jobs:
             git add .
             git commit -m "🚀 リリース v$VERSION 準備完了
 
-          - バージョン整合性を自動修正
           - CHANGELOG.mdを自動生成・更新
           - リリースノートを自動生成"
             git push origin main
             CHANGES_MADE=true
             echo "✅ リリース準備完了 - 変更をコミット"
           fi
-          
+
           echo "changes-made=$CHANGES_MADE" >> $GITHUB_OUTPUT
           echo "🎉 リリース v$VERSION の準備が完了しました！"
 

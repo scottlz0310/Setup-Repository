@@ -17,41 +17,41 @@
 ```mermaid
 flowchart TD
     A[開発者] --> B{リリース方法選択}
-    
+
     B -->|手動実行| C[CI画面でバージョン指定]
     B -->|タグプッシュ| D[git tag v1.0.0 && git push origin v1.0.0]
-    
+
     C --> E[workflow_dispatch トリガー]
     D --> F[push tags トリガー]
-    
+
     E --> G[version-check ジョブ]
     F --> G
-    
+
     G --> H[バージョン情報抽出]
     H --> I[スマートバージョンチェック]
     I --> J{バージョン比較}
-    
+
     J -->|現在 > 指定| K[❌ エラーで終了]
     J -->|現在 = 指定| L[quality-check ジョブ]
     J -->|現在 < 指定| M[自動バージョン更新]
     M --> L
-    
+
     L --> N[CI/CDテスト実行]
     N --> O[prepare-release ジョブ]
-    
+
     O --> P[CHANGELOG自動生成・更新]
     P --> Q[リリースノート生成]
     Q --> R{変更あり?}
     R -->|Yes| S[自動コミット・プッシュ]
     R -->|No| T[create-release ジョブ]
     S --> T
-    
+
     T --> U[パッケージビルド]
     U --> V{手動実行?}
     V -->|Yes| W[タグ作成・プッシュ]
     V -->|No| X[GitHub Release作成]
     W --> X
-    
+
     X --> Y[アセット添付]
     Y --> Z[post-release ジョブ]
     Z --> AA[リリースメトリクス記録]
@@ -77,23 +77,23 @@ sequenceDiagram
     participant Dev as 開発者
     participant GH as GitHub Actions
     participant Repo as リポジトリ
-    
+
     Dev->>GH: バージョン指定で実行
     GH->>Repo: スマートバージョンチェック
-    
+
     alt 現在 > 指定
         GH->>Dev: ❌ エラー: バージョンの後退禁止
     else 現在 < 指定
         GH->>Repo: 自動バージョン更新
     end
-    
+
     GH->>Repo: Git履歴からCHANGELOG生成
     GH->>Repo: リリースノート生成
-    
+
     alt 変更あり
         GH->>Repo: 自動コミット・プッシュ
     end
-    
+
     GH->>Repo: タグ作成・プッシュ
     GH->>GH: GitHub Release作成
     GH->>Dev: 🎉 リリース完了通知
@@ -116,22 +116,22 @@ sequenceDiagram
     participant Dev as 開発者
     participant GH as GitHub Actions
     participant Repo as リポジトリ
-    
+
     Dev->>Repo: git tag v1.3.6 && git push origin v1.3.6
     Repo->>GH: タグプッシュトリガー
     GH->>Repo: スマートバージョンチェック
-    
+
     alt 現在 < タグバージョン
         GH->>Repo: 自動バージョン更新
     end
-    
+
     GH->>Repo: Git履歴からCHANGELOG生成
     GH->>Repo: リリースノート生成
-    
+
     alt 変更あり
         GH->>Repo: 自動コミット・プッシュ
     end
-    
+
     Note over GH: タグ作成はスキップ（既存）
     GH->>GH: GitHub Release作成
     GH->>Dev: 🎉 リリース完了通知
@@ -216,11 +216,11 @@ sequenceDiagram
 ```mermaid
 flowchart TD
     A[スマートバージョンチェック] --> B{バージョン比較}
-    
+
     B -->|現在 > 指定| C[❌ エラーで終了]
     B -->|現在 = 指定| D[✅ 継続]
     B -->|現在 < 指定| E[🔄 自動更新]
-    
+
     C --> F[🚨 バージョン後退禁止]
     E --> G[✅ 継続]
     D --> H[✅ 継続]
@@ -249,7 +249,7 @@ flowchart TD
 以下のコミット形式を自動認識：
 
 - `feat:` → ✨ 新機能
-- `fix:` → 🐛 修正  
+- `fix:` → 🐛 修正
 - `docs:` → 📝 ドキュメント
 - `refactor:` → 🔄 変更
 - その他 → 🔧 その他

@@ -51,6 +51,81 @@ class VersionManager:
         pattern = r"^(\d+)\.(\d+)\.(\d+)(?:-([a-zA-Z0-9\-\.]+))?(?:\+([a-zA-Z0-9\-\.]+))?$"
         return bool(re.match(pattern, version))
 
+    def compare_versions(self, version1: str, version2: str) -> int:
+        """バージョンを比較して結果を返す
+
+        Returns:
+            1: version1 > version2
+            0: version1 == version2
+            -1: version1 < version2
+        """
+
+        def parse_version(version: str) -> tuple[int, int, int, str]:
+            match = re.match(r"^(\d+)\.(\d+)\.(\d+)(?:-([a-zA-Z0-9\-\.]+))?(?:\+([a-zA-Z0-9\-\.]+))?$", version)
+            if not match:
+                raise ValueError(f"無効なバージョン形式: {version}")
+
+            major, minor, patch = map(int, match.groups()[:3])
+            prerelease = match.group(4) or ""
+            return (major, minor, patch, prerelease)
+
+        try:
+            v1_parts = parse_version(version1)
+            v2_parts = parse_version(version2)
+
+            # メジャー.マイナー.パッチで比較
+            for i in range(3):
+                if v1_parts[i] > v2_parts[i]:
+                    return 1
+                elif v1_parts[i] < v2_parts[i]:
+                    return -1
+
+            # プレリリースの比較
+            pre1, pre2 = v1_parts[3], v2_parts[3]
+            if pre1 and not pre2:
+                return -1  # 1.0.0-beta < 1.0.0
+            elif not pre1 and pre2:
+                return 1  # 1.0.0 > 1.0.0-beta
+            elif pre1 and pre2:
+                return 0 if pre1 == pre2 else (1 if pre1 > pre2 else -1)
+
+            return 0  # 完全に一致
+
+        except ValueError as e:
+            print(f"❌ バージョン比較エラー: {e}")
+            return 0
+
+    def validate_target_version(self, target_version: str) -> bool:
+        """ターゲットバージョンの妃当性をチェックし、必要に応じて更新"""
+        print(f"🔍 ターゲットバージョン検証: {target_version}")
+
+        # バージョン形式チェック
+        if not self.validate_version(target_version):
+            print(f"❌ 無効なバージョン形式: {target_version}")
+            return False
+
+        # 現在のバージョンを取得
+        current_version = self.get_current_version()
+        if not current_version:
+            print("📝 現在のバージョンが不明 - ターゲットバージョンで初期化")
+            return True
+
+        print(f"📝 現在のバージョン: {current_version}")
+
+        # バージョン比較
+        comparison = self.compare_versions(target_version, current_version)
+
+        if comparison > 0:
+            print(f"✅ バージョンアップグレード: {current_version} → {target_version}")
+            return True
+        elif comparison == 0:
+            print(f"✅ バージョン一致: {target_version}")
+            return True
+        else:
+            print(f"❌ バージョンの後退は禁止: {current_version} → {target_version}")
+            print("🚨 セキュリティ上の理由でバージョンのダウングレードは許可されません")
+            return False
+
     def _update_pyproject_toml(self, version: str) -> bool:
         """pyproject.tomlのバージョンを更新"""
         pyproject_path = self.root_path / "pyproject.toml"
@@ -186,6 +261,28 @@ class VersionManager:
             print(f"❌ CHANGELOG.md読み込みエラー: {e}")
             return False
 
+    def smart_version_check(self, target_version: str) -> bool:
+        """スマートバージョンチェックと自動更新"""
+        current_version = self.get_current_version()
+        if not current_version:
+            print("❌ 現在のバージョンを取得できません")
+            return False
+
+        print(f"🔍 バージョン比較: 現在={current_version}, ターゲット={target_version}")
+
+        comparison = self.compare_versions(current_version, target_version)
+
+        if comparison == 0:
+            print("✅ バージョン一致 - 更新不要")
+            return True
+        elif comparison > 0:
+            print(f"❌ エラー: 現在のバージョン({current_version})がターゲット({target_version})より進んでいます")
+            print("📝 ターゲットバージョンを現在のバージョンより大きくしてください")
+            return False
+        else:
+            print(f"🔄 バージョン更新: {current_version} → {target_version}")
+            return self.update_version(target_version)
+
     def validate_manual_release(self, version: str) -> bool:
         """手動リリース時の整合性チェック"""
         print(f"🔍 手動リリース整合性チェック: v{version}")
@@ -297,6 +394,7 @@ class VersionManager:
         """Git履歴から変更内容を抽出"""
         try:
             import sys
+
             sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
             from setup_repo.security_helpers import safe_subprocess_run
 
@@ -406,16 +504,18 @@ class VersionManager:
 
         # フォールバック: 変更がない場合はデフォルトメッセージ
         if len(entry_parts) <= 2:
-            entry_parts.extend([
-                "### 🔄 変更",
-                "- リリースワークフローの改善",
-                "- ドキュメント自動生成機能の強化",
-                "",
-                "### 🐛 修正",
-                "- バージョン管理の一貫性向上",
-                "- CI/CDパイプラインの安定化",
-                ""
-            ])
+            entry_parts.extend(
+                [
+                    "### 🔄 変更",
+                    "- リリースワークフローの改善",
+                    "- ドキュメント自動生成機能の強化",
+                    "",
+                    "### 🐛 修正",
+                    "- バージョン管理の一貫性向上",
+                    "- CI/CDパイプラインの安定化",
+                    "",
+                ]
+            )
 
         new_entry = "\n".join(entry_parts).rstrip()
 
@@ -620,6 +720,8 @@ def main():
     )
 
     parser.add_argument("--check", action="store_true", help="バージョンの一貫性をチェック")
+    parser.add_argument("--get-current", action="store_true", help="現在のバージョンを取得")
+    parser.add_argument("--smart-check", metavar="VERSION", help="スマートバージョンチェックと自動更新")
     parser.add_argument("--validate-manual", metavar="VERSION", help="手動リリース用の整合性チェック")
     parser.add_argument("--set", metavar="VERSION", help="バージョンを手動設定 (例: 1.2.0)")
     parser.add_argument(
@@ -636,10 +738,19 @@ def main():
 
     args = parser.parse_args()
 
-    if not any([
-        args.check, args.set, args.bump, args.update_changelog,
-        args.generate_notes, args.release, args.validate_manual
-    ]):
+    if not any(
+        [
+            args.check,
+            args.set,
+            args.bump,
+            args.update_changelog,
+            args.generate_notes,
+            args.release,
+            args.validate_manual,
+            args.get_current,
+            args.smart_check,
+        ]
+    ):
         parser.print_help()
         return 1
 
@@ -647,6 +758,19 @@ def main():
 
     if args.check:
         if not manager.check_consistency():
+            return 1
+        return 0
+
+    if args.get_current:
+        current_version = manager.get_current_version()
+        if current_version:
+            print(current_version)
+            return 0
+        else:
+            return 1
+
+    if args.smart_check:
+        if not manager.smart_version_check(args.smart_check):
             return 1
         return 0
 
