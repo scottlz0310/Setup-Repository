@@ -35,16 +35,16 @@ class TestIntegrationSimplified:
 
         # GitHubAPIクラスの初期化テスト
         api = GitHubAPI(
-            token=sample_config["github_token"],
-            username=sample_config["github_username"],
+            token=sample_config["github"]["token"],
+            username=sample_config["github"]["username"],
         )
 
-        assert api.token == sample_config["github_token"]
-        assert api.username == sample_config["github_username"]
+        assert api.token == sample_config["github"]["token"]
+        assert api.username == sample_config["github"]["username"]
 
         # 無効なトークンでの初期化テスト
         with pytest.raises((ValueError, GitHubAPIError)):
-            GitHubAPI(token="", username=sample_config["github_username"])
+            GitHubAPI(token="", username=sample_config["github"]["username"])
 
     def test_sync_result_creation(self) -> None:
         """SyncResult作成テスト"""
@@ -78,8 +78,8 @@ class TestIntegrationSimplified:
 
         # 不完全な設定
         incomplete_config = {
-            "github_token": "test_token"
-            # github_username が不足
+            "github": {"token": "test_token"}
+            # github.username が不足
         }
         result = sync_repositories(incomplete_config, dry_run=True)
 
@@ -95,8 +95,11 @@ class TestIntegrationSimplified:
         # プラットフォーム検証を統合
         verify_current_platform()  # プラットフォーム検証
 
-        # GitHub APIをモック
-        with patch("setup_repo.sync.get_repositories") as mock_get_repos:
+        # GitHub APIとオーナー検出をモック
+        with (
+            patch("setup_repo.sync.get_repositories") as mock_get_repos,
+            patch("setup_repo.sync.detect_github_owner", return_value="test_user"),
+        ):
             mock_get_repos.return_value = [
                 {
                     "name": "test-repo",
@@ -130,8 +133,8 @@ class TestIntegrationSimplified:
         with open(config_file, encoding="utf-8") as f:
             loaded_config = json.load(f)
 
-        assert loaded_config["github_token"] == sample_config["github_token"]
-        assert loaded_config["github_username"] == sample_config["github_username"]
+        assert loaded_config["github"]["token"] == sample_config["github"]["token"]
+        assert loaded_config["github"]["username"] == sample_config["github"]["username"]
 
     def test_error_handling(self) -> None:
         """エラーハンドリングテスト"""
@@ -180,8 +183,8 @@ class TestIntegrationSimplified:
 
         # デシリアライゼーション
         deserialized = json.loads(json_str)
-        assert deserialized["github_token"] == sample_config["github_token"]
-        assert deserialized["github_username"] == sample_config["github_username"]
+        assert deserialized["github"]["token"] == sample_config["github"]["token"]
+        assert deserialized["github"]["username"] == sample_config["github"]["username"]
 
         # SyncResult のシリアライゼーション
         result = SyncResult(success=True, synced_repos=["repo1", "repo2"], errors=[])
@@ -230,7 +233,10 @@ class TestIntegrationSimplified:
             for i in range(10)  # 10個のリポジトリ
         ]
 
-        with patch("setup_repo.sync.get_repositories") as mock_get_repos:
+        with (
+            patch("setup_repo.sync.get_repositories") as mock_get_repos,
+            patch("setup_repo.sync.detect_github_owner", return_value="test_user"),
+        ):
             mock_get_repos.return_value = many_repos
 
             start_time = time.time()
@@ -261,8 +267,11 @@ class TestIntegrationSimplified:
         clone_destination = temp_dir / "repos"
         sample_config["clone_destination"] = str(clone_destination)
 
-        # 3. GitHub APIをモック
-        with patch("setup_repo.sync.get_repositories") as mock_get_repos:
+        # 3. GitHub APIとオーナー検出をモック
+        with (
+            patch("setup_repo.sync.get_repositories") as mock_get_repos,
+            patch("setup_repo.sync.detect_github_owner", return_value="test_user"),
+        ):
             mock_get_repos.return_value = [
                 {
                     "name": "integration-test-repo",
