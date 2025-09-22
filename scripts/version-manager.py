@@ -8,9 +8,13 @@ import argparse
 import re
 import subprocess
 import sys
-import tomllib
 from datetime import datetime
 from pathlib import Path
+
+try:
+    import tomllib
+except ImportError:
+    import tomli as tomllib
 
 import tomli_w
 
@@ -123,9 +127,17 @@ class VersionManager:
         versions = {}
 
         # pyproject.tomlのバージョン
+        pyproject_path = self.root_path / "pyproject.toml"
+        if not pyproject_path.exists():
+            print(f"❌ {pyproject_path} が見つかりません")
+            return False
+
         try:
-            with open(self.root_path / "pyproject.toml", "rb") as f:
+            with open(pyproject_path, "rb") as f:
                 data = tomllib.load(f)
+            if "project" not in data or "version" not in data["project"]:
+                print("❌ pyproject.tomlにproject.versionが見つかりません")
+                return False
             versions["pyproject.toml"] = data["project"]["version"]
         except Exception as e:
             print(f"❌ pyproject.toml読み込みエラー: {e}")
@@ -246,12 +258,12 @@ class VersionManager:
             return False
 
         content = changelog_path.read_text(encoding="utf-8")
+        today = datetime.now().strftime("%Y-%m-%d")
 
         # 既に同じバージョンが存在するかチェック
         if f"## [{version}]" in content:
             print(f"ℹ️ バージョン {version} は既にCHANGELOGに存在します")
             # 日付のみ更新
-            today = datetime.now().strftime("%Y-%m-%d")
             updated_content = re.sub(
                 f"## \\[{re.escape(version)}\\] - \\d{{4}}-\\d{{2}}-\\d{{2}}", f"## [{version}] - {today}", content
             )
@@ -259,9 +271,39 @@ class VersionManager:
             if updated_content != content:
                 changelog_path.write_text(updated_content, encoding="utf-8")
                 print(f"✅ CHANGELOG.mdの日付を更新: {today}")
-            return True  # 既存バージョンが見つかった場合も成功として扱う
+            return True
 
-        return False
+        # 新しいバージョンエントリを作成
+        print(f"📝 新しいバージョンエントリを作成: {version}")
+
+        # CHANGELOGの先頭に新しいエントリを挿入
+        lines = content.split("\n")
+
+        # "# 📝 変更履歴" の後に挿入
+        insert_index = 2  # タイトル行の後の空行の後
+
+        # 新しいエントリのテンプレート
+        prerelease_marker = " (プレリリース)" if is_prerelease else ""
+        new_entry = f"""## [{version}] - {today}{prerelease_marker}
+
+### 🔄 変更
+- リリースワークフローの改善
+- ドキュメント自動生成機能の強化
+
+### 🐛 修正
+- バージョン管理の一貫性向上
+- CI/CDパイプラインの安定化
+"""
+
+        # 新しいエントリを挿入
+        lines.insert(insert_index, "")
+        lines.insert(insert_index + 1, new_entry)
+
+        updated_content = "\n".join(lines)
+        changelog_path.write_text(updated_content, encoding="utf-8")
+        print(f"✅ CHANGELOG.mdに新しいエントリを追加: {version}")
+
+        return True
 
     def generate_release_notes(self, version: str, is_prerelease: bool = False) -> str:
         """リリースノートを生成"""
@@ -368,7 +410,9 @@ setup-repo sync --dry-run
             return False
 
         # 2. CHANGELOGを更新
-        self.update_changelog(version, is_prerelease)
+        if not self.update_changelog(version, is_prerelease):
+            print("❌ CHANGELOG更新に失敗しました")
+            return False
 
         # 3. リリースノートを生成
         release_notes = self.generate_release_notes(version, is_prerelease)
@@ -376,12 +420,44 @@ setup-repo sync --dry-run
         notes_path.write_text(release_notes, encoding="utf-8")
         print(f"✅ リリースノートを生成: {notes_path}")
 
-        # 4. Gitタグを作成
+        # 4. 変更をコミット
+        try:
+            import sys
+
+            sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+            from setup_repo.security_helpers import safe_subprocess_run
+
+            # ステージング
+            files_to_add = ["CHANGELOG.md", "release-notes.md", "pyproject.toml", "src/setup_repo/__init__.py"]
+            safe_subprocess_run(["git", "add"] + files_to_add)
+
+            # コミット
+            commit_message = (
+                f"chore: release v{version}\n\n"
+                f"- バージョンを{version}に更新\n"
+                "- CHANGELOG.mdを自動更新\n"
+                "- リリースノートを自動生成"
+            )
+            safe_subprocess_run(["git", "commit", "-m", commit_message])
+            print(f"✅ 変更をコミット: v{version}")
+
+            # プッシュ（オプション）
+            if push:
+                safe_subprocess_run(["git", "push", "origin", "main"])
+                print("✅ 変更をプッシュ")
+
+        except subprocess.CalledProcessError as e:
+            print(f"❌ Git操作エラー: {e}")
+            return False
+
+        # 5. Gitタグを作成
         if not self.create_git_tag(version, push):
             print("❌ Gitタグ作成に失敗しました")
             return False
 
         print(f"🎉 リリース v{version} が正常に作成されました！")
+        if push:
+            print("🔗 GitHub Actionsでリリースが自動作成されます")
         return True
 
 

@@ -56,7 +56,10 @@ jobs:
           enable-cache: false
 
       - name: 📦 依存関係をインストール
-        run: uv sync --dev
+        run: |
+          uv sync --dev
+          # tomli-wとtomliが確実にインストールされるようにする
+          uv add tomli-w tomli --dev || echo "tomli dependencies already installed"
 
       - name: 🔍 バージョン情報を抽出
         id: extract-version
@@ -84,7 +87,12 @@ jobs:
       - name: ✅ バージョン一貫性チェック
         run: |
           echo "🔍 version-manager.pyでバージョン一貫性をチェック"
-          uv run python scripts/version-manager.py --check
+          if ! uv run python scripts/version-manager.py --check; then
+            echo "❌ バージョン一貫性チェックに失敗しました"
+            echo "📝 現在のファイル状態:"
+            ls -la pyproject.toml src/setup_repo/__init__.py 2>/dev/null || echo "ファイルが見つかりません"
+            exit 1
+          fi
 
   # 品質チェック
   quality-check:
@@ -124,6 +132,8 @@ jobs:
       - name: 📦 依存関係をインストールとビルド
         run: |
           uv sync --dev
+          # tomli-wとtomliが確実にインストールされるようにする
+          uv add tomli-w tomli --dev || echo "tomli dependencies already installed"
           uv build
 
       - name: 📝 CHANGELOG日付を更新
