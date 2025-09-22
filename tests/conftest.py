@@ -24,15 +24,16 @@ def temp_dir() -> Generator[Path, None, None]:
 
 @pytest.fixture
 def sample_config() -> dict[str, Any]:
-    """サンプル設定フィクスチャ"""
+    """統合テスト用のサンプル設定"""
     return {
-        "github_token": "test_token_12345",
-        "github_username": "test_user",
-        "clone_destination": "/tmp/test_repos",
-        "dest": "/tmp/test_repos",
-        "use_ssh": False,
-        "max_retries": 3,
-        "retry_delay": 1,
+        "github": {"username": "test_user", "token": "test_token_123"},
+        "repositories": {
+            "base_path": "/tmp/test_repos",
+            "include_forks": False,
+            "include_private": True,
+        },
+        "platform": {"detected": "linux", "package_manager": "apt"},
+        "logging": {"level": "INFO", "file": "/tmp/test.log"},
     }
 
 
