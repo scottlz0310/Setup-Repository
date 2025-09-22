@@ -295,10 +295,17 @@ def cross_platform_helper():
 # カスタムアサーション関数
 def assert_config_valid(config: dict[str, Any]) -> None:
     """設定の妥当性をチェック"""
-    required_keys = ["github_token", "github_username", "clone_destination"]
-    for key in required_keys:
-        assert key in config, f"必須キー '{key}' が設定にありません"
-        assert config[key], f"キー '{key}' の値が空です"
+    # 階層構造の設定をチェック
+    assert "github" in config, "必須キー 'github' が設定にありません"
+    assert "token" in config["github"], "必須キー 'github.token' が設定にありません"
+    assert "username" in config["github"], "必須キー 'github.username' が設定にありません"
+    assert "repositories" in config, "必須キー 'repositories' が設定にありません"
+    assert "base_path" in config["repositories"], "必須キー 'repositories.base_path' が設定にありません"
+    
+    # 値の存在チェック
+    assert config["github"]["token"], "キー 'github.token' の値が空です"
+    assert config["github"]["username"], "キー 'github.username' の値が空です"
+    assert config["repositories"]["base_path"], "キー 'repositories.base_path' の値が空です"
 
 
 def assert_file_exists_with_content(file_path: Path, expected_content: str) -> None:

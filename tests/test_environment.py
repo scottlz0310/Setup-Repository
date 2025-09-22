@@ -30,14 +30,20 @@ def test_temp_dir_fixture(temp_dir: Path) -> None:
 def test_sample_config_fixture(sample_config: dict[str, Any]) -> None:
     """sample_configフィクスチャの動作確認"""
     assert isinstance(sample_config, dict)
-    assert "github_token" in sample_config
-    assert "github_username" in sample_config
-    assert "clone_destination" in sample_config
+    assert "github" in sample_config
+    assert "repositories" in sample_config
+    assert "platform" in sample_config
+    assert "logging" in sample_config
 
-    # 設定の妥当性をチェック
-    assert sample_config["github_token"]
-    assert sample_config["github_username"]
-    assert sample_config["clone_destination"]
+    # GitHub設定のチェック
+    assert "username" in sample_config["github"]
+    assert "token" in sample_config["github"]
+    assert sample_config["github"]["username"]
+    assert sample_config["github"]["token"]
+
+    # リポジトリ設定のチェック
+    assert "base_path" in sample_config["repositories"]
+    assert sample_config["repositories"]["base_path"]
 
 
 @pytest.mark.unit
