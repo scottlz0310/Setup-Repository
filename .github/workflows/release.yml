@@ -58,7 +58,6 @@ jobs:
       - name: 📦 依存関係をインストール
         run: |
           uv sync --dev
-          # tomli-wとtomliが確実にインストールされるようにする
           uv add tomli-w tomli --dev || echo "tomli dependencies already installed"
 
       - name: 🔍 バージョン情報を抽出
@@ -184,10 +183,10 @@ jobs:
             echo "💾 変更をコミット中"
             git add .
             git commit -m "🚀 リリース v$VERSION 準備完了
-            
-- バージョン整合性を自動修正
-- CHANGELOG.mdを自動生成・更新
-- リリースノートを自動生成"
+
+          - バージョン整合性を自動修正
+          - CHANGELOG.mdを自動生成・更新
+          - リリースノートを自動生成"
             git push origin main
             CHANGES_MADE=true
             echo "✅ リリース準備完了 - 変更をコミット"
