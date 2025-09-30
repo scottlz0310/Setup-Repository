@@ -60,7 +60,6 @@ dev = [
     "setuptools>=80.9.0",
 ]
 security = [
-    "safety>=3.6.0",
     "bandit>=1.8.6",
     "pip-licenses>=5.0.0",
 ]
@@ -243,8 +242,3 @@ optional_tools = [
 ]
 allow_tool_failures = true
 fallback_mode = true
-
-[[tool.uv.index]]
-name = "safety"
-url = "https://pkgs.safetycli.com/repository/scottlz-team/project/setup-repository/pypi/simple/"
-default = false
