@@ -173,9 +173,9 @@ def sync_repositories(config: dict, dry_run: bool = False) -> SyncResult:
                 success_count += 1
                 synced_repos.append(repo_name)
 
-                # .gitignore管理（auto_push有効）
+                # .gitignore管理（環境に応じてauto_pushを自動判定）
                 gitignore_manager = GitignoreManager(repo_path)
-                gitignore_manager.setup_gitignore(dry_run, auto_push=True)
+                gitignore_manager.setup_gitignore(dry_run)
 
                 # VS Code設定適用
                 apply_vscode_template(repo_path, platform, dry_run)
