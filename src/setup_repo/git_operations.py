@@ -279,6 +279,193 @@ def _auto_pop_stash(repo_path: Path) -> bool:
         return False
 
 
+def commit_and_push_file(
+    repo_path: Path,
+    file_path: str,
+    commit_message: str,
+    auto_confirm: bool = False,
+    skip_hooks: bool = False,
+) -> bool:
+    """
+    特定のファイルをcommit & pushする
+
+    Args:
+        repo_path: リポジトリのパス
+        file_path: commitするファイルの相対パス（例: ".gitignore"）
+        commit_message: コミットメッセージ
+        auto_confirm: Trueの場合は確認なしで実行
+        skip_hooks: Trueの場合はpre-commitフックをスキップ（--no-verify）
+
+    Returns:
+        成功したらTrue、失敗またはユーザーがキャンセルしたらFalse
+    """
+    repo_path = Path(repo_path)
+
+    try:
+        # 1. リポジトリの状態確認（ファイルに変更があるか）
+        result = safe_subprocess(
+            ["git", "status", "--porcelain", file_path],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+        if not result.stdout.strip():
+            print(f"   ℹ️  {file_path} に変更がありません")
+            return True
+
+        # 2. ユーザーに確認（auto_confirmがFalseの場合）
+        if not auto_confirm:
+            print(f"\n   📤 {file_path} をcommit & pushします")
+            print(f"   コミットメッセージ: {commit_message}")
+            response = input("   実行しますか？ [Y/n]: ").strip().lower()
+            if response == "n":
+                print("   ⏭️  pushをキャンセルしました")
+                return False
+
+        # 3. git add
+        safe_subprocess(
+            ["git", "add", file_path],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+        # 4. git commit
+        commit_cmd = ["git", "commit", "-m", commit_message]
+        if skip_hooks:
+            commit_cmd.append("--no-verify")
+
+        try:
+            safe_subprocess(
+                commit_cmd,
+                cwd=repo_path,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+        except subprocess.CalledProcessError as e:
+            # 5. pre-commitフック失敗時の処理
+            if "pre-commit" in e.stderr.lower() or "hook" in e.stderr.lower():
+                print("\n   ⚠️  pre-commitフックでエラーが発生しました:")
+                print(f"   {e.stderr.strip()}")
+
+                # ファイルが自動修正されたかチェック
+                result = safe_subprocess(
+                    ["git", "status", "--porcelain", file_path],
+                    cwd=repo_path,
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
+
+                if result.stdout.strip():
+                    print("\n   🔧 ファイルが自動修正されました。再度commitします...")
+                    # 再度add & commit
+                    safe_subprocess(
+                        ["git", "add", file_path],
+                        cwd=repo_path,
+                        capture_output=True,
+                        text=True,
+                        check=True,
+                    )
+                    safe_subprocess(
+                        commit_cmd,
+                        cwd=repo_path,
+                        capture_output=True,
+                        text=True,
+                        check=True,
+                    )
+                else:
+                    # エラーで停止した場合、ユーザーに選択肢を提示
+                    print("\n   以下のオプションを選択してください:")
+                    print("   1. フックをスキップしてcommit（--no-verify）")
+                    print("   2. 手動で修正する（キャンセル）")
+                    choice = input("   選択 [1/2]: ").strip()
+
+                    if choice == "1":
+                        print("   🔧 フックをスキップしてcommitします...")
+                        safe_subprocess(
+                            ["git", "commit", "-m", commit_message, "--no-verify"],
+                            cwd=repo_path,
+                            capture_output=True,
+                            text=True,
+                            check=True,
+                        )
+                    else:
+                        print("   ⏭️  commitをキャンセルしました")
+                        # staged状態をリセット
+                        safe_subprocess(
+                            ["git", "reset", "HEAD", file_path],
+                            cwd=repo_path,
+                            capture_output=True,
+                            text=True,
+                            check=False,
+                        )
+                        return False
+            else:
+                # その他のcommitエラー
+                print(f"   ❌ commitに失敗しました: {e.stderr.strip()}")
+                return False
+
+        # 6. git push
+        print(f"   📤 {file_path} をpushしています...")
+        try:
+            safe_subprocess(
+                ["git", "push"],
+                cwd=repo_path,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            print(f"   ✅ {file_path} をpushしました")
+            return True
+        except subprocess.CalledProcessError as e:
+            # 7. Push失敗時のエラーハンドリング
+            error_msg = e.stderr.strip()
+            print("\n   ❌ pushに失敗しました:")
+            print(f"   {error_msg}")
+
+            if "no upstream" in error_msg.lower() or "set-upstream" in error_msg.lower():
+                # upstream設定が必要な場合
+                print("\n   🔧 upstreamを設定してpushを再試行します...")
+                try:
+                    # 現在のブランチ名を取得
+                    result = safe_subprocess(
+                        ["git", "branch", "--show-current"],
+                        cwd=repo_path,
+                        capture_output=True,
+                        text=True,
+                        check=True,
+                    )
+                    branch = result.stdout.strip()
+
+                    # upstream設定してpush
+                    safe_subprocess(
+                        ["git", "push", "-u", "origin", branch],
+                        cwd=repo_path,
+                        capture_output=True,
+                        text=True,
+                        check=True,
+                    )
+                    print(f"   ✅ {file_path} をpushしました")
+                    return True
+                except subprocess.CalledProcessError as e2:
+                    print(f"   ❌ 再試行も失敗しました: {e2.stderr.strip()}")
+
+            print("   ⚠️  手動で `git push` を実行してください")
+            return False
+
+    except subprocess.CalledProcessError as e:
+        print(f"   ❌ Git操作に失敗しました: {e.stderr.strip()}")
+        return False
+    except Exception as e:
+        print(f"   ❌ エラーが発生しました: {e!s}")
+        return False
+
+
 # 後方互換性のためのインスタンス作成関数
 def create_git_operations(config: dict | None = None) -> GitOperations:
     """GitOperationsインスタンスを作成"""

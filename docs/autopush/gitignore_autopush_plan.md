@@ -230,20 +230,75 @@ gitignore_manager.setup_gitignore(dry_run, auto_push=True)
 - バッチ処理オプション（全リポジトリの変更を一度にpush）
 - pushのタイミングを同期完了後にまとめる
 
-## 🚀 次のステップ
+## 🚀 実装完了
 
-1. **Phase 1の実装を開始**
-   - `git_operations.py`の実装から着手
-   - 単体テストで動作確認
+### ✅ Phase 1 & 2: 完了（2025-09-30）
 
-2. **フィードバックループ**
-   - 小さく実装して動作確認
-   - 問題があれば早期に修正
+#### 実装内容
 
-3. **段階的なロールアウト**
-   - 最初はオプトイン（明示的に有効化）
-   - 安定したらデフォルトで有効化
+1. **`git_operations.py`**: `commit_and_push_file()`関数を実装
+   - 自動commit & push機能
+   - pre-commitフック失敗時の自動リトライ
+   - upstream未設定時の自動設定
+   - 詳細なエラーハンドリング
+
+2. **`gitignore_manager.py`**: auto_push機能の統合
+   - `add_entries()`、`setup_gitignore_from_templates()`、`setup_gitignore()`にauto_push対応
+   - **自動環境検知機能**の実装
+     - pytest/unittest実行時は自動的に無効化
+     - CI環境（GitHub Actions, GitLab CI, Jenkins等）で自動的に無効化
+     - 環境変数`SETUP_REPO_AUTO_PUSH`で明示的に制御可能
+   - コンストラクタで`auto_push`パラメータを受け取り可能
+
+3. **`sync.py`**: auto_push有効化
+
+4. **テスト**: 全27テスト通過
+   - 既存テストはすべてパス
+   - 新規テスト3件追加（自動検知の動作確認）
+
+#### 環境検知の優先順位
+
+1. **最優先**: `GitignoreManager(auto_push=True/False)` - 明示的な指定
+2. **次点**: 環境変数 `SETUP_REPO_AUTO_PUSH=1/0/true/false/yes/no`
+3. **自動検知**:
+   - pytest実行中 → 無効
+   - unittest実行中 → 無効
+   - CI環境 → 無効
+4. **デフォルト**: 有効
+
+#### 使い方
+
+##### 通常の使用（自動push有効）
+```python
+manager = GitignoreManager(repo_path)
+manager.add_entries([".DS_Store", "*.log"])
+# → ユーザーに確認後、自動的にcommit & push
+```
+
+##### テスト時（自動的に無効化）
+```bash
+# pytest実行中は自動的に無効化される
+pytest tests/
+```
+
+##### 環境変数での制御
+```bash
+# 明示的に有効化（CI環境でも有効にしたい場合）
+SETUP_REPO_AUTO_PUSH=1 python -m setup_repo sync
+
+# 明示的に無効化
+SETUP_REPO_AUTO_PUSH=0 python -m setup_repo sync
+```
+
+##### プログラムでの制御
+```python
+# 常に無効化
+manager = GitignoreManager(repo_path, auto_push=False)
+
+# 常に有効化
+manager = GitignoreManager(repo_path, auto_push=True)
+```
 
 ---
 
-**実装開始の準備が整いました！まずはPhase 1から始めましょうか？**
+**Phase 1 & 2の実装が完了しました！本番環境でテストしてフィードバックをお待ちしています。**

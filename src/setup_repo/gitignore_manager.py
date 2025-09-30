@@ -8,7 +8,7 @@ from .security_helpers import safe_path_join
 class GitignoreManager:
     """Gitignore管理クラス"""
 
-    def __init__(self, repo_path: Path, templates_dir: Path = None):
+    def __init__(self, repo_path: Path, templates_dir: Path = None, auto_push: bool = None):
         self.repo_path = Path(repo_path)
         self.gitignore_path = self.repo_path / ".gitignore"
 
@@ -19,6 +19,51 @@ class GitignoreManager:
             # デフォルト: プロジェクトルートのgitignore-templatesディレクトリ
             project_root = Path(__file__).parent.parent.parent
             self.templates_dir = project_root / "gitignore-templates"
+
+        # auto_pushのデフォルト設定（テスト/CI時は自動的に無効化）
+        if auto_push is None:
+            self.auto_push_default = self._should_enable_auto_push()
+        else:
+            self.auto_push_default = auto_push
+
+    def _should_enable_auto_push(self) -> bool:
+        """
+        auto_pushを有効にすべきかを判定
+
+        以下の場合は無効化:
+        - pytestやunittestの実行中
+        - CI環境での実行中
+        - 環境変数で明示的に無効化
+        """
+        import os
+        import sys
+
+        # 環境変数で明示的に制御
+        env_value = os.environ.get("SETUP_REPO_AUTO_PUSH", "").lower()
+        if env_value in ("0", "false", "no"):
+            return False
+        if env_value in ("1", "true", "yes"):
+            return True
+
+        # pytest実行中かチェック
+        if "pytest" in sys.modules or "PYTEST_CURRENT_TEST" in os.environ:
+            return False
+
+        # unittest実行中かチェック
+        if "unittest" in sys.modules:
+            return False
+
+        # CI環境かチェック（主要なCI環境の環境変数）
+        ci_indicators = [
+            "CI",  # GitHub Actions, GitLab CI, Travis CI など
+            "CONTINUOUS_INTEGRATION",  # 汎用
+            "GITHUB_ACTIONS",  # GitHub Actions
+            "GITLAB_CI",  # GitLab CI
+            "JENKINS_HOME",  # Jenkins
+            "CIRCLECI",  # CircleCI
+            "TRAVIS",  # Travis CI
+        ]
+        return not any(os.environ.get(indicator) for indicator in ci_indicators)
 
     def ensure_gitignore_exists(self, dry_run: bool = False) -> bool:
         """.gitignoreファイルの存在確認と作成"""
@@ -44,7 +89,7 @@ class GitignoreManager:
         except OSError:
             return set()
 
-    def add_entries(self, new_entries: list[str], dry_run: bool = False) -> bool:
+    def add_entries(self, new_entries: list[str], dry_run: bool = False, auto_push: bool = None) -> bool:
         """新しいエントリを.gitignoreに追加"""
         if not new_entries:
             return True
@@ -75,11 +120,31 @@ class GitignoreManager:
 
             self.gitignore_path.write_text(existing_content, encoding="utf-8")
             print(f"   ✅ .gitignoreに追加: {', '.join(entries_to_add)}")
-            return True
+            success = True
 
         except OSError as e:
             print(f"   ❌ .gitignore更新に失敗: {e}")
-            return False
+            success = False
+
+        # 追加成功後、auto_pushが有効ならpushを試みる
+        # auto_pushがNoneの場合はインスタンスのデフォルト設定を使用
+        effective_auto_push = auto_push if auto_push is not None else self.auto_push_default
+        if success and effective_auto_push and not dry_run:
+            from .git_operations import commit_and_push_file
+
+            # ユーザーに確認
+            print("\n   📤 .gitignoreをリモートリポジトリにpushしますか？")
+            print("   これにより他の環境でも同じ設定が共有されます。")
+            response = input("   pushしますか？ [Y/n]: ").strip().lower()
+
+            if response != "n":
+                commit_msg = "chore: update .gitignore (auto-generated entries)"
+                if commit_and_push_file(self.repo_path, ".gitignore", commit_msg, auto_confirm=False):
+                    print("   ✅ .gitignoreをpushしました")
+                else:
+                    print("   ⚠️  pushに失敗しました。後で手動でpushしてください")
+
+        return success
 
     def load_template(self, template_name: str) -> str:
         """テンプレートファイルを読み込み"""
@@ -107,7 +172,11 @@ class GitignoreManager:
         return sorted(templates)
 
     def setup_gitignore_from_templates(
-        self, template_names: list[str], dry_run: bool = False, merge_mode: bool = True
+        self,
+        template_names: list[str],
+        dry_run: bool = False,
+        merge_mode: bool = True,
+        auto_push: bool = None,
     ) -> bool:
         """テンプレートから.gitignoreを作成またはマージ"""
         if dry_run:
@@ -115,15 +184,36 @@ class GitignoreManager:
             return True
 
         # 既存の.gitignoreをチェック
+        success = False
         if self.gitignore_path.exists():
             if merge_mode:
-                return self._merge_with_existing(template_names)
+                success = self._merge_with_existing(template_names)
             else:
                 print(f"   ℹ️  既存の.gitignoreが存在します: {self.gitignore_path}")
-                return True
+                success = True
+        else:
+            # 新規作成
+            success = self._create_new_gitignore(template_names)
 
-        # 新規作成
-        return self._create_new_gitignore(template_names)
+        # 成功後、auto_pushが有効ならpushを試みる
+        # auto_pushがNoneの場合はインスタンスのデフォルト設定を使用
+        effective_auto_push = auto_push if auto_push is not None else self.auto_push_default
+        if success and effective_auto_push and not dry_run:
+            from .git_operations import commit_and_push_file
+
+            # ユーザーに確認
+            print("\n   📤 .gitignoreをリモートリポジトリにpushしますか？")
+            print("   これにより他の環境でも同じ設定が共有されます。")
+            response = input("   pushしますか？ [Y/n]: ").strip().lower()
+
+            if response != "n":
+                commit_msg = "chore: update .gitignore (setup from templates)"
+                if commit_and_push_file(self.repo_path, ".gitignore", commit_msg, auto_confirm=False):
+                    print("   ✅ .gitignoreをpushしました")
+                else:
+                    print("   ⚠️  pushに失敗しました。後で手動でpushしてください")
+
+        return success
 
     def _create_new_gitignore(self, template_names: list[str]) -> bool:
         """新規.gitignore作成"""
@@ -188,7 +278,7 @@ class GitignoreManager:
             print(f"   ❌ .gitignoreマージに失敗: {e}")
             return False
 
-    def setup_gitignore(self, dry_run: bool = False, merge_mode: bool = True) -> bool:
+    def setup_gitignore(self, dry_run: bool = False, merge_mode: bool = True, auto_push: bool = None) -> bool:
         """プロジェクトタイプを自動検出して.gitignoreセットアップ"""
         from .project_detector import ProjectDetector
 
@@ -201,4 +291,4 @@ class GitignoreManager:
             print(f"   🛠️  検出されたツール: {', '.join(analysis['tools']) or 'なし'}")
             print(f"   📝 適用テンプレート: {', '.join(recommended_templates)}")
 
-        return self.setup_gitignore_from_templates(recommended_templates, dry_run, merge_mode)
+        return self.setup_gitignore_from_templates(recommended_templates, dry_run, merge_mode, auto_push)

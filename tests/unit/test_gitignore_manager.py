@@ -63,6 +63,45 @@ class TestGitignoreManager:
         assert manager.templates_dir == expected_default
 
     @pytest.mark.unit
+    def test_auto_push_disabled_in_pytest(self, temp_repo_path, temp_templates_dir):
+        """pytest実行中はauto_pushが自動的に無効化される"""
+        verify_current_platform()
+
+        # auto_pushを明示せずに初期化
+        manager = GitignoreManager(temp_repo_path, temp_templates_dir)
+
+        # pytest実行中なのでauto_pushは無効になるはず
+        assert manager.auto_push_default is False
+
+    @pytest.mark.unit
+    def test_auto_push_explicit_override(self, temp_repo_path, temp_templates_dir):
+        """明示的なauto_push指定は環境検知より優先される"""
+        verify_current_platform()
+
+        # 明示的にTrueを指定（pytest実行中でも）
+        manager = GitignoreManager(temp_repo_path, temp_templates_dir, auto_push=True)
+        assert manager.auto_push_default is True
+
+        # 明示的にFalseを指定
+        manager = GitignoreManager(temp_repo_path, temp_templates_dir, auto_push=False)
+        assert manager.auto_push_default is False
+
+    @pytest.mark.unit
+    def test_auto_push_env_var_control(self, temp_repo_path, temp_templates_dir, monkeypatch):
+        """環境変数でauto_pushを制御できる"""
+        verify_current_platform()
+
+        # 環境変数で明示的に有効化（pytest検知より優先）
+        monkeypatch.setenv("SETUP_REPO_AUTO_PUSH", "1")
+        manager = GitignoreManager(temp_repo_path, temp_templates_dir)
+        assert manager.auto_push_default is True
+
+        # 環境変数で明示的に無効化
+        monkeypatch.setenv("SETUP_REPO_AUTO_PUSH", "false")
+        manager = GitignoreManager(temp_repo_path, temp_templates_dir)
+        assert manager.auto_push_default is False
+
+    @pytest.mark.unit
     def test_ensure_gitignore_exists_when_exists(self, gitignore_manager):
         """既存.gitignoreファイルがある場合"""
         verify_current_platform()  # プラットフォーム検証
