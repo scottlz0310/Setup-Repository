@@ -705,6 +705,7 @@ def cleanup_cli(args) -> None:
 
     elif args.action == "clean":
         # ブランチクリーンナップ実行
+        result = None
         if args.merged:
             base_branch = args.base_branch or "origin/main"
             print(f"\n🧹 マージ済みブランチをクリーンナップします (ベース: {base_branch})")
@@ -720,17 +721,18 @@ def cleanup_cli(args) -> None:
             exit(1)
 
         # 結果表示
-        print("\n" + "=" * 60)
-        print("📊 クリーンナップ結果")
-        print("=" * 60)
-        print(f"削除: {result['deleted']}件")
-        print(f"失敗: {result['failed']}件")
-        print(f"スキップ: {result['skipped']}件")
+        if result is not None:
+            print("\n" + "=" * 60)
+            print("📊 クリーンナップ結果")
+            print("=" * 60)
+            print(f"削除: {result['deleted']}件")
+            print(f"失敗: {result['failed']}件")
+            print(f"スキップ: {result['skipped']}件")
 
-        if result["branches"] and not args.dry_run:
-            print("\n削除されたブランチ:")
-            for branch_name in result["branches"]:
-                print(f"   - {branch_name}")
+            if result["branches"] and not args.dry_run:
+                print("\n削除されたブランチ:")
+                for branch_name in result["branches"]:
+                    print(f"   - {branch_name}")
 
     else:
         print("エラー: 不正なアクション。list/clean のいずれかを指定してください")
