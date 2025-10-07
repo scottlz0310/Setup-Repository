@@ -15,6 +15,14 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+try:
+    from setup_repo.security_helpers import safe_subprocess
+except ImportError:  # pragma: no cover - fallback for direct script execution
+    src_path = Path.cwd() / "src"
+    if src_path.exists() and str(src_path) not in sys.path:
+        sys.path.insert(0, str(src_path))
+    from setup_repo.security_helpers import safe_subprocess
+
 
 @dataclass
 class QualityMetrics:
@@ -126,8 +134,6 @@ class QualityMonitor:
 
         try:
             # Git情報を取得（セキュアなコマンド実行）
-            from .security_helpers import safe_subprocess
-
             commit_result = safe_subprocess(
                 ["git", "rev-parse", "HEAD"], capture_output=True, text=True, cwd=self.project_root, timeout=10
             )

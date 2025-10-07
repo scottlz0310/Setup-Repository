@@ -561,11 +561,13 @@ jobs:
           # 品質メトリクス収集
           uv run python scripts/quality-monitor.py --collect-metrics || echo "品質監視システムが利用できません"
 
+          DATE_UTC="$(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+
           # 月次レポート生成
-          cat > monthly-quality-report.md << 'EOF'
+          cat > monthly-quality-report.md <<EOF
           # 📊 月次品質レビューレポート
 
-          **生成日時**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          **生成日時**: ${DATE_UTC}
           **レビュー期間**: 過去30日間
 
           ## 🎯 品質目標の達成状況
