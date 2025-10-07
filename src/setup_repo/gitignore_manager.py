@@ -132,17 +132,11 @@ class GitignoreManager:
         if success and effective_auto_push and not dry_run:
             from .git_operations import commit_and_push_file
 
-            # ユーザーに確認
-            print("\n   📤 .gitignoreをリモートリポジトリにpushしますか？")
-            print("   これにより他の環境でも同じ設定が共有されます。")
-            response = input("   pushしますか？ [Y/n]: ").strip().lower()
-
-            if response != "n":
-                commit_msg = "chore: update .gitignore (auto-generated entries)"
-                if commit_and_push_file(self.repo_path, ".gitignore", commit_msg, auto_confirm=False):
-                    print("   ✅ .gitignoreをpushしました")
-                else:
-                    print("   ⚠️  pushに失敗しました。後で手動でpushしてください")
+            commit_msg = "chore: update .gitignore (auto-generated entries)"
+            if commit_and_push_file(self.repo_path, ".gitignore", commit_msg, auto_confirm=False):
+                print("   ✅ .gitignoreをpushしました")
+            else:
+                print("   ⚠️  pushに失敗しました。後で手動でpushしてください")
 
         return success
 
@@ -201,17 +195,11 @@ class GitignoreManager:
         if success and effective_auto_push and not dry_run:
             from .git_operations import commit_and_push_file
 
-            # ユーザーに確認
-            print("\n   📤 .gitignoreをリモートリポジトリにpushしますか？")
-            print("   これにより他の環境でも同じ設定が共有されます。")
-            response = input("   pushしますか？ [Y/n]: ").strip().lower()
-
-            if response != "n":
-                commit_msg = "chore: update .gitignore (setup from templates)"
-                if commit_and_push_file(self.repo_path, ".gitignore", commit_msg, auto_confirm=False):
-                    print("   ✅ .gitignoreをpushしました")
-                else:
-                    print("   ⚠️  pushに失敗しました。後で手動でpushしてください")
+            commit_msg = "chore: update .gitignore (setup from templates)"
+            if commit_and_push_file(self.repo_path, ".gitignore", commit_msg, auto_confirm=False):
+                print("   ✅ .gitignoreをpushしました")
+            else:
+                print("   ⚠️  pushに失敗しました。後で手動でpushしてください")
 
         return success
 
