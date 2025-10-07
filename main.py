@@ -21,6 +21,7 @@ sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 from setup_repo.cli import (
     backup_cli,
+    cleanup_cli,
     deploy_cli,
     migration_cli,
     monitor_cli,
@@ -57,6 +58,9 @@ def main():
   python main.py deploy prepare      # デプロイ準備
   python main.py deploy execute      # デプロイ実行
   python main.py deploy rollback     # ロールバック
+  python main.py cleanup list        # リモートブランチ一覧
+  python main.py cleanup clean --merged  # マージ済みブランチ削除
+  python main.py cleanup clean --stale --days 90  # 90日以上更新されていないブランチ削除
         """,
     )
 
@@ -166,6 +170,18 @@ def main():
     deploy_parser.add_argument("--environment", help="デプロイ環境（デフォルト: production）")
     deploy_parser.add_argument("--deploy-id", help="ロールバック対象のデプロイID")
     deploy_parser.set_defaults(func=deploy_cli)
+
+    # cleanupサブコマンド
+    cleanup_parser = subparsers.add_parser("cleanup", help="リモートブランチクリーンナップを実行")
+    cleanup_parser.add_argument("action", choices=["list", "clean"], help="実行するアクション")
+    cleanup_parser.add_argument("--repo-path", help="リポジトリパス（デフォルト: カレントディレクトリ）")
+    cleanup_parser.add_argument("--merged", action="store_true", help="マージ済みブランチを対象")
+    cleanup_parser.add_argument("--stale", action="store_true", help="古いブランチを対象")
+    cleanup_parser.add_argument("--base-branch", help="ベースブランチ（デフォルト: origin/main）")
+    cleanup_parser.add_argument("--days", type=int, help="古いブランチの日数閾値（デフォルト: 90）")
+    cleanup_parser.add_argument("--dry-run", action="store_true", help="実行内容を表示のみ")
+    cleanup_parser.add_argument("-y", "--yes", action="store_true", help="確認なしで実行")
+    cleanup_parser.set_defaults(func=cleanup_cli)
 
     args = parser.parse_args()
 

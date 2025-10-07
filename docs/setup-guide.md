@@ -327,6 +327,91 @@ git commit --no-verify
 - **Ruff**: 包括的なチェック
 - **セキュリティ**: より厳格なセキュリティ基準
 
+## 🧹 ブランチクリーンナップ
+
+リモートブランチを整理して、リポジトリをクリーンに保つことができます。
+
+### ブランチ一覧表示
+
+```bash
+# 全リモートブランチ一覧
+uv run main.py cleanup list
+
+# マージ済みブランチ一覧
+uv run main.py cleanup list --merged
+
+# 90日以上更新されていないブランチ一覧
+uv run main.py cleanup list --stale --days 90
+
+# Makefileを使用
+make cleanup-branches-list
+```
+
+### マージ済みブランチの削除
+
+```bash
+# 削除対象を確認（dry-run）
+uv run main.py cleanup clean --merged --dry-run
+
+# 確認ありで削除
+uv run main.py cleanup clean --merged
+
+# 確認なしで削除
+uv run main.py cleanup clean --merged -y
+
+# カスタムベースブランチ指定
+uv run main.py cleanup clean --merged --base-branch origin/develop
+
+# Makefileを使用
+make cleanup-branches-merged              # dry-run
+make cleanup-branches-merged-confirm      # 実行
+```
+
+### 古いブランチの削除
+
+```bash
+# 90日以上更新されていないブランチを確認（dry-run）
+uv run main.py cleanup clean --stale --days 90 --dry-run
+
+# 確認ありで削除
+uv run main.py cleanup clean --stale --days 90
+
+# 確認なしで削除
+uv run main.py cleanup clean --stale --days 90 -y
+
+# カスタム日数指定（180日）
+uv run main.py cleanup clean --stale --days 180 -y
+
+# Makefileを使用
+make cleanup-branches-stale               # dry-run (90日)
+make cleanup-branches-stale-confirm       # 実行 (90日)
+```
+
+### 安全機能
+
+- **main/developブランチは自動除外**: ベースブランチは削除されません
+- **HEADブランチは自動除外**: 現在チェックアウトされているブランチは保護されます
+- **削除前確認**: デフォルトで確認プロンプトが表示されます
+- **dry-runモード**: 実際に削除せず、対象を確認できます
+
+### 使用例
+
+```bash
+# ワークフロー例: 安全なクリーンナップ
+
+# 1. マージ済みブランチを確認
+make cleanup-branches-merged
+
+# 2. 問題なければ削除実行
+make cleanup-branches-merged-confirm
+
+# 3. 古いブランチを確認
+make cleanup-branches-stale
+
+# 4. 問題なければ削除実行
+make cleanup-branches-stale-confirm
+```
+
 ## 📚 次のステップ
 
 セットアップ完了後：

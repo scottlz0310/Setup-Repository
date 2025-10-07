@@ -79,21 +79,58 @@ quality-gate: lint typecheck test
 	@echo "🎯 品質ゲートを実行しています..."
 	@echo "✅ 全ての品質チェックが通過しました"
 
+# 🧹 ブランチクリーンナップ
+cleanup-branches-list:
+	@echo "📋 リモートブランチ一覧を表示しています..."
+	uv run main.py cleanup list
+
+cleanup-branches-merged:
+	@echo "🧹 マージ済みブランチをクリーンナップしています..."
+	uv run main.py cleanup clean --merged --dry-run
+	@echo "⚠️  実際に削除する場合は: make cleanup-branches-merged-confirm"
+
+cleanup-branches-merged-confirm:
+	@echo "🧹 マージ済みブランチを削除しています..."
+	uv run main.py cleanup clean --merged -y
+
+cleanup-branches-stale:
+	@echo "🧹 古いブランチをクリーンナップしています（90日以上）..."
+	uv run main.py cleanup clean --stale --days 90 --dry-run
+	@echo "⚠️  実際に削除する場合は: make cleanup-branches-stale-confirm"
+
+cleanup-branches-stale-confirm:
+	@echo "🧹 古いブランチを削除しています（90日以上）..."
+	uv run main.py cleanup clean --stale --days 90 -y
+
 # ℹ️ ヘルプ
 help:
 	@echo "📋 利用可能なコマンド:"
+	@echo ""
+	@echo "🚀 開発環境:"
 	@echo "  bootstrap      - 開発環境の初期セットアップ"
 	@echo "  setup-dev      - 開発依存関係のセットアップ"
+	@echo ""
+	@echo "🔍 品質チェック:"
 	@echo "  lint          - コードリンティング"
 	@echo "  format        - コードフォーマッティング"
 	@echo "  typecheck     - 型チェック"
 	@echo "  test          - テスト実行"
 	@echo "  test-fast     - 高速テスト実行（Windows最適化）"
 	@echo "  cov           - カバレッジ測定"
-
 	@echo "  security      - セキュリティチェック"
+	@echo "  quality-gate  - 品質ゲート（統合）"
+	@echo ""
+	@echo "🧹 ブランチクリーンナップ:"
+	@echo "  cleanup-branches-list           - リモートブランチ一覧表示"
+	@echo "  cleanup-branches-merged         - マージ済みブランチ確認（dry-run）"
+	@echo "  cleanup-branches-merged-confirm - マージ済みブランチ削除（実行）"
+	@echo "  cleanup-branches-stale          - 古いブランチ確認（90日以上、dry-run）"
+	@echo "  cleanup-branches-stale-confirm  - 古いブランチ削除（90日以上、実行）"
+	@echo ""
+	@echo "🏗️ ビルド・リリース:"
 	@echo "  build         - パッケージビルド"
 	@echo "  release       - リリース"
 	@echo "  clean         - クリーンアップ"
-	@echo "  quality-gate  - 品質ゲート（統合）"
+	@echo ""
+	@echo "ℹ️  ヘルプ:"
 	@echo "  help          - このヘルプを表示"

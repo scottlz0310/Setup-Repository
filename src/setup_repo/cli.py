@@ -3,6 +3,7 @@
 from pathlib import Path
 
 from .backup_manager import BackupManager
+from .branch_cleanup import BranchCleanup
 from .config import load_config
 from .deploy_manager import DeployManager
 from .migration_manager import MigrationManager
@@ -664,3 +665,72 @@ def deploy_cli(args) -> None:
 
     else:
         print("エラー: 不正なアクション。prepare/execute/rollback/list のいずれかを指定してください")
+
+
+def cleanup_cli(args) -> None:
+    """ブランチクリーンナップコマンド"""
+    if args.repo_path:
+        try:
+            repo_path = safe_path_join(Path.cwd(), args.repo_path)
+        except ValueError as e:
+            raise ValueError(f"不正なリポジトリパス: {e}") from e
+    else:
+        repo_path = Path.cwd()
+
+    if not (repo_path / ".git").exists():
+        print("エラー: Gitリポジトリではありません")
+        exit(1)
+
+    cleanup = BranchCleanup(repo_path)
+
+    if args.action == "list":
+        # ブランチ一覧表示
+        if args.merged:
+            base_branch = args.base_branch or "origin/main"
+            merged_branches = cleanup.list_merged_branches(base_branch)
+            print(f"\n📋 マージ済みブランチ ({base_branch}): {len(merged_branches)}件")
+            for branch in merged_branches:
+                print(f"   - {branch}")
+        elif args.stale:
+            days = args.days or 90
+            stale_branches = cleanup.list_stale_branches(days)
+            print(f"\n📋 {days}日以上更新されていないブランチ: {len(stale_branches)}件")
+            for stale_branch in stale_branches:
+                print(f"   - {stale_branch['name']} (最終更新: {stale_branch['last_commit_date'][:10]})")
+        else:
+            all_branches = cleanup.list_remote_branches()
+            print(f"\n📋 リモートブランチ: {len(all_branches)}件")
+            for remote_branch in all_branches:
+                print(f"   - {remote_branch['name']} (最終更新: {remote_branch['last_commit_date'][:10]})")
+
+    elif args.action == "clean":
+        # ブランチクリーンナップ実行
+        if args.merged:
+            base_branch = args.base_branch or "origin/main"
+            print(f"\n🧹 マージ済みブランチをクリーンナップします (ベース: {base_branch})")
+            result = cleanup.cleanup_merged_branches(
+                base_branch=base_branch, dry_run=args.dry_run, auto_confirm=args.yes
+            )
+        elif args.stale:
+            days = args.days or 90
+            print(f"\n🧹 {days}日以上更新されていないブランチをクリーンナップします")
+            result = cleanup.cleanup_stale_branches(days=days, dry_run=args.dry_run, auto_confirm=args.yes)
+        else:
+            print("エラー: --merged または --stale を指定してください")
+            exit(1)
+
+        # 結果表示
+        print("\n" + "=" * 60)
+        print("📊 クリーンナップ結果")
+        print("=" * 60)
+        print(f"削除: {result['deleted']}件")
+        print(f"失敗: {result['failed']}件")
+        print(f"スキップ: {result['skipped']}件")
+
+        if result["branches"] and not args.dry_run:
+            print("\n削除されたブランチ:")
+            for branch_name in result["branches"]:
+                print(f"   - {branch_name}")
+
+    else:
+        print("エラー: 不正なアクション。list/clean のいずれかを指定してください")
