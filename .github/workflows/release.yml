@@ -121,6 +121,7 @@ jobs:
       - name: 📥 リポジトリをチェックアウト
         uses: actions/checkout@v4
         with:
+          ref: main
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
