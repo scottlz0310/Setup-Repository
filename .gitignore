@@ -79,6 +79,7 @@ output/
 !.vscode/
 !.vscode/**
 .gitignore.backup
+.safety-project.ini
 
 # Windows paths (invalid)
 C:\*
