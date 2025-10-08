@@ -331,6 +331,17 @@ git commit --no-verify
 
 リモートブランチを整理して、リポジトリをクリーンに保つことができます。
 
+### ⚠️ 重要: 事前準備
+
+ブランチクリーンナップを実行する前に、必ずリモートの状態を同期してください：
+
+```bash
+# リモートに存在しないブランチのローカル追跡情報を削除
+git fetch --prune
+```
+
+これを実行しないと、既に削除されたリモートブランチが表示され、削除失敗エラーが発生します。
+
 ### ブランチ一覧表示
 
 ```bash
@@ -394,10 +405,13 @@ make cleanup-branches-stale-confirm       # 実行 (90日)
 - **削除前確認**: デフォルトで確認プロンプトが表示されます
 - **dry-runモード**: 実際に削除せず、対象を確認できます
 
-### 使用例
+### 推奨ワークフロー
 
 ```bash
-# ワークフロー例: 安全なクリーンナップ
+# 安全なクリーンナップ手順
+
+# 0. リモート状態を同期（必須）
+git fetch --prune
 
 # 1. マージ済みブランチを確認
 make cleanup-branches-merged
@@ -410,6 +424,20 @@ make cleanup-branches-stale
 
 # 4. 問題なければ削除実行
 make cleanup-branches-stale-confirm
+```
+
+### トラブルシューティング
+
+**Q: 「remote ref does not exist」エラーが発生する**
+
+ローカルのリモート追跡ブランチが古い可能性があります。以下を実行してください：
+
+```bash
+# リモート状態を同期
+git fetch --prune
+
+# 再度クリーンナップを試行
+uv run main.py cleanup clean --merged
 ```
 
 ## 📚 次のステップ
