@@ -29,6 +29,20 @@ winget install astral-sh.uv
 
 ## 🏃‍♂️ クイックスタート
 
+### 方法1: グローバルツールとしてインストール（推奨）
+
+```bash
+# インストール
+uv tool install git+https://github.com/scottlz0310/Setup-Repository.git
+
+# 任意のリポジトリで使用可能
+cd /path/to/any/repository
+setup-repo cleanup list --merged
+setup-repo cleanup clean --merged --dry-run
+```
+
+### 方法2: ローカル開発
+
 1. **初期セットアップ**
    ```bash
    uv run main.py setup
@@ -157,6 +171,7 @@ uv run python scripts/setup-pre-commit.py
 ## 📚 ドキュメント
 
 - [🚀 詳細セットアップガイド](docs/setup-guide.md)
+- [🌍 グローバルツールインストール](docs/global-tool-installation.md)
 - [🔧 トラブルシューティング](docs/setup-guide.md#🔍-トラブルシューティング)
 - [📊 カバレッジレポート](htmlcov/index.html)
 
@@ -329,7 +344,12 @@ git fetch --prune
 ### ブランチ一覧表示
 
 ```bash
-# 全リモートブランチ一覧
+# グローバルツールとしてインストール済みの場合
+setup-repo cleanup list
+setup-repo cleanup list --merged
+setup-repo cleanup list --stale --days 90
+
+# ローカル開発の場合
 uv run main.py cleanup list
 make cleanup-branches-list
 
@@ -343,25 +363,29 @@ uv run main.py cleanup list --stale --days 90
 ### マージ済みブランチの削除
 
 ```bash
-# 削除対象を確認（dry-run）
+# グローバルツール（任意のリポジトリで使用可能）
+cd /path/to/any/repository
+git fetch --prune
+setup-repo cleanup clean --merged --dry-run  # 確認
+setup-repo cleanup clean --merged -y         # 実行
+
+# ローカル開発
 uv run main.py cleanup clean --merged --dry-run
 make cleanup-branches-merged
-
-# 確認なしで削除
-uv run main.py cleanup clean --merged -y
-make cleanup-branches-merged-confirm
 ```
 
 ### 古いブランチの削除
 
 ```bash
-# 90日以上更新されていないブランチを確認（dry-run）
+# グローバルツール
+cd /path/to/any/repository
+git fetch --prune
+setup-repo cleanup clean --stale --days 90 --dry-run  # 確認
+setup-repo cleanup clean --stale --days 90 -y         # 実行
+
+# ローカル開発
 uv run main.py cleanup clean --stale --days 90 --dry-run
 make cleanup-branches-stale
-
-# 確認なしで削除
-uv run main.py cleanup clean --stale --days 90 -y
-make cleanup-branches-stale-confirm
 ```
 
 詳細は [docs/setup-guide.md#ブランチクリーンナップ](docs/setup-guide.md#🧹-ブランチクリーンナップ) を参照してください。
