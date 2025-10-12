@@ -234,24 +234,45 @@ git commit --no-verify
 
 ### テスト実行
 
+#### 推奨環境別の実行方法
+
+**Linux/macOS/WSL（並列実行 - 推奨）:**
 ```bash
-# 全テスト実行
+# 高速並列テスト実行
+make test-parallel
+# または
+uv run pytest -n auto
+
+# カバレッジ付き並列実行
+uv run pytest -n auto --cov=src/setup_repo --cov-report=html
+```
+
+**Windows（直列実行）:**
+```bash
+# Windowsネイティブでの実行
+make test
+# または
 uv run pytest
 
+# WSL経由での並列実行（推奨）
+wsl make test-parallel
+```
+
+**全環境共通:**
+```bash
 # 単体テストのみ実行
 uv run pytest tests/unit/ -v
 
 # 統合テストのみ実行
 uv run pytest tests/integration/ -v
 
-# カバレッジ付きテスト実行
-uv run pytest --cov=src/setup_repo --cov-report=html
-
 # 特定のマーカーでテスト実行
 uv run pytest -m unit
 uv run pytest -m integration
 uv run pytest -m "not slow"
 ```
+
+> **注意**: Windows環境では並列実行（`pytest-xdist`）に既知の問題があります。WSL環境での実行を推奨します。
 
 ### コード品質チェック
 

@@ -37,7 +37,13 @@ typecheck:
 # 🧪 テスト実行
 test:
 	@echo "🧪 テストを実行しています..."
+	@echo "⚠️  Windows環境ではWSL使用を推奨: wsl make test-parallel"
 	uv run pytest -q
+
+# ⚡ 並列テスト実行（Linux/macOS/WSL推奨）
+test-parallel:
+	@echo "⚡ 並列テストを実行しています..."
+	uv run pytest -n auto -q
 
 # ⚡ 高速テスト実行（Windows最適化）
 test-fast:

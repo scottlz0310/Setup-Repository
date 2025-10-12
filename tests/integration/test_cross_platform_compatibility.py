@@ -1,8 +1,6 @@
 """クロスプラットフォーム互換性統合テスト."""
 
 import platform
-import shutil
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -10,18 +8,21 @@ import pytest
 from ..multiplatform.helpers import verify_current_platform
 
 
+@pytest.fixture
+def temp_test_dir(tmp_path):
+    """テスト用の一時ディレクトリを提供するfixture."""
+    return tmp_path
+
+
+@pytest.fixture
+def platform_info():
+    """プラットフォーム情報を提供するfixture."""
+    return verify_current_platform()
+
+
+@pytest.mark.xdist_group(name="cross_platform")
 class TestCrossPlatformCompatibility:
     """クロスプラットフォーム互換性統合テストクラス."""
-
-    def setup_method(self):
-        """テストメソッドの前処理."""
-        self.platform_info = verify_current_platform()
-        self.temp_dir = Path(tempfile.mkdtemp())
-
-    def teardown_method(self):
-        """テストメソッドの後処理."""
-        if self.temp_dir.exists():
-            shutil.rmtree(self.temp_dir)
 
     @pytest.mark.integration
     def test_file_path_handling_across_platforms(self):
@@ -125,10 +126,10 @@ class TestCrossPlatformCompatibility:
             assert copy_cmd == "cp"
 
     @pytest.mark.integration
-    def test_file_permissions_handling(self):
+    def test_file_permissions_handling(self, temp_test_dir):
         """ファイル権限処理のクロスプラットフォームテスト."""
         # テストファイル作成
-        test_file = self.temp_dir / "test_permissions.txt"
+        test_file = temp_test_dir / "test_permissions.txt"
         test_file.write_text("test content")
 
         # プラットフォーム固有の権限処理
@@ -165,11 +166,12 @@ class TestCrossPlatformCompatibility:
         # プロセス管理関数
         def get_process_info():
             import os
+            import sys
 
             process_info = {
                 "pid": os.getpid(),
                 "platform": platform.system(),
-                "python_executable": Path(sys.executable).name if "sys" in globals() else "python",
+                "python_executable": Path(sys.executable).name,
             }
 
             # プラットフォーム固有の情報追加
@@ -183,8 +185,6 @@ class TestCrossPlatformCompatibility:
             return process_info
 
         # プロセス情報取得テスト
-        import sys
-
         process_info = get_process_info()
 
         # プロセス情報の検証
@@ -198,6 +198,8 @@ class TestCrossPlatformCompatibility:
 
         # プラットフォーム固有の設定生成
         def generate_platform_config():
+            import tempfile
+
             config = {
                 "platform": platform.system(),
                 "python_version": platform.python_version(),
@@ -445,7 +447,7 @@ class TestCrossPlatformCompatibility:
         assert features["dns_resolution"] is True
 
     @pytest.mark.integration
-    def test_comprehensive_platform_compatibility(self):
+    def test_comprehensive_platform_compatibility(self, temp_test_dir):
         """包括的なプラットフォーム互換性テスト."""
 
         # 包括的互換性チェック
@@ -462,7 +464,7 @@ class TestCrossPlatformCompatibility:
             # 各機能の詳細チェック
             try:
                 # ファイルシステムチェック
-                test_file = self.temp_dir / "compatibility_test.txt"
+                test_file = temp_test_dir / "compatibility_test.txt"
                 test_file.write_text("test")
                 test_file.unlink()
             except Exception as e:
