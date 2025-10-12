@@ -251,6 +251,100 @@ class TestSyncRepositories:
         assert len(result.errors) == 2  # 2つのエラーが記録される
 
     @pytest.mark.unit
+    def test_sync_repositories_archived_repos_skipped(self, mock_config):
+        """アーカイブされたリポジトリがスキップされるテスト"""
+        verify_current_platform()  # プラットフォーム検証
+
+        # アーカイブされたリポジトリと通常のリポジトリを混在
+        mixed_repos = [
+            {
+                "name": "active_repo",
+                "clone_url": "https://github.com/test_user/active_repo.git",
+                "ssh_url": "git@github.com:test_user/active_repo.git",
+                "archived": False,
+            },
+            {
+                "name": "archived_repo1",
+                "clone_url": "https://github.com/test_user/archived_repo1.git",
+                "ssh_url": "git@github.com:test_user/archived_repo1.git",
+                "archived": True,
+            },
+            {
+                "name": "another_active_repo",
+                "clone_url": "https://github.com/test_user/another_active_repo.git",
+                "ssh_url": "git@github.com:test_user/another_active_repo.git",
+                # archivedフィールドなし（デフォルトFalse）
+            },
+            {
+                "name": "archived_repo2",
+                "clone_url": "https://github.com/test_user/archived_repo2.git",
+                "ssh_url": "git@github.com:test_user/archived_repo2.git",
+                "archived": True,
+            },
+        ]
+
+        # ドライランモードでテスト
+        mock_config["dry_run"] = True
+
+        # 外部サービス（GitHub API、外部ツール）のみモック
+        with (
+            patch("src.setup_repo.sync.get_repositories", return_value=mixed_repos),
+            patch("src.setup_repo.sync.ensure_uv"),  # 外部ツールインストール
+        ):
+            result = sync_repositories(mock_config)
+
+        # アーカイブされたリポジトリはスキップされ、アクティブなリポジトリのみ同期される
+        assert result.success is True
+        assert len(result.synced_repos) == 2  # active_repoとanother_active_repoのみ
+        assert "active_repo" in result.synced_repos
+        assert "another_active_repo" in result.synced_repos
+        assert "archived_repo1" not in result.synced_repos
+        assert "archived_repo2" not in result.synced_repos
+        assert len(result.errors) == 0
+
+    @pytest.mark.unit
+    def test_sync_repositories_all_archived_repos(self, mock_config):
+        """全てのリポジトリがアーカイブされている場合のテスト"""
+        verify_current_platform()  # プラットフォーム検証
+
+        # 全てアーカイブされたリポジトリ
+        all_archived_repos = [
+            {
+                "name": "old_project1",
+                "clone_url": "https://github.com/test_user/old_project1.git",
+                "ssh_url": "git@github.com:test_user/old_project1.git",
+                "archived": True,
+            },
+            {
+                "name": "old_project2",
+                "clone_url": "https://github.com/test_user/old_project2.git",
+                "ssh_url": "git@github.com:test_user/old_project2.git",
+                "archived": True,
+            },
+            {
+                "name": "old_project3",
+                "clone_url": "https://github.com/test_user/old_project3.git",
+                "ssh_url": "git@github.com:test_user/old_project3.git",
+                "archived": True,
+            },
+        ]
+
+        # ドライランモードでテスト
+        mock_config["dry_run"] = True
+
+        # 外部サービス（GitHub API、外部ツール）のみモック
+        with (
+            patch("src.setup_repo.sync.get_repositories", return_value=all_archived_repos),
+            patch("src.setup_repo.sync.ensure_uv"),  # 外部ツールインストール
+        ):
+            result = sync_repositories(mock_config)
+
+        # 全てスキップされるため、同期されたリポジトリは0個
+        assert result.success is True
+        assert len(result.synced_repos) == 0
+        assert len(result.errors) == 0
+
+    @pytest.mark.unit
     def test_sync_repositories_lock_acquisition_failure(self, mock_config):
         """ロック取得失敗の場合（プロセスロックのみモック）"""
         verify_current_platform()  # プラットフォーム検証
@@ -369,3 +463,61 @@ class TestSyncIntegration:
         result = sync_repositories(partial_config)
         # dest がデフォルト値で補完されるため、他の処理に進む
         assert isinstance(result, SyncResult)
+
+    @pytest.mark.unit
+    def test_archived_repo_edge_cases(self, temp_dir):
+        """アーカイブリポジトリのエッジケーステスト"""
+        verify_current_platform()  # プラットフォーム検証
+
+        # モック設定を作成
+        mock_config = {
+            "owner": "test_user",
+            "dest": str(temp_dir / "repos"),
+            "github_token": "test_token",
+            "dry_run": True,
+            "force": False,
+        }
+
+        # archivedフィールドの様々なパターン
+        edge_case_repos = [
+            {
+                "name": "repo_no_archived_field",
+                "clone_url": "https://github.com/test_user/repo_no_archived_field.git",
+                "ssh_url": "git@github.com:test_user/repo_no_archived_field.git",
+                # archivedフィールドなし（デフォルトFalseとして処理）
+            },
+            {
+                "name": "repo_archived_false",
+                "clone_url": "https://github.com/test_user/repo_archived_false.git",
+                "ssh_url": "git@github.com:test_user/repo_archived_false.git",
+                "archived": False,
+            },
+            {
+                "name": "repo_archived_true",
+                "clone_url": "https://github.com/test_user/repo_archived_true.git",
+                "ssh_url": "git@github.com:test_user/repo_archived_true.git",
+                "archived": True,
+            },
+            {
+                "name": "repo_archived_none",
+                "clone_url": "https://github.com/test_user/repo_archived_none.git",
+                "ssh_url": "git@github.com:test_user/repo_archived_none.git",
+                "archived": None,  # Noneの場合はFalseとして処理
+            },
+        ]
+
+        # 外部サービス（GitHub API、外部ツール）のみモック
+        with (
+            patch("src.setup_repo.sync.get_repositories", return_value=edge_case_repos),
+            patch("src.setup_repo.sync.ensure_uv"),  # 外部ツールインストール
+        ):
+            result = sync_repositories(mock_config)
+
+        # archived=Trueのリポジトリのみスキップされる
+        assert result.success is True
+        assert len(result.synced_repos) == 3  # archived=True以外の3個
+        assert "repo_no_archived_field" in result.synced_repos
+        assert "repo_archived_false" in result.synced_repos
+        assert "repo_archived_none" in result.synced_repos
+        assert "repo_archived_true" not in result.synced_repos
+        assert len(result.errors) == 0

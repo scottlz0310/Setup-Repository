@@ -129,6 +129,11 @@ def sync_repositories(config: dict, dry_run: bool = False) -> SyncResult:
             errors.append(ValueError(f"不正なリポジトリ名: {repo_name}"))
             continue
 
+        # アーカイブされたリポジトリをスキップ
+        if repo.get("archived", False):
+            print(f"   [SKIP] {repo_name}: アーカイブ済みリポジトリ")
+            continue
+
         # 必須フィールドの検証
         if not repo.get("clone_url") and not repo.get("ssh_url"):
             print(f"   [WARN] {repo_name}: クローンURLが見つかりません")
