@@ -143,7 +143,7 @@ python_classes = [
 python_functions = [
     "test_*",
 ]
-addopts = "-v --tb=short --disable-warnings"
+addopts = "-v --tb=short --disable-warnings -n auto"
 markers = [
     "unit: 単体テスト",
     "integration: 統合テスト",

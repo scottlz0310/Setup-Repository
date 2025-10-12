@@ -216,20 +216,12 @@ class TestSyncRepositories:
             patch("src.setup_repo.sync.check_unpushed_changes", return_value=(True, ["未コミットの変更があります"])),
             patch("src.setup_repo.sync.prompt_user_action", return_value="q"),  # 終了を選択
             patch("src.setup_repo.sync.ensure_uv"),  # 外部ツールインストール
-            patch("sys.exit"),  # システム終了
+            patch("sys.exit", side_effect=SystemExit(1)),  # SystemExitを発生させる
+            pytest.raises(SystemExit),  # sys.exitが呼ばれてSystemExitが発生することを確認
         ):
-            # sys.exitが呼ばれる場合はSystemExitが発生する
-            try:
-                result = sync_repositories(mock_config)
-                # exitが呼ばれなかった場合は、実際の結果を検証
-                assert isinstance(result, SyncResult)
-            except SystemExit:
-                # sys.exitが呼ばれた場合は正常な動作
-                pass
+            sync_repositories(mock_config)
 
         # テストが正常に完了したことを確認
-        # 実際の処理では、エラーが発生してディレクトリが削除される場合がある
-        # 重要なのは、安全性チェック機能が動作したことを確認すること
         assert test_dest.exists()  # 親ディレクトリは存在する
 
     @pytest.mark.unit
