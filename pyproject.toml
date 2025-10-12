@@ -143,7 +143,7 @@ python_classes = [
 python_functions = [
     "test_*",
 ]
-addopts = "-v --tb=short --disable-warnings -p xdist -p pytest_cov -p pytest_jsonreport -p timeout -n auto --dist=worksteal --junit-xml=output/test-results.xml --json-report --json-report-file=output/test-report.json --cov=src/setup_repo --cov-report=term-missing --cov-report=html:output/htmlcov --timeout=120"
+addopts = "-v --tb=short --disable-warnings"
 markers = [
     "unit: 単体テスト",
     "integration: 統合テスト",

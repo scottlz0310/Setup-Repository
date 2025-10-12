@@ -22,8 +22,18 @@ from .template_manager import TemplateManager
 if os.name == "nt":
     import codecs
 
-    sys.stdout = codecs.getwriter("utf-8")(sys.stdout.detach())  # type: ignore[union-attr]
-    sys.stderr = codecs.getwriter("utf-8")(sys.stderr.detach())  # type: ignore[union-attr]
+    # 既にdetachされている場合はスキップ
+    try:
+        if hasattr(sys.stdout, "detach"):
+            sys.stdout = codecs.getwriter("utf-8")(sys.stdout.detach())  # type: ignore[union-attr]
+    except (AttributeError, OSError):
+        pass  # 既にdetachされているか、利用できない場合はスキップ
+
+    try:
+        if hasattr(sys.stderr, "detach"):
+            sys.stderr = codecs.getwriter("utf-8")(sys.stderr.detach())  # type: ignore[union-attr]
+    except (AttributeError, OSError):
+        pass  # 既にdetachされているか、利用できない場合はスキップ
 
 
 def setup_cli(args) -> None:
