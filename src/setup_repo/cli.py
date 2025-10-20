@@ -1,6 +1,7 @@
 """CLI コマンドハンドラー"""
 
 import argparse
+import builtins
 import os
 import sys
 from pathlib import Path
@@ -17,6 +18,9 @@ from .security_helpers import safe_path_join
 from .setup import run_interactive_setup
 from .sync import sync_repositories
 from .template_manager import TemplateManager
+
+_original_print = builtins.print
+builtins.print = lambda *args, **kwargs: _original_print(*args, **{**kwargs, "flush": True})
 
 # Windows環境でのUnicodeエンコーディング問題を修正
 if os.name == "nt":
