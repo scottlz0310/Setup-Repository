@@ -225,16 +225,19 @@ def _ensure_github_host_key() -> bool:
         ssh_dir.mkdir(mode=0o700, exist_ok=True)
 
     try:
-        # ssh-keyscanでGitHubのホストキーを取得（-tオプションなしで全タイプ取得）
+        # ssh-keyscanでGitHubのホストキーを取得（stderrは無視）
         result = safe_subprocess(
             ["ssh-keyscan", "github.com"],
             capture_output=True,
             text=True,
-            check=True,
+            check=False,
             timeout=10,
         )
 
+        # stdoutにホストキーが取得できたか確認
         if not result.stdout.strip():
+            print("   ⚠️  ホストキーの取得に失敗しました")
+            print("   💡 手動で追加: ssh-keyscan github.com >> ~/.ssh/known_hosts")
             return False
 
         # 既存のknown_hostsからgithub.comのエントリを削除
@@ -252,7 +255,7 @@ def _ensure_github_host_key() -> bool:
         print("   🔑 GitHubのホストキーを更新しました")
         return True
 
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError) as e:
+    except (subprocess.TimeoutExpired, FileNotFoundError) as e:
         print(f"   ⚠️  ホストキーの自動追加に失敗: {e}")
         print("   💡 手動で追加: ssh-keyscan github.com >> ~/.ssh/known_hosts")
     return False
