@@ -184,12 +184,12 @@ jobs:
         $env:PLATFORM_SPECIFIC_TESTS = "true"
         $env:PRE_COMMIT = "1"
         $env:PYTHONUNBUFFERED = "1"
+        $env:PYTEST_RUNNING = "1"  # pytestの実行中であることを示す
 
         # テストを直列実行（並列実行なし）
         Write-Host "Running tests in serial mode (no parallel execution)" -ForegroundColor Cyan
 
         & uv run pytest tests/ `
-          --capture=no `
           --cov=src/setup_repo `
           --cov-report=term-missing `
           --cov-report=html `

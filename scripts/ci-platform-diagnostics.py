@@ -17,17 +17,24 @@ os.environ["PYTHONIOENCODING"] = "utf-8"
 # Windows環境での標準出力エンコーディング修正
 if sys.platform == "win32":
     try:
-        # Python 3.7以降のWindows環境でUTF-8モードを有効化
-        import codecs
-
-        # 標準出力・標準エラー出力をUTF-8に設定
-        if hasattr(sys.stdout, "reconfigure"):
-            sys.stdout.reconfigure(encoding="utf-8")
-            sys.stderr.reconfigure(encoding="utf-8")
+        # pytest実行中は標準出力のdetachをスキップ
+        if os.environ.get("PYTEST_RUNNING") == "1":
+            # pytestとの競合を避けるため、reconfigureのみ使用
+            if hasattr(sys.stdout, "reconfigure"):
+                sys.stdout.reconfigure(encoding="utf-8")
+                sys.stderr.reconfigure(encoding="utf-8")
         else:
-            # 古いPythonバージョン用のフォールバック
-            sys.stdout = codecs.getwriter("utf-8")(sys.stdout.detach())
-            sys.stderr = codecs.getwriter("utf-8")(sys.stderr.detach())
+            # Python 3.7以降のWindows環境でUTF-8モードを有効化
+            import codecs
+
+            # 標準出力・標準エラー出力をUTF-8に設定
+            if hasattr(sys.stdout, "reconfigure"):
+                sys.stdout.reconfigure(encoding="utf-8")
+                sys.stderr.reconfigure(encoding="utf-8")
+            else:
+                # 古いPythonバージョン用のフォールバック
+                sys.stdout = codecs.getwriter("utf-8")(sys.stdout.detach())
+                sys.stderr = codecs.getwriter("utf-8")(sys.stderr.detach())
     except Exception:
         # エンコーディング設定に失敗した場合は継続
         pass

@@ -9,8 +9,9 @@ import os
 import sys
 from pathlib import Path
 
-# Windows環境でのUnicodeエンコーディング問題を修正
-if os.name == "nt":
+# Windows環境でのUnicodeEncodeError対策
+# pytest実行中は標準出力のdetachをスキップ
+if sys.platform == "win32" and os.environ.get("PYTEST_RUNNING") != "1":
     import codecs
 
     sys.stdout = codecs.getwriter("utf-8")(sys.stdout.detach())
