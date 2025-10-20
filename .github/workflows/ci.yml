@@ -189,7 +189,7 @@ jobs:
         Write-Host "Running tests in serial mode (no parallel execution)" -ForegroundColor Cyan
 
         & uv run pytest tests/ `
-          --capture=sys `
+          --capture=no `
           --cov=src/setup_repo `
           --cov-report=term-missing `
           --cov-report=html `
