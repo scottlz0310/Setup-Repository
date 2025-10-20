@@ -328,6 +328,34 @@ def _add_github_host_key_directly(known_hosts: Path) -> bool:
 _host_key_setup_attempted = False
 
 
+def _verify_ssh_connection() -> tuple[bool, str]:
+    """SSH接続を検証
+
+    Returns:
+        (成功したかどうか, エラーメッセージ)
+    """
+    try:
+        result = safe_subprocess(
+            ["ssh", "-T", "git@github.com"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=10,
+        )
+
+        # GitHub SSHは常にexit code 1を返すが、成功メッセージが含まれる
+        if "successfully authenticated" in result.stderr.lower():
+            return True, ""
+
+        # エラーメッセージを返す
+        return False, result.stderr.strip()
+
+    except subprocess.TimeoutExpired:
+        return False, "SSH接続がタイムアウトしました"
+    except Exception as e:
+        return False, str(e)
+
+
 def _clone_repository(repo_name: str, repo_url: str, repo_path: Path, dry_run: bool) -> bool:
     """新規リポジトリをクローン"""
     global _host_key_setup_attempted
@@ -340,10 +368,26 @@ def _clone_repository(repo_name: str, repo_url: str, repo_path: Path, dry_run: b
     # SSH接続の場合、ホストキーを事前に追加（初回のみ）
     if repo_url.startswith("git@github.com") and not _host_key_setup_attempted:
         _host_key_setup_attempted = True
-        host_key_added = _ensure_github_host_key()
 
+        # ホストキーを追加
+        host_key_added = _ensure_github_host_key()
         if not host_key_added:
             print("   ⚠️  ホストキー追加に失敗しましたが、クローンを試行します")
+
+        # SSH接続を検証
+        print("   🔍 SSH接続を検証中...")
+        ssh_ok, ssh_error = _verify_ssh_connection()
+
+        if not ssh_ok:
+            print(f"   ❌ SSH接続検証失敗: {ssh_error}")
+            print("\n   💡 SSH接続のトラブルシューティング:")
+            print("      1. SSH agentが起動しているか確認: ssh-add -l")
+            print("      2. SSH鍵を追加: ssh-add ~/.ssh/id_ed25519")
+            print("      3. SSH接続をテスト: ssh -T git@github.com")
+            print("      4. known_hostsを確認: cat ~/.ssh/known_hosts | grep github")
+            return False
+
+        print("   ✅ SSH接続検証成功")
 
     try:
         safe_subprocess(
@@ -357,14 +401,6 @@ def _clone_repository(repo_name: str, repo_url: str, repo_path: Path, dry_run: b
     except subprocess.CalledProcessError as e:
         error_msg = e.stderr.strip()
         print(f"   ❌ {repo_name}: クローン失敗 - {error_msg}")
-
-        # SSH接続でホストキー検証に失敗した場合の追加ガイダンス
-        if "host key verification failed" in error_msg.lower():
-            print("\n   💡 SSH接続のトラブルシューティング:")
-            print("      1. HTTPSを使用: setup-repo sync --https")
-            print("      2. 手動でホストキーを追加: ssh-keyscan github.com >> ~/.ssh/known_hosts")
-            print("      3. SSH接続をテスト: ssh -T git@github.com")
-
         return False
 
 
