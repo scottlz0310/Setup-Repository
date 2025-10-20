@@ -211,8 +211,12 @@ def _update_repository(repo_name: str, repo_path: Path, config: dict) -> bool:
         return False
 
 
-def _ensure_github_host_key() -> None:
-    """GitHubのホストキーをknown_hostsに追加"""
+def _ensure_github_host_key() -> bool:
+    """GitHubのホストキーをknown_hostsに追加
+
+    Returns:
+        成功した場合True、失敗または不要な場合False
+    """
     ssh_dir = Path.home() / ".ssh"
     known_hosts = ssh_dir / "known_hosts"
 
@@ -220,21 +224,28 @@ def _ensure_github_host_key() -> None:
     if not ssh_dir.exists():
         ssh_dir.mkdir(mode=0o700, exist_ok=True)
 
-    # known_hostsが存在しない、またはgithub.comのエントリがない場合
-    if not known_hosts.exists() or "github.com" not in known_hosts.read_text(errors="ignore"):
-        try:
-            # ssh-keyscanでGitHubのホストキーを取得して追加
-            result = safe_subprocess(
-                ["ssh-keyscan", "-H", "github.com"],
-                capture_output=True,
-                text=True,
-                check=True,
-                timeout=10,
-            )
+    # 既にgithub.comが登録済みの場合はスキップ
+    if known_hosts.exists() and "github.com" in known_hosts.read_text(errors="ignore"):
+        return False
+
+    try:
+        # ssh-keyscanでGitHubのホストキーを取得して追加
+        result = safe_subprocess(
+            ["ssh-keyscan", "-H", "github.com"],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=10,
+        )
+        if result.stdout.strip():
             with known_hosts.open("a") as f:
                 f.write(result.stdout)
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
-            pass  # 失敗しても続行
+            print("   🔑 GitHubのホストキーをknown_hostsに追加しました")
+            return True
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError) as e:
+        print(f"   ⚠️  ホストキーの自動追加に失敗: {e}")
+        print("   💡 手動で追加するには: ssh-keyscan -H github.com >> ~/.ssh/known_hosts")
+    return False
 
 
 def _clone_repository(repo_name: str, repo_url: str, repo_path: Path, dry_run: bool) -> bool:
