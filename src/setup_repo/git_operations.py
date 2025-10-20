@@ -225,9 +225,9 @@ def _ensure_github_host_key() -> bool:
         ssh_dir.mkdir(mode=0o700, exist_ok=True)
 
     try:
-        # ssh-keyscanでGitHubのホストキーを取得
+        # ssh-keyscanでGitHubのホストキーを取得（-tオプションなしで全タイプ取得）
         result = safe_subprocess(
-            ["ssh-keyscan", "-t", "rsa,ecdsa,ed25519", "github.com"],
+            ["ssh-keyscan", "github.com"],
             capture_output=True,
             text=True,
             check=True,
@@ -254,7 +254,7 @@ def _ensure_github_host_key() -> bool:
 
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError) as e:
         print(f"   ⚠️  ホストキーの自動追加に失敗: {e}")
-        print("   💡 手動で追加: ssh-keyscan -t rsa,ecdsa,ed25519 github.com >> ~/.ssh/known_hosts")
+        print("   💡 手動で追加: ssh-keyscan github.com >> ~/.ssh/known_hosts")
     return False
 
 
