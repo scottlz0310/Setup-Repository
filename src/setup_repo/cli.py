@@ -35,6 +35,15 @@ if os.name == "nt":
     except (AttributeError, OSError):
         pass  # 既にdetachされているか、利用できない場合はスキップ
 
+# 出力バッファリング無効化（全プラットフォーム）
+try:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(line_buffering=True)  # type: ignore[attr-defined]
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(line_buffering=True)  # type: ignore[attr-defined]
+except (AttributeError, OSError):
+    pass  # Python 3.7以前またはreconfigureが利用できない場合はスキップ
+
 
 def setup_cli(args) -> None:
     """初期セットアップコマンド"""
