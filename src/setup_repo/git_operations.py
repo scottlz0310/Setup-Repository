@@ -211,12 +211,42 @@ def _update_repository(repo_name: str, repo_path: Path, config: dict) -> bool:
         return False
 
 
+def _ensure_github_host_key() -> None:
+    """GitHubのホストキーをknown_hostsに追加"""
+    ssh_dir = Path.home() / ".ssh"
+    known_hosts = ssh_dir / "known_hosts"
+
+    # .sshディレクトリが存在しない場合は作成
+    if not ssh_dir.exists():
+        ssh_dir.mkdir(mode=0o700, exist_ok=True)
+
+    # known_hostsが存在しない、またはgithub.comのエントリがない場合
+    if not known_hosts.exists() or "github.com" not in known_hosts.read_text(errors="ignore"):
+        try:
+            # ssh-keyscanでGitHubのホストキーを取得して追加
+            result = safe_subprocess(
+                ["ssh-keyscan", "-H", "github.com"],
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=10,
+            )
+            with known_hosts.open("a") as f:
+                f.write(result.stdout)
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+            pass  # 失敗しても続行
+
+
 def _clone_repository(repo_name: str, repo_url: str, repo_path: Path, dry_run: bool) -> bool:
     """新規リポジトリをクローン"""
     print(f"   📥 {repo_name}: クローン中...")
     if dry_run:
         print(f"   ✅ {repo_name}: クローン予定")
         return True
+
+    # SSH接続の場合、ホストキーを事前に追加
+    if repo_url.startswith("git@github.com"):
+        _ensure_github_host_key()
 
     try:
         safe_subprocess(
