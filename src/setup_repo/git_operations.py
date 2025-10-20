@@ -248,15 +248,22 @@ def _ensure_github_host_key() -> bool:
     return False
 
 
+# グローバル変数でホストキー追加の実行状況を管理
+_host_key_setup_attempted = False
+
+
 def _clone_repository(repo_name: str, repo_url: str, repo_path: Path, dry_run: bool) -> bool:
     """新規リポジトリをクローン"""
+    global _host_key_setup_attempted
+
     print(f"   📥 {repo_name}: クローン中...")
     if dry_run:
         print(f"   ✅ {repo_name}: クローン予定")
         return True
 
-    # SSH接続の場合、ホストキーを事前に追加
-    if repo_url.startswith("git@github.com"):
+    # SSH接続の場合、ホストキーを事前に追加（初回のみ）
+    if repo_url.startswith("git@github.com") and not _host_key_setup_attempted:
+        _host_key_setup_attempted = True
         _ensure_github_host_key()
 
     try:
