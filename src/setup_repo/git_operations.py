@@ -212,11 +212,13 @@ def _update_repository(repo_name: str, repo_path: Path, config: dict) -> bool:
 
 
 def _ensure_github_host_key() -> bool:
-    """GitHubのホストキーをknown_hostsに追加
+    """GitHubのホストキーをknown_hostsに追加（Windows対応版）
 
     Returns:
         成功した場合True、失敗または不要な場合False
     """
+    import platform
+
     ssh_dir = Path.home() / ".ssh"
     known_hosts = ssh_dir / "known_hosts"
 
@@ -224,21 +226,27 @@ def _ensure_github_host_key() -> bool:
     if not ssh_dir.exists():
         ssh_dir.mkdir(mode=0o700, exist_ok=True)
 
+    # Windows環境では ssh-keyscan が失敗することが多いため、既知のホストキーを直接追加
+    is_windows = platform.system() == "Windows"
+
+    if is_windows:
+        print("   🪟 Windows環境を検出 - ホストキーを直接追加します")
+        return _add_github_host_key_directly(known_hosts)
+
+    # Linux/macOSでは ssh-keyscan を試行
     try:
-        # ssh-keyscanでGitHubのホストキーを取得（stderrは無視）
         result = safe_subprocess(
-            ["ssh-keyscan", "github.com"],
+            ["ssh-keyscan", "-H", "github.com"],
             capture_output=True,
             text=True,
             check=False,
             timeout=10,
         )
 
-        # stdoutにホストキーが取得できたか確認
         if not result.stdout.strip():
-            print("   ⚠️  ホストキーの取得に失敗しました")
-            print("   💡 手動で追加: ssh-keyscan github.com >> ~/.ssh/known_hosts")
-            return False
+            print("   ⚠️  ssh-keyscanでのホストキー取得に失敗")
+            print("   💡 代替方法でホストキーを追加します...")
+            return _add_github_host_key_directly(known_hosts)
 
         # 既存のknown_hostsからgithub.comのエントリを削除
         if known_hosts.exists():
@@ -255,10 +263,65 @@ def _ensure_github_host_key() -> bool:
         print("   🔑 GitHubのホストキーを更新しました")
         return True
 
-    except (subprocess.TimeoutExpired, FileNotFoundError) as e:
-        print(f"   ⚠️  ホストキーの自動追加に失敗: {e}")
-        print("   💡 手動で追加: ssh-keyscan github.com >> ~/.ssh/known_hosts")
-    return False
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        print("   ⚠️  ssh-keyscanが利用できません")
+        print("   💡 代替方法でホストキーを追加します...")
+        return _add_github_host_key_directly(known_hosts)
+
+
+def _add_github_host_key_directly(known_hosts: Path) -> bool:
+    """GitHubの公開ホストキーを直接known_hostsに追加
+
+    Args:
+        known_hosts: known_hostsファイルのパス
+
+    Returns:
+        成功した場合True
+    """
+    import platform
+
+    # GitHubの公開ホストキー（2024年時点）
+    # https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints
+    github_host_keys = [
+        "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl",
+        (
+            "github.com ecdsa-sha2-nistp256 "
+            "AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBEmKSENjQEezOmxkZMy7opKgwFB9nkt5YRrYMjNuG5N87uRgg6CLrbo5wAdT/y6v0mKV0U2w0WZ2YB/++Tpockg="
+        ),
+        (
+            "github.com ssh-rsa "
+            "AAAAB3NzaC1yc2EAAAADAQABAAABgQCj7ndNxQowgcQnjshcLrqPEiiphnt+VTTvDP6mHBL9j1aNUkY4Ue1gvwnGLVlOhGeYrnZaMgRK6+PKCUXaDbC7qtbW8gIkhL7aGCsOr/C56SJMy/BCZfxd1nWzAOxSDPgVsmerOBYfNqltV9/hWCqBywINIR+5dIg6JTJ72pcEpEjcYgXkE2YEFXV1JHnsKgbLWNlhScqb2UmyRkQyytRLtL+38TGxkxCflmO+5Z8CSSNY7GidjMIZ7Q4zMjA2n1nGrlTDkzwDCsw+wqFPGQA179cnfGWOWRVruj16z6XyvxvjJwbz0wQZ75XK5tKSb7FNyeIEs4TT4jk+S4dhPeAUC5y+bDYirYgM4GC7uEnztnZyaVWQ7B381AK4Qdrwt51ZqExKbQpTUNn+EjqoTwvqNj4kqx5QUCI0ThS/YkOxJCXmPUWZbhjpCg56i+2aB6CmK2JGhn57K5mj0MNdBXA4/WnwH6XoPWJzK5Nyu2zB3nAZp+S5hpQs+p1vN1/wsjk="
+        ),
+    ]
+
+    try:
+        # 既存のknown_hostsからgithub.comのエントリを削除
+        if known_hosts.exists():
+            lines = known_hosts.read_text(errors="ignore").splitlines()
+            filtered_lines = [line for line in lines if "github.com" not in line.lower()]
+            content = "\n".join(filtered_lines)
+            if content and not content.endswith("\n"):
+                content += "\n"
+        else:
+            content = ""
+
+        # GitHubのホストキーを追加
+        with known_hosts.open("w", encoding="utf-8") as f:
+            f.write(content)
+            for key in github_host_keys:
+                f.write(key + "\n")
+
+        # Windowsではファイルパーミッションの設定が異なるため、設定を試みるがエラーは無視
+        if platform.system() != "Windows":
+            known_hosts.chmod(0o600)
+
+        print("   🔑 GitHubのホストキーを追加しました")
+        return True
+
+    except Exception as e:
+        print(f"   ❌ ホストキーの追加に失敗: {e}")
+        print("   💡 手動で追加してください: ssh-keyscan github.com >> ~/.ssh/known_hosts")
+        return False
 
 
 # グローバル変数でホストキー追加の実行状況を管理
@@ -277,7 +340,10 @@ def _clone_repository(repo_name: str, repo_url: str, repo_path: Path, dry_run: b
     # SSH接続の場合、ホストキーを事前に追加（初回のみ）
     if repo_url.startswith("git@github.com") and not _host_key_setup_attempted:
         _host_key_setup_attempted = True
-        _ensure_github_host_key()
+        host_key_added = _ensure_github_host_key()
+
+        if not host_key_added:
+            print("   ⚠️  ホストキー追加に失敗しましたが、クローンを試行します")
 
     try:
         safe_subprocess(
@@ -289,7 +355,16 @@ def _clone_repository(repo_name: str, repo_url: str, repo_path: Path, dry_run: b
         print(f"   ✅ {repo_name}: クローン完了")
         return True
     except subprocess.CalledProcessError as e:
-        print(f"   ❌ {repo_name}: クローン失敗 - {e.stderr.strip()}")
+        error_msg = e.stderr.strip()
+        print(f"   ❌ {repo_name}: クローン失敗 - {error_msg}")
+
+        # SSH接続でホストキー検証に失敗した場合の追加ガイダンス
+        if "host key verification failed" in error_msg.lower():
+            print("\n   💡 SSH接続のトラブルシューティング:")
+            print("      1. HTTPSを使用: setup-repo sync --https")
+            print("      2. 手動でホストキーを追加: ssh-keyscan github.com >> ~/.ssh/known_hosts")
+            print("      3. SSH接続をテスト: ssh -T git@github.com")
+
         return False
 
 
