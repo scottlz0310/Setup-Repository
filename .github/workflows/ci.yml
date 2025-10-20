@@ -213,8 +213,10 @@ jobs:
           exit 1
         }
 
-        # CLIヘルプテスト
+        # CLIヘルプテスト（エンコーディング問題を考慮）
         Write-Host "Testing CLI help command" -ForegroundColor Cyan
+        # Windows環境ではstdout/stderrのリダイレクトを使用してUnicodeEncodeErrorを回避
+        $env:PYTHONIOENCODING = "utf-8"
         & uv run python main.py --help | Out-Null
         if ($LASTEXITCODE -eq 0) {
           Write-Host "✅ CLI help test passed" -ForegroundColor Green
