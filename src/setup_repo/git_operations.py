@@ -224,27 +224,37 @@ def _ensure_github_host_key() -> bool:
     if not ssh_dir.exists():
         ssh_dir.mkdir(mode=0o700, exist_ok=True)
 
-    # 既にgithub.comが登録済みの場合はスキップ
-    if known_hosts.exists() and "github.com" in known_hosts.read_text(errors="ignore"):
-        return False
-
     try:
-        # ssh-keyscanでGitHubのホストキーを取得して追加
+        # ssh-keyscanでGitHubのホストキーを取得
         result = safe_subprocess(
-            ["ssh-keyscan", "-H", "github.com"],
+            ["ssh-keyscan", "-t", "rsa,ecdsa,ed25519", "github.com"],
             capture_output=True,
             text=True,
             check=True,
             timeout=10,
         )
-        if result.stdout.strip():
-            with known_hosts.open("a") as f:
-                f.write(result.stdout)
-            print("   🔑 GitHubのホストキーをknown_hostsに追加しました")
-            return True
+
+        if not result.stdout.strip():
+            return False
+
+        # 既存のknown_hostsからgithub.comのエントリを削除
+        if known_hosts.exists():
+            lines = known_hosts.read_text(errors="ignore").splitlines()
+            filtered_lines = [line for line in lines if "github.com" not in line.lower()]
+            known_hosts.write_text("\n".join(filtered_lines) + "\n" if filtered_lines else "")
+
+        # 新しいホストキーを追加
+        with known_hosts.open("a") as f:
+            f.write(result.stdout)
+            if not result.stdout.endswith("\n"):
+                f.write("\n")
+
+        print("   🔑 GitHubのホストキーを更新しました")
+        return True
+
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError) as e:
         print(f"   ⚠️  ホストキーの自動追加に失敗: {e}")
-        print("   💡 手動で追加するには: ssh-keyscan -H github.com >> ~/.ssh/known_hosts")
+        print("   💡 手動で追加: ssh-keyscan -t rsa,ecdsa,ed25519 github.com >> ~/.ssh/known_hosts")
     return False
 
 
