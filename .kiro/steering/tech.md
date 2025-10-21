@@ -8,9 +8,9 @@
 
 ## 技術スタック
 
-- **言語**: Python 3.9+（3.9-3.13をサポート）
+- **言語**: Python 3.11+（3.11-3.13をサポート）
 - **設定**: 自動検出フォールバック付きJSONベース設定ファイル
-- **CLIフレームワーク**: サブコマンド付き組み込みargparse
+- **CLIフレームワーク**: Typer（型ヒント駆動CLI）+ Rich（リッチターミナル出力）
 - **クロスプラットフォーム**: プラットフォーム固有検出機能付きネイティブPython
 - **バージョン管理**: GitHub API統合Git
 
@@ -59,5 +59,5 @@ python -c "from src.setup_repo.config import load_config; import json; print(jso
 
 このツールはプラットフォームごとに複数のパッケージマネージャーをサポートします：
 - **Windows**: Scoop（推奨）、Winget、Chocolatey
-- **Linux/WSL**: Snap（推奨）、APT、curl
+- **Linux/WSL**: Homebrew（推奨）、snap、APT、curl
 - **macOS**: Homebrew（推奨）、curl
