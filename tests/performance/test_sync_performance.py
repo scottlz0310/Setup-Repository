@@ -57,8 +57,8 @@ class TestSyncPerformance:
 
         elapsed_time = time.time() - start_time
 
-        # 中規模テストは10秒以内で完了すべき
-        assert elapsed_time < 10.0, f"中規模テストが遅すぎます: {elapsed_time:.2f}秒"
+        # 中規模テストは5秒以内で完了すべき
+        assert elapsed_time < 5.0, f"中規模テストが遅すぎます: {elapsed_time:.2f}秒"
 
     @pytest.mark.performance
     @pytest.mark.slow
@@ -81,6 +81,7 @@ class TestSyncPerformance:
         assert elapsed_time < 30.0, f"大規模テストが遅すぎます: {elapsed_time:.2f}秒"
 
     @pytest.mark.performance
+    @pytest.mark.xdist_group(name="concurrent")  # 並列実行時の競合を避ける
     def test_concurrent_operations_performance(self):
         """並行処理のパフォーマンステスト"""
         import concurrent.futures
@@ -107,6 +108,7 @@ class TestSyncPerformance:
         assert len(results) == len(test_repos), "すべてのリポジトリが処理されていません"
 
     @pytest.mark.performance
+    @pytest.mark.xdist_group(name="concurrent")  # 並列実行時の競合を避ける
     def test_memory_usage_performance(self):
         """メモリ使用量のパフォーマンステスト"""
         import os
