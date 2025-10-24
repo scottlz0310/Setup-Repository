@@ -13,7 +13,7 @@
 uv tool install git+https://github.com/scottlz0310/Setup-Repository.git
 
 # 特定のバージョンをインストール
-uv tool install git+https://github.com/scottlz0310/Setup-Repository.git@v1.3.8
+uv tool install git+https://github.com/scottlz0310/Setup-Repository.git@v1.4.0
 ```
 
 ### ローカルからインストール

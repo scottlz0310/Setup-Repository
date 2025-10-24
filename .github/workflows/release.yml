@@ -153,7 +153,14 @@ jobs:
 
           CHANGES_MADE=false
 
-          # 1. CHANGELOG自動生成・更新
+          # 1. バージョン番号を更新（pyproject.toml, __init__.py）
+          echo "🔢 バージョン番号を更新中"
+          if ! uv run python scripts/version-manager.py --set "$VERSION"; then
+            echo "❌ バージョン更新に失敗しました"
+            exit 1
+          fi
+
+          # 2. CHANGELOG自動生成・更新
           echo "📝 CHANGELOG自動生成・更新"
           if [[ "$IS_PRERELEASE" == "true" ]]; then
             uv run python scripts/version-manager.py --update-changelog "$VERSION" --prerelease
@@ -161,7 +168,7 @@ jobs:
             uv run python scripts/version-manager.py --update-changelog "$VERSION"
           fi
 
-          # 2. リリースノート生成
+          # 3. リリースノート生成
           echo "📋 リリースノート生成"
           if [[ "$IS_PRERELEASE" == "true" ]]; then
             uv run python scripts/version-manager.py --generate-notes "$VERSION" --prerelease
@@ -169,7 +176,7 @@ jobs:
             uv run python scripts/version-manager.py --generate-notes "$VERSION"
           fi
 
-          # 3. 変更をコミット（変更がある場合のみ）
+          # 4. 変更をコミット（変更がある場合のみ）
           if git diff --quiet; then
             echo "✅ 変更なし - 既に準備完了"
           else
@@ -177,6 +184,7 @@ jobs:
             git add .
             git commit -m "🚀 リリース v$VERSION 準備完了
 
+          - バージョン番号を$VERSIONに更新
           - CHANGELOG.mdを自動生成・更新
           - リリースノートを自動生成"
             git push origin main
