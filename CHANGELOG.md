@@ -1,6 +1,18 @@
 # 📝 変更履歴
 
 
+## [1.4.1] - 2025-10-24
+
+### ✨ 新機能
+- add weekly security scan workflow with improvements
+
+### 🐛 修正
+- change Safety output from JSON to text format
+- correct Safety command output option
+
+### 🔧 その他
+- 🚀 リリース v1.4.0 準備完了
+
 ## [1.4.0] - 2025-10-24
 
 ### 🔄 変更

@@ -1,12 +1,16 @@
-# 🚀 Setup Repository v1.4.0
+# 🚀 Setup Repository v1.4.1
 
 ## 📋 変更内容
 
-### 🔄 変更
-- chore: update version to 1.4.0 and fix release workflow
+### ✨ 新機能
+- add weekly security scan workflow with improvements
+
+### 🐛 修正
+- change Safety output from JSON to text format
+- correct Safety command output option
 
 ### 🔧 その他
-- 🚀 リリース v1.3.9 準備完了
+- 🚀 リリース v1.4.0 準備完了
 
 ## 📦 インストール方法
 
