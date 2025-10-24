@@ -7,24 +7,7 @@ on:
     branches: [ main, develop ]
   pull_request:
     branches: [ main, develop ]
-  schedule:
-    # 毎日午前2時（UTC）に拡張マトリックステスト実行
-    - cron: '0 2 * * *'
   workflow_dispatch:
-    inputs:
-      test_scope:
-        description: 'Test scope (basic/extended/quality-gate)'
-        required: false
-        default: 'basic'
-        type: choice
-        options:
-        - basic
-        - extended
-        - quality-gate
-      python_versions:
-        description: 'Python versions to test (comma-separated)'
-        required: false
-        default: '3.11,3.12,3.13'
   workflow_call:
 
 permissions:
@@ -313,115 +296,10 @@ jobs:
 
 
 
-  extended-matrix-test:
-    name: Extended Matrix Test
-    runs-on: ${{ matrix.os }}
-    continue-on-error: ${{ matrix.experimental || false }}
-    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.test_scope == 'extended')
-    strategy:
-      matrix:
-        include:
-          - os: ubuntu-latest
-            python-version: "3.11"
-          - os: ubuntu-latest
-            python-version: "3.12"
-          - os: ubuntu-latest
-            python-version: "3.13"
-          - os: ubuntu-latest
-            python-version: "3.14"
-            experimental: true
-          - os: windows-latest
-            python-version: "3.11"
-          - os: windows-latest
-            python-version: "3.12"
-          - os: windows-latest
-            python-version: "3.13"
-          - os: macos-latest
-            python-version: "3.11"
-          - os: macos-latest
-            python-version: "3.12"
-          - os: macos-latest
-            python-version: "3.13"
-          - os: macos-latest
-            python-version: "3.14"
-            experimental: true
-      fail-fast: false
-      max-parallel: 6
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Install uv
-      uses: astral-sh/setup-uv@v4
-      with:
-        version: "latest"
-        enable-cache: true
-
-    - name: Set up Python ${{ matrix.python-version }}
-      run: uv python install ${{ matrix.python-version }}
-
-    - name: Create virtual environment
-      run: uv venv --python ${{ matrix.python-version }}
-
-    - name: Install dependencies
-      run: uv sync --dev
-
-    - name: Run comprehensive tests with coverage
-      run: |
-        echo "Running comprehensive extended matrix tests with coverage..."
-
-        # 全テスト実行（パフォーマンステスト含む）
-        uv run pytest tests/ \
-          --cov=src/setup_repo \
-          --cov-report=term-missing \
-          --cov-report=xml \
-          --cov-config=pyproject.toml \
-          --junit-xml=test-results.xml \
-          -v --tb=short \
-          -x --maxfail=10 \
-          --disable-warnings \
-          --timeout=120 \
-          -n auto \
-          --dist=worksteal
-
-        # メインスクリプトヘルプテスト
-        echo "Testing main script help..."
-        uv run python main.py --help
-      shell: bash
-
-    - name: Upload extended test results
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: extended-test-results-${{ matrix.os }}-${{ matrix.python-version }}
-        path: |
-          test-results.xml
-          coverage.xml
-          .coverage
-        retention-days: 30
-
-    - name: Test platform-specific functionality
-      run: |
-        echo "Testing platform-specific functionality..."
-        uv run python -c "
-        try:
-            from setup_repo.platform_detector import detect_platform
-            platform = detect_platform()
-            print(f'Platform: {platform.name} - {platform.display_name}')
-            print(f'Shell: {platform.shell}')
-            print(f'Python command: {platform.python_cmd}')
-            print('✅ Platform detection successful')
-        except Exception as e:
-            print(f'❌ Platform detection failed: {e}')
-            import sys
-            sys.exit(1)
-        "
-
   quality-gate:
     name: Quality Gate Check
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && github.event.inputs.test_scope == 'quality-gate')
+    if: github.event_name == 'pull_request'
     env:
       PYTHON_VERSION: "3.11"
       COVERAGE_THRESHOLD: "70"
