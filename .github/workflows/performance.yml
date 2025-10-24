@@ -1,15 +1,8 @@
 name: Performance Tests
 
-run-name: "Performance Tests - ${{ github.event_name == 'schedule' && 'Scheduled' || github.event_name == 'pull_request' && format('PR #{0}', github.event.number) || github.event_name == 'workflow_dispatch' && format('Manual ({0})', github.event.inputs.test_scale || 'medium') || github.ref_name }}"
+run-name: "Performance Tests - Manual ({0})"
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-  schedule:
-    # 毎日午前2時（UTC）にパフォーマンステストを実行
-    - cron: '0 2 * * *'
   workflow_dispatch:
     inputs:
       test_scale:
@@ -164,7 +157,6 @@ jobs:
         retention-days: 30
 
     - name: Performance regression check
-      if: github.event_name == 'pull_request'
       run: |
         echo "🔍 パフォーマンス回帰チェック実行中..."
 
@@ -208,73 +200,3 @@ jobs:
         import os
         check_performance_regression()
         "
-
-  benchmark-comparison:
-    name: Benchmark Comparison
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-    needs: performance-tests
-    permissions:
-      contents: read
-      pull-requests: write
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0  # 履歴全体を取得
-
-    - name: Download performance results
-      uses: actions/download-artifact@v4
-      with:
-        name: performance-test-results-3.11
-        path: ./current-results
-
-    - name: Compare with baseline
-      run: |
-        echo "# 📈 パフォーマンス比較レポート" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "現在のPRと main ブランチのパフォーマンスを比較します。" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-
-        # 将来的にはベースラインとの詳細比較を実装
-        echo "⚠️ ベースライン比較機能は開発中です。" >> $GITHUB_STEP_SUMMARY
-        echo "現在は絶対値での基準チェックのみ実行されています。" >> $GITHUB_STEP_SUMMARY
-
-    - name: Comment PR with performance results
-      if: github.event_name == 'pull_request'
-      uses: actions/github-script@v7
-      with:
-        script: |
-          const fs = require('fs');
-
-          try {
-            let comment = '## 📊 パフォーマンステスト結果\n\n';
-
-            // パフォーマンステスト結果ファイルを読み込み
-            const files = ['performance-medium.json', 'performance-concurrent.json'];
-
-            for (const file of files) {
-              const filePath = `./current-results/${file}`;
-              if (fs.existsSync(filePath)) {
-                const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-                const testType = file.replace('performance-', '').replace('.json', '');
-
-                comment += `### ${testType} テスト\n`;
-                comment += `- 実行時間: ${data.duration || 'N/A'}秒\n`;
-                comment += `- 成功: ${data.summary?.passed || 0}件\n`;
-                comment += `- 失敗: ${data.summary?.failed || 0}件\n\n`;
-              }
-            }
-
-            comment += '詳細な結果は Artifacts からダウンロードできます。\n';
-
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: comment
-            });
-          } catch (error) {
-            console.log('パフォーマンス結果のコメント作成に失敗:', error);
-          }
