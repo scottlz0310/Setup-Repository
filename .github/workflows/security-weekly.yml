@@ -56,10 +56,12 @@ jobs:
         run: |
           echo "🔍 Safety脆弱性スキャン実行中..."
 
-          if uv run safety check -r requirements.txt --json --output safety-report.json; then
+          # Safetyの出力をJSON形式でファイルに保存
+          if uv run safety check -r requirements.txt --output json > safety-report.json 2>&1; then
             echo "✅ 脆弱性は検出されませんでした"
             echo "vulnerabilities=0" >> $GITHUB_OUTPUT
           else
+            # エラー終了コードは脆弱性検出を意味する
             VULN_COUNT=$(jq '.vulnerabilities | length' safety-report.json 2>/dev/null || echo "0")
             echo "vulnerabilities=$VULN_COUNT" >> $GITHUB_OUTPUT
             echo "⚠️ $VULN_COUNT 件の脆弱性が検出されました"
