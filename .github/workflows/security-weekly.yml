@@ -56,13 +56,22 @@ jobs:
         run: |
           echo "🔍 Safety脆弱性スキャン実行中..."
 
-          # Safetyの出力をJSON形式でファイルに保存
-          if uv run safety check -r requirements.txt --output json > safety-report.json 2>&1; then
+          # Safetyスキャン実行（テキスト出力）
+          set +e
+          uv run safety check -r requirements.txt --output text > safety-report.txt 2>&1
+          SAFETY_EXIT_CODE=$?
+          set -e
+
+          # 結果を表示
+          cat safety-report.txt
+
+          # 脆弱性カウント（簡易的なパース）
+          if [ $SAFETY_EXIT_CODE -eq 0 ]; then
             echo "✅ 脆弱性は検出されませんでした"
             echo "vulnerabilities=0" >> $GITHUB_OUTPUT
           else
-            # エラー終了コードは脆弱性検出を意味する
-            VULN_COUNT=$(jq '.vulnerabilities | length' safety-report.json 2>/dev/null || echo "0")
+            # 脆弱性検出数をカウント（"found X vulnerabilities"パターンを探す）
+            VULN_COUNT=$(grep -oP '\d+(?= known security vulnerabilit)' safety-report.txt 2>/dev/null | head -1 || echo "1")
             echo "vulnerabilities=$VULN_COUNT" >> $GITHUB_OUTPUT
             echo "⚠️ $VULN_COUNT 件の脆弱性が検出されました"
           fi
@@ -73,7 +82,7 @@ jobs:
         with:
           name: safety-report
           path: |
-            safety-report.json
+            safety-report.txt
             requirements.txt
           retention-days: 90
 
@@ -182,8 +191,8 @@ jobs:
           echo "## 📊 スキャン結果" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          if [ -f "safety-report.json" ]; then
-            VULN_COUNT=$(jq '.vulnerabilities | length' safety-report.json 2>/dev/null || echo "0")
+          if [ -f "safety-report.txt" ]; then
+            VULN_COUNT=$(grep -oP '\d+(?= known security vulnerabilit)' safety-report.txt 2>/dev/null | head -1 || echo "0")
             if [ "$VULN_COUNT" -eq 0 ]; then
               echo "- **Safety**: ✅ 脆弱性は検出されませんでした" >> $GITHUB_STEP_SUMMARY
             else
@@ -209,9 +218,10 @@ jobs:
 
             // 脆弱性がない場合、既存Issueをクローズ
             let vulnCount = 0;
-            if (fs.existsSync('safety-report.json')) {
-              const report = JSON.parse(fs.readFileSync('safety-report.json', 'utf8'));
-              vulnCount = report.vulnerabilities?.length || 0;
+            if (fs.existsSync('safety-report.txt')) {
+              const report = fs.readFileSync('safety-report.txt', 'utf8');
+              const match = report.match(/(\d+) known security vulnerabilit/);
+              vulnCount = match ? parseInt(match[1]) : 0;
             }
 
             if (vulnCount === 0) {
