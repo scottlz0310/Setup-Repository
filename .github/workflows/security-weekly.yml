@@ -1,0 +1,247 @@
+name: Weekly Security Scan
+
+run-name: "Weekly Security Scan - ${{ github.event_name == 'schedule' && 'Scheduled' || 'Manual' }}"
+
+on:
+  schedule:
+    # 毎週月曜日午前2時（UTC）に実行
+    - cron: '0 2 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  issues: write
+
+env:
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  safety-scan:
+    name: Safety Vulnerability Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: Create virtual environment
+        run: uv venv --python ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: uv sync --dev
+
+      - name: Install Safety
+        run: uv pip install safety
+
+      - name: Export requirements for Safety
+        run: |
+          echo "📦 依存関係をエクスポート中..."
+          uv export --no-hashes -o requirements.txt
+          echo "✅ requirements.txt を生成しました"
+
+      - name: Run Safety scan
+        id: safety
+        env:
+          SAFETY_API_KEY: ${{ secrets.SAFETY_API_KEY }}
+        run: |
+          echo "🔍 Safety脆弱性スキャン実行中..."
+
+          if uv run safety check -r requirements.txt --json --output safety-report.json; then
+            echo "✅ 脆弱性は検出されませんでした"
+            echo "vulnerabilities=0" >> $GITHUB_OUTPUT
+          else
+            VULN_COUNT=$(jq '.vulnerabilities | length' safety-report.json 2>/dev/null || echo "0")
+            echo "vulnerabilities=$VULN_COUNT" >> $GITHUB_OUTPUT
+            echo "⚠️ $VULN_COUNT 件の脆弱性が検出されました"
+          fi
+
+      - name: Upload Safety report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: safety-report
+          path: |
+            safety-report.json
+            requirements.txt
+          retention-days: 90
+
+      - name: Create or update security issue
+        if: steps.safety.outputs.vulnerabilities != '0'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const vulnCount = '${{ steps.safety.outputs.vulnerabilities }}';
+            const scanDate = new Date().toISOString();
+
+            // 既存のセキュリティIssueを検索
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: 'security,vulnerability,automated',
+              state: 'open'
+            });
+
+            const existingIssue = issues.data.find(issue =>
+              issue.title.includes('週次セキュリティスキャン')
+            );
+
+            const updateComment = `## 🔄 スキャン更新\n\n` +
+              `**検出日時**: ${scanDate}\n` +
+              `**検出件数**: ${vulnCount}件\n\n` +
+              `詳細なレポートは[Artifacts](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})からダウンロードしてください。\n\n` +
+              `---\n` +
+              `⚠️ 脆弱性が継続して検出されています。早急な対応をお願いします。`;
+
+            if (existingIssue) {
+              // 既存Issueにコメント追加
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existingIssue.number,
+                body: updateComment
+              });
+              console.log(`既存Issue #${existingIssue.number} に更新コメントを追加しました`);
+            } else {
+              // 新規Issue作成
+              let body = `## 🚨 週次セキュリティスキャン: 脆弱性検出\n\n`;
+              body += `**検出日時**: ${scanDate}\n`;
+              body += `**検出件数**: ${vulnCount}件\n\n`;
+              body += `### 📋 詳細\n\n`;
+              body += `Safetyスキャンで${vulnCount}件の既知の脆弱性が検出されました。\n\n`;
+              body += `詳細なレポートは[Artifacts](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})からダウンロードしてください。\n\n`;
+              body += `### 🔧 対応手順\n\n`;
+              body += `1. 依存関係を確認\n`;
+              body += `2. 脆弱性のあるパッケージを更新\n`;
+              body += `3. 更新後に再度スキャンを実行\n`;
+              body += `4. 問題が解決したらこのIssueをクローズ\n\n`;
+              body += `---\n`;
+              body += `このIssueは自動生成されました。脆弱性が解決されるまで週次で更新されます。`;
+
+              const newIssue = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `🚨 週次セキュリティスキャン: ${vulnCount}件の脆弱性検出`,
+                body: body,
+                labels: ['security', 'vulnerability', 'automated']
+              });
+              console.log(`新規Issue #${newIssue.data.number} を作成しました`);
+            }
+
+  codeql-scan:
+    name: CodeQL Security Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: python
+          queries: security-extended,security-and-quality
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:python/weekly"
+
+  security-summary:
+    name: Security Summary
+    runs-on: ubuntu-latest
+    needs: [safety-scan, codeql-scan]
+    if: always()
+
+    steps:
+      - name: Download Safety report
+        uses: actions/download-artifact@v4
+        with:
+          name: safety-report
+        continue-on-error: true
+
+      - name: Generate security summary
+        run: |
+          echo "# 🔒 週次セキュリティスキャン結果" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**実行日時**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "## 📊 スキャン結果" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -f "safety-report.json" ]; then
+            VULN_COUNT=$(jq '.vulnerabilities | length' safety-report.json 2>/dev/null || echo "0")
+            if [ "$VULN_COUNT" -eq 0 ]; then
+              echo "- **Safety**: ✅ 脆弱性は検出されませんでした" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "- **Safety**: ⚠️ $VULN_COUNT 件の既知の脆弱性" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "- **Safety**: ❌ レポート生成エラー" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "- **CodeQL**: 詳細はSecurity タブを確認" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "## 🔗 リンク" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- [Security タブ](https://github.com/${{ github.repository }}/security)" >> $GITHUB_STEP_SUMMARY
+          echo "- [Code scanning alerts](https://github.com/${{ github.repository }}/security/code-scanning)" >> $GITHUB_STEP_SUMMARY
+
+      - name: Close issue if no vulnerabilities
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+
+            // 脆弱性がない場合、既存Issueをクローズ
+            let vulnCount = 0;
+            if (fs.existsSync('safety-report.json')) {
+              const report = JSON.parse(fs.readFileSync('safety-report.json', 'utf8'));
+              vulnCount = report.vulnerabilities?.length || 0;
+            }
+
+            if (vulnCount === 0) {
+              const issues = await github.rest.issues.listForRepo({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                labels: 'security,vulnerability,automated',
+                state: 'open'
+              });
+
+              const existingIssue = issues.data.find(issue =>
+                issue.title.includes('週次セキュリティスキャン')
+              );
+
+              if (existingIssue) {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: existingIssue.number,
+                  body: `## ✅ 脆弱性解決確認\n\n` +
+                    `**確認日時**: ${new Date().toISOString()}\n\n` +
+                    `週次スキャンで脆弱性が検出されなくなりました。このIssueをクローズします。\n\n` +
+                    `今後も週次スキャンは継続されます。`
+                });
+
+                await github.rest.issues.update({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: existingIssue.number,
+                  state: 'closed'
+                });
+
+                console.log(`Issue #${existingIssue.number} をクローズしました`);
+              }
+            }
