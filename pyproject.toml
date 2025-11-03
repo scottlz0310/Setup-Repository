@@ -143,18 +143,7 @@ python_classes = [
 python_functions = [
     "test_*",
 ]
-# 簡潔な出力 + カバレッジをデフォルトで取得
-addopts = """
-    --tb=short
-    --disable-warnings
-    --quiet
-    --no-header
-    --cov=src/setup_repo
-    --cov-report=term-missing:skip-covered
-    --cov-report=html:output/htmlcov
-    --cov-report=xml:output/coverage.xml
-    --cov-fail-under=80
-"""
+addopts = "    --tb=short\n    --disable-warnings\n    --quiet\n    --no-header\n    --cov=src/setup_repo\n    --cov-report=term-missing:skip-covered\n    --cov-report=html:output/htmlcov\n    --cov-report=xml:output/coverage.xml\n    --cov-fail-under=80\n"
 markers = [
     "unit: 単体テスト",
     "integration: 統合テスト",

@@ -1,16 +1,14 @@
-# 🚀 Setup Repository v1.4.1
+# 🚀 Setup Repository v1.4.2
 
 ## 📋 変更内容
 
-### ✨ 新機能
-- add weekly security scan workflow with improvements
+### 🔄 変更
+- リリースワークフローの改善
+- ドキュメント自動生成機能の強化
 
 ### 🐛 修正
-- change Safety output from JSON to text format
-- correct Safety command output option
-
-### 🔧 その他
-- 🚀 リリース v1.4.0 準備完了
+- バージョン管理の一貫性向上
+- CI/CDパイプラインの安定化
 
 ## 📦 インストール方法
 
