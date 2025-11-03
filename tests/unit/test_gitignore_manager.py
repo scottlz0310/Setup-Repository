@@ -281,9 +281,10 @@ __pycache__/
         existing_content = "# Existing\n.DS_Store\n"
         gitignore_manager.gitignore_path.write_text(existing_content, encoding="utf-8")
 
-        result = gitignore_manager._merge_with_existing(["python"])
+        success, modified = gitignore_manager._merge_with_existing(["python"])
 
-        assert result is True
+        assert success is True
+        assert modified is True
 
         content = gitignore_manager.gitignore_path.read_text(encoding="utf-8")
         assert ".DS_Store" in content  # 既存エントリ
@@ -298,9 +299,10 @@ __pycache__/
         existing_content = "# Existing\n__pycache__/\n*.pyc\n.venv/\n"
         gitignore_manager.gitignore_path.write_text(existing_content, encoding="utf-8")
 
-        result = gitignore_manager._merge_with_existing(["python"])
+        success, modified = gitignore_manager._merge_with_existing(["python"])
 
-        assert result is True
+        assert success is True
+        assert modified is False
 
     @pytest.mark.unit
     def test_setup_gitignore_from_templates_new_file(self, gitignore_manager):

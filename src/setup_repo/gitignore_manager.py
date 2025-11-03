@@ -133,7 +133,9 @@ class GitignoreManager:
             from .git_operations import commit_and_push_file
 
             commit_msg = "chore: update .gitignore (auto-generated entries)"
-            if commit_and_push_file(self.repo_path, ".gitignore", commit_msg, auto_confirm=False):
+            # 自動実行の場合はauto_confirmをTrueに設定
+            push_success = commit_and_push_file(self.repo_path, ".gitignore", commit_msg, auto_confirm=True)
+            if push_success:
                 print("   ✅ .gitignoreをpushしました")
             else:
                 print("   ⚠️  pushに失敗しました。後で手動でpushしてください")
@@ -179,24 +181,32 @@ class GitignoreManager:
 
         # 既存の.gitignoreをチェック
         success = False
+        file_was_modified = False
         if self.gitignore_path.exists():
             if merge_mode:
-                success = self._merge_with_existing(template_names)
+                result = self._merge_with_existing(template_names)
+                success, file_was_modified = result
             else:
                 print(f"   ℹ️  既存の.gitignoreが存在します: {self.gitignore_path}")
                 success = True
+                file_was_modified = False
         else:
             # 新規作成
             success = self._create_new_gitignore(template_names)
+            file_was_modified = success
 
-        # 成功後、auto_pushが有効ならpushを試みる
+        # 成功後、ファイルが実際に変更された場合のみpushを試みる
         # auto_pushがNoneの場合はインスタンスのデフォルト設定を使用
         effective_auto_push = auto_push if auto_push is not None else self.auto_push_default
-        if success and effective_auto_push and not dry_run:
+        should_push = success and file_was_modified and effective_auto_push
+        should_push = should_push and not dry_run
+        if should_push:
             from .git_operations import commit_and_push_file
 
             commit_msg = "chore: update .gitignore (setup from templates)"
-            if commit_and_push_file(self.repo_path, ".gitignore", commit_msg, auto_confirm=False):
+            # 自動実行の場合はauto_confirmをTrueに設定
+            push_success = commit_and_push_file(self.repo_path, ".gitignore", commit_msg, auto_confirm=True)
+            if push_success:
                 print("   ✅ .gitignoreをpushしました")
             else:
                 print("   ⚠️  pushに失敗しました。後で手動でpushしてください")
@@ -229,8 +239,12 @@ class GitignoreManager:
             print(f"   ❌ .gitignore作成に失敗: {e}")
             return False
 
-    def _merge_with_existing(self, template_names: list[str]) -> bool:
-        """既存.gitignoreとテンプレートをマージ"""
+    def _merge_with_existing(self, template_names: list[str]) -> tuple[bool, bool]:
+        """既存.gitignoreとテンプレートをマージ
+
+        Returns:
+            tuple[bool, bool]: (成功したか, ファイルが変更されたか)
+        """
         try:
             existing_content = self.gitignore_path.read_text(encoding="utf-8")
             existing_entries = self.get_current_entries()
@@ -247,7 +261,7 @@ class GitignoreManager:
 
             if not new_entries:
                 print("   ℹ️  既存の.gitignoreに追加するエントリはありません")
-                return True
+                return True, False  # 成功だが変更なし
 
             # 既存コンテンツに新しいエントリを追加
             if not existing_content.endswith("\n"):
@@ -260,13 +274,18 @@ class GitignoreManager:
 
             self.gitignore_path.write_text(existing_content, encoding="utf-8")
             print(f"   ✅ .gitignoreにエントリを追加しました: {len(new_entries)}件")
-            return True
+            return True, True  # 成功かつ変更あり
 
         except OSError as e:
             print(f"   ❌ .gitignoreマージに失敗: {e}")
-            return False
+            return False, False
 
-    def setup_gitignore(self, dry_run: bool = False, merge_mode: bool = True, auto_push: bool = None) -> bool:
+    def setup_gitignore(
+        self,
+        dry_run: bool = False,
+        merge_mode: bool = True,
+        auto_push: bool = None,
+    ) -> bool:
         """プロジェクトタイプを自動検出して.gitignoreセットアップ"""
         from .project_detector import ProjectDetector
 
@@ -275,8 +294,10 @@ class GitignoreManager:
 
         if not dry_run:
             analysis = detector.analyze_project()
-            print(f"   🔍 検出されたプロジェクトタイプ: {', '.join(analysis['project_types']) or 'なし'}")
-            print(f"   🛠️  検出されたツール: {', '.join(analysis['tools']) or 'なし'}")
+            project_types = ", ".join(analysis["project_types"]) or "なし"
+            tools = ", ".join(analysis["tools"]) or "なし"
+            print(f"   🔍 検出されたプロジェクトタイプ: {project_types}")
+            print(f"   🛠️  検出されたツール: {tools}")
             print(f"   📝 適用テンプレート: {', '.join(recommended_templates)}")
 
         return self.setup_gitignore_from_templates(recommended_templates, dry_run, merge_mode, auto_push)
