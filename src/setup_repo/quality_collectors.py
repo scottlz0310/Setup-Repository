@@ -443,7 +443,8 @@ def parse_tool_output(
     # テキスト形式の場合は行ごとに分割
     lines = [line.strip() for line in output.split("\n") if line.strip()]
 
-    if tool_name.lower() == "ruff":
+    tool_name_lower = tool_name.lower()
+    if tool_name_lower == "ruff":
         # Ruffのテキスト出力を解析
         issues = []
         for line in lines:
@@ -452,11 +453,10 @@ def parse_tool_output(
                 issues.append(line)
         return {"issues": issues, "issue_count": len(issues)}
 
-    elif tool_name.lower() == "mypy":
+    elif tool_name_lower == "mypy":
         # MyPyのテキスト出力を解析
         errors = [line for line in lines if "error:" in line]
         return {"errors": errors, "error_count": len(errors)}
 
-    else:
-        # 汎用的な解析
-        return {"output_lines": lines, "line_count": len(lines)}
+    # 汎用的な解析
+    return {"output_lines": lines, "line_count": len(lines)}

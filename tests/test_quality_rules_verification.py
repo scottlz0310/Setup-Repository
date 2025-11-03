@@ -53,7 +53,7 @@ class QualityRulesValidator:
                 if "tool" in config and "mypy" in config["tool"]:
                     results["mypy_configured"] = True
 
-            except Exception as e:
+            except (OSError, ValueError, KeyError) as e:
                 self.errors.append(f"pyproject.toml読み込みエラー: {e}")
 
         return results
@@ -81,7 +81,8 @@ class QualityRulesValidator:
                 if "tool" in config and "coverage" in config["tool"]:
                     results["coverage_configured"] = True
 
-            except Exception:
+            except (OSError, ValueError, KeyError):
+                # 読み込みエラーを無視
                 pass
 
         # テスト構造の検証
@@ -203,7 +204,8 @@ class QualityRulesValidator:
                 if any(term in content.lower() for term in ["trace_id", "request_id", "correlation"]):
                     results["correlation_ids_supported"] = True
 
-            except Exception:
+            except (OSError, UnicodeDecodeError):
+                # ファイル読み込みエラーを無視
                 continue
 
         return results

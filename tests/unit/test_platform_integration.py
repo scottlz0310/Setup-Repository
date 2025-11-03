@@ -56,20 +56,20 @@ class TestPlatformIntegration:
 
         try:
             from src.setup_repo.python_env import setup_python_environment
+
+            # テスト用プロジェクトディレクトリ
+            project_dir = temp_dir / "test_project"
+            project_dir.mkdir()
+
+            # ドライランモードでテスト（実環境での安全なテスト）
+            try:
+                setup_python_environment(project_dir, dry_run=True)
+                # ドライランモードでは実際のコマンドは実行されない
+                assert True  # エラーが発生しないことを確認
+            except Exception as e:
+                pytest.skip(f"Python環境セットアップが実行できません: {e}")
         except ImportError:
             pytest.skip("python_envが利用できません")
-
-        # テスト用プロジェクトディレクトリ
-        project_dir = temp_dir / "test_project"
-        project_dir.mkdir()
-
-        # ドライランモードでテスト（実環境での安全なテスト）
-        try:
-            setup_python_environment(project_dir, dry_run=True)
-            # ドライランモードでは実際のコマンドは実行されない
-            assert True  # エラーが発生しないことを確認
-        except Exception as e:
-            pytest.skip(f"Python環境セットアップが実行できません: {e}")
 
     @pytest.mark.unit
     def test_vscode_template_application(self, temp_dir):
@@ -79,20 +79,20 @@ class TestPlatformIntegration:
         try:
             from src.setup_repo.platform_detector import PlatformDetector
             from src.setup_repo.vscode_setup import apply_vscode_template
+
+            project_dir = temp_dir / "test_project"
+            project_dir.mkdir()
+
+            detector = PlatformDetector()
+            platform_info = detector.detect_platform()
+
+            # ドライランモードでテスト
+            apply_vscode_template(project_dir, platform_info, dry_run=True)
+
+            # 実際のファイル作成はドライランモードでは行われない
+            assert project_dir.exists()
         except ImportError:
             pytest.skip("vscode_setupまたはplatform_detectorが利用できません")
-
-        project_dir = temp_dir / "test_project"
-        project_dir.mkdir()
-
-        detector = PlatformDetector()
-        platform_info = detector.detect_platform()
-
-        # ドライランモードでテスト
-        apply_vscode_template(project_dir, platform_info, dry_run=True)
-
-        # 実際のファイル作成はドライランモードでは行われない
-        assert project_dir.exists()
 
     @pytest.mark.unit
     def test_gitignore_manager_integration(self, temp_dir):
@@ -101,19 +101,19 @@ class TestPlatformIntegration:
 
         try:
             from src.setup_repo.gitignore_manager import GitignoreManager
+
+            project_dir = temp_dir / "test_project"
+            project_dir.mkdir()
+
+            manager = GitignoreManager(project_dir)
+
+            # ドライランモードでテスト
+            manager.setup_gitignore(dry_run=True)
+
+            # ドライランモードでは実際のファイル作成は行われない
+            assert project_dir.exists()
         except ImportError:
             pytest.skip("GitignoreManagerが利用できません")
-
-        project_dir = temp_dir / "test_project"
-        project_dir.mkdir()
-
-        manager = GitignoreManager(project_dir)
-
-        # ドライランモードでテスト
-        manager.setup_gitignore(dry_run=True)
-
-        # ドライランモードでは実際のファイル作成は行われない
-        assert project_dir.exists()
 
     @pytest.mark.unit
     def test_uv_installer_platform_detection(self):

@@ -1,5 +1,6 @@
 """プラットフォーム検出とツール管理"""
 
+import contextlib
 import os
 import platform
 import subprocess
@@ -128,9 +129,11 @@ def _check_wsl_environment() -> bool:
                     version_info = f.read().lower()
                     if "microsoft" in version_info or "wsl" in version_info:
                         return True
-            except (FileNotFoundError, PermissionError, OSError):
+            except (FileNotFoundError, PermissionError, OSError, UnicodeDecodeError):
+                # ファイル読み込みエラーを無視
                 pass
     except ValueError:
+        # 不正なパスを無視
         pass
 
     # 方法3: /proc/sys/kernel/osreleaseでチェック
@@ -142,9 +145,11 @@ def _check_wsl_environment() -> bool:
                     osrelease_info = f.read().lower()
                     if "microsoft" in osrelease_info or "wsl" in osrelease_info:
                         return True
-            except (FileNotFoundError, PermissionError, OSError):
+            except (FileNotFoundError, PermissionError, OSError, UnicodeDecodeError):
+                # ファイル読み込みエラーを無視
                 pass
     except ValueError:
+        # 不正なパスを無視
         pass
 
     return False
@@ -256,11 +261,10 @@ def _log_windows_path_info() -> None:
         return
 
     # Windows環境でのUTF-8エンコーディング強制設定
-    import contextlib
     import sys
 
     if hasattr(sys.stdout, "reconfigure"):
-        with contextlib.suppress(Exception):  # nosec B110
+        with contextlib.suppress(AttributeError, OSError):
             sys.stdout.reconfigure(encoding="utf-8")
 
     print("::group::Windows PATH Diagnostics")

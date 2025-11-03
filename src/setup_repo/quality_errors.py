@@ -127,14 +127,23 @@ class ErrorReporter:
                 json.dump(error_data, f, indent=2, ensure_ascii=False)
 
             return output_file
-        except OSError:
-            # ファイル操作エラーの場合、フォールバック先を使用
-            from .security_helpers import safe_path_join
+        except (OSError, PermissionError) as e:
+            # ファイル操作エラーまたは権限エラーの場合、一時ディレクトリを使用
+            import tempfile
 
-            fallback_file = safe_path_join(Path.cwd(), filename)
-            with open(fallback_file, "w", encoding="utf-8") as f:
-                json.dump(error_data, f, indent=2, ensure_ascii=False)
-            return fallback_file
+            temp_file = Path(tempfile.gettempdir()) / filename
+            try:
+                with open(temp_file, "w", encoding="utf-8") as f:
+                    json.dump(error_data, f, indent=2, ensure_ascii=False)
+                return temp_file
+            except (TypeError, ValueError) as json_error:
+                # JSONエンコードエラーの場合、テキストファイルとして保存
+                text_file = temp_file.with_suffix(".txt")
+                with open(text_file, "w", encoding="utf-8") as f:
+                    f.write(f"JSONエンコードエラー: {json_error}\n")
+                    f.write(f"元のエラー: {e}\n")
+                    f.write(f"エラーデータ: {str(error_data)}\n")
+                return text_file
         except (TypeError, ValueError) as e:
             # JSONエンコードエラーの場合、テキストファイルとして保存
             text_file = output_file.with_suffix(".txt")
@@ -142,14 +151,6 @@ class ErrorReporter:
                 f.write(f"JSONエンコードエラー: {e}\n")
                 f.write(f"エラーデータ: {str(error_data)}\n")
             return text_file
-        except PermissionError:
-            # 権限エラーの場合、一時ディレクトリを使用
-            import tempfile
-
-            temp_file = Path(tempfile.gettempdir()) / filename
-            with open(temp_file, "w", encoding="utf-8") as f:
-                json.dump(error_data, f, indent=2, ensure_ascii=False)
-            return temp_file
 
     def get_report_path(self, filename: str) -> Path:
         """レポートファイルのパスを取得"""

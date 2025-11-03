@@ -282,22 +282,22 @@ class TestSetupValidators:
         """基本的な環境検証テスト"""
         try:
             from setup_repo.setup_validators import validate_environment
+
+            result = validate_environment()
+
+            assert "valid" in result
+            assert "errors" in result
+            assert "warnings" in result
+            assert "environment" in result
+
+            # Python情報のチェック
+            assert "python" in result["environment"]
+            python_info = result["environment"]["python"]
+            assert "version" in python_info
+            assert "executable" in python_info
+            assert "valid" in python_info
         except ImportError:
             pytest.skip("validate_environmentが利用できません")
-
-        result = validate_environment()
-
-        assert "valid" in result
-        assert "errors" in result
-        assert "warnings" in result
-        assert "environment" in result
-
-        # Python情報のチェック
-        assert "python" in result["environment"]
-        python_info = result["environment"]["python"]
-        assert "version" in python_info
-        assert "executable" in python_info
-        assert "valid" in python_info
 
     def test_validate_setup_prerequisites_old_python(self):
         """古いPythonバージョンのテスト"""
@@ -323,35 +323,35 @@ class TestSetupValidators:
         """ネットワーク接続チェックの環境検証テスト"""
         try:
             from setup_repo.setup_validators import validate_environment
+
+            with patch("socket.create_connection") as mock_socket:
+                # ネットワーク接続成功のケース
+                mock_socket.return_value = None
+
+                result = validate_environment()
+
+                assert "network" in result["environment"]
+                assert result["environment"]["network"]["github_accessible"] is True
         except ImportError:
             pytest.skip("validate_environmentが利用できません")
-
-        with patch("socket.create_connection") as mock_socket:
-            # ネットワーク接続成功のケース
-            mock_socket.return_value = None
-
-            result = validate_environment()
-
-            assert "network" in result["environment"]
-            assert result["environment"]["network"]["github_accessible"] is True
 
     @pytest.mark.unit
     def test_validate_environment_network_failure(self):
         """ネットワーク接続失敗の環境検証テスト"""
         try:
             from setup_repo.setup_validators import validate_environment
+
+            with patch("socket.create_connection") as mock_socket:
+                # ネットワーク接続失敗のケース
+                mock_socket.side_effect = OSError("Connection failed")
+
+                result = validate_environment()
+
+                assert "network" in result["environment"]
+                assert result["environment"]["network"]["github_accessible"] is False
+                assert any("GitHub への接続" in warning for warning in result["warnings"])
         except ImportError:
             pytest.skip("validate_environmentが利用できません")
-
-        with patch("socket.create_connection") as mock_socket:
-            # ネットワーク接続失敗のケース
-            mock_socket.side_effect = OSError("Connection failed")
-
-            result = validate_environment()
-
-            assert "network" in result["environment"]
-            assert result["environment"]["network"]["github_accessible"] is False
-            assert any("GitHub への接続" in warning for warning in result["warnings"])
 
     def test_validate_directory_path_parent_not_exists(self):
         """親ディレクトリが存在しない場合のテスト"""

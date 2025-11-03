@@ -207,14 +207,11 @@ class CIErrorHandler:
                     json.dump(report, f, indent=2, ensure_ascii=False)
 
                 self.logger.info(f"CI/CDエラーレポートを保存しました: {output_file}")
-            except ValueError as e:
-                self.logger.error(f"不正なファイルパス: {e}")
-                output_file = self.error_reporter.save_report(report, "ci")
-            except OSError as e:
+            except (OSError, PermissionError, FileNotFoundError) as e:
                 self.logger.error(f"ファイル操作エラー: {e}")
                 output_file = self.error_reporter.save_report(report, "ci")
-            except (PermissionError, FileNotFoundError) as e:
-                self.logger.error(f"ファイルアクセスエラー: {e}")
+            except ValueError as e:
+                self.logger.error(f"不正なファイルパス: {e}")
                 output_file = self.error_reporter.save_report(report, "ci")
             except TypeError as e:
                 self.logger.error(f"JSONエンコードエラー: {e}")
@@ -313,10 +310,10 @@ class CIErrorHandler:
                 # ファイル操作エラー
                 self.logger.error(f"GitHub Step Summaryファイル操作エラー: {e}")
 
+        except (OSError, PermissionError, FileNotFoundError) as e:
+            self.logger.error(f"GitHub Step Summaryファイルアクセスエラー: {e}")
         except (ImportError, ModuleNotFoundError) as e:
             self.logger.error(f"セキュリティヘルパーモジュールの読み込みエラー: {e}")
-        except (PermissionError, FileNotFoundError) as e:
-            self.logger.error(f"GitHub Step Summaryファイルアクセスエラー: {e}")
 
     def _is_github_actions(self) -> bool:
         """GitHub Actions環境かどうかを判定"""

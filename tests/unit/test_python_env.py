@@ -344,7 +344,7 @@ class TestSetupWithVenv:
 
             # CI環境での失敗を回避するため、例外処理を追加
             try:
-                result = _setup_with_venv(temp_repo)
+                _setup_with_venv(temp_repo)
                 # CI環境では失敗する可能性があるため、結果に関わらず成功とみなす
                 result = True
             except Exception as e:
