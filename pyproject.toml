@@ -1,22 +1,36 @@
 [build-system]
-requires = [ "hatchling",]
+requires = [
+    "hatchling",
+]
 build-backend = "hatchling.build"
 
 [project]
 name = "setup-repository"
-version = "1.4.2"
+version = "1.4.3"
 description = "🚀 クロスプラットフォーム対応のGitHubリポジトリセットアップ・同期ツール"
 readme = "README.md"
 license = "MIT"
-classifiers = [ "Development Status :: 4 - Beta", "Intended Audience :: Developers", "License :: OSI Approved :: MIT License", "Operating System :: OS Independent", "Programming Language :: Python :: 3", "Programming Language :: Python :: 3.11", "Programming Language :: Python :: 3.12", "Programming Language :: Python :: 3.13", "Topic :: Software Development :: Version Control :: Git",]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Version Control :: Git",
+]
 requires-python = ">=3.11"
-dependencies = [ "rg>=0.0.75", "requests>=2.25.0", "bandit>=1.8.6", "psutil>=5.9.0",]
-[[project.authors]]
-name = "Setup Repository Contributors"
-
-[dependency-groups]
-dev = [ "coverage>=7.10.6", "mypy>=1.18.1", "pre-commit>=4.3.0", "pytest>=8.4.2", "pytest-cov>=7.0.0", "pytest-json-report>=1.5.0", "pytest-xdist>=3.8.0", "pytest-benchmark>=4.0.0", "pytest-timeout>=2.4.0", "ruff>=0.13.0", "black>=25.1.0", "tomli-w>=1.0.0", "tomli>=2.0.0", "types-psutil>=7.0.0.20250822", "types-requests>=2.32.4.20250809", "setuptools>=80.9.0",]
-security = [ "bandit>=1.8.6", "pip-licenses>=5.0.0",]
+dependencies = [
+    "rg>=0.0.75",
+    "requests>=2.25.0",
+    "bandit>=1.8.6",
+    "psutil>=5.9.0",
+]
+authors = [
+    { name = "Setup Repository Contributors" },
+]
 
 [project.scripts]
 setup-repo = "setup_repo.cli:main"
@@ -26,9 +40,64 @@ Homepage = "https://github.com/scottlz0310/Setup-Repository"
 Repository = "https://github.com/scottlz0310/Setup-Repository"
 Issues = "https://github.com/scottlz0310/Setup-Repository/issues"
 
+[dependency-groups]
+dev = [
+    "coverage>=7.10.6",
+    "mypy>=1.18.1",
+    "pre-commit>=4.3.0",
+    "pytest>=8.4.2",
+    "pytest-cov>=7.0.0",
+    "pytest-json-report>=1.5.0",
+    "pytest-xdist>=3.8.0",
+    "pytest-benchmark>=4.0.0",
+    "pytest-timeout>=2.4.0",
+    "ruff>=0.13.0",
+    "black>=25.1.0",
+    "tomli-w>=1.0.0",
+    "tomli>=2.0.0",
+    "types-psutil>=7.0.0.20250822",
+    "types-requests>=2.32.4.20250809",
+    "setuptools>=80.9.0",
+]
+security = [
+    "bandit>=1.8.6",
+    "pip-licenses>=5.0.0",
+]
+
 [tool.ruff]
 target-version = "py311"
 line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "W",
+    "I",
+    "N",
+    "UP",
+    "B",
+    "A",
+    "C4",
+    "T20",
+    "SIM",
+    "TCH",
+]
+ignore = [
+    "T201",
+    "SIM108",
+]
+
+[tool.ruff.lint.isort]
+known-first-party = [
+    "setup_repo",
+]
+force-single-line = false
+split-on-trailing-comma = true
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
 
 [tool.mypy]
 python_version = "3.11"
@@ -48,37 +117,67 @@ warn_unreachable = false
 strict_optional = false
 show_error_codes = true
 show_column_numbers = true
+
 [[tool.mypy.overrides]]
-module = [ "tests.*",]
+module = [
+    "tests.*",
+]
 disallow_untyped_defs = false
 
 [tool.bandit]
-exclude_dirs = [ "tests", "venv", ".venv", "build", "dist",]
-skips = [ "B101", "B603", "B607", "B404", "B604", "B310", "B108",]
+exclude_dirs = [
+    "tests",
+    "venv",
+    ".venv",
+    "build",
+    "dist",
+]
+skips = [
+    "B101",
+    "B603",
+    "B607",
+    "B404",
+    "B604",
+    "B310",
+    "B108",
+]
 severity = "medium"
 confidence = "medium"
+
+[tool.bandit.assert_used]
+skips = [
+    "*_test.py",
+    "test_*.py",
+]
 
 [tool.security]
 local_mode = true
 strict_mode = false
-required_tools = [ "bandit", "safety",]
-optional_tools = [ "trufflehog", "pip-licenses",]
+required_tools = [
+    "bandit",
+    "safety",
+]
+optional_tools = [
+    "trufflehog",
+    "pip-licenses",
+]
 allow_tool_failures = true
 fallback_mode = true
 
-[tool.ruff.lint]
-select = [ "E", "F", "W", "I", "N", "UP", "B", "A", "C4", "T20", "SIM", "TCH",]
-ignore = [ "T201", "SIM108",]
-
-[tool.ruff.format]
-quote-style = "double"
-indent-style = "space"
-
 [tool.pytest.ini_options]
-testpaths = [ "tests",]
-python_files = [ "test_*.py", "*_test.py",]
-python_classes = [ "Test*",]
-python_functions = [ "test_*",]
+testpaths = [
+    "tests",
+]
+python_files = [
+    "test_*.py",
+    "*_test.py",
+]
+python_classes = [
+    "Test*",
+]
+python_functions = [
+    "test_*",
+]
 addopts = [
     "-v",
     "--tb=short",
@@ -89,12 +188,35 @@ addopts = [
     "--cov-report=xml:output/coverage.xml",
     "--cov-fail-under=80",
 ]
-markers = [ "unit: 単体テスト", "integration: 統合テスト", "windows: Windows固有テスト", "unix: Unix系固有テスト", "macos: macOS固有テスト", "slow: 実行時間の長いテスト", "network: ネットワーク接続が必要なテスト", "performance: パフォーマンステスト", "stress: ストレステスト", "cross_platform: クロスプラットフォームテスト", "security: セキュリティテスト",]
-filterwarnings = [ "error", "ignore::UserWarning", "ignore::DeprecationWarning",]
+markers = [
+    "unit: 単体テスト",
+    "integration: 統合テスト",
+    "windows: Windows固有テスト",
+    "unix: Unix系固有テスト",
+    "macos: macOS固有テスト",
+    "slow: 実行時間の長いテスト",
+    "network: ネットワーク接続が必要なテスト",
+    "performance: パフォーマンステスト",
+    "stress: ストレステスト",
+    "cross_platform: クロスプラットフォームテスト",
+    "security: セキュリティテスト",
+]
+filterwarnings = [
+    "error",
+    "ignore::UserWarning",
+    "ignore::DeprecationWarning",
+]
 
 [tool.coverage.run]
-source = [ "src/setup_repo",]
-omit = [ "*/tests/*", "*/test_*", "*/__pycache__/*", "*/.*",]
+source = [
+    "src/setup_repo",
+]
+omit = [
+    "*/tests/*",
+    "*/test_*",
+    "*/__pycache__/*",
+    "*/.*",
+]
 
 [tool.coverage.report]
 fail_under = 80
@@ -102,7 +224,21 @@ show_missing = true
 skip_covered = false
 skip_empty = false
 precision = 2
-exclude_lines = [ "pragma: no cover", "def __repr__", "if self.debug:", "if settings.DEBUG", "raise AssertionError", "raise NotImplementedError", "if 0:", "if __name__ == .__main__.:", "class .*\\bProtocol\\):", "@(abc\\.)?abstractmethod", "if TYPE_CHECKING:", "if platform.system\\(\\)", "if __debug__:",]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+    "if TYPE_CHECKING:",
+    "if platform.system\\(\\)",
+    "if __debug__:",
+]
 
 [tool.coverage.html]
 directory = "output/htmlcov"
@@ -111,19 +247,13 @@ title = "Setup Repository Coverage Report"
 [tool.coverage.xml]
 output = "output/coverage.xml"
 
-[tool.bandit.assert_used]
-skips = [ "*_test.py", "test_*.py",]
-
 [tool.secuority.safety]
 ignore = []
 full_report = true
 output = "json"
 continue_on_error = false
 
-[tool.ruff.lint.isort]
-known-first-party = [ "setup_repo",]
-force-single-line = false
-split-on-trailing-comma = true
-
 [tool.hatch.build.targets.wheel]
-packages = [ "src/setup_repo",]
+packages = [
+    "src/setup_repo",
+]

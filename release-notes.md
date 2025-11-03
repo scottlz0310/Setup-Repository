@@ -1,14 +1,18 @@
-# 🚀 Setup Repository v1.4.2
+# 🚀 Setup Repository v1.4.3
 
 ## 📋 変更内容
 
-### 🔄 変更
-- リリースワークフローの改善
-- ドキュメント自動生成機能の強化
+### ✨ 新機能
+- Renovate自動依存関係更新の設定を追加
 
 ### 🐛 修正
-- バージョン管理の一貫性向上
-- CI/CDパイプラインの安定化
+- Windows環境でのgh/gitコマンドタイムアウトを追加
+- pyproject.tomlのaddopts設定を正しい配列形式に修正
+- CodeQL指摘事項の修正
+
+### 🔧 その他
+- chore: Renovate導入によりDependabot自動マージワークフローを削除
+- 🚀 リリース v1.4.2 準備完了
 
 ## 📦 インストール方法
 
