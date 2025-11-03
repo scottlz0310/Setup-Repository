@@ -75,6 +75,7 @@ output/
 !pyproject.toml
 !config.json.template
 !package*.json
+!renovate.json
 !tests/**/*.json
 !.vscode/
 !.vscode/**

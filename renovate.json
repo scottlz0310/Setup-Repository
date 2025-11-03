@@ -1,0 +1,125 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    ":semanticCommits",
+    ":separateMajorReleases"
+  ],
+  "timezone": "Asia/Tokyo",
+  "schedule": [
+    "before 3am on Monday"
+  ],
+  "labels": [
+    "dependencies"
+  ],
+  "assignees": [
+    "@scottlz0310"
+  ],
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 2,
+  "automerge": true,
+  "automergeType": "pr",
+  "automergeStrategy": "squash",
+  "platformAutomerge": true,
+  "packageRules": [
+    {
+      "description": "パッチ・マイナー更新は自動マージ",
+      "matchUpdateTypes": [
+        "patch",
+        "minor"
+      ],
+      "automerge": true,
+      "automergeType": "pr",
+      "labels": [
+        "dependencies",
+        "automerge"
+      ]
+    },
+    {
+      "description": "メジャー更新は手動レビュー",
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "automerge": false,
+      "labels": [
+        "dependencies",
+        "breaking-change",
+        "manual-review"
+      ]
+    },
+    {
+      "description": "セキュリティ更新は優先的に自動マージ",
+      "matchDatasources": [
+        "pypi"
+      ],
+      "vulnerabilityAlerts": {
+        "enabled": true
+      },
+      "automerge": true,
+      "labels": [
+        "dependencies",
+        "security",
+        "high-priority"
+      ]
+    },
+    {
+      "description": "GitHub Actions更新",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "automerge": true,
+      "labels": [
+        "dependencies",
+        "github-actions"
+      ]
+    },
+    {
+      "description": "開発依存関係のグループ化",
+      "matchDepTypes": [
+        "dev"
+      ],
+      "groupName": "development dependencies",
+      "automerge": true
+    },
+    {
+      "description": "テスト関連パッケージのグループ化",
+      "matchPackagePatterns": [
+        "^pytest",
+        "^coverage"
+      ],
+      "groupName": "test dependencies",
+      "automerge": true
+    },
+    {
+      "description": "リンター・フォーマッター関連のグループ化",
+      "matchPackageNames": [
+        "ruff",
+        "black",
+        "mypy"
+      ],
+      "groupName": "linter and formatter",
+      "automerge": true
+    }
+  ],
+  "python": {
+    "enabled": true
+  },
+  "pip_requirements": {
+    "enabled": false
+  },
+  "lockFileMaintenance": {
+    "enabled": true,
+    "automerge": true,
+    "schedule": [
+      "before 3am on the first day of the month"
+    ]
+  },
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": [
+      "security"
+    ],
+    "automerge": true
+  }
+}
