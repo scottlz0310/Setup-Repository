@@ -15,9 +15,15 @@ def get_github_token() -> str | None:
 
     # gh CLIをフォールバックとして試す
     try:
-        result = subprocess.run(["gh", "auth", "token"], capture_output=True, text=True, check=True)
+        result = subprocess.run(
+            ["gh", "auth", "token"],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=5,
+        )
         return result.stdout.strip()
-    except (subprocess.CalledProcessError, FileNotFoundError):
+    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
         return None
 
 
@@ -33,9 +39,10 @@ def get_github_user() -> str | None:
             capture_output=True,
             text=True,
             check=True,
+            timeout=5,
         )
         return result.stdout.strip()
-    except (subprocess.CalledProcessError, FileNotFoundError):
+    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
         return None
 
 
