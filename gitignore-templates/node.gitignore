@@ -1,5 +1,6 @@
 # Node.js
 node_modules/
+.pnpm-store/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -14,6 +15,7 @@ pids
 # Coverage directory used by tools like istanbul
 coverage/
 *.lcov
+*-output.txt
 
 # nyc test coverage
 .nyc_output
@@ -71,6 +73,7 @@ jspm_packages/
 # Nuxt.js build / generate output
 .nuxt
 dist
+out/
 
 # Gatsby files
 .cache/
