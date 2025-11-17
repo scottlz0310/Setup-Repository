@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "setup-repository"
-version = "1.4.3"
+version = "1.4.4"
 description = "🚀 クロスプラットフォーム対応のGitHubリポジトリセットアップ・同期ツール"
 readme = "README.md"
 license = "MIT"
@@ -257,3 +257,7 @@ continue_on_error = false
 packages = [
     "src/setup_repo",
 ]
+
+[tool.hatch.build.targets.wheel.force-include]
+"gitignore-templates" = "gitignore-templates"
+"vscode-templates" = "vscode-templates"

@@ -1,6 +1,13 @@
 # 📝 変更履歴
 
 
+## [1.4.4] - 2025-11-17
+
+### 🐛 修正
+
+- `uv tool install` で配布されるCLIに `gitignore-templates/` と `vscode-templates/` を同梱し、グローバルインストールでも `.gitignore`/`.vscode` テンプレートが欠けないように修正
+
+
 ## [1.4.3] - 2025-11-03
 
 ### ✨ 新機能

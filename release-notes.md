@@ -1,27 +1,25 @@
-# 🚀 Setup Repository v1.4.3
+# 🚀 Setup Repository v1.4.4
 
 ## 📋 変更内容
 
-### ✨ 新機能
-- Renovate自動依存関係更新の設定を追加
-
 ### 🐛 修正
-- Windows環境でのgh/gitコマンドタイムアウトを追加
-- pyproject.tomlのaddopts設定を正しい配列形式に修正
-- CodeQL指摘事項の修正
+
+- `uv tool install` で導入したCLIにも `gitignore-templates/` と `vscode-templates/` を同梱し、グローバル環境でも `.gitignore`/`.vscode` テンプレートが欠けないように修正
 
 ### 🔧 その他
-- chore: Renovate導入によりDependabot自動マージワークフローを削除
-- 🚀 リリース v1.4.2 準備完了
+
+- CLIバイナリとソースツリーのテンプレート内容をそろえ、同期ロジックが常に最新テンプレートを利用できるよう調整
 
 ## 📦 インストール方法
 
 ### 🐍 Pythonパッケージとして
+
 ```bash
 pip install setup-repository
 ```
 
 ### 📥 ソースからインストール
+
 ```bash
 git clone https://github.com/scottlz0310/Setup-Repository.git
 cd Setup-Repository
