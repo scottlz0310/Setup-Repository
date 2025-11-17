@@ -1,0 +1,45 @@
+# .NET build artifacts
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+*.obj
+*.pdb
+*.user
+*.aps
+*.pch
+*.ilk
+*.tlog
+*.cache
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Visual Studio workspace data
+.vs/
+.vscode/
+
+# Rider / ReSharper
+_ReSharper*/
+*.DotSettings.user
+
+# NuGet
+packages/
+*.nupkg
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Coverage and test tools
+*.coverage
+*.coveragexml
+*.opencover.xml
+
+# Publish outputs
+publish/
+AppPackages/
+BundleArtifacts/
+
+# Temporary files
+*.tmp
+*.swp
+*.swo
