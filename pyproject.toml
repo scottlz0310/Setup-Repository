@@ -259,5 +259,5 @@ packages = [
 ]
 
 [tool.hatch.build.targets.wheel.force-include]
-"gitignore-templates" = "gitignore-templates"
-"vscode-templates" = "vscode-templates"
+gitignore-templates = "gitignore-templates"
+vscode-templates = "vscode-templates"

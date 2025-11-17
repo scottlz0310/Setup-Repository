@@ -4,22 +4,16 @@
 
 ### 🐛 修正
 
-- `uv tool install` で導入したCLIにも `gitignore-templates/` と `vscode-templates/` を同梱し、グローバル環境でも `.gitignore`/`.vscode` テンプレートが欠けないように修正
-
-### 🔧 その他
-
-- CLIバイナリとソースツリーのテンプレート内容をそろえ、同期ロジックが常に最新テンプレートを利用できるよう調整
+- `uv tool install` で配布されるCLIに `gitignore-templates/` と `vscode-templates/` を同梱し、グローバルインストールでも `.gitignore`/`.vscode` テンプレートが欠けないように修正
 
 ## 📦 インストール方法
 
 ### 🐍 Pythonパッケージとして
-
 ```bash
 pip install setup-repository
 ```
 
 ### 📥 ソースからインストール
-
 ```bash
 git clone https://github.com/scottlz0310/Setup-Repository.git
 cd Setup-Repository
