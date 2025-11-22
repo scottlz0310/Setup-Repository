@@ -77,6 +77,7 @@ output/
 !package*.json
 !renovate.json
 !tests/**/*.json
+!src/setup_repo/templates/**/*.json
 !.vscode/
 !.vscode/**
 .gitignore.backup
