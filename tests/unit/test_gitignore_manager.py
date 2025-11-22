@@ -58,9 +58,16 @@ class TestGitignoreManager:
         manager = GitignoreManager(temp_repo_path)
 
         assert manager.repo_path == Path(temp_repo_path)
-        # デフォルトパスの確認（プロジェクトルートからの相対パス）
-        expected_default = Path.cwd() / "gitignore-templates"
-        assert manager.templates_dir == expected_default
+        # デフォルトパスの確認（パッケージ内のtemplates/gitignoreディレクトリ）
+        # importlib.resourcesの場合、Traversableまたはパスが返される
+        # テスト環境では実際のファイルシステムのパスになる
+        assert manager.templates_dir is not None
+        # パスの最後の部分が "gitignore" であることを確認
+        if isinstance(manager.templates_dir, Path):
+            assert manager.templates_dir.name == "gitignore"
+        else:
+            # Traversableの場合
+            assert "gitignore" in str(manager.templates_dir)
 
     @pytest.mark.unit
     def test_auto_push_disabled_in_pytest(self, temp_repo_path, temp_templates_dir):

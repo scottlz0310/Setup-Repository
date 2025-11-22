@@ -1,8 +1,12 @@
 """.gitignore管理機能"""
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from .security_helpers import safe_path_join
+
+if TYPE_CHECKING:
+    from importlib.resources.abc import Traversable
 
 
 class GitignoreManager:
@@ -13,12 +17,21 @@ class GitignoreManager:
         self.gitignore_path = self.repo_path / ".gitignore"
 
         # テンプレートディレクトリの設定
+        # テンプレートディレクトリの設定
         if templates_dir:
-            self.templates_dir = Path(templates_dir)
+            self.templates_dir: Path | Traversable = Path(templates_dir)
         else:
-            # デフォルト: プロジェクトルートのgitignore-templatesディレクトリ
-            project_root = Path(__file__).parent.parent.parent
-            self.templates_dir = project_root / "gitignore-templates"
+            # デフォルト: パッケージ内のtemplates/gitignoreディレクトリ
+            import importlib.resources
+
+            try:
+                # Python 3.9+
+                self.templates_dir = importlib.resources.files("setup_repo").joinpath("templates/gitignore")
+            except (ImportError, AttributeError):
+                # Fallback for older Python versions or if not installed as package
+                # This part might need adjustment depending on how it's run (e.g. from source)
+                project_root = Path(__file__).parent
+                self.templates_dir = project_root / "templates" / "gitignore"
 
         # auto_pushのデフォルト設定（テスト/CI時は自動的に無効化）
         if auto_push is None:
@@ -144,12 +157,21 @@ class GitignoreManager:
 
     def load_template(self, template_name: str) -> str:
         """テンプレートファイルを読み込み"""
-        try:
-            template_file = safe_path_join(self.templates_dir, f"{template_name}.gitignore")
-        except ValueError:
+        # Validate template_name to prevent traversal
+        if ".." in template_name or "/" in template_name or "\\" in template_name:
             return ""
 
-        if not template_file.exists():
+        template_file: Path | Traversable
+        if isinstance(self.templates_dir, Path):
+            try:
+                template_file = safe_path_join(self.templates_dir, f"{template_name}.gitignore")
+            except ValueError:
+                return ""
+        else:
+            # Traversable
+            template_file = self.templates_dir.joinpath(f"{template_name}.gitignore")
+
+        if not template_file.is_file():
             return ""
 
         try:
@@ -159,12 +181,13 @@ class GitignoreManager:
 
     def get_available_templates(self) -> list[str]:
         """利用可能なテンプレート一覧を取得"""
-        if not self.templates_dir.exists():
+        if not self.templates_dir.is_dir():
             return []
 
         templates = []
-        for file in self.templates_dir.glob("*.gitignore"):
-            templates.append(file.stem)
+        for item in self.templates_dir.iterdir():
+            if item.is_file() and item.name.endswith(".gitignore"):
+                templates.append(item.name[:-10])  # remove .gitignore
         return sorted(templates)
 
     def setup_gitignore_from_templates(

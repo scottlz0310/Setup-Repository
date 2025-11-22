@@ -3,9 +3,13 @@
 import json
 import shutil
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from .security_helpers import safe_path_join
 from .utils import ensure_directory
+
+if TYPE_CHECKING:
+    from importlib.resources.abc import Traversable
 
 
 class TemplateManager:
@@ -13,20 +17,42 @@ class TemplateManager:
 
     def __init__(self, project_root: Path | None = None):
         self.project_root = project_root or Path.cwd()
+
+        import importlib.resources
+
+        try:
+            # Python 3.9+
+            base_templates_dir = importlib.resources.files("setup_repo").joinpath("templates")
+        except (ImportError, AttributeError):
+            # Fallback
+            base_templates_dir = Path(__file__).parent / "templates"
+
+        # Custom templates are user-defined and stored in project root
+        # gitignore/vscode templates come from the package
         self.templates_dir = safe_path_join(self.project_root, "templates")
-        self.gitignore_templates_dir = safe_path_join(self.project_root, "gitignore-templates")
-        self.vscode_templates_dir = safe_path_join(self.project_root, "vscode-templates")
+
+        if isinstance(base_templates_dir, Path):
+            self.gitignore_templates_dir: Path | Traversable = base_templates_dir / "gitignore"
+            self.vscode_templates_dir: Path | Traversable = base_templates_dir / "vscode"
+        else:
+            # importlib.resources.abc.Traversable
+            self.gitignore_templates_dir = base_templates_dir.joinpath("gitignore")
+            self.vscode_templates_dir = base_templates_dir.joinpath("vscode")
 
     def list_templates(self) -> dict[str, list[str]]:
         """利用可能なテンプレート一覧を取得"""
         templates: dict[str, list[str]] = {"gitignore": [], "vscode": [], "custom": []}
 
         # gitignoreテンプレート
-        if self.gitignore_templates_dir.exists():
-            templates["gitignore"] = [f.stem for f in self.gitignore_templates_dir.glob("*.gitignore")]
+        if self.gitignore_templates_dir.is_dir():
+            templates["gitignore"] = [
+                f.name[:-10]
+                for f in self.gitignore_templates_dir.iterdir()
+                if f.is_file() and f.name.endswith(".gitignore")
+            ]
 
         # VS Codeテンプレート
-        if self.vscode_templates_dir.exists():
+        if self.vscode_templates_dir.is_dir():
             templates["vscode"] = [d.name for d in self.vscode_templates_dir.iterdir() if d.is_dir()]
 
         # カスタムテンプレート
@@ -40,8 +66,17 @@ class TemplateManager:
         if target_path is None:
             target_path = Path.cwd()
 
-        template_file = safe_path_join(self.gitignore_templates_dir, f"{template_name}.gitignore")
-        if not template_file.exists():
+        # Validate template_name
+        if ".." in template_name or "/" in template_name or "\\" in template_name:
+            raise FileNotFoundError(f"gitignoreテンプレート '{template_name}' が見つかりません")
+
+        template_file: Path | Traversable
+        if isinstance(self.gitignore_templates_dir, Path):
+            template_file = safe_path_join(self.gitignore_templates_dir, f"{template_name}.gitignore")
+        else:
+            template_file = self.gitignore_templates_dir.joinpath(f"{template_name}.gitignore")
+
+        if not template_file.is_file():
             raise FileNotFoundError(f"gitignoreテンプレート '{template_name}' が見つかりません")
 
         target_gitignore = safe_path_join(target_path, ".gitignore")
@@ -51,7 +86,11 @@ class TemplateManager:
             backup_path = safe_path_join(target_path, ".gitignore.backup")
             shutil.copy2(target_gitignore, backup_path)
 
-        shutil.copy2(template_file, target_gitignore)
+        if isinstance(template_file, Path):
+            shutil.copy2(template_file, target_gitignore)
+        else:
+            target_gitignore.write_bytes(template_file.read_bytes())
+
         return target_gitignore
 
     def apply_vscode_template(self, platform: str, target_path: Path | None = None) -> Path:
@@ -59,18 +98,35 @@ class TemplateManager:
         if target_path is None:
             target_path = Path.cwd()
 
-        template_dir = safe_path_join(self.vscode_templates_dir, platform)
-        if not template_dir.exists():
+        # Validate platform
+        if ".." in platform or "/" in platform or "\\" in platform:
+            raise FileNotFoundError(f"VS Codeテンプレート '{platform}' が見つかりません")
+
+        template_dir: Path | Traversable
+        if isinstance(self.vscode_templates_dir, Path):
+            template_dir = safe_path_join(self.vscode_templates_dir, platform)
+        else:
+            template_dir = self.vscode_templates_dir.joinpath(platform)
+
+        if not template_dir.is_dir():
             raise FileNotFoundError(f"VS Codeテンプレート '{platform}' が見つかりません")
 
         target_vscode_dir = safe_path_join(target_path, ".vscode")
         ensure_directory(target_vscode_dir)
 
         # settings.jsonをコピー
-        template_settings = safe_path_join(template_dir, "settings.json")
-        if template_settings.exists():
+        template_settings: Path | Traversable
+        if isinstance(template_dir, Path):
+            template_settings = safe_path_join(template_dir, "settings.json")
+        else:
+            template_settings = template_dir.joinpath("settings.json")
+
+        if template_settings.is_file():
             target_settings = safe_path_join(target_vscode_dir, "settings.json")
-            shutil.copy2(template_settings, target_settings)
+            if isinstance(template_settings, Path):
+                shutil.copy2(template_settings, target_settings)
+            else:
+                target_settings.write_bytes(template_settings.read_bytes())
 
         return target_vscode_dir
 
