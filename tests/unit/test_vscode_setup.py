@@ -25,18 +25,10 @@ class TestVscodeSetup:
         with tempfile.TemporaryDirectory() as temp_dir:
             repo_path = Path(temp_dir)
 
-            # テンプレートディレクトリを作成
-            template_dir = repo_path / "vscode-templates" / "linux"
-            template_dir.mkdir(parents=True)
-
-            # テンプレートファイルを作成
-            settings_file = template_dir / "settings.json"
-            settings_file.write_text('{"python.defaultInterpreter": "python"}')
-
-            with patch("setup_repo.vscode_setup.__file__", str(repo_path / "vscode_setup.py")), patch("builtins.print"):
+            # 実際のパッケージテンプレートを使用
+            with patch("builtins.print"):
                 result = apply_vscode_template(repo_path, "linux", dry_run=False)
-
-                # テンプレートがない場合はTrueを返す
+                # パッケージテンプレートがあるので成功するはず
                 assert result is True
 
     def test_apply_vscode_template_dry_run(self):
@@ -67,13 +59,8 @@ class TestVscodeSetup:
             existing_vscode.mkdir()
             (existing_vscode / "settings.json").write_text('{"old": "setting"}')
 
-            # テンプレートディレクトリを作成
-            template_dir = repo_path / "vscode-templates" / "linux"
-            template_dir.mkdir(parents=True)
-            (template_dir / "settings.json").write_text('{"new": "setting"}')
-
+            # 実際のパッケージテンプレートを使用
             with (
-                patch("setup_repo.vscode_setup.__file__", str(repo_path / "vscode_setup.py")),
                 patch("builtins.print"),
                 patch("time.time", return_value=1234567890),
             ):
@@ -89,17 +76,12 @@ class TestVscodeSetup:
         with tempfile.TemporaryDirectory() as temp_dir:
             repo_path = Path(temp_dir)
 
-            # テンプレートディレクトリを作成
-            template_dir = repo_path / "vscode-templates" / "linux"
-            template_dir.mkdir(parents=True)
-            (template_dir / "settings.json").write_text('{"test": "setting"}')
-
+            # 実際のパッケージテンプレートを使用し、エラーを発生させる
             with (
-                patch("setup_repo.vscode_setup.__file__", str(repo_path / "vscode_setup.py")),
                 patch("builtins.print"),
-                patch("shutil.copy2") as mock_copy2,
+                patch("pathlib.Path.mkdir") as mock_mkdir,
             ):
-                mock_copy2.side_effect = Exception("コピーエラー")
+                mock_mkdir.side_effect = Exception("ディレクトリ作成エラー")
 
                 result = apply_vscode_template(repo_path, "linux", dry_run=False)
                 assert result is False
