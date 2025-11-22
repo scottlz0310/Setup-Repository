@@ -4,7 +4,17 @@
 
 ### 🐛 修正
 
-- `uv tool install` で配布されるCLIに `gitignore-templates/` と `vscode-templates/` を同梱し、グローバルインストールでも `.gitignore`/`.vscode` テンプレートが欠けないように修正
+- **テンプレート同梱問題の完全修正**
+  - テンプレートディレクトリをパッケージソース内に移動 (`src/setup_repo/templates/`)
+  - `importlib.resources`を使用してテンプレートにアクセスするように更新
+  - VS Codeテンプレートが`.gitignore`で除外されていた問題を修正
+  - すべてのプラットフォーム（Ubuntu, macOS, Windows）でテストが成功
+
+### 🔧 その他
+
+- 型アノテーション追加（`Path | Traversable`対応）
+- `vscode_setup.py`を`importlib.resources`対応に更新
+- テストを実際のパッケージテンプレートを使用するように更新
 
 ## 📦 インストール方法
 
