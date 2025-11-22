@@ -1,4 +1,4 @@
-# 🚀 Setup Repository v1.4.4
+# 🚀 Setup Repository v1.4.5
 
 ## 📋 変更内容
 
