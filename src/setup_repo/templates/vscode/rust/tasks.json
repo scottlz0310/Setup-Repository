@@ -1,0 +1,127 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "cargo build",
+      "type": "cargo",
+      "command": "build",
+      "problemMatcher": ["$rustc"],
+      "group": "build"
+    },
+    {
+      "label": "cargo build (release)",
+      "type": "cargo",
+      "command": "build",
+      "args": ["--release"],
+      "problemMatcher": ["$rustc"],
+      "group": "build"
+    },
+    {
+      "label": "cargo test",
+      "type": "cargo",
+      "command": "test",
+      "problemMatcher": ["$rustc"],
+      "group": "test"
+    },
+    {
+      "label": "cargo nextest",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["nextest", "run"],
+      "problemMatcher": ["$rustc"],
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "cargo watch",
+      "type": "shell",
+      "command": "cargo",
+      "args": [
+        "watch",
+        "-x",
+        "check",
+        "-x",
+        "test",
+        "-x",
+        "clippy"
+      ],
+      "problemMatcher": ["$rustc"],
+      "isBackground": true,
+      "group": "build"
+    },
+    {
+      "label": "cargo clippy",
+      "type": "cargo",
+      "command": "clippy",
+      "args": [
+        "--all-targets",
+        "--all-features",
+        "--",
+        "-W",
+        "clippy::all",
+        "-W",
+        "clippy::pedantic"
+      ],
+      "problemMatcher": ["$rustc"],
+      "group": "build"
+    },
+    {
+      "label": "cargo bloat",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["bloat", "--release"],
+      "problemMatcher": [],
+      "group": "none"
+    },
+    {
+      "label": "cargo bloat (crates)",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["bloat", "--release", "--crates"],
+      "problemMatcher": [],
+      "group": "none"
+    },
+    {
+      "label": "cargo machete",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["machete"],
+      "problemMatcher": [],
+      "group": "none"
+    },
+    {
+      "label": "cargo udeps",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["+nightly", "udeps", "--all-targets"],
+      "problemMatcher": [],
+      "group": "none"
+    },
+    {
+      "label": "rustfmt",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["fmt", "--all"],
+      "problemMatcher": [],
+      "group": "none"
+    },
+    {
+      "label": "leptosfmt",
+      "type": "shell",
+      "command": "leptosfmt",
+      "args": ["**/*.rs"],
+      "problemMatcher": [],
+      "group": "none"
+    },
+    {
+      "label": "dprint format",
+      "type": "shell",
+      "command": "dprint",
+      "args": ["fmt"],
+      "problemMatcher": [],
+      "group": "none"
+    }
+  ]
+}

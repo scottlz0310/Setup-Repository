@@ -1,0 +1,19 @@
+{
+  "files.eol": "\n",
+
+  "terminal.integrated.defaultProfile.linux": "bash",
+  "terminal.integrated.profiles.linux": {
+    "bash": {
+      "path": "/bin/bash",
+      "icon": "terminal-bash"
+    },
+    "zsh": {
+      "path": "/bin/zsh",
+      "icon": "terminal"
+    }
+  },
+
+  "python.defaultInterpreterPath": "./.venv/bin/python",
+  "python.venvPath": ".",
+  "python.venvFolders": [".venv"]
+}

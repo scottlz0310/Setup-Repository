@@ -37,7 +37,7 @@ class TestProjectDetector:
         verify_current_platform()  # プラットフォーム検証
 
         project_types = project_detector.detect_project_types()
-        assert project_types == set()
+        assert project_types == []  # スコアリングシステムではlistを返す
 
     @pytest.mark.unit
     def test_detect_project_types_python_pyproject(self, project_detector):
@@ -55,33 +55,56 @@ class TestProjectDetector:
         """Pythonプロジェクト検出（setup.py）"""
         verify_current_platform()  # プラットフォーム検証
 
-        # setup.pyを作成
+        # setup.pyのみでは8点（閾値10点未満）
         (project_detector.repo_path / "setup.py").write_text("from setuptools import setup", encoding="utf-8")
+
+        project_types = project_detector.detect_project_types()
+        # setup.pyのみでは検出されない
+        assert "python" not in project_types
+
+        # requirements.txtを追加すれば閾値に達する（8 + 3 = 11点）
+        (project_detector.repo_path / "requirements.txt").write_text("requests\n", encoding="utf-8")
+
+        # キャッシュクリア
+        project_detector._file_count_cache = {}
 
         project_types = project_detector.detect_project_types()
         assert "python" in project_types
 
     @pytest.mark.unit
     def test_detect_project_types_python_by_extension(self, project_detector):
-        """Pythonプロジェクト検出（拡張子）"""
+        """Pythonプロジェクト検出（拡張子のみでは不十分）"""
         verify_current_platform()  # プラットフォーム検証
 
-        # .pyファイルを作成
+        # .pyファイル1つだけではスコア不足（0.5点 < 10点）
         (project_detector.repo_path / "main.py").write_text("print('hello')", encoding="utf-8")
+
+        project_types = project_detector.detect_project_types()
+        # ファイル1つだけでは閾値に達しない
+        assert "python" not in project_types
+
+        # 追加で多数のファイルを作成すれば検出される（20ファイル * 0.5 = 10点）
+        for i in range(19):  # 既に1ファイルあるので19個追加で合計20ファイル
+            (project_detector.repo_path / f"file{i}.py").write_text(f"# file{i}", encoding="utf-8")
+
+        # キャッシュクリア
+        project_detector._file_count_cache = {}
 
         project_types = project_detector.detect_project_types()
         assert "python" in project_types
 
     @pytest.mark.unit
     def test_detect_project_types_python_by_directory(self, project_detector):
-        """Pythonプロジェクト検出（ディレクトリ）"""
+        """Pythonプロジェクト検出（ディレクトリのみでは不十分）"""
         verify_current_platform()  # プラットフォーム検証
 
-        # srcディレクトリを作成
+        # srcディレクトリのみではスコア不足
+        # （他のプロジェクトタイプもsrcを使うため、Python固有ではない）
         (project_detector.repo_path / "src").mkdir()
 
         project_types = project_detector.detect_project_types()
-        assert "python" in project_types
+        # srcディレクトリだけでは閾値に達しない
+        assert "python" not in project_types
 
     @pytest.mark.unit
     def test_detect_project_types_node(self, project_detector):
@@ -279,34 +302,46 @@ class TestProjectDetector:
         assert project_detector._path_exists("test.txt") is True
 
     @pytest.mark.unit
-    def test_has_files_with_extensions(self, project_detector):
-        """拡張子によるファイル検索"""
+    def test_count_files_with_extension(self, project_detector):
+        """拡張子によるファイル数カウント"""
         verify_current_platform()  # プラットフォーム検証
 
         # .pyファイルが存在しない場合
-        assert project_detector._has_files_with_extensions([".py"]) is False
+        count = project_detector._count_files_with_extension(".py", [])
+        assert count == 0
 
         # .pyファイルを作成
         (project_detector.repo_path / "main.py").write_text("print('hello')", encoding="utf-8")
-        assert project_detector._has_files_with_extensions([".py"]) is True
+        count = project_detector._count_files_with_extension(".py", [])
+        assert count == 1
 
-        # サブディレクトリ内のファイルも検出
+        # サブディレクトリ内のファイルもカウント
         subdir = project_detector.repo_path / "subdir"
         subdir.mkdir()
         (subdir / "module.py").write_text("# module", encoding="utf-8")
-        assert project_detector._has_files_with_extensions([".py"]) is True
+        count = project_detector._count_files_with_extension(".py", [])
+        assert count == 2
 
     @pytest.mark.unit
-    def test_has_files_with_extensions_multiple(self, project_detector):
-        """複数拡張子でのファイル検索"""
+    def test_count_files_with_excluded_dirs(self, project_detector):
+        """除外ディレクトリを考慮したファイルカウント"""
         verify_current_platform()  # プラットフォーム検証
 
-        # .jsファイルを作成
-        (project_detector.repo_path / "app.js").write_text("console.log('hello')", encoding="utf-8")
+        # プロジェクト本体の.pyファイル
+        (project_detector.repo_path / "main.py").write_text("print('hello')", encoding="utf-8")
 
-        # 複数の拡張子で検索
-        assert project_detector._has_files_with_extensions([".py", ".js"]) is True
-        assert project_detector._has_files_with_extensions([".py", ".ts"]) is False
+        # .venvディレクトリ内の.pyファイル（除外対象）
+        venv_dir = project_detector.repo_path / ".venv" / "lib"
+        venv_dir.mkdir(parents=True)
+        (venv_dir / "lib.py").write_text("# lib", encoding="utf-8")
+
+        # 除外なしではカウントされる
+        count = project_detector._count_files_with_extension(".py", [])
+        assert count == 2
+
+        # .venvを除外するとカウントされない
+        count = project_detector._count_files_with_extension(".py", [".venv"])
+        assert count == 1
 
     @pytest.mark.unit
     def test_analyze_project_comprehensive(self, project_detector):
@@ -326,6 +361,9 @@ class TestProjectDetector:
         analysis = project_detector.analyze_project()
 
         assert "python" in analysis["project_types"]
+        assert "scores" in analysis  # スコア情報が含まれる
+        assert "python" in analysis["scores"]
+        assert analysis["scores"]["python"]["detected"] is True
         assert "uv" in analysis["tools"]
         assert "git" in analysis["tools"]
         assert "vscode" in analysis["tools"]
@@ -333,34 +371,33 @@ class TestProjectDetector:
         assert "python" in analysis["recommended_templates"]
 
     @pytest.mark.unit
-    def test_check_project_type_logic(self, project_detector):
-        """プロジェクトタイプチェックロジックのテスト"""
+    def test_scoring_system_logic(self, project_detector):
+        """スコアリングシステムのロジックテスト"""
         verify_current_platform()  # プラットフォーム検証
 
         # Pythonのルールを取得
-        python_rules = project_detector.DETECTION_RULES["python"]
+        python_rules = project_detector.SCORING_RULES["python"]
 
-        # ファイルが存在しない場合
-        assert project_detector._check_project_type(python_rules) is False
+        # ファイルが存在しない場合はスコア0
+        score = project_detector._calculate_score("python", python_rules)
+        assert score == 0.0
 
-        # pyproject.tomlを作成（ファイル存在による検出）
+        # pyproject.tomlを作成（プライマリファイル: 10点）
         (project_detector.repo_path / "pyproject.toml").write_text("[tool.test]", encoding="utf-8")
-        assert project_detector._check_project_type(python_rules) is True
+        score = project_detector._calculate_score("python", python_rules)
+        assert score >= 10.0  # 閾値に達する
 
     @pytest.mark.unit
-    def test_detection_rules_completeness(self, project_detector):
-        """検出ルールの完全性テスト"""
+    def test_scoring_rules_completeness(self, project_detector):
+        """スコアリングルールの完全性テスト"""
         verify_current_platform()  # プラットフォーム検証
 
         # すべてのプロジェクトタイプにルールが定義されていることを確認
-        for _project_type, rules in project_detector.DETECTION_RULES.items():
+        for _project_type, rules in project_detector.SCORING_RULES.items():
             assert isinstance(rules, dict)
-            assert "files" in rules
-            assert "extensions" in rules
-            assert "directories" in rules
-            assert isinstance(rules["files"], list)
-            assert isinstance(rules["extensions"], list)
-            assert isinstance(rules["directories"], list)
+            assert "threshold" in rules
+            assert isinstance(rules["threshold"], (int, float))
+            assert rules["threshold"] > 0
 
     @pytest.mark.unit
     def test_tool_detection_completeness(self, project_detector):
@@ -380,12 +417,11 @@ class TestProjectDetector:
         """エッジケースのテスト"""
         verify_current_platform()  # プラットフォーム検証
 
-        # 空のファイル名での検出
-        empty_rules = {"files": [""], "extensions": [], "directories": []}
-        assert project_detector._check_project_type(empty_rules) is False
+        # 存在しない拡張子でのカウント
+        count = project_detector._count_files_with_extension(".nonexistent", [])
+        assert count == 0
 
-        # 存在しない拡張子での検索
-        assert project_detector._has_files_with_extensions([".nonexistent"]) is False
-
-        # 空の拡張子リストでの検索
-        assert project_detector._has_files_with_extensions([]) is False
+        # 空のスコアリングルール
+        empty_rules = {"threshold": 10}
+        score = project_detector._calculate_score("test", empty_rules)
+        assert score == 0.0

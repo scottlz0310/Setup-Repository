@@ -1,0 +1,14 @@
+{
+  "recommendations": [
+    "rust-lang.rust-analyzer",
+    "tamasfe.even-better-toml",
+    "serayuzgur.crates",
+    "vadimcn.vscode-lldb",
+    "belfz.search-crates-io",
+    "swellaby.vscode-rust-test-adapter",
+    "fill-labs.dependi",
+    "usernamehw.errorlens",
+    "streetsidesoftware.code-spell-checker"
+  ],
+  "unwantedRecommendations": []
+}
