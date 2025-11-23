@@ -7,7 +7,7 @@
 - **VS Codeテンプレート構造の刷新**
   - common/language/platformの3層構造に再設計
   - プロジェクトタイプを自動検出して適切なテンプレートを適用
-  - 複数プロジェクトタイプの同時検出に対応（例：フロントエンドNode + バックエンドPython）
+  - 複数プロジェクトタイプの同時検出に対応（フロントエンドNode + バックエンドPython等）
 
 - **JSON設定のインテリジェントマージ機能**
   - 既存のVS Code設定を保持しつつ新しい設定を統合
@@ -85,16 +85,7 @@ setup-repo sync --dry-run
 ## 🐍 Python要件
 
 - Python 3.11以上
-- 対応バージョン: 3.11, 3.12, 3.13, 3.14
-
-## 🎯 サポートプロジェクトタイプ
-
-- Python（pyproject.toml、setup.py、requirements.txt等）
-- Node.js（package.json、TypeScript等）
-- Rust（Cargo.toml、.rs）
-- Go（go.mod、.go）
-- Java（pom.xml、build.gradle等）
-- C#（.csproj、.sln等）
+- 対応バージョン: 3.11, 3.12, 3.13
 
 ---
 
