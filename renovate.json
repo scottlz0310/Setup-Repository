@@ -108,6 +108,18 @@
   "pip_requirements": {
     "enabled": false
   },
+  "uv": {
+    "enabled": true
+  },
+  "postUpgradeTasks": {
+    "commands": [
+      "uv lock"
+    ],
+    "fileFilters": [
+      "uv.lock"
+    ],
+    "executionMode": "branch"
+  },
   "lockFileMaintenance": {
     "enabled": true,
     "automerge": true,
