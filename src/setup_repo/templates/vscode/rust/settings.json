@@ -5,16 +5,16 @@
     "editor.codeActionsOnSave": {
       "source.organizeImports": "explicit"
     },
-    "editor.rulers": [100],
+    "editor.rulers": [
+      120
+    ],
     "editor.tabSize": 4,
     "editor.insertSpaces": true
   },
-
   "[toml]": {
     "editor.formatOnSave": true,
     "editor.defaultFormatter": "tamasfe.even-better-toml"
   },
-
   "rust-analyzer.checkOnSave": true,
   "rust-analyzer.check.command": "clippy",
   "rust-analyzer.check.features": "all",
@@ -44,38 +44,28 @@
   "rust-analyzer.hover.actions.references.enable": true,
   "rust-analyzer.completion.autoimport.enable": true,
   "rust-analyzer.completion.autoself.enable": true,
-
   "rust-analyzer.rustfmt.extraArgs": [
     "+nightly"
   ],
   "rust-analyzer.rustfmt.rangeFormatting.enable": true,
-
   "rust-analyzer.assist.importGranularity": "module",
   "rust-analyzer.assist.importPrefix": "self",
-
   "rust-analyzer.diagnostics.enable": true,
   "rust-analyzer.diagnostics.experimental.enable": true,
-
   "rust-analyzer.files.excludeDirs": [
     "target",
     ".cargo",
     "node_modules"
   ],
-
   "leptosfmt.enable": true,
-
   "dprint.enable": true,
   "dprint.path": "./node_modules/.bin/dprint",
-
   "evenBetterToml.formatter.alignEntries": true,
   "evenBetterToml.formatter.arrayTrailingComma": true,
   "evenBetterToml.formatter.columnWidth": 100,
-
   "cargo-watch.command": "clippy --all-targets --all-features -- -W clippy::all",
   "cargo-watch.checkOnSave": true,
-
   "testing.automaticallyOpenPeekView": "never",
-
   "extensions.recommendations": [
     "rust-lang.rust-analyzer",
     "tamasfe.even-better-toml",

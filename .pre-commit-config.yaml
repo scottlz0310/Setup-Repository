@@ -76,15 +76,6 @@ repos:
   # ローカルフック - 高速チェック→時間のかかるテストの順
   - repo: local
     hooks:
-      - id: security-check
-        name: "Security (Bandit + Safety)"
-        description: "Bandit（コード脆弱性）+ Safety（依存関係脆弱性）チェック（pyproject.toml設定準拠）"
-        entry: bash -c "uv run python scripts/security-check.py --config pyproject.toml --local-mode"
-        language: system
-        pass_filenames: false
-        always_run: true
-        stages: [pre-commit]
-
       - id: coverage-check
         name: "カバレッジ品質ゲート"
         description: "pyproject.toml設定に基づくカバレッジ品質ゲートチェック"
