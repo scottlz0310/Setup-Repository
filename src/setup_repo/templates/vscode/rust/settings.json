@@ -62,7 +62,7 @@
   "dprint.path": "./node_modules/.bin/dprint",
   "evenBetterToml.formatter.alignEntries": true,
   "evenBetterToml.formatter.arrayTrailingComma": true,
-  "evenBetterToml.formatter.columnWidth": 100,
+  "evenBetterToml.formatter.columnWidth": 120,
   "cargo-watch.command": "clippy --all-targets --all-features -- -W clippy::all",
   "cargo-watch.checkOnSave": true,
   "testing.automaticallyOpenPeekView": "never",
