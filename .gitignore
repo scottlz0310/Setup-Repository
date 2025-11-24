@@ -78,8 +78,6 @@ output/
 !renovate.json
 !tests/**/*.json
 !src/setup_repo/templates/**/*.json
-!.vscode/
-!.vscode/**
 .gitignore.backup
 .safety-project.ini
 
@@ -146,12 +144,6 @@ $RECYCLE.BIN/
 .rts2_cache_umd/
 .storybook-out
 .venv/
-.vscode/
-.vscode/*.code-snippets
-.vscode/extensions.json
-.vscode/launch.json
-.vscode/settings.json
-.vscode/tasks.json
 .yarn-integrity
 /target/
 Cargo.lock
@@ -174,7 +166,7 @@ yarn-debug.log*
 yarn-error.log*
 
 # Auto-generated entries from templates
-!.vscode/extensions.json
+
 *-output.txt
 *.diff
 *.patch
@@ -193,5 +185,6 @@ yarn-error.log*
 .gitmodules.local
 .pnpm-store/
 .vscode/*
+!.vscode/extensions.json
 PATCHES/
 out/
