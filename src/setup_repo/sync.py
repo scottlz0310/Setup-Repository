@@ -154,7 +154,7 @@ def sync_repositories(config: dict, dry_run: bool = False) -> SyncResult:
                     has_issues, issues = False, []
 
                 if has_issues:
-                    choice = prompt_user_action(repo_name, issues)
+                    choice = prompt_user_action(repo_name, issues, repo_path)
                     if choice == "q":
                         print("\\n[STOP] ユーザーによって中断されました")
                         sys.exit(0)
