@@ -1,0 +1,27 @@
+{
+  "files.eol": "\n",
+
+  "terminal.integrated.defaultProfile.linux": "bash",
+  "terminal.integrated.profiles.linux": {
+    "bash": {
+      "path": "/bin/bash",
+      "icon": "terminal-bash"
+    },
+    "zsh": {
+      "path": "/bin/zsh",
+      "icon": "terminal"
+    }
+  },
+
+  "remote.WSL.fileWatcher.polling": true,
+  "remote.WSL.fileWatcher.pollingInterval": 5000,
+  "search.followSymlinks": false,
+
+  "python.defaultInterpreterPath": "./.venv/bin/python",
+  "python.venvPath": ".",
+  "python.venvFolders": [".venv"],
+
+  "extensions.recommendations": [
+    "ms-vscode-remote.remote-wsl"
+  ]
+}

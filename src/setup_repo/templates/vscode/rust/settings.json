@@ -1,0 +1,88 @@
+{
+  "[rust]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "rust-lang.rust-analyzer",
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit"
+    },
+    "editor.rulers": [100],
+    "editor.tabSize": 4,
+    "editor.insertSpaces": true
+  },
+
+  "[toml]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "tamasfe.even-better-toml"
+  },
+
+  "rust-analyzer.checkOnSave": true,
+  "rust-analyzer.check.command": "clippy",
+  "rust-analyzer.check.features": "all",
+  "rust-analyzer.check.extraArgs": [
+    "--",
+    "-W",
+    "clippy::all",
+    "-W",
+    "clippy::pedantic",
+    "-W",
+    "clippy::nursery",
+    "-W",
+    "clippy::cargo"
+  ],
+  "rust-analyzer.cargo.features": "all",
+  "rust-analyzer.cargo.allTargets": true,
+  "rust-analyzer.procMacro.enable": true,
+  "rust-analyzer.inlayHints.typeHints.enable": true,
+  "rust-analyzer.inlayHints.parameterHints.enable": true,
+  "rust-analyzer.inlayHints.chainingHints.enable": true,
+  "rust-analyzer.inlayHints.closureReturnTypeHints.enable": "always",
+  "rust-analyzer.lens.enable": true,
+  "rust-analyzer.lens.references.adt.enable": true,
+  "rust-analyzer.lens.references.enumVariant.enable": true,
+  "rust-analyzer.lens.references.method.enable": true,
+  "rust-analyzer.lens.references.trait.enable": true,
+  "rust-analyzer.hover.actions.references.enable": true,
+  "rust-analyzer.completion.autoimport.enable": true,
+  "rust-analyzer.completion.autoself.enable": true,
+
+  "rust-analyzer.rustfmt.extraArgs": [
+    "+nightly"
+  ],
+  "rust-analyzer.rustfmt.rangeFormatting.enable": true,
+
+  "rust-analyzer.assist.importGranularity": "module",
+  "rust-analyzer.assist.importPrefix": "self",
+
+  "rust-analyzer.diagnostics.enable": true,
+  "rust-analyzer.diagnostics.experimental.enable": true,
+
+  "rust-analyzer.files.excludeDirs": [
+    "target",
+    ".cargo",
+    "node_modules"
+  ],
+
+  "leptosfmt.enable": true,
+
+  "dprint.enable": true,
+  "dprint.path": "./node_modules/.bin/dprint",
+
+  "evenBetterToml.formatter.alignEntries": true,
+  "evenBetterToml.formatter.arrayTrailingComma": true,
+  "evenBetterToml.formatter.columnWidth": 100,
+
+  "cargo-watch.command": "clippy --all-targets --all-features -- -W clippy::all",
+  "cargo-watch.checkOnSave": true,
+
+  "testing.automaticallyOpenPeekView": "never",
+
+  "extensions.recommendations": [
+    "rust-lang.rust-analyzer",
+    "tamasfe.even-better-toml",
+    "serayuzgur.crates",
+    "vadimcn.vscode-lldb",
+    "belfz.search-crates-io",
+    "swellaby.vscode-rust-test-adapter",
+    "fill-labs.dependi"
+  ]
+}

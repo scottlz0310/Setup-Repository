@@ -41,7 +41,7 @@ setup-repo cleanup list --merged
 setup-repo cleanup clean --merged --dry-run
 ```
 
-> ℹ️ v1.4.5以降、`uv tool install` で導入するCLIにも `.gitignore`/`.vscode` テンプレートが同梱されるため、グローバル環境からでもテンプレート同期が確実に適用されます。
+> ℹ️ v1.4.6以降、`uv tool install` で導入するCLIにも `.gitignore`/`.vscode` テンプレートが同梱されるため、グローバル環境からでもテンプレート同期が確実に適用されます。VS Codeテンプレートはプロジェクトタイプを自動検出し、適切な設定を適用します。
 
 ### 方法2: ローカル開発
 

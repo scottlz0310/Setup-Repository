@@ -51,9 +51,27 @@ class TemplateManager:
                 if f.is_file() and f.name.endswith(".gitignore")
             ]
 
-        # VS Codeテンプレート
+        # VS Codeテンプレート（新構造対応）
+        # 新しい構造: common/, python/, node/, rust/, platform/
+        # platform/の中に linux.json, windows.json, wsl.json
         if self.vscode_templates_dir.is_dir():
-            templates["vscode"] = [d.name for d in self.vscode_templates_dir.iterdir() if d.is_dir()]
+            vscode_templates = []
+            for d in self.vscode_templates_dir.iterdir():
+                if d.is_dir():
+                    # 言語別テンプレート（common, python, node, rust）
+                    vscode_templates.append(d.name)
+                    # platformディレクトリの中身も追加
+                    if d.name == "platform":
+                        try:
+                            for platform_file in d.iterdir():
+                                if platform_file.is_file() and platform_file.name.endswith(".json"):
+                                    # "linux.json" -> "linux"
+                                    platform_name = platform_file.name[:-5]
+                                    if platform_name not in vscode_templates:
+                                        vscode_templates.append(platform_name)
+                        except (OSError, AttributeError):
+                            pass
+            templates["vscode"] = vscode_templates
 
         # カスタムテンプレート
         if self.templates_dir.exists():
@@ -94,41 +112,28 @@ class TemplateManager:
         return target_gitignore
 
     def apply_vscode_template(self, platform: str, target_path: Path | None = None) -> Path:
-        """VS Codeテンプレートを適用"""
+        """
+        VS Codeテンプレートを適用
+
+        新しい構造では、vscode_setup.apply_vscode_template()を使用することを推奨します。
+        このメソッドは後方互換性のために残されています。
+        """
         if target_path is None:
             target_path = Path.cwd()
 
-        # Validate platform
-        if ".." in platform or "/" in platform or "\\" in platform:
+        # プラットフォームテンプレートの存在を確認
+        platform_template_path = self.vscode_templates_dir.joinpath(f"platform/{platform}.json")
+        if not platform_template_path.is_file():
             raise FileNotFoundError(f"VS Codeテンプレート '{platform}' が見つかりません")
 
-        template_dir: Path | Traversable
-        if isinstance(self.vscode_templates_dir, Path):
-            template_dir = safe_path_join(self.vscode_templates_dir, platform)
-        else:
-            template_dir = self.vscode_templates_dir.joinpath(platform)
+        # 新しい構造に対応：vscode_setup.apply_vscode_templateを使用
+        from .vscode_setup import apply_vscode_template as apply_vscode
 
-        if not template_dir.is_dir():
-            raise FileNotFoundError(f"VS Codeテンプレート '{platform}' が見つかりません")
+        result = apply_vscode(target_path, platform, dry_run=False)
+        if not result:
+            raise FileNotFoundError(f"VS Codeテンプレート '{platform}' の適用に失敗しました")
 
-        target_vscode_dir = safe_path_join(target_path, ".vscode")
-        ensure_directory(target_vscode_dir)
-
-        # settings.jsonをコピー
-        template_settings: Path | Traversable
-        if isinstance(template_dir, Path):
-            template_settings = safe_path_join(template_dir, "settings.json")
-        else:
-            template_settings = template_dir.joinpath("settings.json")
-
-        if template_settings.is_file():
-            target_settings = safe_path_join(target_vscode_dir, "settings.json")
-            if isinstance(template_settings, Path):
-                shutil.copy2(template_settings, target_settings)
-            else:
-                target_settings.write_bytes(template_settings.read_bytes())
-
-        return target_vscode_dir
+        return safe_path_join(target_path, ".vscode")
 
     def create_custom_template(self, name: str, source_path: Path) -> Path:
         """カスタムテンプレートを作成"""
