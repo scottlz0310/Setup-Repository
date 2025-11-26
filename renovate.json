@@ -53,9 +53,6 @@
       "matchDatasources": [
         "pypi"
       ],
-      "vulnerabilityAlerts": {
-        "enabled": true
-      },
       "automerge": true,
       "labels": [
         "dependencies",
@@ -102,15 +99,6 @@
       "automerge": true
     }
   ],
-  "python": {
-    "enabled": true
-  },
-  "pip_requirements": {
-    "enabled": false
-  },
-  "uv": {
-    "enabled": true
-  },
   "postUpgradeTasks": {
     "commands": [
       "uv lock"
