@@ -6,6 +6,9 @@
     ":semanticCommits",
     ":separateMajorReleases"
   ],
+  "postUpgradeTasks": {
+    "enabled": false
+  },
   "timezone": "Asia/Tokyo",
   "schedule": [
     "before 3am on Monday"
