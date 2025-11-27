@@ -6,9 +6,6 @@
     ":semanticCommits",
     ":separateMajorReleases"
   ],
-  "postUpgradeTasks": {
-    "enabled": false
-  },
   "python": {
     "addManagePyEnvironment": false
   },
