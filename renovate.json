@@ -81,12 +81,12 @@
     },
     {
       "description": "テスト関連パッケージのグループ化",
-      "matchPackagePatterns": [
-        "^pytest",
-        "^coverage"
-      ],
       "groupName": "test dependencies",
-      "automerge": true
+      "automerge": true,
+      "matchPackageNames": [
+        "/^pytest/",
+        "/^coverage/"
+      ]
     },
     {
       "description": "リンター・フォーマッター関連のグループ化",
