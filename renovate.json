@@ -99,6 +99,9 @@
       "automerge": true
     }
   ],
+  "allowedPostUpgradeCommands": [
+    "^uv lock$"
+  ],
   "postUpgradeTasks": {
     "commands": [
       "uv lock"
