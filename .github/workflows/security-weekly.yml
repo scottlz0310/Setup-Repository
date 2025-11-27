@@ -71,6 +71,7 @@ jobs:
             echo "vulnerabilities=0" >> $GITHUB_OUTPUT
           else
             # 脆弱性検出数をカウント（"found X vulnerabilities"パターンを探す）
+            # yamllint disable-line rule:line-length
             VULN_COUNT=$(grep -oP '\d+(?= known security vulnerabilit)' safety-report.txt 2>/dev/null | head -1 || echo "1")
             echo "vulnerabilities=$VULN_COUNT" >> $GITHUB_OUTPUT
             echo "⚠️ $VULN_COUNT 件の脆弱性が検出されました"
@@ -110,6 +111,7 @@ jobs:
             const updateComment = `## 🔄 スキャン更新\n\n` +
               `**検出日時**: ${scanDate}\n` +
               `**検出件数**: ${vulnCount}件\n\n` +
+              // yamllint disable-next-line rule:line-length
               `詳細なレポートは[Artifacts](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})からダウンロードしてください。\n\n` +
               `---\n` +
               `⚠️ 脆弱性が継続して検出されています。早急な対応をお願いします。`;
@@ -130,6 +132,7 @@ jobs:
               body += `**検出件数**: ${vulnCount}件\n\n`;
               body += `### 📋 詳細\n\n`;
               body += `Safetyスキャンで${vulnCount}件の既知の脆弱性が検出されました。\n\n`;
+              // yamllint disable-next-line rule:line-length
               body += `詳細なレポートは[Artifacts](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})からダウンロードしてください。\n\n`;
               body += `### 🔧 対応手順\n\n`;
               body += `1. 依存関係を確認\n`;
@@ -192,6 +195,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
 
           if [ -f "safety-report.txt" ]; then
+            # yamllint disable-next-line rule:line-length
             VULN_COUNT=$(grep -oP '\d+(?= known security vulnerabilit)' safety-report.txt 2>/dev/null | head -1 || echo "0")
             if [ "$VULN_COUNT" -eq 0 ]; then
               echo "- **Safety**: ✅ 脆弱性は検出されませんでした" >> $GITHUB_STEP_SUMMARY
@@ -207,7 +211,9 @@ jobs:
 
           echo "## 🔗 リンク" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+          # yamllint disable-next-line rule:line-length
           echo "- [Security タブ](https://github.com/${{ github.repository }}/security)" >> $GITHUB_STEP_SUMMARY
+          # yamllint disable-next-line rule:line-length
           echo "- [Code scanning alerts](https://github.com/${{ github.repository }}/security/code-scanning)" >> $GITHUB_STEP_SUMMARY
 
       - name: Close issue if no vulnerabilities

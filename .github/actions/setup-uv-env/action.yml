@@ -28,6 +28,7 @@ runs:
         path: |
           ~/.cache/uv
           .venv
+        # yamllint disable-line rule:line-length
         key: ${{ runner.os }}-uv-${{ inputs.python-version }}-${{ hashFiles('**/uv.lock', '**/pyproject.toml') }}${{ inputs.cache-key-suffix }}
         restore-keys: |
           ${{ runner.os }}-uv-${{ inputs.python-version }}-

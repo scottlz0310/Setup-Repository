@@ -11,10 +11,10 @@ on:
         default: 'medium'
         type: choice
         options:
-        - small
-        - medium
-        - large
-        - all
+          - small
+          - medium
+          - large
+          - all
 
 jobs:
   performance-tests:
@@ -28,23 +28,23 @@ jobs:
       fail-fast: false
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v6
+      - name: Checkout code
+        uses: actions/checkout@v6
 
-    - name: Install uv
-      uses: astral-sh/setup-uv@v7
-      with:
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
         version: "latest"
 
-    - name: Set up Python ${{ matrix.python-version }}
-      run: uv python install ${{ matrix.python-version }}
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
 
-    - name: Create virtual environment
-      run: uv venv --python ${{ matrix.python-version }}
+      - name: Create virtual environment
+        run: uv venv --python ${{ matrix.python-version }}
 
-    - name: Cache dependencies
-      uses: actions/cache@v4
-      with:
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
         path: |
           ~/.cache/uv
           .venv
@@ -54,22 +54,23 @@ jobs:
           ${{ runner.os }}-perf-${{ matrix.python-version }}-
           ${{ runner.os }}-perf-
 
-    - name: Install dependencies
-      run: |
-        uv sync --dev
-        uv pip install psutil  # メモリ使用量測定用
+      - name: Install dependencies
+        run: |
+          uv sync --dev
+          uv pip install psutil  # メモリ使用量測定用
 
-    - name: Check performance tests directory
-      run: |
-        if [ ! -d "tests/performance" ]; then
+      - name: Check performance tests directory
+        run: |
+          if [ ! -d "tests/performance" ]; then
           echo "⚠️ パフォーマンステストディレクトリが存在しません。スキップします。"
           echo "SKIP_PERFORMANCE_TESTS=true" >> $GITHUB_ENV
-        fi
+          fi
 
-    - name: Run small scale performance tests
-      if: env.SKIP_PERFORMANCE_TESTS != 'true' && (github.event.inputs.test_scale == 'small' || github.event.inputs.test_scale == 'all' || github.event.inputs.test_scale == '')
-      run: |
-        uv run pytest tests/performance/ \
+      - name: Run small scale performance tests
+        # yamllint disable-next-line rule:line-length
+        if: env.SKIP_PERFORMANCE_TESTS != 'true' && (github.event.inputs.test_scale == 'small' || github.event.inputs.test_scale == 'all' || github.event.inputs.test_scale == '')
+        run: |
+          uv run pytest tests/performance/ \
           -m "performance and not slow" \
           -v \
           --tb=short \
@@ -78,10 +79,12 @@ jobs:
           --json-report-file=performance-small.json \
           --cov-fail-under=0
 
-    - name: Run medium scale performance tests
-      if: env.SKIP_PERFORMANCE_TESTS != 'true' && (github.event.inputs.test_scale == 'medium' || github.event.inputs.test_scale == 'all' || github.event.inputs.test_scale == '')
-      run: |
-        uv run pytest tests/performance/test_sync_performance.py::TestSyncPerformance::test_medium_repository_set_performance \
+      - name: Run medium scale performance tests
+        # yamllint disable-next-line rule:line-length
+        if: env.SKIP_PERFORMANCE_TESTS != 'true' && (github.event.inputs.test_scale == 'medium' || github.event.inputs.test_scale == 'all' || github.event.inputs.test_scale == '')
+        run: |
+          # yamllint disable-next-line rule:line-length
+          uv run pytest tests/performance/test_sync_performance.py::TestSyncPerformance::test_medium_repository_set_performance \
           -v \
           --tb=short \
           --durations=10 \
@@ -89,10 +92,12 @@ jobs:
           --json-report-file=performance-medium.json \
           --cov-fail-under=0
 
-    - name: Run large scale performance tests
-      if: env.SKIP_PERFORMANCE_TESTS != 'true' && (github.event.inputs.test_scale == 'large' || github.event.inputs.test_scale == 'all')
-      run: |
-        uv run pytest tests/performance/test_sync_performance.py::TestSyncPerformance::test_large_repository_set_performance \
+      - name: Run large scale performance tests
+        # yamllint disable-next-line rule:line-length
+        if: env.SKIP_PERFORMANCE_TESTS != 'true' && (github.event.inputs.test_scale == 'large' || github.event.inputs.test_scale == 'all')
+        run: |
+          # yamllint disable-next-line rule:line-length
+          uv run pytest tests/performance/test_sync_performance.py::TestSyncPerformance::test_large_repository_set_performance \
           -v \
           --tb=short \
           --durations=10 \
@@ -100,10 +105,11 @@ jobs:
           --json-report-file=performance-large.json \
           --cov-fail-under=0
 
-    - name: Run concurrent operations performance tests
-      if: env.SKIP_PERFORMANCE_TESTS != 'true'
-      run: |
-        uv run pytest tests/performance/test_sync_performance.py::TestSyncPerformance::test_concurrent_operations_performance \
+      - name: Run concurrent operations performance tests
+        if: env.SKIP_PERFORMANCE_TESTS != 'true'
+        run: |
+          # yamllint disable-next-line rule:line-length
+          uv run pytest tests/performance/test_sync_performance.py::TestSyncPerformance::test_concurrent_operations_performance \
           -v \
           --tb=short \
           --durations=10 \
@@ -111,61 +117,61 @@ jobs:
           --json-report-file=performance-concurrent.json \
           --cov-fail-under=0
 
-    - name: Generate performance report
-      if: always()
-      run: |
-        echo "# 📊 パフォーマンステスト結果" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
+      - name: Generate performance report
+        if: always()
+        run: |
+          echo "# 📊 パフォーマンステスト結果" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
 
-        if [ -f performance-small.json ]; then
-          echo "## 小規模テスト結果" >> $GITHUB_STEP_SUMMARY
+          if [ -f performance-small.json ]; then
+            echo "## 小規模テスト結果" >> $GITHUB_STEP_SUMMARY
+            uv run python -c "
+          import json
+          try:
+              with open('performance-small.json', 'r') as f:
+                  data = json.load(f)
+              print(f'- テスト実行時間: {data.get(\"duration\", \"N/A\")}秒')
+              print(f'- 成功テスト数: {data.get(\"summary\", {}).get(\"passed\", 0)}')
+              print(f'- 失敗テスト数: {data.get(\"summary\", {}).get(\"failed\", 0)}')
+          except Exception as e:
+              print(f'レポート生成エラー: {e}')
+          " >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ -f performance-medium.json ]; then
+            echo "## 中規模テスト結果" >> $GITHUB_STEP_SUMMARY
+            uv run python -c "
+          import json
+          try:
+              with open('performance-medium.json', 'r') as f:
+                  data = json.load(f)
+              print(f'- テスト実行時間: {data.get(\"duration\", \"N/A\")}秒')
+              print(f'- 成功テスト数: {data.get(\"summary\", {}).get(\"passed\", 0)}')
+              print(f'- 失敗テスト数: {data.get(\"summary\", {}).get(\"failed\", 0)}')
+          except Exception as e:
+              print(f'レポート生成エラー: {e}')
+          " >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload performance test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: performance-test-results-${{ matrix.python-version }}
+          path: |
+            performance-*.json
+          retention-days: 30
+
+      - name: Performance regression check
+        run: |
+          echo "🔍 パフォーマンス回帰チェック実行中..."
+
+          # 基準値との比較（将来的にはベースラインファイルと比較）
           uv run python -c "
-        import json
-        try:
-            with open('performance-small.json', 'r') as f:
-                data = json.load(f)
-            print(f'- テスト実行時間: {data.get(\"duration\", \"N/A\")}秒')
-            print(f'- 成功テスト数: {data.get(\"summary\", {}).get(\"passed\", 0)}')
-            print(f'- 失敗テスト数: {data.get(\"summary\", {}).get(\"failed\", 0)}')
-        except Exception as e:
-            print(f'レポート生成エラー: {e}')
-        " >> $GITHUB_STEP_SUMMARY
-        fi
+          import json
+          import sys
 
-        if [ -f performance-medium.json ]; then
-          echo "## 中規模テスト結果" >> $GITHUB_STEP_SUMMARY
-          uv run python -c "
-        import json
-        try:
-            with open('performance-medium.json', 'r') as f:
-                data = json.load(f)
-            print(f'- テスト実行時間: {data.get(\"duration\", \"N/A\")}秒')
-            print(f'- 成功テスト数: {data.get(\"summary\", {}).get(\"passed\", 0)}')
-            print(f'- 失敗テスト数: {data.get(\"summary\", {}).get(\"failed\", 0)}')
-        except Exception as e:
-            print(f'レポート生成エラー: {e}')
-        " >> $GITHUB_STEP_SUMMARY
-        fi
-
-    - name: Upload performance test results
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: performance-test-results-${{ matrix.python-version }}
-        path: |
-          performance-*.json
-        retention-days: 30
-
-    - name: Performance regression check
-      run: |
-        echo "🔍 パフォーマンス回帰チェック実行中..."
-
-        # 基準値との比較（将来的にはベースラインファイルと比較）
-        uv run python -c "
-        import json
-        import sys
-
-        def check_performance_regression():
+          def check_performance_regression():
             try:
                 # 中規模テストの結果をチェック
                 if not os.path.exists('performance-medium.json'):
@@ -197,6 +203,6 @@ jobs:
                 traceback.print_exc()
                 sys.exit(1)  # エラー時は失敗させる
 
-        import os
-        check_performance_regression()
-        "
+          import os
+          check_performance_regression()
+          "

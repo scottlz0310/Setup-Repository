@@ -3,6 +3,7 @@
 
 name: 🚀 Release Management
 
+# yamllint disable-line rule:line-length
 run-name: "🚀 Release v${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || github.ref_name }} - ${{ github.event_name == 'workflow_dispatch' && 'Manual' || 'Tag Push' }}"
 
 permissions:
