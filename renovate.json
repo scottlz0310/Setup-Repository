@@ -99,18 +99,6 @@
       "automerge": true
     }
   ],
-  "postUpgradeTasks": {
-    "commands": [
-      "uv lock"
-    ],
-    "fileFilters": [
-      "uv.lock"
-    ],
-    "executionMode": "branch"
-  },
-  "allowedPostUpgradeCommands": [
-    "^uv lock$"
-  ],
   "lockFileMaintenance": {
     "enabled": true,
     "automerge": true,
