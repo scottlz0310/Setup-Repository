@@ -108,6 +108,9 @@
     ],
     "executionMode": "branch"
   },
+  "allowedPostUpgradeCommands": [
+    "^uv lock$"
+  ],
   "lockFileMaintenance": {
     "enabled": true,
     "automerge": true,
