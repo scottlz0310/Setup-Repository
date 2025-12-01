@@ -119,7 +119,28 @@ export GITHUB_TOKEN=your_personal_access_token
   "skip_uv_install": false,
   "auto_stash": false,
   "sync_only": false,
-  "log_file": "/path/to/logs/repo-sync.log"
+  "log_file": "/path/to/logs/repo-sync.log",
+  "clone_timeout": 600,
+  "shallow_clone": false,
+  "clone_depth": 1,
+  "large_repos": ["PowerToys", "other-large-repo"]
+}
+```
+
+#### 大きなリポジトリの設定
+
+大きなリポジトリ（PowerToysなど）をクローンする場合、以下の設定を調整できます：
+
+- `clone_timeout`: クローン操作のタイムアウト（秒）。デフォルトは600秒（10分）
+- `shallow_clone`: すべてのリポジトリで浅いクローンを使用するか（デフォルト: false）
+- `clone_depth`: 浅いクローンの深さ（デフォルト: 1）
+- `large_repos`: 自動的に浅いクローンを使用するリポジトリのリスト
+
+**例: PowerToysの設定**
+```json
+{
+  "clone_timeout": 1200,
+  "large_repos": ["PowerToys"]
 }
 ```
 

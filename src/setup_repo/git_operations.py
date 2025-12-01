@@ -32,11 +32,24 @@ class GitOperations:
         # パストラバーサル攻撃を防ぐため、パスを検証
         try:
             dest_path = dest_path.resolve()
+
+            # configから設定を取得
+            use_shallow = self.config.get("shallow_clone", False)
+            clone_depth = self.config.get("clone_depth", 1)
+            clone_timeout = self.config.get("clone_timeout", 600)
+
+            # git cloneコマンドを構築
+            clone_cmd = ["git", "clone"]
+            if use_shallow:
+                clone_cmd.extend(["--depth", str(clone_depth)])
+            clone_cmd.extend([repo_url, str(dest_path)])
+
             safe_subprocess(
-                ["git", "clone", repo_url, str(dest_path)],
+                clone_cmd,
                 capture_output=True,
                 text=True,
                 check=True,
+                timeout=clone_timeout,
             )
             return True
         except (subprocess.CalledProcessError, ValueError):
@@ -168,7 +181,7 @@ def _sync_repository_once(repo: dict, dest_dir: Path, config: dict) -> bool:
         if config.get("sync_only", False):
             print(f"   ⏭️  {repo_name}: 新規クローンをスキップ（sync_only有効）")
             return True
-        return _clone_repository(repo_name, clone_url, repo_path, dry_run)
+        return _clone_repository(repo_name, clone_url, repo_path, dry_run, config)
 
 
 def _update_repository(repo_name: str, repo_path: Path, config: dict) -> bool:
@@ -356,11 +369,30 @@ def _verify_ssh_connection() -> tuple[bool, str]:
         return False, str(e)
 
 
-def _clone_repository(repo_name: str, repo_url: str, repo_path: Path, dry_run: bool) -> bool:
+def _clone_repository(
+    repo_name: str, repo_url: str, repo_path: Path, dry_run: bool, config: dict | None = None
+) -> bool:
     """新規リポジトリをクローン"""
     global _host_key_setup_attempted
 
-    print(f"   📥 {repo_name}: クローン中...")
+    config = config or {}
+
+    # 大きなリポジトリかどうかを判定
+    large_repos = config.get("large_repos", [])
+    is_large_repo = repo_name in large_repos
+
+    # shallow cloneの設定を取得
+    use_shallow = config.get("shallow_clone", False) or is_large_repo
+    clone_depth = config.get("clone_depth", 1)
+
+    # タイムアウトの設定を取得
+    clone_timeout = config.get("clone_timeout", 600)  # デフォルト: 10分
+
+    if use_shallow:
+        print(f"   📥 {repo_name}: クローン中（shallow clone, depth={clone_depth}）...")
+    else:
+        print(f"   📥 {repo_name}: クローン中...")
+
     if dry_run:
         print(f"   ✅ {repo_name}: クローン予定")
         return True
@@ -390,17 +422,33 @@ def _clone_repository(repo_name: str, repo_url: str, repo_path: Path, dry_run: b
         print("   ✅ SSH接続検証成功")
 
     try:
+        # git cloneコマンドを構築
+        clone_cmd = ["git", "clone"]
+        if use_shallow:
+            clone_cmd.extend(["--depth", str(clone_depth)])
+        clone_cmd.extend([repo_url, str(repo_path)])
+
         safe_subprocess(
-            ["git", "clone", repo_url, str(repo_path)],
+            clone_cmd,
             capture_output=True,
             text=True,
             check=True,
+            timeout=clone_timeout,
         )
-        print(f"   ✅ {repo_name}: クローン完了")
+
+        if use_shallow:
+            print(f"   ✅ {repo_name}: クローン完了（shallow clone）")
+        else:
+            print(f"   ✅ {repo_name}: クローン完了")
         return True
     except subprocess.CalledProcessError as e:
         error_msg = e.stderr.strip()
         print(f"   ❌ {repo_name}: クローン失敗 - {error_msg}")
+        return False
+    except subprocess.TimeoutExpired:
+        print(f"   ❌ {repo_name}: クローンがタイムアウトしました（{clone_timeout}秒）")
+        print("   💡 config.jsonで 'clone_timeout' を増やすか、")
+        print(f"      'large_repos' リストに '{repo_name}' を追加してください")
         return False
 
 
