@@ -1,51 +1,35 @@
-# 🚀 Setup Repository v1.4.6
+# 🚀 Setup Repository v1.4.7
 
 ## 📋 変更内容
 
 ### 🎉 新機能
 
-- **VS Codeテンプレート構造の刷新**
-  - common/language/platformの3層構造に再設計
-  - プロジェクトタイプを自動検出して適切なテンプレートを適用
-  - 複数プロジェクトタイプの同時検出に対応（フロントエンドNode + バックエンドPython等）
-
-- **JSON設定のインテリジェントマージ機能**
-  - 既存のVS Code設定を保持しつつ新しい設定を統合
-  - リスト、オブジェクト、プリミティブ値の適切なマージロジック
-  - 不正なJSONの場合はバックアップを作成して安全に適用
-
-- **Rust開発環境テンプレート追加**
-  - rust-analyzer、cargo-nextest、cargo-watchなど包括的なツールチェーン対応
-  - tasks.json（13種類のビルド/テスト/リントタスク）
-  - launch.json（デバッグ設定、Tauri対応）
-  - extensions.json（推奨拡張機能）
-  - Tauri/axum/tower/tracingなどモダンなフレームワークに対応
+- **大きなリポジトリのShallow Cloneサポート**
+  - PowerToysなど大きなリポジトリのクローン時のタイムアウト問題を解決
+  - `large_repos`設定で特定リポジトリを自動的にshallow cloneに対応
+  - `shallow_clone`、`clone_depth`、`clone_timeout`の設定オプション追加
 
 ### 🔧 改善
 
-- **プロジェクトタイプ検出の大幅強化**
-  - スコアリングシステムによる精確な検出（閾値10点）
-  - ファイル数カウントによるボーナス加算
-  - 単一ファイルによる誤検出を防止
-  - ファイル数キャッシュによるパフォーマンス最適化
+- **クローン処理の最適化**
+  - デフォルトタイムアウトを600秒（10分）に延長
+  - 設定可能なタイムアウト値により柔軟な調整が可能
+  - Shallow cloneにより大きなリポジトリのクローン時間を大幅短縮
 
-- **厳格な型チェック設定**
-  - すべてのテンプレートでstrict mode有効化
-  - Python: basedpyright + strict mypy対応
-  - Node.js: Biomeリンター/フォーマッター対応
-  - TypeScript: strict設定 + inlay hints有効化
-  - Rust: clippy pedanticモード + inlay hints有効化
+- **エラーハンドリングの強化**
+  - タイムアウト時に適切なエラーメッセージとガイダンスを表示
+  - 設定の調整方法を分かりやすく案内
 
-- **開発者体験の向上**
-  - VS Code設定のマージにより既存設定が保持される
-  - プロジェクトタイプに応じたextensions.jsonの自動配置
-  - tasks.json/launch.jsonの自動セットアップ
+### 📚 ドキュメント
 
-### 🐛 修正
+- 大きなリポジトリの設定方法をsetup-guide.mdに追加
+- config.json.templateに新しい設定オプションの説明を追加
 
-- Ruff lintエラーの修正（Traversableインポート位置）
-- mypy型チェックエラーの修正（型注釈追加）
-- テンプレート管理の後方互換性維持
+### 🧪 テスト
+
+- Shallow clone機能の包括的なテストケースを追加（7つの新規テスト）
+- タイムアウト処理のテストを追加
+- Large repos設定のテストを追加
 
 ## 📦 インストール方法
 
