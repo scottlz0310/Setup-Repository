@@ -364,6 +364,178 @@ class TestGitOperations:
                 result = _auto_pop_stash(repo_path)
                 assert result is False
 
+    def test_clone_repository_with_shallow_clone(self):
+        """shallow clone設定のテスト"""
+        config = {"shallow_clone": True, "clone_depth": 1, "clone_timeout": 600}
+        git_ops = GitOperations(config)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            dest_path = Path(temp_dir) / "test_repo"
+
+            with patch("subprocess.run") as mock_run:
+                mock_run.return_value = Mock(returncode=0)
+                result = git_ops.clone_repository("https://github.com/test/repo.git", str(dest_path))
+                assert result is True
+
+                # shallow cloneのオプションが含まれていることを確認
+                call_args = mock_run.call_args
+                cmd = call_args[0][0]
+                assert "--depth" in cmd
+                assert "1" in cmd
+
+    def test_clone_repository_with_custom_timeout(self):
+        """カスタムタイムアウト設定のテスト"""
+        config = {"clone_timeout": 1200}
+        git_ops = GitOperations(config)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            dest_path = Path(temp_dir) / "test_repo"
+
+            with patch("subprocess.run") as mock_run:
+                mock_run.return_value = Mock(returncode=0)
+                result = git_ops.clone_repository("https://github.com/test/repo.git", str(dest_path))
+                assert result is True
+
+                # timeoutが渡されていることを確認
+                call_kwargs = mock_run.call_args[1]
+                assert "timeout" in call_kwargs
+                assert call_kwargs["timeout"] == 1200
+
+    def test_clone_repository_without_shallow_clone(self):
+        """shallow cloneなしのテスト"""
+        config = {"shallow_clone": False, "clone_timeout": 600}
+        git_ops = GitOperations(config)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            dest_path = Path(temp_dir) / "test_repo"
+
+            with patch("subprocess.run") as mock_run:
+                mock_run.return_value = Mock(returncode=0)
+                result = git_ops.clone_repository("https://github.com/test/repo.git", str(dest_path))
+                assert result is True
+
+                # shallow cloneのオプションが含まれていないことを確認
+                call_args = mock_run.call_args
+                cmd = call_args[0][0]
+                assert "--depth" not in cmd
+
+    def test_sync_repository_with_large_repos(self):
+        """large_repos設定のテスト"""
+        repo = {
+            "name": "PowerToys",
+            "clone_url": "https://github.com/microsoft/PowerToys.git",
+            "ssh_url": "git@github.com:microsoft/PowerToys.git",
+            "full_name": "microsoft/PowerToys",
+        }
+        config = {
+            "large_repos": ["PowerToys"],
+            "clone_depth": 1,
+            "clone_timeout": 1200,
+            "dry_run": False,
+        }
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            dest_dir = Path(temp_dir)
+
+            with (
+                patch("subprocess.run") as mock_run,
+                patch("builtins.print") as mock_print,
+            ):
+                mock_run.return_value = Mock(returncode=0, stdout="", stderr="")
+
+                result = sync_repository_with_retries(repo, dest_dir, config)
+                assert result is True
+
+                # shallow cloneメッセージが表示されることを確認
+                print_calls = [str(call) for call in mock_print.call_args_list]
+                assert any("shallow clone" in str(call).lower() for call in print_calls)
+
+    def test_sync_repository_timeout_handling(self):
+        """タイムアウトエラー処理のテスト"""
+        repo = {
+            "name": "test-repo",
+            "clone_url": "https://github.com/test/repo.git",
+        }
+        config = {"clone_timeout": 10, "dry_run": False}
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            dest_dir = Path(temp_dir)
+
+            with (
+                patch("subprocess.run") as mock_run,
+                patch("builtins.print") as mock_print,
+            ):
+                mock_run.side_effect = subprocess.TimeoutExpired("git", 10)
+
+                result = sync_repository_with_retries(repo, dest_dir, config)
+                assert result is False
+
+                # タイムアウトメッセージが表示されることを確認
+                print_calls = [str(call) for call in mock_print.call_args_list]
+                assert any("タイムアウト" in str(call) for call in print_calls)
+
+    def test_sync_repository_with_large_repos_and_shallow_off(self):
+        """large_repos指定時のshallow clone強制テスト"""
+        repo = {
+            "name": "PowerToys",
+            "clone_url": "https://github.com/microsoft/PowerToys.git",
+        }
+        config = {
+            "shallow_clone": False,  # 全体ではオフ
+            "large_repos": ["PowerToys"],  # でもPowerToysは強制的にshallow
+            "clone_depth": 1,
+            "clone_timeout": 600,
+            "dry_run": False,
+        }
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            dest_dir = Path(temp_dir)
+
+            with (
+                patch("subprocess.run") as mock_run,
+                patch("builtins.print"),
+            ):
+                mock_run.return_value = Mock(returncode=0, stdout="", stderr="")
+
+                result = sync_repository_with_retries(repo, dest_dir, config)
+                assert result is True
+
+                # git cloneコマンドに--depthが含まれることを確認
+                call_args = mock_run.call_args
+                cmd = call_args[0][0]
+                assert "--depth" in cmd
+
+    def test_sync_repository_with_custom_clone_depth(self):
+        """カスタムclone_depth設定のテスト"""
+        repo = {
+            "name": "test-repo",
+            "clone_url": "https://github.com/test/repo.git",
+        }
+        config = {
+            "shallow_clone": True,
+            "clone_depth": 10,  # カスタム深度
+            "clone_timeout": 600,
+            "dry_run": False,
+        }
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            dest_dir = Path(temp_dir)
+
+            with (
+                patch("subprocess.run") as mock_run,
+                patch("builtins.print"),
+            ):
+                mock_run.return_value = Mock(returncode=0, stdout="", stderr="")
+
+                result = sync_repository_with_retries(repo, dest_dir, config)
+                assert result is True
+
+                # --depth 10が含まれることを確認
+                call_args = mock_run.call_args
+                cmd = call_args[0][0]
+                depth_index = cmd.index("--depth")
+                assert cmd[depth_index + 1] == "10"
+
     @pytest.mark.integration
     def test_git_operations_integration(self):
         """Git操作統合テスト"""

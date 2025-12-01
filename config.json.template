@@ -8,6 +8,10 @@
   "auto_stash": false,
   "sync_only": false,
   "log_file": "~/logs/repo-sync.log",
+  "clone_timeout": 600,
+  "shallow_clone": false,
+  "clone_depth": 1,
+  "large_repos": [],
   "vscode_templates": {
     "windows": "./vscode-templates/windows",
     "linux": "./vscode-templates/linux",
