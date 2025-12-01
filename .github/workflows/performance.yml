@@ -1,6 +1,6 @@
 name: Performance Tests
 
-run-name: "Performance Tests - Manual ({0})"
+run-name: "Performance Tests - Manual (${{ inputs.test_scale || 'medium' }})"
 
 on:
   workflow_dispatch:
@@ -45,14 +45,14 @@ jobs:
       - name: Cache dependencies
         uses: actions/cache@v4
         with:
-        path: |
-          ~/.cache/uv
-          .venv
-          .pytest_cache
-        key: ${{ runner.os }}-perf-${{ matrix.python-version }}-${{ hashFiles('**/uv.lock', '**/pyproject.toml') }}
-        restore-keys: |
-          ${{ runner.os }}-perf-${{ matrix.python-version }}-
-          ${{ runner.os }}-perf-
+          path: |
+            ~/.cache/uv
+            .venv
+            .pytest_cache
+          key: ${{ runner.os }}-perf-${{ matrix.python-version }}-${{ hashFiles('**/uv.lock', '**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-perf-${{ matrix.python-version }}-
+            ${{ runner.os }}-perf-
 
       - name: Install dependencies
         run: |
