@@ -68,6 +68,18 @@ setup-repo cleanup clean --merged --dry-run
 - `config.json.template` - 設定テンプレート（リポジトリで管理）
 - `config.local.json` - 個人設定（gitで除外）
 
+## 🐍 Python 3.14 互換性
+
+> ⚠️ **重要**: Python 3.14を使用する場合は、一部の開発ツールに互換性問題があります。
+
+Setup-Repositoryは実験的にPython 3.14をサポートしていますが、以下の点にご注意ください：
+
+- **pyupgrade**: Python 3.14と互換性がありません。Setup-Repositoryは代わりにRuffの`UP`ルールを使用しています
+- **pre-commit**: Python 3.13以下の使用を推奨
+- **本番環境**: Python 3.11-3.13の使用を推奨
+
+詳細は [docs/python-314-compatibility.md](docs/python-314-compatibility.md) を参照してください。
+
 ## 🚀 リリース管理
 
 このプロジェクトは自動化されたリリース管理システムを採用しています：
