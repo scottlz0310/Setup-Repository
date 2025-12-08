@@ -16,6 +16,13 @@
 - **[ci-cd-compliance.md](ci-cd-compliance.md)** - CI/CD準拠ガイド
 - **[python-314-compatibility.md](python-314-compatibility.md)** - Python 3.14互換性ガイド
 
+### 🔧 トラブルシューティング
+
+問題解決ガイド：
+
+- **[troubleshooting/](troubleshooting/)** - トラブルシューティングガイド
+  - **[pyupgrade-python314.md](troubleshooting/pyupgrade-python314.md)** - pyupgrade + Python 3.14エラーの解決
+
 ### 🏗️ ADR（Architecture Decision Records）
 
 設計判断の記録：
