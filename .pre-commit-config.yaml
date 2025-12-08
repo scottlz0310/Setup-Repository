@@ -1,5 +1,10 @@
 # Pre-commit設定ファイル
 # 詳細: https://pre-commit.com/
+#
+# Note: この設定はPython 3.14互換です
+# - pyupgradeは意図的に除外されています（Python 3.14非対応のため）
+# - RuffのUPルールで同等の機能を提供しています
+# 詳細: docs/python-314-compatibility.md
 
 # 最初の失敗で即座に停止（テストは最後に実行）
 fail_fast: true

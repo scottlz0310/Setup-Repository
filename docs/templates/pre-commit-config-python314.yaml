@@ -1,0 +1,138 @@
+# Pre-commit Configuration Template - Python 3.14 Compatible
+# This template is designed to work with Python 3.11-3.14
+# 
+# Usage:
+#   Copy this file to your project root as .pre-commit-config.yaml
+#   Customize repos and hooks based on your project needs
+#
+# Key Features:
+#   - Python 3.14 compatible (no pyupgrade)
+#   - Uses Ruff for linting and formatting
+#   - Includes security scanning with Bandit
+#   - Type checking with MyPy
+
+fail_fast: true
+
+repos:
+  # Ruff - Fast Python linter and formatter (Python 3.14 compatible)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.14.7
+    hooks:
+      # Linting with auto-fix
+      - id: ruff
+        args: [--fix]
+        name: "Ruff Linting"
+        description: "Code quality checks and auto-fixes"
+      # Code formatting
+      - id: ruff-format
+        name: "Ruff Formatting"
+        description: "Code formatting"
+
+  # MyPy - Static type checking (Python 3.14 compatible)
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.19.0
+    hooks:
+      - id: mypy
+        name: "MyPy Type Checking"
+        description: "Static type checking"
+        additional_dependencies:
+          - types-requests
+          - types-setuptools
+        args: [--config-file=pyproject.toml]
+        files: ^src/
+
+  # Basic file checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      # Fix end of files
+      - id: end-of-file-fixer
+        name: "Fix End of Files"
+        description: "Ensures files end with a newline"
+      # Remove trailing whitespace
+      - id: trailing-whitespace
+        name: "Remove Trailing Whitespace"
+        description: "Removes trailing whitespace"
+      # YAML syntax check
+      - id: check-yaml
+        name: "Check YAML Syntax"
+        description: "Validates YAML files"
+      # JSON syntax check
+      - id: check-json
+        name: "Check JSON Syntax"
+        description: "Validates JSON files"
+      # Detect large files
+      - id: check-added-large-files
+        name: "Check Large Files"
+        description: "Prevents files larger than 500KB"
+        args: ["--maxkb=500"]
+      # Detect merge conflicts
+      - id: check-merge-conflict
+        name: "Check Merge Conflicts"
+        description: "Detects merge conflict markers"
+      # Check TOML syntax
+      - id: check-toml
+        name: "Check TOML Syntax"
+        description: "Validates TOML files"
+
+  # YAML Lint - YAML file style checking
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.37.1
+    hooks:
+      - id: yamllint
+        name: "YAML Lint"
+        description: "YAML file style checking"
+        args: [--strict]
+
+  # Security checks - Bandit (Python 3.14 compatible)
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.9.2
+    hooks:
+      - id: bandit
+        name: "Bandit Security Check"
+        description: "Security vulnerability scanning"
+        args: ["-c", "pyproject.toml"]
+        files: ^src/
+
+# Optional: Add project-specific hooks here
+# - repo: local
+#   hooks:
+#     - id: custom-check
+#       name: Custom Check
+#       entry: scripts/custom-check.sh
+#       language: system
+#       pass_filenames: false
+
+# CI configuration (for pre-commit.ci service)
+ci:
+  autofix_commit_msg: |
+    [pre-commit.ci] Auto-fix
+
+    [skip ci]
+  autofix_prs: true
+  autoupdate_branch: ""
+  autoupdate_commit_msg: "[pre-commit.ci] Auto-update pre-commit hooks"
+  autoupdate_schedule: weekly
+  skip: []
+  submodules: false
+
+# Notes:
+# 1. This configuration intentionally DOES NOT include pyupgrade
+#    - pyupgrade is incompatible with Python 3.14
+#    - Use Ruff's UP rules instead (configured in pyproject.toml)
+#
+# 2. If you need to support only Python 3.11-3.13, you can add pyupgrade:
+#    - repo: https://github.com/asottile/pyupgrade
+#      rev: v3.15.0
+#      hooks:
+#        - id: pyupgrade
+#          args: [--py311-plus]
+#          language_version: python3.13
+#
+# 3. For Ruff UP rules configuration in pyproject.toml:
+#    [tool.ruff.lint]
+#    select = ["E", "F", "W", "I", "N", "UP", "B", "A", "C4"]
+#
+# 4. For Python 3.14 testing, pin pre-commit to Python 3.13:
+#    uv python install 3.13
+#    uv tool install pre-commit --python 3.13

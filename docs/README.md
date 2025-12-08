@@ -14,6 +14,14 @@
 - **[release-management.md](release-management.md)** - リリース管理手順
 - **[testing-strategy.md](testing-strategy.md)** - テスト戦略・方針
 - **[ci-cd-compliance.md](ci-cd-compliance.md)** - CI/CD準拠ガイド
+- **[python-314-compatibility.md](python-314-compatibility.md)** - Python 3.14互換性ガイド
+
+### 🔧 トラブルシューティング
+
+問題解決ガイド：
+
+- **[troubleshooting/](troubleshooting/)** - トラブルシューティングガイド
+  - **[pyupgrade-python314.md](troubleshooting/pyupgrade-python314.md)** - pyupgrade + Python 3.14エラーの解決
 
 ### 🏗️ ADR（Architecture Decision Records）
 
@@ -72,11 +80,13 @@
 **新規ユーザー**:
 1. [setup-guide.md](setup-guide.md) - 基本セットアップ
 2. [architecture.md](architecture.md) - システム理解
+3. [python-314-compatibility.md](python-314-compatibility.md) - Python 3.14使用時の注意点
 
 **開発者**:
 1. [architecture.md](architecture.md) - システム設計理解
 2. [testing-strategy.md](testing-strategy.md) - テスト方針
-3. [adr/](adr/) - 設計判断の背景
+3. [python-314-compatibility.md](python-314-compatibility.md) - Python 3.14互換性
+4. [adr/](adr/) - 設計判断の背景
 
 **メンテナー**:
 1. [release-management.md](release-management.md) - リリース手順
@@ -109,8 +119,9 @@
 2. **設計・構造** → [architecture.md](architecture.md)
 3. **テスト** → [testing-strategy.md](testing-strategy.md)
 4. **リリース** → [release-management.md](release-management.md)
-5. **過去の作業** → [dev-archive/](dev-archive/)
-6. **内部ルール** → [internal/](internal/)
+5. **Python 3.14互換性** → [python-314-compatibility.md](python-314-compatibility.md)
+6. **過去の作業** → [dev-archive/](dev-archive/)
+7. **内部ルール** → [internal/](internal/)
 
 ---
 
