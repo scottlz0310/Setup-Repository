@@ -69,16 +69,23 @@ Ruff's UP rules cover most of `pyupgrade`'s functionality and are Python 3.14 co
 
 When detecting Python version from `pyproject.toml` for pre-commit, avoid defaulting to 3.14:
 
-**⚠️ Problematic Pattern**:
+**⚠️ Problematic Pattern** (from PDF-PageTool workflow):
 ```bash
-# DON'T: Defaults to 3.14 on failure
-PYTHON_VERSION=$(... || echo "3.14")
+# DON'T: Defaults to 3.14 on failure, causing pyupgrade to fail
+PYTHON_VERSION=$(uv run python -c "import tomllib, re; ..." 2>/dev/null || echo "3.14")
 ```
+
+The issue: If the Python version detection script fails for any reason (missing tomllib, parsing error, etc.), it falls back to Python 3.14, which then causes pyupgrade to fail with `TypeError`.
 
 **✅ Better Pattern**:
 ```bash
 # DO: Use stable Python version as fallback
 PYTHON_VERSION=$(parse_python_version || echo "3.13")
+
+# Or even better: Always use a stable version for pre-commit
+echo "Installing Python 3.13 for pre-commit (stable)"
+uv python install 3.13
+uv tool install pre-commit --python 3.13
 ```
 
 ### Experimental Python 3.14 Testing

@@ -14,6 +14,17 @@ TypeError: cannot use a bytes pattern on a string-like object
 
 The `pyupgrade` pre-commit hook is not compatible with Python 3.14 due to changes in Python's internal tokenize module.
 
+### Common Scenario: Workflow Version Detection
+
+Many workflows (like PDF-PageTool's quality-check.yml) detect Python version from `pyproject.toml` and default to 3.14 on failure:
+
+```bash
+# Problematic: defaults to 3.14 if detection fails
+PYTHON_VERSION=$(uv run python -c "import tomllib, re; ..." 2>/dev/null || echo "3.14")
+```
+
+When this detection fails (missing dependencies, parsing errors), it uses Python 3.14, triggering the pyupgrade incompatibility.
+
 ## Quick Fix
 
 ### Option 1: Remove pyupgrade (Recommended)
