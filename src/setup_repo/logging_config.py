@@ -208,8 +208,8 @@ def create_platform_specific_error_message(
     base_message = str(error)
 
     # プラットフォーム固有のエラーメッセージ拡張
-    platform_specific_info = []
-    troubleshooting_steps = []
+    platform_specific_info: list[str] = []
+    troubleshooting_steps: list[str] = []
 
     if platform_name == "windows":
         if "fcntl" in base_message.lower():

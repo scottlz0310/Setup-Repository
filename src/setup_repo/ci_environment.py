@@ -81,7 +81,7 @@ class CIEnvironmentInfo:
         ci_prefixes = ["GITHUB_", "CI_", "RUNNER_", "GITLAB_", "JENKINS_"]
         ci_vars = ["TRAVIS", "CIRCLECI"]  # 単体の環境変数名
 
-        result = {}
+        result: dict[str, str] = {}
         for key, value in os.environ.items():
             if any(key.startswith(prefix) for prefix in ci_prefixes) or key in ci_vars:
                 result[key] = value
