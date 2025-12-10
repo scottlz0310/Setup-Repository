@@ -71,7 +71,7 @@ Please confirm the following quality checks are complete:
 ### コード品質 / Code Quality
 - [ ] Ruffリンティング通過 / Ruff linting passed
 - [ ] Ruffフォーマッティング適用 / Ruff formatting applied
-- [ ] MyPy型チェック通過 / MyPy type checking passed
+ - [ ] BasedPyright / Pyright 型チェック通過 / BasedPyright / Pyright type checking passed
 - [ ] テストカバレッジ維持 / Test coverage maintained
 - [ ] セキュリティスキャン通過 / Security scan passed
 

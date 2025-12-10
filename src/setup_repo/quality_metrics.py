@@ -42,6 +42,7 @@ class QualityMetrics:
 
     ruff_issues: int = 0
     mypy_errors: int = 0
+    pyright_errors: int = 0
     test_coverage: float = 0.0
     test_passed: int = 0
     test_failed: int = 0
@@ -55,6 +56,11 @@ class QualityMetrics:
             self.timestamp = datetime.now().isoformat()
         if not self.commit_hash:
             self.commit_hash = self._get_current_commit_hash()
+        # Backward-compat: sync pyright_errors and mypy_errors
+        if self.pyright_errors and not self.mypy_errors:
+            self.mypy_errors = self.pyright_errors
+        if self.mypy_errors and not self.pyright_errors:
+            self.pyright_errors = self.mypy_errors
 
     def _get_current_commit_hash(self) -> str:
         """現在のコミットハッシュを取得"""
@@ -91,7 +97,7 @@ class QualityMetrics:
 
         return (
             self.ruff_issues == 0
-            and self.mypy_errors == 0
+            and self.pyright_errors == 0
             and self.test_coverage >= min_coverage
             and self.test_failed == 0
             and security_check
@@ -105,7 +111,7 @@ class QualityMetrics:
         score -= min(self.ruff_issues * 2, 20)
 
         # 型チェックエラーによる減点
-        score -= min(self.mypy_errors * 3, 30)
+        score -= min(self.pyright_errors * 3, 30)
 
         # カバレッジによる減点（pyproject.tomlの設定を参照）
         try:
@@ -385,6 +391,7 @@ class QualityMetricsCollector:
         metrics = QualityMetrics(
             ruff_issues=ruff_metrics.get("issue_count", 0),
             mypy_errors=mypy_metrics.get("error_count", 0),
+            pyright_errors=mypy_metrics.get("error_count", 0),
             test_coverage=test_metrics.get("coverage_percent", 0.0),
             test_passed=test_metrics.get("tests_passed", 0),
             test_failed=test_metrics.get("tests_failed", 0),
@@ -399,7 +406,7 @@ class QualityMetricsCollector:
         metrics_summary = {
             "品質スコア": f"{metrics.get_quality_score():.1f}/100",
             "Ruffエラー": metrics.ruff_issues,
-            "MyPyエラー": metrics.mypy_errors,
+            "Pyrightエラー": metrics.pyright_errors,
             "テストカバレッジ": f"{metrics.test_coverage:.1f}%",
             "テスト成功": metrics.test_passed,
             "テスト失敗": metrics.test_failed,

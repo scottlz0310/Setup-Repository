@@ -114,7 +114,7 @@ Setup-Repositoryプロジェクトの大規模リファクタリングに伴うA
 | 関数名 | 移動先モジュール | 新しいインポートパス |
 |--------|------------------|---------------------|
 | `collect_ruff_metrics` | quality_collectors.py | `from setup_repo.quality_collectors import collect_ruff_metrics` |
-| `collect_mypy_metrics` | quality_collectors.py | `from setup_repo.quality_collectors import collect_mypy_metrics` |
+| `collect_mypy_metrics` / `collect_pyright_metrics` | quality_collectors.py | `from setup_repo.quality_collectors import collect_mypy_metrics` |
 | `collect_pytest_metrics` | quality_collectors.py | `from setup_repo.quality_collectors import collect_pytest_metrics` |
 | `collect_coverage_metrics` | quality_collectors.py | `from setup_repo.quality_collectors import collect_coverage_metrics` |
 | `parse_tool_output` | quality_collectors.py | `from setup_repo.quality_collectors import parse_tool_output` |
@@ -356,6 +356,7 @@ python -W default::DeprecationWarning -m pytest
 | pytest | ^7.0.0 | ^7.0.0 | 変更なし |
 | ruff | ^0.1.0 | ^0.1.0 | 変更なし |
 | mypy | ^1.0.0 | ^1.0.0 | 変更なし |
+| basedpyright | ^1.0.0 | ^1.0.0 | 変更なし |
 
 ---
 

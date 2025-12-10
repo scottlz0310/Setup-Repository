@@ -107,7 +107,9 @@ def quality_cli(args) -> None:
     print(f"  品質スコア: {metrics.get_quality_score():.1f}/100")
     print(f"  テストカバレッジ: {metrics.test_coverage:.1f}%")
     print(f"  Ruffエラー: {metrics.ruff_issues}件")
-    print(f"  MyPyエラー: {metrics.mypy_errors}件")
+    print(f"  Pyrightエラー: {metrics.pyright_errors}件")
+    # 互換性のため mypy_errors も表示
+    print(f"  MyPyエラー (互換): {metrics.mypy_errors}件")
     print(f"  セキュリティ脆弱性: {metrics.security_vulnerabilities}件")
     print(f"  レポートファイル: {report_file}")
 

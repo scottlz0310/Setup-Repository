@@ -88,7 +88,7 @@ def main():
         # 各品質チェックを段階的に実行（並列実行対応）
         stages = [
             ("Ruff Linting", collector.collect_ruff_metrics),
-            ("MyPy Type Check", collector.collect_mypy_metrics),
+            ("Pyright Type Check", collector.collect_mypy_metrics),
             (
                 "Test Execution",
                 lambda: collector.collect_test_metrics(

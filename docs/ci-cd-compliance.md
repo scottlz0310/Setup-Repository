@@ -20,7 +20,7 @@
 ```
 production段階（現在）:
   - E2E/パフォーマンステスト実装
-  - mypy strict相当設定
+  - BasedPyright (Pyright) strict相当設定
   - カバレッジ80%以上必須
 ```
 
@@ -49,7 +49,7 @@ production段階（現在）:
 ### 7.2 必須チェック ✅
 - **依存再現性**: `uv sync`による検証
 - **lint**: ruff実行
-- **type**: mypy実行
+- **type**: BasedPyright (Pyright) 実行
 - **test+cov**: 80%以上閾値
 - **セキュリティスキャン**: CodeQL/SCA/Secret scan/SBOM
 - **秘密情報検出**: TruffleHog + 基本パターン検出
@@ -60,9 +60,6 @@ production段階（現在）:
 - **承認ゲート**: 環境別承認フロー
 
 ### 7.4 失敗時通知 ✅
-- **自動通知**: GitHub通知自動化
-- **アーティファクト**: エラーレポート自動アップロード
-- **MTTA/MTTR**: 短縮を図る設計
 
 ## 実装されたワークフロー
 
@@ -73,19 +70,10 @@ production段階（現在）:
 - **クロスプラットフォーム**: Windows/Linux/macOS対応
 - **セキュリティ**: 統合セキュリティスキャン
 
-### 2. 拡張マトリクステスト (`ci-matrix.yml`)
-- **スケジュール**: 毎日午前2時（UTC）
-- **包括的テスト**: 全OS×全Pythonバージョン
 - **パフォーマンス**: ベンチマーク測定
 
-### 3. セキュリティスキャン (`security.yml`)
-- **依存関係レビュー**: Dependabot統合
-- **脆弱性スキャン**: Safety + Bandit
 - **CodeQL分析**: GitHub Advanced Security
-- **シークレット検出**: TruffleHog
-- **ライセンス監査**: pip-licenses
-
-### 4. 品質ゲート (`quality-gate.yml`)
+ **型チェック**: BasedPyright (Pyright) strict相当
 - **PR専用**: プルリクエスト時の品質チェック
 - **必須項目**: ルール7.2の全項目実装
 - **閾値管理**: 80%カバレッジ必須
@@ -107,7 +95,7 @@ addopts = "--cov-fail-under=80 --dist=worksteal"  # 再現性向上
 ## 品質メトリクス
 
 - **カバレッジ**: 80%以上必須（production段階）
-- **型チェック**: mypy strict相当
+- **型チェック**: BasedPyright / Pyright (strict相当)
 - **セキュリティ**: 高リスク脆弱性0件
 - **依存関係**: 既知脆弱性0件
 - **ライセンス**: 禁止ライセンス0件

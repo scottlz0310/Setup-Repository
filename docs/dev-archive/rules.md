@@ -78,7 +78,7 @@ project-root/                         # プロジェクトのルートディレ�
 ### 2.3 Git 除外規則（抜粋）
 - 上記以外にも、プロジェクトやスクリプトが自動生成するファイル/ディレクトリはすべて除外対象とする（生成物の誤コミット防止）。
 必ず除外:
-- __pycache__/, .venv/, output/, .cache/, .pytest_cache/, .ruff_cache/, .mypy_cache/
+- __pycache__/, .venv/, output/, .cache/, .pytest_cache/, .ruff_cache/, .pyrightcache/
 - *.log, *.tmp, *.bak, .coverage, coverage.xml, htmlcov/
 - dist/, build/, pip-wheel-metadata, .tox/
 - .DS_Store, .idea/, .vscode/, .python-version
@@ -120,7 +120,7 @@ uv run python -m pytest      # 仮想環境で実行
 - pyproject.toml の requires-python を最新方針に整合。
 
 ### 3.3 設定管理
-- 全ツール設定は pyproject.toml に統合（ruff, mypy, pytest, coverage 等）。
+- 全ツール設定は pyproject.toml に統合（ruff, BasedPyright, pytest, coverage 等）。
 - テスト設定も統合し、カバレッジ目標も一元管理できるようにテストファイルを構成する。
 - requirements.txt は互換性維持のため自動同期生成可。setup.py 等の旧式構成は禁止。
 
@@ -138,13 +138,13 @@ uv run python -m pytest      # 仮想環境で実行
 
 ### 4.1 リンター・フォーマッター・型
 標準ツール:
-- ruff（lint/format）, mypy（型）, pytest（テスト）
+- ruff（lint/format）, BasedPyright（型）, pytest（テスト）
 
 基本コマンド:
 ```bash
 ruff check .
 ruff format .
-mypy .
+uv run basedpyright .
 pytest -q
 ```
 
@@ -160,7 +160,7 @@ pytest -q
 
 ### 4.3 型ヒント
 - PEP 484 準拠。Any 使用時は PR で理由を明記。
-- 段階的厳格化: prototype では緩和、staging で強化、production で mypy strict 相当へ。
+- 段階的厳格化: prototype では緩和、staging で強化、production で BasedPyright strict 相当へ。
   - 推奨フラグ例: disallow-any-generics, no-implicit-optional, warn-redundant-casts 等。
 
 ### 4.4 セキュリティ静的解析
@@ -188,11 +188,11 @@ pytest -q
 ### 5.3 段階別方針
 ```
 prototype:
-  - 単体テスト中心、mypy 緩和、カバレッジ目標なし
+  - 単体テスト中心、BasedPyright 緩和、カバレッジ目標なし
 staging:
-  - 統合テスト追加、mypy 厳格化、カバレッジ60%
+  - 統合テスト追加、BasedPyright 厳格化、カバレッジ60%
 production:
-  - E2E/パフォーマンス、mypy strict、カバレッジ80%以上必須
+  - E2E/パフォーマンス、BasedPyright strict、カバレッジ80%以上必須
 ```
 
 ### 5.4 絶対ルール
@@ -274,7 +274,7 @@ production:
 
 ### 7.2 必須チェック
 - 依存再現性（uv sync）
-- lint（ruff）、type（mypy）、test+cov>=閾値
+- lint（ruff）、type（basedpyright/pyright）、test+cov>=閾値
 - セキュリティスキャン（CodeQL/SCA/Secret scan/SBOM）
 - 秘密情報検出
 
@@ -390,7 +390,7 @@ output/
 .cache/
 .pytest_cache/
 .ruff_cache/
-.mypy_cache/
+.pyrightcache/
 *.log
 *.tmp
 *.bak
@@ -424,7 +424,7 @@ format:
 	uv run ruff format .
 
 typecheck:
-	uv run mypy .
+  uv run basedpyright .
 
 test:
 	uv run pytest -q
@@ -457,7 +457,7 @@ clean:
 付録 D. ruff 推奨ルール（例）
 - E/F/W（pycodestyle/pyflakes）, I（import order）, UP（pyupgrade）, B（bugbear）, C90x, T20x（print 禁止）
 
-付録 E. mypy 推奨 strict 設定（例）
+付録 E. pyright / BasedPyright 推奨 strict 設定（例）
 ```
 warn_unused_ignores = True
 warn_redundant_casts = True

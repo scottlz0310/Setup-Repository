@@ -54,8 +54,8 @@ description = "GitHub repository setup and sync tool"
 target-version = "py311"
 line-length = 100
 
-[tool.mypy]
-python_version = "3.11"
+[tool.pyright]
+pythonVersion = "3.11"
 strict = true
 """,
                 encoding="utf-8",
@@ -73,6 +73,7 @@ strict = true
                             "coverage": 80.0,
                             "ruff_issues": 5,
                             "mypy_errors": 2,
+                            "pyright_errors": 2,
                         },
                         {
                             "timestamp": "2025-01-02T00:00:00Z",
@@ -80,6 +81,7 @@ strict = true
                             "coverage": 82.0,
                             "ruff_issues": 3,
                             "mypy_errors": 1,
+                            "pyright_errors": 1,
                         },
                     ],
                     indent=2,

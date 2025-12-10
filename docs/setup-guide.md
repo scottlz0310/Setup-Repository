@@ -236,7 +236,7 @@ uv run pre-commit run --all-files
 
 - **Ruff**: リンティングと自動修正
 - **Ruff Format**: コードフォーマッティング
-- **MyPy**: 型チェック（src/ディレクトリのみ）
+- **BasedPyright**: 型チェック（src/ディレクトリのみ）
 - **Bandit**: セキュリティ脆弱性チェック
 - **基本チェック**: ファイル末尾、行末空白、YAML/JSON構文
 - **Pytest**: 単体テスト実行
@@ -297,7 +297,7 @@ uv run ruff check .
 uv run ruff format .
 
 # 型チェック
-uv run mypy src/
+uv run basedpyright src/
 
 # セキュリティチェック
 uv run bandit -r src/
@@ -307,7 +307,7 @@ uv run bandit -r src/
 
 ```bash
 # 全品質チェック実行
-uv run ruff check . && uv run ruff format . && uv run mypy src/ && uv run pytest
+uv run ruff check . && uv run ruff format . && uv run basedpyright src/ && uv run pytest
 
 # Makefileを使用した品質チェック（利用可能な場合）
 make quality-gate
@@ -322,7 +322,7 @@ uv run pre-commit run --all-files
 # 特定のフックのみ実行
 uv run pre-commit run ruff          # Ruffリンティング
 uv run pre-commit run ruff-format   # Ruffフォーマッティング
-uv run pre-commit run mypy          # MyPy型チェック
+uv run pre-commit run basedpyright  # BasedPyright型チェック
 uv run pre-commit run pytest-check  # Pytestテスト
 
 # Pre-commitフックを更新
@@ -337,13 +337,13 @@ git commit --no-verify
 このプロジェクトでは段階的厳格化ポリシーを採用しています：
 
 #### 現在の段階（初期段階）
-- **MyPy**: 基本的な型チェック（一部緩和設定）
+- **BasedPyright**: 基本的な型チェック（一部緩和設定）
 - **テストカバレッジ**: 80%以上
 - **Ruff**: 基本的なエラーチェック
 - **セキュリティ**: Bandit、Safetyによる基本チェック
 
 #### 将来の段階（予定）
-- **MyPy**: より厳格な型チェック
+- **BasedPyright**: より厳格な型チェック
 - **テストカバレッジ**: 90%以上
 - **Ruff**: 包括的なチェック
 - **セキュリティ**: より厳格なセキュリティ基準

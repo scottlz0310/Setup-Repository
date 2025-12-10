@@ -17,11 +17,7 @@
       120
     ]
   },
-  "mypy-type-checker.args": [
-    "--strict",
-    "--config-file=pyproject.toml"
-  ],
-  "mypy-type-checker.reportingScope": "workspace",
+  // BasedPyright is configured as the primary type checker via extension settings below
   "basedpyright.analysis.typeCheckingMode": "strict",
   "basedpyright.analysis.diagnosticMode": "workspace",
   "basedpyright.analysis.inlayHints.functionReturnTypes": true,
@@ -38,7 +34,7 @@
   "extensions.recommendations": [
     "ms-python.python",
     "astral-sh.ruff",
-    "ms-python.mypy-type-checker",
+    // If desired, installed MyPy extension can be present; BasedPyright is preferred
     "detachhead.basedpyright"
   ]
 }

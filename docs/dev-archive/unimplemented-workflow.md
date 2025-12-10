@@ -5,15 +5,15 @@
 ### ✅ 実装済みワークフロー
 - `setup` - 初期セットアップ（インタラクティブ設定）
 - `sync` - リポジトリ同期（GitHub API統合）
-- `quality` - 品質メトリクス収集（Ruff/MyPy/Coverage）
+- `quality` - 品質メトリクス収集（Ruff/BasedPyright/Coverage）
 - `trend` - 品質トレンド分析（履歴管理・レポート生成）
 
 ### 🔧 設定管理状況
 **✅ 完了**: pyproject.toml一元管理
-- 全ツール設定統合済み（Ruff, MyPy, Pytest, Coverage, Bandit）
+- 全ツール設定統合済み（Ruff, BasedPyright, Pytest, Coverage, Bandit）
 - 段階的厳格化設定実装済み
 - セキュリティ設定統合済み
-- **✅ MyPyチェック完全クリア（2025-01-27更新）**
+- **✅ BasedPyrightチェック完全クリア（2025-01-27更新）**
 
 ## 🚀 未実装ワークフロー
 
@@ -118,7 +118,7 @@ python main.py deploy rollback          # ロールバック
 4. **Migration管理**: バージョンアップ時の安全なマイグレーション・ロールバック
 
 ### 🔧 品質管理改善（2025-01-27）
-- **MyPyチェック完全クリア**: エラー1件・警告1件を修正
+- **BasedPyrightチェック完全クリア**: エラー1件・警告1件を修正
 - **型安全性向上**: 33ファイル全てで型チェックパス
 - **コード品質向上**: プロジェクトルール準拠の型安全なコードベースを維持
 
@@ -138,7 +138,7 @@ python main.py deploy rollback          # ロールバック
 python main.py deploy list              # デプロイ履歴一覧
 ```
 **実装範囲**:
-- ✅ 品質チェック統合（Ruff/MyPy/Pytest/Coverage）
+- ✅ 品質チェック統合（Ruff/BasedPyright/Pytest/Coverage）
 - ✅ プロジェクトビルド（uv build）
 - ✅ デプロイ前チェック（Git状態・ブランチ確認）
 - ✅ 環境別デプロイ実行
@@ -152,7 +152,7 @@ python main.py deploy list              # デプロイ履歴一覧
 ### ✅ 完了したワークフロー（全8個）
 1. **Setup管理**: インタラクティブ初期セットアップ
 2. **Sync管理**: GitHub API統合リポジトリ同期
-3. **Quality管理**: 品質メトリクス収集（Ruff/MyPy/Coverage）
+3. **Quality管理**: 品質メトリクス収集（Ruff/BasedPyright/Coverage）
 4. **Trend管理**: 品質トレンド分析・履歴管理・レポート生成
 5. **Template管理**: gitignore/vscode/カスタムテンプレートの完全管理
 6. **Backup管理**: 設定・データの安全なバックアップ・復元
@@ -161,11 +161,7 @@ python main.py deploy list              # デプロイ履歴一覧
 9. **Deploy管理**: CI/CD統合・品質ゲート・環境別デプロイ・ロールバック
 
 ### 🔧 品質管理改善（2025-01-27）
-- **MyPyチェック完全クリア**: エラー1件・警告1件を修正
-- **型安全性向上**: 全ファイルで型チェックパス
-- **コード品質向上**: プロジェクトルール準拠の型安全なコードベースを維持
-- **テストカバレッジ**: 包括的テストスイートで全ワークフロー対応
-
+ **型安全性**: BasedPyright strict相当の型チェック
 ### 📊 最終進捗率
 - **全ワークフロー**: 9/9 完了 (100%)
 - **プロジェクト完成度**: 100%
@@ -184,7 +180,7 @@ Setup-Repositoryプロジェクトの全ワークフロー実装が完了しま�
 
 ### 🛡️ 品質保証
 - **ルール準拠**: AI開発標準ルール完全準拠
-- **型安全性**: MyPy strict相当の型チェック
+- **型安全性**: BasedPyright / pyright strict相当の型チェック
 - **テストカバレッジ**: 包括的テストスイート
 - **セキュリティ**: 統合セキュリティスキャン
 - **CI/CD**: GitHub Actions完全統合

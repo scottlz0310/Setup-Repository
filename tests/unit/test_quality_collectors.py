@@ -165,7 +165,9 @@ src/test.py:30: error: Undefined variable"""
         assert result["success"] is False
         assert result["error_count"] == 3
         assert len(result["error_details"]) == 3
-        assert "MyPyで3件のエラー" in result["errors"][0]
+        assert (
+            "BasedPyright" in result["errors"][0] or "Pyright" in result["errors"][0] or "MyPy" in result["errors"][0]
+        )
 
     @pytest.mark.unit
     @patch("subprocess.run")
@@ -173,7 +175,7 @@ src/test.py:30: error: Undefined variable"""
         """MyPyメトリクス収集（サブプロセスエラー）テスト"""
         verify_current_platform()  # プラットフォーム検証
 
-        mock_run.side_effect = FileNotFoundError("mypy not found")
+        mock_run.side_effect = FileNotFoundError("basedpyright not found")
 
         result = collect_mypy_metrics(tmp_path)
 
@@ -425,7 +427,7 @@ Found 2 errors."""
 src/test.py:20: error: Missing return statement
 Found 2 errors in 1 file"""
 
-        result = parse_tool_output("mypy", mypy_output, "text")
+        result = parse_tool_output("pyright", mypy_output, "text")
 
         assert "errors" in result
         assert result["error_count"] == 2

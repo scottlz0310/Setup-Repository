@@ -115,7 +115,7 @@ uv run python -m pytest      # 仮想環境で実行
 - pyproject.tomlのrequires-pythonを最新方針に整合
 
 ### 設定管理
-- 全ツール設定はpyproject.tomlに統合（ruff, mypy, pytest, coverage等）
+ - 全ツール設定はpyproject.tomlに統合（ruff, basedpyright, pytest, coverage等）
 - requirements.txtは互換性維持のため自動同期生成可
 - setup.py等の旧式構成は禁止
 

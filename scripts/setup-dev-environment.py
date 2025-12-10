@@ -154,9 +154,9 @@ def run_initial_quality_check() -> bool:
         print("Ruffリンティングチェック...")
         run_command(["uv", "run", "ruff", "check", "."], check=False)
 
-        # MyPyチェック
-        print("MyPy型チェック...")
-        run_command(["uv", "run", "mypy", "src/"], check=False)
+        # BasedPyrightチェック
+        print("BasedPyright型チェック...")
+        run_command(["uv", "run", "basedpyright", "src/"], check=False)
 
         # テスト実行
         print("テスト実行...")

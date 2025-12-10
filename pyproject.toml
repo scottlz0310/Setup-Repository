@@ -1,7 +1,5 @@
 [build-system]
-requires = [
-    "hatchling",
-]
+requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
@@ -28,9 +26,7 @@ dependencies = [
     "bandit>=1.8.6",
     "psutil>=5.9.0",
 ]
-authors = [
-    { name = "Setup Repository Contributors" },
-]
+authors = [{ name = "Setup Repository Contributors" }]
 
 [project.scripts]
 setup-repo = "setup_repo.cli:main"
@@ -43,7 +39,7 @@ Issues = "https://github.com/scottlz0310/Setup-Repository/issues"
 [dependency-groups]
 dev = [
     "coverage>=7.10.6",
-    "mypy>=1.18.1",
+    "basedpyright[all]",
     "pre-commit>=4.3.0",
     "pytest>=8.4.2",
     "pytest-cov>=7.0.0",
@@ -59,10 +55,7 @@ dev = [
     "types-requests>=2.32.4.20250809",
     "setuptools>=80.9.0",
 ]
-security = [
-    "bandit>=1.8.6",
-    "pip-licenses>=5.0.0",
-]
+security = ["bandit>=1.8.6", "pip-licenses>=5.0.0"]
 
 [tool.ruff]
 target-version = "py311"
@@ -83,15 +76,10 @@ select = [
     "SIM", # flake8-simplify
     "TCH", # flake8-type-checking
 ]
-ignore = [
-    "T201",
-    "SIM108",
-]
+ignore = ["T201", "SIM108"]
 
 [tool.ruff.lint.isort]
-known-first-party = [
-    "setup_repo",
-]
+known-first-party = ["setup_repo"]
 force-single-line = false
 split-on-trailing-comma = true
 
@@ -99,85 +87,34 @@ split-on-trailing-comma = true
 quote-style = "double"
 indent-style = "space"
 
-[tool.mypy]
-python_version = "3.11"
-warn_return_any = false
-warn_unused_configs = true
-disallow_untyped_defs = false
-disallow_any_unimported = false
-disallow_any_expr = false
-disallow_any_decorated = false
-disallow_any_explicit = false
-disallow_any_generics = false
-disallow_subclassing_any = false
-warn_redundant_casts = true
-warn_unused_ignores = false
-warn_no_return = true
-warn_unreachable = false
-strict_optional = false
-show_error_codes = true
-show_column_numbers = true
 
-[[tool.mypy.overrides]]
-module = [
-    "tests.*",
-]
-disallow_untyped_defs = false
+[tool.pyright]
+# basedpyright の設定は pyrightconfig.json でも行えますが、いくつかの設定はここに記載しています
+python_version = "3.11"
+strict = true
 
 [tool.bandit]
-exclude_dirs = [
-    "tests",
-    "venv",
-    ".venv",
-    "build",
-    "dist",
-]
-skips = [
-    "B101",
-    "B603",
-    "B607",
-    "B404",
-    "B604",
-    "B310",
-    "B108",
-]
+exclude_dirs = ["tests", "venv", ".venv", "build", "dist"]
+skips = ["B101", "B603", "B607", "B404", "B604", "B310", "B108"]
 severity = "medium"
 confidence = "medium"
 
 [tool.bandit.assert_used]
-skips = [
-    "*_test.py",
-    "test_*.py",
-]
+skips = ["*_test.py", "test_*.py"]
 
 [tool.security]
 local_mode = true
 strict_mode = false
-required_tools = [
-    "bandit",
-    "safety",
-]
-optional_tools = [
-    "trufflehog",
-    "pip-licenses",
-]
+required_tools = ["bandit", "safety"]
+optional_tools = ["trufflehog", "pip-licenses"]
 allow_tool_failures = true
 fallback_mode = true
 
 [tool.pytest.ini_options]
-testpaths = [
-    "tests",
-]
-python_files = [
-    "test_*.py",
-    "*_test.py",
-]
-python_classes = [
-    "Test*",
-]
-python_functions = [
-    "test_*",
-]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
 addopts = [
     "-v",
     "--tb=short",
@@ -201,22 +138,11 @@ markers = [
     "cross_platform: クロスプラットフォームテスト",
     "security: セキュリティテスト",
 ]
-filterwarnings = [
-    "error",
-    "ignore::UserWarning",
-    "ignore::DeprecationWarning",
-]
+filterwarnings = ["error", "ignore::UserWarning", "ignore::DeprecationWarning"]
 
 [tool.coverage.run]
-source = [
-    "src/setup_repo",
-]
-omit = [
-    "*/tests/*",
-    "*/test_*",
-    "*/__pycache__/*",
-    "*/.*",
-]
+source = ["src/setup_repo"]
+omit = ["*/tests/*", "*/test_*", "*/__pycache__/*", "*/.*"]
 
 [tool.coverage.report]
 fail_under = 80
@@ -254,6 +180,4 @@ output = "json"
 continue_on_error = false
 
 [tool.hatch.build.targets.wheel]
-packages = [
-    "src/setup_repo",
-]
+packages = ["src/setup_repo"]

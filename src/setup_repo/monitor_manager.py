@@ -77,7 +77,7 @@ class SystemHealthChecker:
         }
 
         # 必要ツールの確認
-        tools = ["ruff", "mypy", "pytest"]
+        tools = ["ruff", "basedpyright", "pytest"]
         for tool in tools:
             try:
                 result = subprocess.run(
@@ -123,6 +123,7 @@ class SystemHealthChecker:
                 "quality_score": metrics.get_quality_score(),
                 "test_coverage": metrics.test_coverage,
                 "ruff_issues": metrics.ruff_issues,
+                "pyright_errors": getattr(metrics, "pyright_errors", metrics.mypy_errors),
                 "mypy_errors": metrics.mypy_errors,
                 "security_vulnerabilities": metrics.security_vulnerabilities,
             }

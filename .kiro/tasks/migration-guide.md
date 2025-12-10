@@ -142,7 +142,7 @@ uv run pytest tests/ -v
 
 # 品質チェック
 uv run ruff check .
-uv run mypy src/
+uv run basedpyright src/
 
 # カバレッジ確認
 uv run pytest --cov=src/setup_repo --cov-report=html

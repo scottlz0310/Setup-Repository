@@ -2,7 +2,7 @@
 
 ## Overview
 
-Setup-Repositoryプロジェクトの品質向上とCI/CD整備のための包括的な設計です。現在のプロジェクトは基本機能は実装されていますが、品質保証、テスト、CI/CD、依存関係管理の自動化が不足しています。この設計では、モダンなPython開発のベストプラクティスに従い、ruff、mypy、pytest、uvを中心とした統合的なツールチェーンを構築します。
+This design ... ruff, basedpyright, pytest, uv を中心とした統合的なツールチェーンを構築します。
 
 ## Architecture
 
@@ -12,7 +12,7 @@ Setup-Repositoryプロジェクトの品質向上とCI/CD整備のための包�
 graph TB
     subgraph "開発環境"
         A[開発者] --> B[Pre-commit Hooks]
-        B --> C[Ruff + MyPy + Tests]
+                B --> C[Ruff + BasedPyright + Tests]
     end
 
     subgraph "CI/CDパイプライン"
@@ -20,18 +20,22 @@ graph TB
         E --> F[セキュリティスキャン]
         F --> G[テスト実行]
         G --> H[カバレッジ測定]
-        H --> I[リリース自動化]
+                N[Ruff Linting] --> O[BasedPyright 型チェック]
+                O --> P[Pytest テスト]
     end
-
+ **BasedPyright**: 厳格な型チェック
     subgraph "依存関係管理"
         J[Dependabot] --> K[自動PR作成]
-        K --> L[セキュリティ更新]
+#### BasedPyright設定 (pyrightconfig.json)
         L --> M[互換性テスト]
     end
-
+    - repo: local
     subgraph "品質保証"
-        N[Ruff Linting] --> O[MyPy型チェック]
-        O --> P[Pytest テスト]
+            - id: basedpyright
+                name: BasedPyright type checking
+                entry: uv run basedpyright
+                language: system
+                pass_filenames: false
         P --> Q[Coverage報告]
     end
 
@@ -43,7 +47,7 @@ graph TB
 ### ツールチェーン統合
 
 - **Ruff**: リンティング、フォーマッティング、インポート整理の統合ツール
-- **MyPy**: 厳格な型チェック
+- **BasedPyright**: 厳格な型チェック
 - **Pytest**: テストフレームワークとカバレッジ測定
 - **UV**: 依存関係管理と仮想環境
 - **Pre-commit**: コミット前の品質チェック
@@ -80,19 +84,11 @@ quote-style = "double"
 indent-style = "space"
 ```
 
-#### MyPy設定 (pyproject.toml)
+[tool.pyright] (pyrightconfig.json を参照)
 ```toml
-[tool.mypy]
-python_version = "3.9"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = true
-disallow_any_unimported = true
-disallow_any_expr = false  # 段階的厳格化
-disallow_any_decorated = false
-disallow_any_explicit = false
-disallow_any_generics = true
-disallow_subclassing_any = true
+pythonVersion = "3.9"
+reportMissingTypeStubs = true
+typeCheckingMode = "strict"
 ```
 
 ### 2. テスト管理コンポーネント
@@ -167,11 +163,12 @@ repos:
       - id: ruff
         args: [--fix]
       - id: ruff-format
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.0.0
-    hooks:
-      - id: mypy
-        additional_dependencies: [types-all]
+    - repo: local
+        hooks:
+            - id: basedpyright
+                name: BasedPyright
+                entry: uv run basedpyright
+                language: system
   - repo: local
     hooks:
       - id: pytest-check
@@ -201,7 +198,7 @@ class QualityCheckStatus(Enum):
 class QualityMetrics:
     """品質メトリクスを管理するデータモデル"""
     ruff_issues: int
-    mypy_errors: int
+    pyright_errors: int
     test_coverage: float
     test_passed: int
     test_failed: int
@@ -211,7 +208,7 @@ class QualityMetrics:
         """品質基準を満たしているかチェック"""
         return (
             self.ruff_issues == 0 and
-            self.mypy_errors == 0 and
+            self.pyright_errors == 0 and
             self.test_coverage >= min_coverage and
             self.test_failed == 0 and
             self.security_vulnerabilities == 0
@@ -265,8 +262,8 @@ class RuffError(QualityCheckError):
     """Ruffリンティングエラー"""
     pass
 
-class MyPyError(QualityCheckError):
-    """MyPy型チェックエラー"""
+class TypeCheckError(QualityCheckError):
+    """型チェックエラー (Pyright/BasedPyright)"""
     pass
 
 class TestFailureError(QualityCheckError):
@@ -428,7 +425,7 @@ def test_sync_performance(sample_config):
 ### 1. 段階的実装アプローチ
 
 #### フェーズ1: 基盤整備
-- Ruff、MyPy、Pytestの基本設定
+- Ruff、BasedPyright/Pyright、Pytestの基本設定
 - 基本的なテスト構造の作成
 - Pre-commitフックの導入
 
@@ -457,16 +454,16 @@ def test_sync_performance(sample_config):
 ### 3. 品質基準の段階的導入
 
 #### 初期段階 (緩和設定)
-- MyPy: 基本的な型チェックのみ
+- Pyright / BasedPyright: 基本的な型チェックのみ
 - カバレッジ: 60%以上
 - Ruff: 基本的なエラーのみ
 
 #### 中間段階 (標準設定)
-- MyPy: より厳格な型チェック
+- Pyright / BasedPyright: より厳格な型チェック
 - カバレッジ: 80%以上
 - Ruff: 包括的なチェック
 
 #### 最終段階 (厳格設定)
-- MyPy: 完全な型安全性
+- Pyright / BasedPyright: 完全な型安全性
 - カバレッジ: 90%以上
 - Ruff: 全ルール適用

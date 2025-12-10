@@ -62,7 +62,7 @@ nano config.local.json
 ### 必須品質チェック
 
 1. **Ruff** - リンティングとフォーマッティング
-2. **MyPy** - 静的型チェック
+2. **BasedPyright** - 静的型チェック
 3. **Pytest** - テストカバレッジ80%以上
 4. **Bandit** - セキュリティ脆弱性チェック
 5. **Safety** - 既知の脆弱性チェック
@@ -76,7 +76,7 @@ nano config.local.json
 - **インポート**: isortルールに従った自動整理
 - **禁止事項**: print文の使用（T201 - 段階的に厳格化予定）
 
-#### 2. MyPy型チェック基準
+#### 2. BasedPyright / Pyright 型チェック基準
 
 **現在の段階（初期段階）:**
 - 基本的な型チェック
@@ -112,7 +112,7 @@ nano config.local.json
 
 ```bash
 # 全品質チェックを実行
-uv run ruff check . && uv run ruff format . && uv run mypy src/ && uv run pytest
+uv run ruff check . && uv run ruff format . && uv run basedpyright src/ && uv run pytest
 
 # Makefileを使用（利用可能な場合）
 make quality-gate
@@ -129,7 +129,7 @@ uv run ruff check . --fix              # 自動修正付き
 uv run ruff format .                   # コードフォーマット
 
 # 型チェック
-uv run mypy src/                       # 静的型チェック
+uv run basedpyright src/                       # 静的型チェック
 
 # テスト + カバレッジ
 uv run pytest --cov=src/setup_repo    # カバレッジ付きテスト
@@ -145,7 +145,7 @@ uv run safety scan                     # 既知の脆弱性チェック
 プルリクエストでは以下の品質ゲートを通過する必要があります：
 
 1. **Ruffリンティング**: エラー0件
-2. **MyPy型チェック**: エラー0件
+2. **BasedPyright型チェック**: エラー0件
 3. **テストカバレッジ**: 80%以上
 4. **セキュリティチェック**: 重大な脆弱性0件
 5. **全テスト**: 100%通過
@@ -166,7 +166,7 @@ uv run pre-commit run --all-files
 
 **実行される内容:**
 - Ruffリンティング（自動修正付き）
-- Ruffフォーマッティング
+- **BasedPyright**: 型チェック（src/ディレクトリのみ）
 - MyPy型チェック
 - Banditセキュリティチェック
 - 基本ファイルチェック（末尾改行、空白削除等）
@@ -191,7 +191,7 @@ uv run pre-commit install
 
 - **Ruff**: リンティングと自動修正
 - **Ruff Format**: コードフォーマッティング
-- **MyPy**: 型チェック（src/ディレクトリのみ）
+ - **BasedPyright / Pyright**: 型チェック（src/ディレクトリのみ）
 - **基本チェック**: ファイル末尾、行末空白、YAML/JSON構文
 - **Pytest**: 単体テスト実行
 
@@ -381,7 +381,7 @@ def example():
 
 ### 現在の段階（初期段階）
 
-**MyPy設定:**
+**BasedPyright / Pyright 設定:**
 - `warn_return_any = false`
 - `disallow_untyped_defs = false`
 - `disallow_any_* = false`
@@ -401,7 +401,7 @@ def example():
 
 ### 中間段階（予定 - v2.0）
 
-**MyPy設定:**
+**BasedPyright / Pyright 設定:**
 - `warn_return_any = true`
 - `disallow_untyped_defs = true`（新規コードのみ）
 - `disallow_any_unimported = true`
@@ -421,7 +421,7 @@ def example():
 
 ### 最終段階（目標 - v3.0）
 
-**MyPy設定:**
+**BasedPyright / Pyright 設定:**
 - 完全なstrict設定
 - `disallow_any_* = true`（全設定）
 - `warn_unreachable = true`

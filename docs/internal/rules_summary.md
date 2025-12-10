@@ -48,7 +48,7 @@ project-root/                         # プロジェクトのルート
 
 2.3 Git除外規則（重要点）
 - プロジェクト/スクリプトが自動生成するファイル・ディレクトリは原則すべて除外する（生成物の誤コミット防止）
-- 例: __pycache__/, .venv/, output/, .cache/, .pytest_cache/, .ruff_cache/, .mypy_cache/, *.log, *.tmp, *.bak, .coverage, coverage.xml, htmlcov/, dist/, build/, pip-wheel-metadata, .tox/, .DS_Store, .idea/, .vscode/, .python-version, .env, .env.*
+例: __pycache__/, .venv/, output/, .cache/, .pytest_cache/, .ruff_cache/, .pyrightcache/, *.log, *.tmp, *.bak, .coverage, coverage.xml, htmlcov/, dist/, build/, pip-wheel-metadata, .tox/, .DS_Store, .idea/, .vscode/, .python-version, .env, .env.*
 
 3. 開発環境（uv標準）
 - uv.lockは必ずコミット、--systemは開発で禁止（CI/コンテナのみ）
@@ -57,9 +57,9 @@ project-root/                         # プロジェクトのルート
 - 全ツール設定はpyproject.tomlに統合、Makefileに標準ターゲット（lint/type/test等）
 
 4. コード品質
-- ツール: ruff(lint/format)/mypy(pytypes)/pytest(tests)
+- ツール: ruff(lint/format)/BasedPyright(pyright)/pytest(tests)
 - ルール: PEP8, Docstring規約, import順序, pyupgrade等
-- 型: Any使用は理由明記、段階的にmypy strictへ
+- 型: Any使用は理由明記、段階的にBasedPyright strictへ
 - デバッグ: print禁止、構造化JSONログ、lazy logging、レベル適切運用
 
 5. テスト戦略

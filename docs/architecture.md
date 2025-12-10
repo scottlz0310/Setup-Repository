@@ -434,7 +434,7 @@ sequenceDiagram
     QualityMetrics->>QualityCollectors: collect_ruff_metrics()
     QualityCollectors-->>QualityMetrics: ruff results
     QualityMetrics->>QualityCollectors: collect_mypy_metrics()
-    QualityCollectors-->>QualityMetrics: mypy results
+    QualityCollectors-->>QualityMetrics: pyright results
     QualityMetrics->>QualityLogger: log_quality_event()
     QualityLogger->>QualityFormatters: format_log_message()
     QualityFormatters-->>QualityLogger: formatted message
@@ -638,7 +638,7 @@ class PluginManager:
     }
   },
   "quality_tools": {
-    "enabled": ["ruff", "mypy", "pytest"],
+    "enabled": ["ruff", "pyright", "pytest"],
     "thresholds": {
       "coverage": 80
     }

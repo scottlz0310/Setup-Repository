@@ -4,21 +4,20 @@
 
 適用範囲:
 - 本リポジトリ内の全コード、ドキュメント、ワークフロー
-- サブプロジェクト/ツールに対しても、特段の合意がない限り本ルールを継承
-
+ 標準ツール:
+ ruff（lint/format）, basedpyright（型）, pytest（テスト）
 用語:
 - 本書で「AI」とは生成AI/補完AI/自動化エージェントを含む
 - 「CI/CD」は GitHub Actions 等の自動パイプラインを指す
 
 
-## 1. 基本方針
+basedpyright .
 
 ### 1.1 言語・コミュニケーション
 - 標準言語は日本語。コードコメント・ドキュメント・PR/Issue も日本語で記述する。
 - 英語への自動切替は禁止。ただし対外コミュニケーション（OSS への投稿、外部バグ報告、公開ドキュメント）は英語併記可。
-- 可能であれば Issue/PR テンプレートは日英併記を推奨。
 
-### 1.2 品質原則
+ __pycache__/, .venv/, output/, .cache/, .pytest_cache/, .ruff_cache/, .pyrightcache/
 - 単一責務（Single Responsibility）の徹底。循環依存は原則禁止。
 - 公開 API は最小化。内部実装の漏洩を避ける。
 - 妥協案の提案や手抜き実装は禁止。エラーは根本解決する。
@@ -31,16 +30,12 @@
 
 ## 2. リポジトリ構成
 
-### 2.1 ディレクトリ構造（標準例：全行に説明コメント付き）
+uv run basedpyright .
 ```
 project-root/                         # プロジェクトのルートディレクトリ
 ├── main.py                           # アプリケーションのエントリポイント
-├── test_entry.py                     # テスト実行のエントリポイント（統合/回帰の起点）
-├── Makefile                          # ビルド・実行・検査を統一するコマンド群
-├── pyproject.toml                    # ツール/ビルド/依存設定の統合ファイル
 ├── uv.lock                           # 依存関係のロックファイル（再現性担保）
 ├── .gitignore                        # Git 追跡から除外するパス定義
-├── README.md                         # プロジェクト概要・セットアップ・使用方法
 ├── CHANGELOG.md                      # 変更履歴（Keep a Changelog 準拠）
 ├── LICENSE                           # ライセンス情報
 ├── rules_v3.md                       # 本ルールドキュメント
@@ -78,7 +73,7 @@ project-root/                         # プロジェクトのルートディレ�
 ### 2.3 Git 除外規則（抜粋）
 - 上記以外にも、プロジェクトやスクリプトが自動生成するファイル/ディレクトリはすべて除外対象とする（生成物の誤コミット防止）。
 必ず除外:
-- __pycache__/, .venv/, output/, .cache/, .pytest_cache/, .ruff_cache/, .mypy_cache/
+- __pycache__/, .venv/, output/, .cache/, .pytest_cache/, .ruff_cache/, .pyrightcache/
 - *.log, *.tmp, *.bak, .coverage, coverage.xml, htmlcov/
 - dist/, build/, pip-wheel-metadata, .tox/
 - .DS_Store, .idea/, .vscode/, .python-version
@@ -87,22 +82,21 @@ project-root/                         # プロジェクトのルートディレ�
 
 
 ## 3. 開発環境
-
+ 全ツール設定は pyproject.toml に統合（ruff, BasedPyright, pytest, coverage 等）。
 ### 3.1 仮想環境・依存管理（uv 必須）
 基本方針: uv を標準ツールとする。ロックファイル（uv.lock）は必ずコミット。
-
 推奨セットアップ:
-```bash
+ __pycache__/, .venv/, output/, .cache/, .pytest_cache/, .ruff_cache/, .pyrightcache/
 # Linux/macOS
 curl -LsSf https://astral.sh/uv/install.sh | sh
 # Windows PowerShell
-irm https://astral.sh/uv/install.ps1 | iex
+ ruff（lint/format）, BasedPyright（型）, pytest（テスト）
 # 代替（CI等）
 pip install uv
 ```
 
 基本ワークフロー:
-```bash
+uv run basedpyright .
 uv venv --python 3.13        # .venv に作成
 uv lock                      # ロック生成
 uv sync                      # 環境同期
@@ -120,7 +114,7 @@ uv run python -m pytest      # 仮想環境で実行
 - pyproject.toml の requires-python を最新方針に整合。
 
 ### 3.3 設定管理
-- 全ツール設定は pyproject.toml に統合（ruff, mypy, pytest, coverage 等）。
+- 全ツール設定は pyproject.toml に統合（ruff, BasedPyright, pytest, coverage 等）。
 - テスト設定も統合し、カバレッジ目標も一元管理できるようにテストファイルを構成する。
 - requirements.txt は互換性維持のため自動同期生成可。setup.py 等の旧式構成は禁止。
 
@@ -138,13 +132,13 @@ uv run python -m pytest      # 仮想環境で実行
 
 ### 4.1 リンター・フォーマッター・型
 標準ツール:
-- ruff（lint/format）, mypy（型）, pytest（テスト）
+- ruff（lint/format）, BasedPyright（型）, pytest（テスト）
 
 基本コマンド:
 ```bash
 ruff check .
 ruff format .
-mypy .
+uv run basedpyright .
 pytest -q
 ```
 
@@ -160,7 +154,7 @@ pytest -q
 
 ### 4.3 型ヒント
 - PEP 484 準拠。Any 使用時は PR で理由を明記。
-- 段階的厳格化: prototype では緩和、staging で強化、production で mypy strict 相当へ。
+ - 段階的厳格化: prototype では緩和、staging で強化、production で BasedPyright Strict 相当へ。
   - 推奨フラグ例: disallow-any-generics, no-implicit-optional, warn-redundant-casts 等。
 
 ### 4.4 セキュリティ静的解析
@@ -188,11 +182,11 @@ pytest -q
 ### 5.3 段階別方針
 ```
 prototype:
-  - 単体テスト中心、mypy 緩和、カバレッジ目標なし
+  - 単体テスト中心、BasedPyright 緩和、カバレッジ目標なし
 staging:
-  - 統合テスト追加、mypy 厳格化、カバレッジ60%
+  - 統合テスト追加、BasedPyright 厳格化、カバレッジ60%
 production:
-  - E2E/パフォーマンス、mypy strict、カバレッジ80%以上必須
+  - E2E/パフォーマンス、BasedPyright Strict、カバレッジ80%以上必須
 ```
 
 ### 5.4 絶対ルール
@@ -259,7 +253,7 @@ production:
 
 ### 7.2 必須チェック
 - 依存再現性（uv sync）
-- lint（ruff）、type（mypy）、test+cov>=閾値
+- lint（ruff）、type（BasedPyright）、test+cov>=閾値
 - セキュリティスキャン（CodeQL/SCA/Secret scan/SBOM）
 - 秘密情報検出
 
@@ -375,7 +369,7 @@ output/
 .cache/
 .pytest_cache/
 .ruff_cache/
-.mypy_cache/
+.pyrightcache/
 *.log
 *.tmp
 *.bak
@@ -409,7 +403,7 @@ format:
 	uv run ruff format .
 
 typecheck:
-	uv run mypy .
+  uv run basedpyright .
 
 test:
 	uv run pytest -q
@@ -429,7 +423,7 @@ release:
 	echo "Release pipeline"
 
 clean:
-	rm -rf .venv .cache .pytest_cache .ruff_cache .mypy_cache dist build htmlcov .coverage
+  rm -rf .venv .cache .pytest_cache .ruff_cache .pyrightcache dist build htmlcov .coverage
 ```
 
 付録 C. CI ワークフロー項目（参考）
@@ -442,14 +436,16 @@ clean:
 付録 D. ruff 推奨ルール（例）
 - E/F/W（pycodestyle/pyflakes）, I（import order）, UP（pyupgrade）, B（bugbear）, C90x, T20x（print 禁止）
 
-付録 E. mypy 推奨 strict 設定（例）
+付録 E. BasedPyright（Pyright）推奨 strict 設定（例）
 ```
-warn_unused_ignores = True
-warn_redundant_casts = True
-no_implicit_optional = True
-disallow_any_generics = True
-warn_return_any = True
-strict_equality = True
+// pyrightconfig.json - strict settings example
+{
+  "typeCheckingMode": "strict",
+  "pythonVersion": "3.11",
+  "reportMissingImports": true,
+  "reportUnusedVariable": true,
+  "reportUnusedImport": true
+}
 ```
 
 ---

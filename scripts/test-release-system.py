@@ -304,20 +304,20 @@ if __name__ == "__main__":
         # Ruffチェック
         ruff_result = self.run_command(["uv", "run", "ruff", "check", ".", "--quiet"])
 
-        # MyPyチェック
-        mypy_result = self.run_command(["uv", "run", "mypy", "src/"])
+        # BasedPyrightチェック
+        pyright_result = self.run_command(["uv", "run", "basedpyright", "src/"])
 
         # テスト実行
         test_result = self.run_command(["uv", "run", "pytest", "tests/", "-x", "--tb=short"])
 
         ruff_success = ruff_result["success"]
-        mypy_success = mypy_result["success"]
+        pyright_success = pyright_result["success"]
         test_success = test_result["success"]
 
-        overall_success = ruff_success and mypy_success and test_success
+        overall_success = ruff_success and pyright_success and test_success
 
         print(f"  - Ruffリンティング: {'✅ 成功' if ruff_success else '❌ 失敗'}")
-        print(f"  - MyPy型チェック: {'✅ 成功' if mypy_success else '❌ 失敗'}")
+        print(f"  - BasedPyright型チェック: {'✅ 成功' if pyright_success else '❌ 失敗'}")
         print(f"  - Pytestテスト: {'✅ 成功' if test_success else '❌ 失敗'}")
 
         if overall_success:
@@ -326,8 +326,8 @@ if __name__ == "__main__":
             print("❌ 品質チェック: 一部失敗")
             if not ruff_success:
                 print(f"Ruffエラー: {ruff_result['stderr']}")
-            if not mypy_success:
-                print(f"MyPyエラー: {mypy_result['stderr']}")
+            if not pyright_success:
+                print(f"Pyrightエラー: {pyright_result['stderr']}")
             if not test_success:
                 print(f"テストエラー: {test_result['stderr']}")
 
@@ -336,11 +336,13 @@ if __name__ == "__main__":
                 "test": "quality_checks",
                 "success": overall_success,
                 "ruff": ruff_success,
-                "mypy": mypy_success,
+                "mypy": pyright_success,
+                "pyright": pyright_success,
                 "pytest": test_success,
                 "output": {
                     "ruff": ruff_result["stdout"],
-                    "mypy": mypy_result["stdout"],
+                    "mypy": pyright_result["stdout"],
+                    "pyright": pyright_result["stdout"],
                     "pytest": test_result["stdout"],
                 },
             }

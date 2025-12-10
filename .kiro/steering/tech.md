@@ -17,7 +17,7 @@
 ## 開発ツール
 
 - **リンティング**: Ruff（flake8、black、isortを置き換え）
-- **型チェック**: 厳格設定のMyPy
+- **型チェック**: 厳格設定のBasedPyright
 - **テスト**: pytest（開発依存関係）
 
 ## 共通コマンド
@@ -40,7 +40,7 @@ uv run main.py sync --dry-run
 # コード品質チェック
 uv run ruff check .
 uv run ruff format .
-uv run mypy src/
+uv run basedpyright src/
 
 # テスト
 uv run pytest

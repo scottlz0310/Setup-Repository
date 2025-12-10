@@ -23,7 +23,7 @@
 
 共通機能:
 - uv環境セットアップ
-- 品質チェック (ruff, mypy)
+- 品質チェック (ruff, basedpyright/pyright)
 - テスト実行
 - クロスプラットフォーム対応
 ```

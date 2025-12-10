@@ -23,7 +23,7 @@
     "**/.venv/**": true,
     "**/__pycache__/**": true,
     "**/.pytest_cache/**": true,
-    "**/.mypy_cache/**": true,
+    "**/.pyrightcache/**": true,
     "**/.ruff_cache/**": true,
     "**/htmlcov/**": true,
     "**/dist/**": true,

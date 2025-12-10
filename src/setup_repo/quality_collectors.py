@@ -1,7 +1,7 @@
 """
 品質ツール固有のデータ収集機能
 
-このモジュールは、各品質ツール（ruff、mypy、pytest）との
+このモジュールは、各品質ツール（ruff、pyright/basedpyright、pytest）との
 連携とデータ収集機能を提供します。
 """
 
@@ -10,7 +10,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from .quality_errors import CoverageError, MyPyError, RuffError, TestFailureError
+from .quality_errors import CoverageError, RuffError, TestFailureError
 from .quality_logger import QualityLogger, get_quality_logger
 from .security_helpers import safe_path_join, safe_subprocess
 
@@ -101,20 +101,41 @@ def collect_mypy_metrics(
     project_root = project_root or Path.cwd()
     logger = logger or get_quality_logger()
 
-    logger.log_quality_check_start("MyPy")
+    logger.log_quality_check_start("BasedPyright")
 
     try:
-        # MyPyチェック実行
-        result = safe_subprocess(
-            ["uv", "run", "mypy", "src/", "--no-error-summary"],
-            cwd=project_root,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+        # BasedPyright / Pyright チェック実行
+        # Try basedpyright (pip package) first, fallback to pyright (npm) if not available
+        cmd_candidates = [
+            ["uv", "run", "basedpyright", "src/"],
+            ["uv", "run", "pyright", "src/"],
+            ["uv", "run", "basedpyright"],
+            ["uv", "run", "pyright"],
+        ]
+        result = None
+        for cmd in cmd_candidates:
+            try:
+                result = safe_subprocess(cmd, cwd=project_root, capture_output=True, text=True, check=False)
+                # If the command ran (even with errors), use its output
+                break
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                result = None
+                continue
+        if result is None:
+            # Fallback: mypy if present
+            try:
+                result = safe_subprocess(
+                    ["uv", "run", "mypy", "src/"], cwd=project_root, capture_output=True, text=True, check=False
+                )
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                # All tools unavailable
+                from .quality_errors import PyrightError
 
-        # エラー行数をカウント
-        error_lines = [line for line in result.stdout.split("\n") if line.strip() and "error:" in line]
+                logger.log_quality_check_failure("BasedPyright", PyrightError("BasedPyright/Pyright not installed"))
+                return {"success": False, "error_count": 0, "errors": ["BasedPyright/Pyright not available"]}
+
+        # エラー行数をカウント（Pyright の出力には 'error' が含まれるためそれをベースにカウント）
+        error_lines = [line for line in result.stdout.split("\n") if line.strip() and "error" in line.lower()]
         error_count = len(error_lines)
 
         # 成功判定: 実行が成功し、かつエラーが0件の場合
@@ -124,23 +145,27 @@ def collect_mypy_metrics(
             "success": success,
             "error_count": error_count,
             "error_details": error_lines[:10],  # 最初の10個のエラーを保存
-            "errors": ([] if success else [f"MyPyで{error_count}件のエラーが見つかりました"]),
+            "errors": ([] if success else [f"BasedPyright/Pyrightで{error_count}件のエラーが見つかりました"]),
         }
 
         if success:
-            logger.log_quality_check_success("MyPy", {"error_count": error_count})
+            logger.log_quality_check_success("BasedPyright", {"error_count": error_count})
         else:
-            error = MyPyError(
-                f"MyPy型チェックで{error_count}件のエラーが見つかりました",
+            from .quality_errors import PyrightError
+
+            error = PyrightError(
+                f"BasedPyright/Pyright型チェックで{error_count}件のエラーが見つかりました",
                 error_lines,
             )
-            logger.log_quality_check_failure("MyPy", error)
+            logger.log_quality_check_failure("BasedPyright", error)
 
         return metrics_result
 
+    # End of collect_mypy_metrics
+
     except (subprocess.CalledProcessError, FileNotFoundError) as e:
-        error = MyPyError(f"MyPyメトリクス収集エラー: {str(e)}")
-        logger.log_quality_check_failure("MyPy", error)
+        error = PyrightError(f"BasedPyright/Pyrightメトリクス収集エラー: {str(e)}")
+        logger.log_quality_check_failure("BasedPyright", error)
         return {"success": False, "error_count": 0, "errors": [str(e)]}
 
 
@@ -453,9 +478,10 @@ def parse_tool_output(
                 issues.append(line)
         return {"issues": issues, "issue_count": len(issues)}
 
-    elif tool_name_lower == "mypy":
-        # MyPyのテキスト出力を解析
-        errors = [line for line in lines if "error:" in line]
+    elif tool_name_lower in ("mypy", "pyright"):
+        # MyPy / Pyright のテキスト出力を解析
+        # 共通フォーマットとして 'error' を含む行をエラーと見なす
+        errors = [line for line in lines if "error" in line.lower()]
         return {"errors": errors, "error_count": len(errors)}
 
     # 汎用的な解析

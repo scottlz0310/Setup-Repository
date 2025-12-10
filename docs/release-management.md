@@ -39,7 +39,7 @@ make quality-gate
 make test
 make coverage-check
 uv run ruff check .
-uv run mypy src/
+uv run basedpyright src/
 ```
 
 #### ステップ2: バージョン管理
@@ -176,7 +176,7 @@ permissions:
 ### 必須チェック項目
 
 - ✅ **Ruffリンティング**: コードスタイルとエラーチェック
-- ✅ **MyPy型チェック**: 型安全性の検証
+- ✅ **BasedPyright型チェック**: 型安全性の検証
 - ✅ **Pytestテスト**: 全テストケースの実行
 - ✅ **カバレッジチェック**: 最低80%のコードカバレッジ
 - ✅ **セキュリティスキャン**: 脆弱性の検出
@@ -237,13 +237,13 @@ uv run python scripts/version-manager.py --set 1.0.0
 #### 2. 品質チェック失敗
 
 ```bash
-❌ 品質チェック失敗: MyPy型チェックエラー
+❌ 品質チェック失敗: BasedPyright型チェックエラー
 ```
 
 **解決方法**:
 ```bash
 # 個別に問題を確認・修正
-uv run mypy src/
+uv run basedpyright src/
 # 修正後に再実行
 make quality-gate
 ```

@@ -50,7 +50,8 @@ class QualityRulesValidator:
                         if any(rule in str(selected_rules) for rule in required_rules):
                             results["style_guide_compliant"] = True
 
-                if "tool" in config and "mypy" in config["tool"]:
+                # Accept either mypy or pyright presence as a configured static type checker
+                if "tool" in config and ("mypy" in config["tool"] or "pyright" in config["tool"]):
                     results["mypy_configured"] = True
 
             except (OSError, ValueError, KeyError) as e:
@@ -262,6 +263,10 @@ line-length = 88
 warn_unused_ignores = true
 warn_redundant_casts = true
 no_implicit_optional = true
+
+[tool.pyright]
+pythonVersion = "3.11"
+typeCheckingMode = "basic"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -145,10 +145,11 @@ class CIErrorHandler:
                     message = issue.get("message", "Ruff issue")
                     self._output_github_annotation("warning", message, file_path, line)
 
-        elif check_type.lower() == "mypy" and "errors" in details:
+        elif check_type.lower() in ("mypy", "pyright") and "errors" in details:
             for error_msg in details["errors"][:5]:  # 最初の5つのみ表示
                 if self.enable_github_annotations and self._is_github_actions():
-                    self._output_github_annotation("warning", f"MyPy: {error_msg}")
+                    prefix = "Pyright" if check_type.lower() == "pyright" else "MyPy"
+                    self._output_github_annotation("warning", f"{prefix}: {error_msg}")
 
         elif check_type.lower() == "tests" and "failed_tests" in details:
             for test in details["failed_tests"][:5]:  # 最初の5つのみ表示

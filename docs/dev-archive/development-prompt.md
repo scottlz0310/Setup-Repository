@@ -12,12 +12,7 @@
 - **責務分離**: 各モジュール・関数は単一の責務を持つ
 - **マルチプラットフォーム**: Windows、Linux、macOS対応
 
-### 技術スタック
-- **Python**: 3.9+、型ヒント必須
-- **パッケージ管理**: uv（仮想環境・依存関係）
-- **テスト**: pytest（実環境テスト優先）
-- **品質管理**: ruff（リント・フォーマット）、mypy（型チェック）
-- **CI/CD**: GitHub Actions
+**品質管理**: ruff（リント・フォーマット）、basedpyright（型チェック）
 
 ## 🧪 テスト戦略
 
@@ -52,7 +47,7 @@ def test_with_helper():
 # 品質チェック実行
 uv run ruff check .          # リンティング
 uv run ruff format .         # フォーマッティング
-uv run mypy src/             # 型チェック
+uv run basedpyright src/             # 型チェック
 uv run pytest               # テスト実行
 uv run safety check          # セキュリティチェック
 ```
@@ -88,7 +83,7 @@ uv run python scripts/setup-pre-commit.py  # Pre-commit設定
 ### 2. 実装・テスト
 ```bash
 # 実装後の品質チェック
-uv run ruff check . && uv run ruff format . && uv run mypy src/ && uv run pytest
+uv run ruff check . && uv run ruff format . && uv run basedpyright src/ && uv run pytest
 
 # カバレッジ付きテスト
 uv run pytest --cov=src/setup_repo --cov-report=html
@@ -137,11 +132,11 @@ def setup_repository(config: Dict[str, Any]) -> bool:
 ## 🔧 開発支援ツール
 
 ### Pre-commit設定
-- **自動品質チェック**: コミット前にruff、mypy、pytest実行
+- **自動品質チェック**: コミット前にruff、BasedPyright、pytest実行
 - **自動修正**: フォーマット・リント問題の自動修正
 
 ### VS Code統合
-- **推奨拡張機能**: Python、Ruff、MyPy統合
+- **推奨拡張機能**: Python、Ruff、BasedPyright統合
 - **自動設定**: 保存時フォーマット、リアルタイム型チェック
 
 ### CI/CD統合

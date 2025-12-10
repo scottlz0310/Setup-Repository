@@ -42,6 +42,13 @@ class MyPyError(QualityCheckError):
         super().__init__(message, "MYPY_ERROR", {"errors": errors or []})
 
 
+class PyrightError(QualityCheckError):
+    """Pyright/BasedPyright 型チェックエラー"""
+
+    def __init__(self, message: str, errors: list[str] | None = None):
+        super().__init__(message, "PYRIGHT_ERROR", {"errors": errors or []})
+
+
 class TestFailureError(QualityCheckError):
     """テスト失敗エラー"""
 

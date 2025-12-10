@@ -104,7 +104,7 @@ class DeployManager:
         checks = [
             ("ruff check .", "リンティングチェック"),
             ("ruff format --check .", "フォーマットチェック"),
-            ("mypy src/", "型チェック"),
+            ("uv run basedpyright src/", "型チェック"),
             ("pytest --cov-fail-under=80", "テスト・カバレッジチェック"),
         ]
 

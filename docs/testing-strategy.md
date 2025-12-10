@@ -571,7 +571,7 @@ jobs:
       run: uv run ruff check .
 
     - name: Run type checking
-      run: uv run mypy src/
+      run: uv run basedpyright src/
 
     - name: Run tests with coverage
       run: uv run pytest --cov=src/setup_repo --cov-fail-under=80

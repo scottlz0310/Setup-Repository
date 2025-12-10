@@ -13,7 +13,7 @@
 - [ ] uv（パッケージマネージャー）
 - [ ] pytest（テストフレームワーク）
 - [ ] ruff（リンター・フォーマッター）
-- [ ] mypy（型チェック）
+- [ ] BasedPyright / pyright（型チェック）
 - [ ] GitHub Actions（CI/CD）
 
 ### 📁 プロジェクト構造
@@ -32,7 +32,7 @@
 
 ### 🛡️ 品質管理
 - [ ] Pre-commit設定
-- [ ] Ruff + MyPy + Pytest統合
+- [ ] Ruff + BasedPyright / pyright + Pytest統合
 - [ ] セキュリティスキャン（Bandit、Safety）
 - [ ] 自動依存関係更新（Dependabot）
 
@@ -65,7 +65,7 @@
 ### 4. 品質チェック
 - [ ] `uv run ruff check .`
 - [ ] `uv run ruff format .`
-- [ ] `uv run mypy src/`
+- [ ] `uv run basedpyright src/`
 - [ ] `uv run pytest`
 - [ ] カバレッジ確認
 

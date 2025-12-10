@@ -128,7 +128,7 @@ If you encounter Python 3.14 + pyupgrade issues in an existing repository:
 
 Check tool compatibility before using Python 3.14 in production:
 
-- ✅ **Compatible**: ruff, mypy (1.11+), black, bandit
+- ✅ **Compatible**: ruff, basedpyright (pyright), black, bandit
 - ⚠️ **Incompatible**: pyupgrade (as of 2025-12)
 - ❓ **Unknown**: Check individual tool repositories
 

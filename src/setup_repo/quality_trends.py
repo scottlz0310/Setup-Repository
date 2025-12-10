@@ -23,6 +23,7 @@ class TrendDataPoint:
     coverage: float
     ruff_issues: int
     mypy_errors: int
+    pyright_errors: int
     security_vulnerabilities: int
     test_passed: int
     test_failed: int
@@ -37,6 +38,7 @@ class TrendDataPoint:
             coverage=metrics.test_coverage,
             ruff_issues=metrics.ruff_issues,
             mypy_errors=metrics.mypy_errors,
+            pyright_errors=getattr(metrics, "pyright_errors", metrics.mypy_errors),
             security_vulnerabilities=metrics.security_vulnerabilities,
             test_passed=metrics.test_passed,
             test_failed=metrics.test_failed,
@@ -228,8 +230,9 @@ class QualityTrendManager:
         if latest.ruff_issues > 0:
             issues.append(f"Ruffエラーが{latest.ruff_issues}件あります")
 
-        if latest.mypy_errors > 0:
-            issues.append(f"MyPyエラーが{latest.mypy_errors}件あります")
+        pyright_count = getattr(latest, "pyright_errors", latest.mypy_errors)
+        if pyright_count > 0:
+            issues.append(f"Pyrightエラーが{pyright_count}件あります")
 
         if latest.security_vulnerabilities > 0:
             issues.append(f"セキュリティ脆弱性が{latest.security_vulnerabilities}件あります")
@@ -540,8 +543,8 @@ class QualityTrendManager:
                         backgroundColor: 'rgba(255, 206, 86, 0.8)'
                     }},
                     {{
-                        label: 'MyPyエラー',
-                        data: data.map(d => d.mypy_errors),
+                        label: 'Pyrightエラー',
+                        data: data.map(d => d.pyright_errors || d.mypy_errors),
                         backgroundColor: 'rgba(54, 162, 235, 0.8)'
                     }},
                     {{

@@ -339,7 +339,7 @@ jobs:
           FORMAT_PID=$!
 
           # Type checks
-          uv run mypy src/ &
+          uv run basedpyright src/ &
           MYPY_PID=$!
 
           # Wait for all checks
@@ -481,7 +481,6 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
-
 
       - name: Download cross-platform test artifacts
         uses: actions/download-artifact@v4

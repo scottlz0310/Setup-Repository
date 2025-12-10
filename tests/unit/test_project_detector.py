@@ -162,6 +162,40 @@ class TestProjectDetector:
         assert "csharp" in project_types
 
     @pytest.mark.unit
+    def test_detect_project_types_csharp_nested(self, project_detector):
+        """C#プロジェクト検出（サブディレクトリ内の.csproj）"""
+        verify_current_platform()  # プラットフォーム検証
+
+        # サブディレクトリ内に .csproj ファイルを作成
+        subdir = project_detector.repo_path / "src" / "project"
+        subdir.mkdir(parents=True, exist_ok=True)
+        (subdir / "nested.csproj").write_text("<Project></Project>", encoding="utf-8")
+
+        # キャッシュクリア
+        project_detector._file_count_cache = {}
+
+        project_types = project_detector.detect_project_types()
+        assert "csharp" in project_types
+
+    @pytest.mark.unit
+    def test_detect_project_types_csharp_sln_nested(self, project_detector):
+        """C#プロジェクト検出（サブディレクトリ内の.sln）"""
+        verify_current_platform()  # プラットフォーム検証
+
+        # サブディレクトリ内に .sln ファイルを作成
+        subdir = project_detector.repo_path / "src" / "solution_folder"
+        subdir.mkdir(parents=True, exist_ok=True)
+        (subdir / "test_solution.sln").write_text(
+            "Microsoft Visual Studio Solution File, Format Version 12.00", encoding="utf-8"
+        )
+
+        # キャッシュクリア
+        project_detector._file_count_cache = {}
+
+        project_types = project_detector.detect_project_types()
+        assert "csharp" in project_types
+
+    @pytest.mark.unit
     def test_detect_project_types_multiple(self, project_detector):
         """複数プロジェクトタイプの検出"""
         verify_current_platform()  # プラットフォーム検証

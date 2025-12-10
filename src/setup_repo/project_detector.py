@@ -293,9 +293,9 @@ class ProjectDetector:
             ファイルが存在すればTrue
         """
         if "*" in file_pattern:
-            # ワイルドカードパターン
+            # ワイルドカードパターンは再帰的に探索する（例: "*.csproj" がサブフォルダに存在する場合）
             try:
-                return bool(list(self.repo_path.glob(file_pattern)))
+                return bool(list(self.repo_path.rglob(file_pattern)))
             except (OSError, ValueError):
                 return False
         else:

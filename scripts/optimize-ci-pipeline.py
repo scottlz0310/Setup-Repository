@@ -35,7 +35,7 @@ class CIPipelineOptimizer:
         self.metrics: list[PipelineMetrics] = []
         self.cache_strategies = {
             "dependencies": ["~/.cache/uv", ".venv"],
-            "test_cache": [".pytest_cache", ".mypy_cache", ".ruff_cache"],
+            "test_cache": [".pytest_cache", ".pyrightcache", ".ruff_cache"],
             "build_cache": ["dist/", "build/"],
         }
 
@@ -215,7 +215,7 @@ def run_optimized_pipeline():
     )
 
     # 型チェック
-    optimizer.measure_stage("MyPy 型チェック", ["uv", "run", "mypy", "src/"])
+    optimizer.measure_stage("Pyright 型チェック", ["uv", "run", "basedpyright", "src/"])
 
     # 並列テスト実行
     cpu_count = os.cpu_count() or 4

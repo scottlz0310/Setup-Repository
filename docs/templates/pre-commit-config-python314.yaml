@@ -1,6 +1,6 @@
 # Pre-commit Configuration Template - Python 3.14 Compatible
 # This template is designed to work with Python 3.11-3.14
-# 
+#
 # Usage:
 #   Copy this file to your project root as .pre-commit-config.yaml
 #   Customize repos and hooks based on your project needs
@@ -9,7 +9,7 @@
 #   - Python 3.14 compatible (no pyupgrade)
 #   - Uses Ruff for linting and formatting
 #   - Includes security scanning with Bandit
-#   - Type checking with MyPy
+#   - Type checking with BasedPyright (Pyright-based)
 
 fail_fast: true
 
@@ -28,18 +28,14 @@ repos:
         name: "Ruff Formatting"
         description: "Code formatting"
 
-  # MyPy - Static type checking (Python 3.14 compatible)
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.19.0
+  # BasedPyright - Type checking (BasedPyright/Pyright)
+  - repo: local
     hooks:
-      - id: mypy
-        name: "MyPy Type Checking"
-        description: "Static type checking"
-        additional_dependencies:
-          - types-requests
-          - types-setuptools
-        args: [--config-file=pyproject.toml]
-        files: ^src/
+      - id: basedpyright
+        name: "BasedPyright Type Checking"
+        entry: uv run basedpyright src/
+        language: system
+        pass_filenames: false
 
   # Basic file checks
   - repo: https://github.com/pre-commit/pre-commit-hooks

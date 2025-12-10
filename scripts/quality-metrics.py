@@ -91,6 +91,7 @@ def main():
                         "metrics": {
                             "test_coverage": metrics.test_coverage,
                             "ruff_issues": metrics.ruff_issues,
+                            "pyright_errors": metrics.pyright_errors,
                             "mypy_errors": metrics.mypy_errors,
                             "security_vulnerabilities": (metrics.security_vulnerabilities),
                             "test_passed": metrics.test_passed,
@@ -108,6 +109,7 @@ def main():
             print(f"::set-output name=quality_score::{metrics.get_quality_score():.1f}")
             print(f"::set-output name=coverage::{metrics.test_coverage:.1f}")
             print(f"::set-output name=ruff_issues::{metrics.ruff_issues}")
+            print(f"::set-output name=pyright_errors::{metrics.pyright_errors}")
             print(f"::set-output name=mypy_errors::{metrics.mypy_errors}")
             print(f"::set-output name=security_vulnerabilities::{metrics.security_vulnerabilities}")
             print(f"::set-output name=passing::{'true' if metrics.is_passing(args.min_coverage) else 'false'}")
@@ -119,7 +121,7 @@ def main():
             print(f"品質スコア: {metrics.get_quality_score():.1f}/100")
             print(f"テストカバレッジ: {metrics.test_coverage:.1f}%")
             print(f"Ruffエラー: {metrics.ruff_issues}件")
-            print(f"MyPyエラー: {metrics.mypy_errors}件")
+            print(f"Pyrightエラー: {metrics.pyright_errors}件")
             print(f"セキュリティ脆弱性: {metrics.security_vulnerabilities}件")
             print(f"テスト成功: {metrics.test_passed}件")
             print(f"テスト失敗: {metrics.test_failed}件")
@@ -137,8 +139,8 @@ def main():
                 issues = []
                 if metrics.ruff_issues > 0:
                     issues.append(f"Ruffエラー: {metrics.ruff_issues}件")
-                if metrics.mypy_errors > 0:
-                    issues.append(f"MyPyエラー: {metrics.mypy_errors}件")
+                if metrics.pyright_errors > 0:
+                    issues.append(f"Pyrightエラー: {metrics.pyright_errors}件")
                 # カバレッジ闾値を取得
                 coverage_threshold = args.min_coverage
                 if coverage_threshold is None:

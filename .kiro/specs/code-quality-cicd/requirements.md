@@ -14,7 +14,7 @@
 
 1. WHEN 開発者がコードを変更する THEN システム SHALL ruffによる自動リンティングとフォーマッティングを実行する
 2. WHEN 開発者がコミットを作成する THEN システム SHALL pre-commitフックでコード品質チェックを強制実行する
-3. WHEN 型チェックが実行される THEN システム SHALL mypyによる厳格な型チェックを実行し、エラーを報告する
+3. WHEN 型チェックが実行される THEN システム SHALL BasedPyrightによる厳格な型チェックを実行し、エラーを報告する
 4. IF コード品質基準を満たさない THEN システム SHALL 具体的な修正提案とともにビルドを失敗させる
 
 ### Requirement 2

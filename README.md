@@ -132,7 +132,7 @@ git push origin --tags
 詳細は [.amazonq/rules/test-refactoring-plan.md](.amazonq/rules/test-refactoring-plan.md) を参照してください。
 
 - **Ruff**: 高速リンティング・フォーマッティング
-- **MyPy**: 厳格な型チェック
+- **Pyright (BasedPyright)**: 厳格な型チェック
 - **Pytest**: 包括的テストスイート（単体・統合・パフォーマンス）
 - **Pre-commit**: コミット前自動品質チェック
 - **GitHub Actions**: CI/CDパイプライン
@@ -156,11 +156,11 @@ uv run python scripts/quality-trends.py
 # 全品質チェック実行
 uv run ruff check .          # リンティング
 uv run ruff format .         # フォーマッティング
-uv run mypy src/             # 型チェック
+uv run basedpyright src/             # 型チェック
 uv run pytest               # テスト実行
 uv run bandit -r src/        # セキュリティスキャン
 uv run ruff format .         # フォーマッティング
-uv run mypy src/             # 型チェック
+uv run basedpyright src/             # 型チェック
 uv run pytest tests/         # テスト実行
 ```
 
@@ -197,7 +197,7 @@ uv run python scripts/setup-pre-commit.py
 - ✅ プラットフォーム間で一貫した動作
 - 🔧 モダンなパッケージマネージャー対応
 - 🌐 日本語インターフェース
-- 🛡️ 自動品質チェック（Pre-commit、Ruff、MyPy、Pytest）
+- 🛡️ 自動品質チェック（Pre-commit、Ruff、BasedPyright、Pytest）
 - ✨ **実環境重視のテストスイート（ルール準拠）**
 - 🧹 **リモートブランチクリーンナップ機能**
 
@@ -236,7 +236,7 @@ uv run pre-commit run --all-files
 # 特定のフックのみ実行
 uv run pre-commit run ruff          # Ruffリンティング
 uv run pre-commit run ruff-format   # Ruffフォーマッティング
-uv run pre-commit run mypy          # MyPy型チェック
+uv run pre-commit run basedpyright          # BasedPyright型チェック
 uv run pre-commit run pytest-check  # Pytestテスト
 
 # Pre-commitフックを更新
@@ -298,10 +298,10 @@ uv run ruff check .
 uv run ruff format .
 
 # 型チェック
-uv run mypy src/
+uv run basedpyright src/
 
 # 全品質チェック実行
-uv run ruff check . && uv run ruff format . && uv run mypy src/ && uv run pytest
+uv run ruff check . && uv run ruff format . && uv run basedpyright src/ && uv run pytest
 ```
 
 ### セキュリティチェック
@@ -346,7 +346,7 @@ VS Codeでプロジェクトを開くと、以下の拡張機能のインスト�
 
 - **ms-python.python**: Python開発の基本機能
 - **charliermarsh.ruff**: Ruffリンター・フォーマッター統合
-- **ms-python.mypy-type-checker**: MyPy型チェック統合
+- **BasedPyright**: Pyrightベースの型チェック統合
 - **ms-vscode.test-adapter-converter**: テスト実行統合
 
 #### プラットフォーム固有設定
@@ -361,7 +361,7 @@ VS Codeでプロジェクトを開くと、以下の拡張機能のインスト�
 
 - **保存時自動フォーマット**: Ruffによる自動コード整形
 - **インポート自動整理**: 保存時にインポート文を自動整理
-- **リアルタイム型チェック**: MyPyによるリアルタイム型エラー表示
+- **リアルタイム型チェック**: BasedPyrightによるリアルタイム型エラー表示
 - **テスト統合**: VS Code内でのPytestテスト実行
 
 ## 🧹 ブランチクリーンナップ

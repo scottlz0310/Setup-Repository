@@ -190,7 +190,7 @@
    ```bash
    uv run ruff check .          # コード品質チェック
    uv run ruff format .         # フォーマッティング
-   uv run mypy src/             # 型チェック
+   uv run basedpyright src/             # 型チェック
    ```
 
 2. **セキュリティチェック**

@@ -135,7 +135,7 @@ class TestQualityIntegration:
                     mock_result.stdout = "[]"  # エラーなし
                     return mock_result
 
-                elif "mypy" in command:
+                elif "mypy" in command or "pyright" in command or "basedpyright" in command:
                     # MyPyの結果をモック
                     mock_result = type("MockResult", (), {})()
                     mock_result.returncode = 0
@@ -193,7 +193,9 @@ class TestQualityIntegration:
 
             # 結果を確認
             assert metrics.ruff_issues == 0
-            assert metrics.mypy_errors == 0
+            # Backward compatible checks for both metrics
+            assert getattr(metrics, "mypy_errors", 0) == 0
+            assert getattr(metrics, "pyright_errors", 0) == 0
             assert metrics.test_coverage == 92.5
             assert metrics.test_passed == 25
             assert metrics.test_failed == 0

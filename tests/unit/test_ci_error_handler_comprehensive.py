@@ -82,11 +82,11 @@ class TestCIErrorHandler:
         self.mock_logger.log_quality_check_failure.assert_called_once_with("ruff", error, None)
 
     @pytest.mark.unit
-    def test_handle_quality_check_error_mypy_error(self):
-        """MyPyエラーの品質チェック処理テスト."""
-        error = QualityCheckError("MyPy error", "mypy", {"error_count": 3})
+    def test_handle_quality_check_error_pyright_error(self):
+        """Pyrightエラーの品質チェック処理テスト."""
+        error = QualityCheckError("Pyright error", "pyright", {"error_count": 3})
 
-        self.handler.handle_quality_check_error("mypy", error)
+        self.handler.handle_quality_check_error("pyright", error)
 
         assert len(self.handler.errors) == 1
         assert self.handler.errors[0] == error
@@ -115,12 +115,12 @@ class TestCIErrorHandler:
         # 実行が完了すれば成功
 
     @pytest.mark.unit
-    def test_handle_quality_check_details_mypy(self):
-        """MyPy詳細処理テスト."""
+    def test_handle_quality_check_details_pyright(self):
+        """Pyright詳細処理テスト."""
         details = {"errors": [{"file": "test.py", "line": 5, "message": "Type error"}]}
 
         # メソッドが存在することを確認してテスト
-        self.handler._handle_quality_check_details("mypy", details)
+        self.handler._handle_quality_check_details("pyright", details)
         # 実行が完了すれば成功
 
     @pytest.mark.unit

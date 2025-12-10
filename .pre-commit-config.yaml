@@ -24,18 +24,15 @@ repos:
         name: "Ruff フォーマッティング"
         description: "Ruffによるコードフォーマット"
 
-  # MyPy - 静的型チェック
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.19.0
+  # BasedPyright - 型チェック
+  - repo: local
     hooks:
-      - id: mypy
-        name: "MyPy 型チェック"
-        description: "MyPyによる静的型チェック"
-        additional_dependencies:
-          - types-requests
-          - types-setuptools
-          - types-psutil
-        args: [--config-file=pyproject.toml]
+      - id: basedpyright
+        name: "BasedPyright 型チェック"
+        entry: uv run basedpyright --lib src/
+        description: "BasedPyright による静的型チェック"
+        language: system
+        pass_filenames: false
         files: ^src/
 
   # 基本的なファイルチェック

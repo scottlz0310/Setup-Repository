@@ -34,6 +34,7 @@ class QualityMetrics:
     test_coverage: float
     ruff_issues: int
     mypy_errors: int
+    pyright_errors: int
     test_passed: int
     test_failed: int
     quality_score: float
@@ -46,6 +47,7 @@ class QualityMetrics:
             "branch": self.branch,
             "test_coverage": self.test_coverage,
             "ruff_issues": self.ruff_issues,
+            "pyright_errors": self.pyright_errors,
             "mypy_errors": self.mypy_errors,
             "test_passed": self.test_passed,
             "test_failed": self.test_failed,
@@ -59,6 +61,7 @@ class QualityThresholds:
 
     min_coverage: float = 80.0
     max_ruff_issues: int = 10
+    max_pyright_errors: int = 5
     max_mypy_errors: int = 5
     min_quality_score: float = 80.0
 
@@ -222,26 +225,35 @@ class QualityMonitor:
                 except Exception as e:
                     self.logger.warning(f"Ruffレポートの解析に失敗: {e}")
 
-            # MyPyエラーを収集（セキュアなコマンド実行）
-            safe_subprocess(
-                ["uv", "run", "mypy", "src/", "--json-report", "mypy-report.json"],
-                cwd=self.project_root,
-                capture_output=True,
-                text=True,
-                timeout=120,
-                check=False,
-            )
-
-            mypy_errors = 0
+            # Pyright / BasedPyright 型チェックを実行してエラー数を収集
+            pyright_errors = 0
             try:
-                with open(self.project_root / "mypy-report.json") as f:
-                    mypy_data = json.load(f)
-                mypy_errors = len(mypy_data.get("errors", []))
+                # Try basedpyright then pyright as fallback
+                result = None
+                for cmd in [["uv", "run", "basedpyright", "src/"], ["uv", "run", "pyright", "src/"]]:
+                    try:
+                        result = safe_subprocess(
+                            cmd, cwd=self.project_root, capture_output=True, text=True, timeout=120, check=False
+                        )
+                        break
+                    except Exception:
+                        result = None
+                        continue
+
+                if result and result.stdout:
+                    pyright_errors = len(
+                        [line for line in result.stdout.split("\n") if line.strip() and "error" in line.lower()]
+                    )
+                elif result and result.returncode != 0 and result.stderr:
+                    pyright_errors = len(
+                        [line for line in result.stderr.split("\n") if line.strip() and "error" in line.lower()]
+                    )
             except Exception as e:
-                self.logger.warning(f"MyPyレポートの解析に失敗: {e}")
+                self.logger.warning(f"BasedPyright/pyright レポートの解析に失敗: {e}")
 
             # 品質スコアを計算
-            quality_score = self._calculate_quality_score(test_coverage, ruff_issues, mypy_errors, test_failed)
+            # Use pyright_errors for scoring, keep mypy_errors as compatibility alias
+            quality_score = self._calculate_quality_score(test_coverage, ruff_issues, pyright_errors, test_failed)
 
             metrics = QualityMetrics(
                 timestamp=datetime.now(),
@@ -249,7 +261,8 @@ class QualityMonitor:
                 branch=branch,
                 test_coverage=test_coverage,
                 ruff_issues=ruff_issues,
-                mypy_errors=mypy_errors,
+                mypy_errors=pyright_errors,
+                pyright_errors=pyright_errors,
                 test_passed=test_passed,
                 test_failed=test_failed,
                 quality_score=quality_score,
@@ -264,14 +277,16 @@ class QualityMonitor:
             self.logger.error(f"品質メトリクスの収集中にエラーが発生しました: {e}")
             return None
 
-    def _calculate_quality_score(self, coverage: float, ruff_issues: int, mypy_errors: int, test_failed: int) -> float:
+    def _calculate_quality_score(
+        self, coverage: float, ruff_issues: int, pyright_errors: int, test_failed: int
+    ) -> float:
         """
         品質スコアを計算
 
         Args:
             coverage: テストカバレッジ
             ruff_issues: Ruff問題数
-            mypy_errors: MyPyエラー数
+            pyright_errors: Pyrightエラー数
             test_failed: テスト失敗数
 
         Returns:
@@ -287,7 +302,7 @@ class QualityMonitor:
         score -= ruff_issues * 0.5
 
         # MyPyエラーによる減点
-        score -= mypy_errors * 1.0
+        score -= pyright_errors * 1.0
 
         # テスト失敗による減点
         score -= test_failed * 5.0
@@ -336,13 +351,17 @@ class QualityMonitor:
                 with open(metric_file, encoding="utf-8") as f:
                     data = json.load(f)
 
+                # Backward compatibility: prefer 'pyright_errors' key if present, otherwise use 'mypy_errors'
+                mypy_val = data.get("mypy_errors", 0)
+                pyright_val = data.get("pyright_errors", mypy_val)
                 metrics = QualityMetrics(
                     timestamp=datetime.fromisoformat(data["timestamp"]),
                     commit_sha=data["commit_sha"],
                     branch=data["branch"],
                     test_coverage=data["test_coverage"],
                     ruff_issues=data["ruff_issues"],
-                    mypy_errors=data["mypy_errors"],
+                    mypy_errors=mypy_val,
+                    pyright_errors=pyright_val,
                     test_passed=data["test_passed"],
                     test_failed=data["test_failed"],
                     quality_score=data["quality_score"],
@@ -372,20 +391,21 @@ class QualityMonitor:
         # 過去30日間の平均を計算
         coverages = [m.test_coverage for m in historical_data[1:]]  # 現在を除く
         ruff_issues = [m.ruff_issues for m in historical_data[1:]]
-        mypy_errors = [m.mypy_errors for m in historical_data[1:]]
+        pyright_errors = [getattr(m, "pyright_errors", m.mypy_errors) for m in historical_data[1:]]
         quality_scores = [m.quality_score for m in historical_data[1:]]
 
         baseline = {
             "coverage_avg": statistics.mean(coverages) if coverages else 0,
             "ruff_issues_avg": statistics.mean(ruff_issues) if ruff_issues else 0,
-            "mypy_errors_avg": statistics.mean(mypy_errors) if mypy_errors else 0,
+            "pyright_errors_avg": statistics.mean(pyright_errors) if pyright_errors else 0,
             "quality_score_avg": statistics.mean(quality_scores) if quality_scores else 0,
         }
 
         comparison = {
             "coverage_diff": metrics.test_coverage - baseline["coverage_avg"],
             "ruff_issues_diff": metrics.ruff_issues - baseline["ruff_issues_avg"],
-            "mypy_errors_diff": metrics.mypy_errors - baseline["mypy_errors_avg"],
+            "pyright_errors_diff": getattr(metrics, "pyright_errors", metrics.mypy_errors)
+            - baseline.get("pyright_errors_avg", baseline.get("mypy_errors_avg", 0)),
             "quality_score_diff": metrics.quality_score - baseline["quality_score_avg"],
             "baseline": baseline,
             "current": metrics.to_dict(),
@@ -446,21 +466,22 @@ class QualityMonitor:
         recent_avg = {
             "coverage": statistics.mean([m.test_coverage for m in recent_week]),
             "ruff_issues": statistics.mean([m.ruff_issues for m in recent_week]),
-            "mypy_errors": statistics.mean([m.mypy_errors for m in recent_week]),
+            "pyright_errors": statistics.mean([getattr(m, "pyright_errors", m.mypy_errors) for m in recent_week]),
             "quality_score": statistics.mean([m.quality_score for m in recent_week]),
         }
 
         previous_avg = {
             "coverage": statistics.mean([m.test_coverage for m in previous_week]),
             "ruff_issues": statistics.mean([m.ruff_issues for m in previous_week]),
-            "mypy_errors": statistics.mean([m.mypy_errors for m in previous_week]),
+            "pyright_errors": statistics.mean([getattr(m, "pyright_errors", m.mypy_errors) for m in previous_week]),
             "quality_score": statistics.mean([m.quality_score for m in previous_week]),
         }
 
         trends = {
             "coverage_trend": recent_avg["coverage"] - previous_avg["coverage"],
             "ruff_issues_trend": recent_avg["ruff_issues"] - previous_avg["ruff_issues"],
-            "mypy_errors_trend": recent_avg["mypy_errors"] - previous_avg["mypy_errors"],
+            "pyright_errors_trend": recent_avg.get("pyright_errors", recent_avg.get("mypy_errors"))
+            - previous_avg.get("pyright_errors", previous_avg.get("mypy_errors")),
             "quality_score_trend": recent_avg["quality_score"] - previous_avg["quality_score"],
             "recent_week": recent_avg,
             "previous_week": previous_avg,
@@ -489,10 +510,10 @@ class QualityMonitor:
                 "min": min([m.ruff_issues for m in monthly_data]),
                 "max": max([m.ruff_issues for m in monthly_data]),
             },
-            "mypy_errors": {
-                "avg": statistics.mean([m.mypy_errors for m in monthly_data]),
-                "min": min([m.mypy_errors for m in monthly_data]),
-                "max": max([m.mypy_errors for m in monthly_data]),
+            "pyright_errors": {
+                "avg": statistics.mean([getattr(m, "pyright_errors", m.mypy_errors) for m in monthly_data]),
+                "min": min([getattr(m, "pyright_errors", m.mypy_errors) for m in monthly_data]),
+                "max": max([getattr(m, "pyright_errors", m.mypy_errors) for m in monthly_data]),
             },
             "quality_score": {
                 "avg": statistics.mean([m.quality_score for m in monthly_data]),
@@ -529,11 +550,13 @@ class QualityMonitor:
                 "コードスタイルの統一とリファクタリングを検討してください。"
             )
 
-        # MyPyエラー改善提案
-        if latest.mypy_errors > self.thresholds.max_mypy_errors:
+        # Pyrightエラー改善提案（互換性のため mypy_errors も考慮）
+        pyright_count_latest = getattr(latest, "pyright_errors", latest.mypy_errors)
+        pyright_threshold = getattr(self.thresholds, "max_pyright_errors", self.thresholds.max_mypy_errors)
+        if pyright_count_latest > pyright_threshold:
             suggestions.append(
-                f"MyPyエラーが多すぎます "
-                f"({latest.mypy_errors} > {self.thresholds.max_mypy_errors})。"
+                f"Pyrightエラーが多すぎます "
+                f"({pyright_count_latest} > {pyright_threshold})。"
                 "型ヒントの追加と型安全性の向上を検討してください。"
             )
 
@@ -592,8 +615,9 @@ class QualityMonitor:
         if metrics.ruff_issues > self.thresholds.max_ruff_issues:
             warnings.append(f"Ruff問題が多すぎます: {metrics.ruff_issues}件")
 
-        if metrics.mypy_errors > self.thresholds.max_mypy_errors:
-            warnings.append(f"MyPyエラーが多すぎます: {metrics.mypy_errors}件")
+        pyright_count_metrics = getattr(metrics, "pyright_errors", metrics.mypy_errors)
+        if pyright_count_metrics > getattr(self.thresholds, "max_pyright_errors", self.thresholds.max_mypy_errors):
+            warnings.append(f"Pyrightエラーが多すぎます: {pyright_count_metrics}件")
 
         return passed, warnings
 
@@ -712,7 +736,8 @@ def main():
             print(f"  カバレッジ: {metrics.test_coverage:.2f}%")
             print(f"  品質スコア: {metrics.quality_score:.1f}")
             print(f"  Ruff問題: {metrics.ruff_issues}件")
-            print(f"  MyPyエラー: {metrics.mypy_errors}件")
+            print(f"  Pyrightエラー: {metrics.pyright_errors}件")
+            print(f"  MyPyエラー (互換): {metrics.mypy_errors}件")
         else:
             print("品質メトリクスの収集に失敗しました")
             sys.exit(1)

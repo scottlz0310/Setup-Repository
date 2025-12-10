@@ -32,7 +32,7 @@ format:
 # 🔬 型チェック
 typecheck:
 	@echo "🔬 型チェックを実行しています..."
-	uv run mypy src/
+	uv run basedpyright src/
 
 # 🧪 テスト実行
 test:

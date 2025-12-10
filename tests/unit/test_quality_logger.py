@@ -309,7 +309,7 @@ class TestQualityLogger:
 
         # 品質チェック失敗ログ
         test_error = Exception("Test error")
-        logger.log_quality_check_failure("mypy", test_error, {"file": "test.py"})
+        logger.log_quality_check_failure("pyright", test_error, {"file": "test.py"})
 
         # 品質チェック結果ログ
         result_success = {"success": True, "metrics": {"score": 95}}
@@ -322,7 +322,7 @@ class TestQualityLogger:
         log_content = log_file.read_text(encoding="utf-8")
         assert "品質チェック開始: ruff" in log_content
         assert "品質チェック成功: ruff" in log_content
-        assert "品質チェック失敗: mypy" in log_content
+        assert "品質チェック失敗: pyright" in log_content or "品質チェック失敗: BasedPyright" in log_content
 
     @pytest.mark.unit
     def test_ci_stage_logging_methods(self):

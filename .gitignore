@@ -48,10 +48,8 @@ ENV/
 env.bak/
 venv.bak/
 
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
+# Pyright (basedpyright)
+.pyrightcache/
 
 # Ruff
 .ruff_cache/

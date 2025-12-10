@@ -1,7 +1,7 @@
 # Implementation Plan
 
 - [x] 1. プロジェクト設定とツールチェーンの基盤整備
-  - pyproject.tomlにRuff、MyPy、Pytestの包括的な設定を追加
+  - pyproject.tomlにRuff、BasedPyright/Pyright、Pytestの包括的な設定を追加
   - 段階的厳格化ポリシーに従った初期設定を実装
   - 開発依存関係にcoverage、pre-commitを追加
   - _Requirements: 1.1, 1.2, 5.1, 5.2_
@@ -20,7 +20,7 @@
   - _Requirements: 2.1, 2.3_
 
 - [x] 4. Pre-commitフックの設定と統合
-  - .pre-commit-config.yamlファイルを作成してRuff、MyPy、Pytestを統合
+  - .pre-commit-config.yamlファイルを作成してRuff、BasedPyright/Pyright、Pytestを統合
   - pre-commitの自動インストールスクリプトを作成
   - 開発者向けのpre-commit設定ガイドをREADMEに追加
   - _Requirements: 1.1, 1.3, 5.1_

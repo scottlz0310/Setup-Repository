@@ -232,6 +232,7 @@ class TestMonitorCLI:
                     "required_tools": {
                         "ruff": {"available": True, "version": "0.1.0"},
                         "mypy": {"available": True, "version": "1.0.0"},
+                        "pyright": {"available": True, "version": "1.0.0"},
                     },
                 },
                 "project": {
@@ -243,6 +244,7 @@ class TestMonitorCLI:
                         "test_coverage": 90.0,
                         "ruff_issues": 0,
                         "mypy_errors": 0,
+                        "pyright_errors": 0,
                         "security_vulnerabilities": 0,
                     },
                 },

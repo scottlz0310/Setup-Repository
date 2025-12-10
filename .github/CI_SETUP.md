@@ -59,7 +59,7 @@ uv run ruff check .
 uv run ruff format --check .
 
 # 型チェック
-uv run mypy src/
+uv run basedpyright src/
 
 # テスト実行
 uv run pytest tests/ --cov=src/setup_repo --cov-fail-under=80

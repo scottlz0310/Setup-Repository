@@ -415,7 +415,7 @@ class MigrationCheckpoint:
 # CI/CD パイプライン統合
 quality_gates:
   - ruff_check: "uv run ruff check ."
-  - mypy_check: "uv run mypy src/"
+    - mypy_check: "uv run basedpyright src/"
   - test_execution: "uv run pytest"
   - coverage_check: "uv run pytest --cov=src/setup_repo --cov-fail-under=80"
   - quality_metrics: "uv run python scripts/quality-monitor.py"
