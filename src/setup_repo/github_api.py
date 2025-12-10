@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """GitHub API操作モジュール"""
 
+from typing import Any
+
 import requests
 
 
@@ -28,7 +30,7 @@ class GitHubAPI:
             "Accept": "application/vnd.github.v3+json",
         }
 
-    def get_user_info(self) -> dict:
+    def get_user_info(self) -> dict[str, Any]:
         """認証されたユーザーの情報を取得"""
         try:
             response = requests.get("https://api.github.com/user", headers=self.headers, timeout=30)
@@ -48,9 +50,9 @@ class GitHubAPI:
         except requests.exceptions.RequestException as e:
             raise GitHubAPIError(f"ネットワークエラー: {e}") from e
 
-    def get_user_repos(self) -> list[dict]:
+    def get_user_repos(self) -> list[dict[str, Any]]:
         """ユーザーのリポジトリ一覧を取得"""
-        repos = []
+        repos: list[dict[str, Any]] = []
         page = 1
 
         while True:
@@ -89,7 +91,7 @@ class GitHubAPI:
         return repos
 
 
-def get_repositories(owner: str, token: str | None = None) -> list[dict]:
+def get_repositories(owner: str, token: str | None = None) -> list[dict[str, Any]]:
     """GitHub APIからリポジトリ一覧を取得（プライベートリポジトリ対応）"""
     headers = {"User-Agent": "repo-sync/1.0"}
 
