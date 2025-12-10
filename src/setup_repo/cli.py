@@ -5,6 +5,7 @@ import builtins
 import os
 import sys
 from pathlib import Path
+from typing import Any
 
 from .backup_manager import BackupManager
 from .branch_cleanup import BranchCleanup
@@ -20,7 +21,14 @@ from .sync import sync_repositories
 from .template_manager import TemplateManager
 
 _original_print = builtins.print
-builtins.print = lambda *args, **kwargs: _original_print(*args, **{**kwargs, "flush": True})
+
+
+def _flushed_print(*args: object, **kwargs: Any) -> None:
+    """Print wrapper that always flushes output."""
+    _original_print(*args, **{**kwargs, "flush": True})  # type: ignore[arg-type]
+
+
+builtins.print = _flushed_print  # type: ignore[assignment]
 
 # Windows環境でのUnicodeエンコーディング問題を修正
 # pytest実行中は標準出力のdetachをスキップ
@@ -50,12 +58,12 @@ except (AttributeError, OSError):
     pass  # Python 3.7以前またはreconfigureが利用できない場合はスキップ
 
 
-def setup_cli(args) -> None:
+def setup_cli(args: argparse.Namespace) -> None:
     """初期セットアップコマンド"""
     run_interactive_setup()
 
 
-def sync_cli(args) -> None:
+def sync_cli(args: argparse.Namespace) -> None:
     """リポジトリ同期コマンド"""
     config = load_config()
 
@@ -80,7 +88,7 @@ def sync_cli(args) -> None:
     sync_repositories(config)
 
 
-def quality_cli(args) -> None:
+def quality_cli(args: argparse.Namespace) -> None:
     """品質メトリクス収集コマンド"""
     if args.project_root:
         try:
@@ -130,7 +138,7 @@ def quality_cli(args) -> None:
         print("\n✅ 品質基準を満たしています")
 
 
-def trend_cli(args) -> None:
+def trend_cli(args: argparse.Namespace) -> None:
     """品質トレンド分析コマンド"""
     if args.project_root:
         try:
@@ -208,7 +216,7 @@ def trend_cli(args) -> None:
             print("--keep-daysオプションを指定してください")
 
 
-def template_cli(args) -> None:
+def template_cli(args: argparse.Namespace) -> None:
     """テンプレート管理コマンド"""
     if args.project_root:
         try:
@@ -309,7 +317,7 @@ def template_cli(args) -> None:
         print("エラー: 不正なアクション。list/apply/create/remove のいずれかを指定してください")
 
 
-def backup_cli(args) -> None:
+def backup_cli(args: argparse.Namespace) -> None:
     """バックアップ管理コマンド"""
     if args.project_root:
         try:
@@ -390,7 +398,7 @@ def backup_cli(args) -> None:
         print("エラー: 不正なアクション。create/list/restore/remove のいずれかを指定してください")
 
 
-def monitor_cli(args) -> None:
+def monitor_cli(args: argparse.Namespace) -> None:
     """監視・ヘルスチェックコマンド"""
     if args.project_root:
         try:
@@ -574,7 +582,7 @@ def monitor_cli(args) -> None:
         print("エラー: 不正なアクション。health/performance/alerts/dashboard のいずれかを指定してください")
 
 
-def migration_cli(args) -> None:
+def migration_cli(args: argparse.Namespace) -> None:
     """マイグレーション管理コマンド"""
     if args.project_root:
         try:
@@ -642,7 +650,7 @@ def migration_cli(args) -> None:
         print("エラー: 不正なアクション。check/run/rollback のいずれかを指定してください")
 
 
-def deploy_cli(args) -> None:
+def deploy_cli(args: argparse.Namespace) -> None:
     """デプロイメント管理コマンド"""
     config = load_config()
     manager = DeployManager(config)
@@ -703,7 +711,7 @@ def deploy_cli(args) -> None:
         print("エラー: 不正なアクション。prepare/execute/rollback/list のいずれかを指定してください")
 
 
-def cleanup_cli(args) -> None:
+def cleanup_cli(args: argparse.Namespace) -> None:
     """ブランチクリーンナップコマンド"""
     if args.repo_path:
         try:
@@ -774,7 +782,7 @@ def cleanup_cli(args) -> None:
         print("エラー: 不正なアクション。list/clean のいずれかを指定してください")
 
 
-def main():
+def main() -> None:
     """メインエントリーポイント"""
     parser = argparse.ArgumentParser(
         description=("セットアップリポジトリ - GitHubリポジトリセットアップ・同期ツール"),

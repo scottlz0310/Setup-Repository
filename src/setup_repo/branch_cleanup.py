@@ -4,8 +4,26 @@
 import subprocess
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import TypedDict
 
 from .security_helpers import safe_subprocess
+
+
+class BranchInfo(TypedDict):
+    """ブランチ情報"""
+
+    name: str
+    last_commit_date: str
+    author: str
+
+
+class CleanupResult(TypedDict):
+    """クリーンナップ結果"""
+
+    deleted: int
+    failed: int
+    skipped: int
+    branches: list[str]
 
 
 class BranchCleanup:
@@ -15,7 +33,7 @@ class BranchCleanup:
         """初期化"""
         self.repo_path = Path(repo_path)
 
-    def list_remote_branches(self) -> list[dict]:
+    def list_remote_branches(self) -> list[BranchInfo]:
         """リモートブランチ一覧を取得"""
         try:
             result = safe_subprocess(
@@ -25,18 +43,18 @@ class BranchCleanup:
                 text=True,
                 check=True,
             )
-            branches = []
+            branches: list[BranchInfo] = []
             for line in result.stdout.strip().split("\n"):
                 if not line or "HEAD" in line:
                     continue
                 parts = line.split("|")
                 if len(parts) >= 3:
                     branches.append(
-                        {
-                            "name": parts[0].strip(),
-                            "last_commit_date": parts[1].strip(),
-                            "author": parts[2].strip(),
-                        }
+                        BranchInfo(
+                            name=parts[0].strip(),
+                            last_commit_date=parts[1].strip(),
+                            author=parts[2].strip(),
+                        )
                     )
             return branches
         except subprocess.CalledProcessError:
@@ -61,11 +79,11 @@ class BranchCleanup:
         except subprocess.CalledProcessError:
             return []
 
-    def list_stale_branches(self, days: int = 90) -> list[dict]:
+    def list_stale_branches(self, days: int = 90) -> list[BranchInfo]:
         """指定日数以上更新されていないブランチを取得"""
         all_branches = self.list_remote_branches()
         cutoff_date = datetime.now() - timedelta(days=days)
-        stale_branches = []
+        stale_branches: list[BranchInfo] = []
 
         for branch in all_branches:
             try:
@@ -105,12 +123,12 @@ class BranchCleanup:
 
     def cleanup_merged_branches(
         self, base_branch: str = "origin/main", dry_run: bool = False, auto_confirm: bool = False
-    ) -> dict:
+    ) -> CleanupResult:
         """マージ済みブランチをクリーンナップ"""
         merged_branches = self.list_merged_branches(base_branch)
 
         if not merged_branches:
-            return {"deleted": 0, "failed": 0, "skipped": 0, "branches": []}
+            return CleanupResult(deleted=0, failed=0, skipped=0, branches=[])
 
         print(f"\n📋 マージ済みブランチ: {len(merged_branches)}件")
         for branch in merged_branches:
@@ -119,11 +137,11 @@ class BranchCleanup:
         if not auto_confirm and not dry_run:
             response = input(f"\n{len(merged_branches)}件のブランチを削除しますか？ [y/N]: ").strip().lower()
             if response != "y":
-                return {"deleted": 0, "failed": 0, "skipped": len(merged_branches), "branches": []}
+                return CleanupResult(deleted=0, failed=0, skipped=len(merged_branches), branches=[])
 
         deleted = 0
         failed = 0
-        deleted_branches = []
+        deleted_branches: list[str] = []
 
         for branch in merged_branches:
             if self.delete_remote_branch(branch, dry_run):
@@ -134,14 +152,14 @@ class BranchCleanup:
             else:
                 failed += 1
 
-        return {"deleted": deleted, "failed": failed, "skipped": 0, "branches": deleted_branches}
+        return CleanupResult(deleted=deleted, failed=failed, skipped=0, branches=deleted_branches)
 
-    def cleanup_stale_branches(self, days: int = 90, dry_run: bool = False, auto_confirm: bool = False) -> dict:
+    def cleanup_stale_branches(self, days: int = 90, dry_run: bool = False, auto_confirm: bool = False) -> CleanupResult:
         """古いブランチをクリーンナップ"""
         stale_branches = self.list_stale_branches(days)
 
         if not stale_branches:
-            return {"deleted": 0, "failed": 0, "skipped": 0, "branches": []}
+            return CleanupResult(deleted=0, failed=0, skipped=0, branches=[])
 
         print(f"\n📋 {days}日以上更新されていないブランチ: {len(stale_branches)}件")
         for branch in stale_branches:
@@ -150,11 +168,11 @@ class BranchCleanup:
         if not auto_confirm and not dry_run:
             response = input(f"\n{len(stale_branches)}件のブランチを削除しますか？ [y/N]: ").strip().lower()
             if response != "y":
-                return {"deleted": 0, "failed": 0, "skipped": len(stale_branches), "branches": []}
+                return CleanupResult(deleted=0, failed=0, skipped=len(stale_branches), branches=[])
 
         deleted = 0
         failed = 0
-        deleted_branches = []
+        deleted_branches: list[str] = []
 
         for branch in stale_branches:
             if self.delete_remote_branch(branch["name"], dry_run):
@@ -165,4 +183,4 @@ class BranchCleanup:
             else:
                 failed += 1
 
-        return {"deleted": deleted, "failed": failed, "skipped": 0, "branches": deleted_branches}
+        return CleanupResult(deleted=deleted, failed=failed, skipped=0, branches=deleted_branches)

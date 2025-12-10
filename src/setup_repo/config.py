@@ -46,9 +46,9 @@ def get_github_user() -> str | None:
         return None
 
 
-def auto_detect_config() -> dict:
+def auto_detect_config() -> dict[str, str | bool | int | None]:
     """環境から設定を自動検出"""
-    config = {
+    config: dict[str, str | bool | int | None] = {
         "owner": get_github_user() or "",
         "dest": str(Path.home() / "workspace"),
         "github_token": get_github_token(),
@@ -63,7 +63,7 @@ def auto_detect_config() -> dict:
     return config
 
 
-def load_config() -> dict:
+def load_config() -> dict[str, str | bool | int | None]:
     """自動検出フォールバック付きで設定を読み込み"""
     # 自動検出した設定から開始
     config = auto_detect_config()

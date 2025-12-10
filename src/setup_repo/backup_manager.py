@@ -5,15 +5,35 @@ import shutil
 import tarfile
 from datetime import datetime
 from pathlib import Path
+from typing import Any, TypedDict
 
 from .security_helpers import safe_path_join
 from .utils import ensure_directory
 
 
+class BackupTargetInfo(TypedDict):
+    """バックアップ対象のファイル情報"""
+
+    path: str
+    type: str
+    size: int
+
+
+class BackupInfo(TypedDict, total=False):
+    """バックアップメタデータ"""
+
+    name: str
+    created_at: str
+    project_root: str
+    targets: list[BackupTargetInfo]
+    file_path: str
+    file_size: int
+
+
 class BackupManager:
     """バックアップ管理クラス"""
 
-    def __init__(self, project_root: Path | None = None):
+    def __init__(self, project_root: Path | None = None) -> None:
         self.project_root = project_root or Path.cwd()
         self.backup_dir = safe_path_join(self.project_root, "backups")
         ensure_directory(self.backup_dir)
@@ -37,7 +57,7 @@ class BackupManager:
         ]
 
         # メタデータ作成
-        metadata: dict = {
+        metadata: dict[str, Any] = {
             "name": name,
             "created_at": datetime.now().isoformat(),
             "project_root": str(self.project_root),
@@ -69,9 +89,9 @@ class BackupManager:
 
         return backup_path
 
-    def list_backups(self) -> list[dict]:
+    def list_backups(self) -> list[BackupInfo]:
         """利用可能なバックアップ一覧を取得"""
-        backups: list[dict] = []
+        backups: list[BackupInfo] = []
 
         if not self.backup_dir.exists():
             return backups
@@ -85,17 +105,16 @@ class BackupManager:
                     backups.append(metadata)
             except Exception:
                 # メタデータが読めない場合はファイル情報のみ
-                backups.append(
-                    {
-                        "name": backup_file.stem,
-                        "file_path": str(backup_file),
-                        "file_size": backup_file.stat().st_size,
-                        "created_at": datetime.fromtimestamp(backup_file.stat().st_mtime).isoformat(),
-                        "targets": [],
-                    }
-                )
+                fallback_backup: BackupInfo = {
+                    "name": backup_file.stem,
+                    "file_path": str(backup_file),
+                    "file_size": backup_file.stat().st_size,
+                    "created_at": datetime.fromtimestamp(backup_file.stat().st_mtime).isoformat(),
+                    "targets": [],
+                }
+                backups.append(fallback_backup)
 
-        return sorted(backups, key=lambda x: x["created_at"], reverse=True)
+        return sorted(backups, key=lambda x: str(x.get("created_at", "")), reverse=True)
 
     def restore_backup(self, backup_name: str, target_path: Path | None = None) -> bool:
         """バックアップから復元"""
@@ -133,7 +152,7 @@ class BackupManager:
         backup_file.unlink()
         return True
 
-    def _get_backup_metadata(self, backup_file: Path) -> dict | None:
+    def _get_backup_metadata(self, backup_file: Path) -> BackupInfo | None:
         """バックアップファイルからメタデータを取得"""
         try:
             with tarfile.open(backup_file, "r:gz") as tar:
@@ -141,7 +160,8 @@ class BackupManager:
                     metadata_member = tar.getmember("backup_metadata.json")
                     metadata_file = tar.extractfile(metadata_member)
                     if metadata_file:
-                        return json.loads(metadata_file.read().decode("utf-8"))
+                        data: BackupInfo = json.loads(metadata_file.read().decode("utf-8"))
+                        return data
                 except KeyError:
                     return None
         except Exception:
