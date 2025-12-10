@@ -4,6 +4,7 @@ import sys
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from .git_operations import choose_clone_url, sync_repository_with_retries
 from .github_api import get_repositories
@@ -30,9 +31,10 @@ class SyncResult:
             self.timestamp = datetime.now()
 
 
-def sync_repositories(config: dict, dry_run: bool = False) -> SyncResult:
+
+def sync_repositories(config: dict[str, Any], dry_run: bool = False) -> SyncResult:
     """リポジトリ同期のメイン処理"""
-    synced_repos = []
+    synced_repos: list[str] = []
     errors: list[Exception] = []
     owner = config.get("owner") or config.get("github_username")
     dest = config.get("dest") or config.get("clone_destination")

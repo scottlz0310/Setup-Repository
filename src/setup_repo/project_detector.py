@@ -1,13 +1,42 @@
 """プロジェクトタイプ自動検出機能（スコアリングシステム）"""
 
 from pathlib import Path
+from typing import Any, TypedDict
+
+
+class FileCountConfig(TypedDict, total=False):
+    """ファイル数スコア設定"""
+
+    extensions: list[str]
+    score_per_file: float
+    max_score: float
+    exclude_dirs: list[str]
+
+
+class ScoringRule(TypedDict, total=False):
+    """スコアリングルール"""
+
+    primary_files: dict[str, int]
+    secondary_files: dict[str, int]
+    file_count: FileCountConfig
+    directories: dict[str, int]
+    threshold: int
+
+
+class ProjectAnalysisResult(TypedDict):
+    """プロジェクト分析結果"""
+
+    project_types: list[str]
+    scores: dict[str, dict[str, Any]]
+    tools: list[str]
+    recommended_templates: list[str]
 
 
 class ProjectDetector:
     """プロジェクトタイプを自動検出するクラス（スコアリング方式）"""
 
     # スコアリングベースの検出ルール
-    SCORING_RULES = {
+    SCORING_RULES: dict[str, ScoringRule] = {
         "python": {
             "primary_files": {  # 強い証拠（プロジェクト定義ファイル）
                 "pyproject.toml": 10,
@@ -153,14 +182,14 @@ class ProjectDetector:
     }
 
     # 特殊ツール検出
-    TOOL_DETECTION = {
+    TOOL_DETECTION: dict[str, list[str]] = {
         "uv": ["uv.lock", "pyproject.toml"],
         "vscode": [".vscode/settings.json", ".vscode/launch.json"],
         "docker": ["Dockerfile", "docker-compose.yml", ".dockerignore"],
         "git": [".git", ".gitignore"],
     }
 
-    def __init__(self, repo_path: Path):
+    def __init__(self, repo_path: Path) -> None:
         self.repo_path = Path(repo_path)
         self._file_count_cache: dict[str, int] = {}  # ファイル数のキャッシュ
 
@@ -188,7 +217,7 @@ class ProjectDetector:
         sorted_types = sorted(scores.items(), key=lambda x: x[1], reverse=True)
         return [project_type for project_type, _ in sorted_types]
 
-    def _calculate_score(self, project_type: str, rules: dict) -> float:
+    def _calculate_score(self, project_type: str, rules: ScoringRule) -> float:
         """
         プロジェクトタイプのスコアを計算
 
@@ -227,7 +256,7 @@ class ProjectDetector:
 
         return total_score
 
-    def _calculate_file_count_score(self, config: dict) -> float:
+    def _calculate_file_count_score(self, config: FileCountConfig) -> float:
         """
         ファイル数ベースのスコアを計算
 
@@ -337,7 +366,7 @@ class ProjectDetector:
         except ValueError:
             return False
 
-    def analyze_project(self) -> dict:
+    def analyze_project(self) -> ProjectAnalysisResult:
         """
         プロジェクト分析結果を返す（詳細情報付き）
 
@@ -345,7 +374,7 @@ class ProjectDetector:
             分析結果の辞書（プロジェクトタイプ、スコア、ツール、推奨テンプレート）
         """
         # 各プロジェクトタイプのスコアを計算
-        scores = {}
+        scores: dict[str, dict[str, Any]] = {}
         for project_type, rules in self.SCORING_RULES.items():
             score = self._calculate_score(project_type, rules)
             if score > 0:  # スコアが0より大きいもののみ記録
@@ -356,9 +385,9 @@ class ProjectDetector:
                     "detected": score >= threshold,
                 }
 
-        return {
-            "project_types": self.detect_project_types(),
-            "scores": scores,
-            "tools": list(self.detect_tools()),
-            "recommended_templates": self.get_recommended_templates(),
-        }
+        return ProjectAnalysisResult(
+            project_types=self.detect_project_types(),
+            scores=scores,
+            tools=list(self.detect_tools()),
+            recommended_templates=self.get_recommended_templates(),
+        )
