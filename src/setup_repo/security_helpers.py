@@ -49,7 +49,7 @@ def safe_path_join(base: Path, user_path: str) -> Path:
     return resolved
 
 
-def safe_subprocess(cmd: list[str], **kwargs) -> subprocess.CompletedProcess:
+def safe_subprocess(cmd: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
     """コマンドインジェクション攻撃を防ぐ安全なsubprocess実行
 
     Args:
@@ -78,7 +78,8 @@ def safe_subprocess(cmd: list[str], **kwargs) -> subprocess.CompletedProcess:
     kwargs.setdefault("timeout", default_timeout)
     kwargs.setdefault("check", True)
 
-    return subprocess.run(cmd, **kwargs)
+    result: subprocess.CompletedProcess[str] = subprocess.run(cmd, **kwargs)  # type: ignore[assignment]
+    return result
 
 
 def safe_html_escape(data: Any) -> str:
