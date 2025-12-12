@@ -154,7 +154,9 @@ class BranchCleanup:
 
         return CleanupResult(deleted=deleted, failed=failed, skipped=0, branches=deleted_branches)
 
-    def cleanup_stale_branches(self, days: int = 90, dry_run: bool = False, auto_confirm: bool = False) -> CleanupResult:
+    def cleanup_stale_branches(
+        self, days: int = 90, dry_run: bool = False, auto_confirm: bool = False
+    ) -> CleanupResult:
         """古いブランチをクリーンナップ"""
         stale_branches = self.list_stale_branches(days)
 

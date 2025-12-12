@@ -31,7 +31,6 @@ class SyncResult:
             self.timestamp = datetime.now()
 
 
-
 def sync_repositories(config: dict[str, Any], dry_run: bool = False) -> SyncResult:
     """リポジトリ同期のメイン処理"""
     synced_repos: list[str] = []

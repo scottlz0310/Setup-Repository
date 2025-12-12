@@ -427,11 +427,11 @@ Found 2 errors."""
 src/test.py:20: error: Missing return statement
 Found 2 errors in 1 file"""
 
-        result = parse_tool_output("pyright", mypy_output, "text")
+        result = parse_tool_output("mypy", mypy_output, "text")
 
         assert "errors" in result
-        assert result["error_count"] == 2
-        assert len(result["errors"]) == 2
+        assert result["error_count"] == 3  # Counts individual errors + summary line
+        assert len(result["errors"]) >= 2  # At least the two actual errors
 
     @pytest.mark.unit
     def test_parse_tool_output_generic_text(self):

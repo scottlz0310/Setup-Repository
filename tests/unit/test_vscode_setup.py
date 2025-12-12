@@ -148,8 +148,8 @@ class TestVscodeSetup:
                         applied_settings = json.load(f)
                         # common設定が含まれているか
                         assert "editor.formatOnSave" in applied_settings
-                        # python関連の設定も含まれているか
-                        assert "python.terminal.activateEnvironment" in applied_settings
+                        # python関連の設定も含まれているか (プラットフォームテンプレートに含まれる設定)
+                        assert "python.defaultInterpreterPath" in applied_settings
                         # プラットフォーム固有の設定も含まれているか
                         assert (
                             "files.eol" in applied_settings
