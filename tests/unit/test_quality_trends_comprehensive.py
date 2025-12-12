@@ -24,6 +24,7 @@ class TestTrendDataPoint:
             commit_hash="abc123",
             ruff_issues=5,
             mypy_errors=3,
+            pyright_errors=0,
             test_coverage=85.5,
             test_passed=95,
             test_failed=2,
@@ -78,6 +79,7 @@ class TestQualityTrendManager:
                 "coverage": 80.0,
                 "ruff_issues": 2,
                 "mypy_errors": 1,
+                "pyright_errors": 0,
                 "security_vulnerabilities": 0,
                 "test_passed": 100,
                 "test_failed": 0,
@@ -134,6 +136,7 @@ class TestQualityTrendManager:
                 coverage=80.0,
                 ruff_issues=2,
                 mypy_errors=1,
+                pyright_errors=0,
                 security_vulnerabilities=0,
                 test_passed=100,
                 test_failed=0,
@@ -169,6 +172,7 @@ class TestQualityTrendManager:
                 coverage=80.0,
                 ruff_issues=2,
                 mypy_errors=1,
+                pyright_errors=0,
                 security_vulnerabilities=0,
                 test_passed=100,
                 test_failed=0,
@@ -190,6 +194,7 @@ class TestQualityTrendManager:
             commit_hash="abc123",
             ruff_issues=2,
             mypy_errors=1,
+            pyright_errors=0,
             test_coverage=85.0,
             test_passed=100,
             test_failed=0,
@@ -212,6 +217,7 @@ class TestQualityTrendManager:
             commit_hash="abc123",
             ruff_issues=5,
             mypy_errors=3,
+            pyright_errors=0,
             test_coverage=75.0,
             test_passed=90,
             test_failed=5,
@@ -225,6 +231,7 @@ class TestQualityTrendManager:
             commit_hash="abc123",
             ruff_issues=2,
             mypy_errors=1,
+            pyright_errors=0,
             test_coverage=85.0,
             test_passed=100,
             test_failed=0,
@@ -293,6 +300,7 @@ class TestQualityTrendManager:
                 coverage=75.0 + i * 3,
                 ruff_issues=5 - i,
                 mypy_errors=3 - i,
+                pyright_errors=0,
                 security_vulnerabilities=0,
                 test_passed=100,
                 test_failed=0,
@@ -350,6 +358,7 @@ class TestQualityTrendManager:
                 coverage=85.0,
                 ruff_issues=0,
                 mypy_errors=0,
+                pyright_errors=0,
                 security_vulnerabilities=0,
                 test_passed=100,
                 test_failed=0,
@@ -370,6 +379,7 @@ class TestQualityTrendManager:
                 coverage=75.0,  # 低いカバレッジ
                 ruff_issues=5,  # Ruffエラー
                 mypy_errors=3,  # MyPyエラー
+                pyright_errors=0,
                 security_vulnerabilities=2,  # セキュリティ脆弱性
                 test_passed=95,
                 test_failed=5,  # テスト失敗
@@ -378,11 +388,11 @@ class TestQualityTrendManager:
 
         issues = self.manager._identify_recent_issues(data_points)
 
-        assert len(issues) == 6
+        assert len(issues) == 5
         assert any("品質スコアが低下" in issue for issue in issues)
         assert any("カバレッジが不足" in issue for issue in issues)
         assert any("Ruffエラーが5件" in issue for issue in issues)
-        assert any("MyPyエラーが3件" in issue for issue in issues)
+        # Note: MyPy errors are no longer reported separately (transitioning to Pyright)
         assert any("セキュリティ脆弱性が2件" in issue for issue in issues)
         assert any("テストが5件失敗" in issue for issue in issues)
 
@@ -403,6 +413,7 @@ class TestQualityTrendManager:
                 coverage=85.0,
                 ruff_issues=0,
                 mypy_errors=0,
+                pyright_errors=0,
                 security_vulnerabilities=0,
                 test_passed=100,
                 test_failed=0,
@@ -425,6 +436,7 @@ class TestQualityTrendManager:
                 coverage=70.0,
                 ruff_issues=5,
                 mypy_errors=3,
+                pyright_errors=0,
                 security_vulnerabilities=2,
                 test_passed=90,
                 test_failed=10,
@@ -451,6 +463,7 @@ class TestQualityTrendManager:
                 coverage=85.0,
                 ruff_issues=0,
                 mypy_errors=0,
+                pyright_errors=0,
                 security_vulnerabilities=0,
                 test_passed=100,
                 test_failed=0,
@@ -479,6 +492,7 @@ class TestQualityTrendManager:
                 coverage=80.0,
                 ruff_issues=2,
                 mypy_errors=1,
+                pyright_errors=0,
                 security_vulnerabilities=0,
                 test_passed=100,
                 test_failed=0,
@@ -515,6 +529,7 @@ class TestQualityTrendManager:
                 coverage=80.0,
                 ruff_issues=0,
                 mypy_errors=0,
+                pyright_errors=0,
                 security_vulnerabilities=0,
                 test_passed=100,
                 test_failed=0,
@@ -540,6 +555,7 @@ class TestQualityTrendManager:
                 coverage=70.0,
                 ruff_issues=5,
                 mypy_errors=3,
+                pyright_errors=0,
                 security_vulnerabilities=1,
                 test_passed=90,
                 test_failed=10,
@@ -578,6 +594,7 @@ class TestQualityTrendManager:
                 coverage=85.0,
                 ruff_issues=0,
                 mypy_errors=0,
+                pyright_errors=0,
                 security_vulnerabilities=0,
                 test_passed=100,
                 test_failed=0,
@@ -619,6 +636,7 @@ class TestQualityTrendManager:
                 coverage=40.0,
                 ruff_issues=10,
                 mypy_errors=5,
+                pyright_errors=0,
                 security_vulnerabilities=3,
                 test_passed=80,
                 test_failed=20,
@@ -630,6 +648,7 @@ class TestQualityTrendManager:
                 coverage=80.0,
                 ruff_issues=2,
                 mypy_errors=1,
+                pyright_errors=0,
                 security_vulnerabilities=0,
                 test_passed=100,
                 test_failed=0,
@@ -660,6 +679,7 @@ class TestQualityTrendManager:
                 coverage=75.0 + i,
                 ruff_issues=0,
                 mypy_errors=0,
+                pyright_errors=0,
                 security_vulnerabilities=0,
                 test_passed=100,
                 test_failed=0,
