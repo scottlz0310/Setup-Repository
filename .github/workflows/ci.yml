@@ -51,7 +51,7 @@ jobs:
         run: uv build
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: python-package
           path: dist/
@@ -259,7 +259,7 @@ jobs:
           fi
 
       - name: Upload test results and coverage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: cross-platform-test-results-${{ matrix.os }}-${{ matrix.python-version }}
@@ -456,7 +456,7 @@ jobs:
           fi
 
       - name: Upload security scan results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: security-scan-results
@@ -483,7 +483,7 @@ jobs:
           fetch-depth: 0
 
       - name: Download cross-platform test artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           pattern: "cross-platform-test-results-*"
           path: test-artifacts/
