@@ -5,7 +5,7 @@ import shutil
 import tarfile
 from datetime import datetime
 from pathlib import Path
-from typing import Any, TypedDict
+from typing import Any, NotRequired, TypedDict
 
 from .security_helpers import safe_path_join
 from .utils import ensure_directory
@@ -19,15 +19,15 @@ class BackupTargetInfo(TypedDict):
     size: int
 
 
-class BackupInfo(TypedDict, total=False):
+class BackupInfo(TypedDict):
     """バックアップメタデータ"""
 
     name: str
     created_at: str
-    project_root: str
-    targets: list[BackupTargetInfo]
     file_path: str
     file_size: int
+    targets: list[BackupTargetInfo]
+    project_root: NotRequired[str]
 
 
 class BackupManager:

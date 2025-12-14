@@ -163,8 +163,9 @@ class QualityLogger:
         """品質チェック失敗をログ"""
         if isinstance(error, Exception):
             message = f"品質チェック失敗: {check_type} - {str(error)}"
-            if hasattr(error, "details"):
-                details = {**(details or {}), **error.details}
+            error_details = getattr(error, "details", None)
+            if error_details:
+                details = {**(details or {}), **error_details}
         else:
             message = f"品質チェック失敗: {check_type} - {error}"
 
