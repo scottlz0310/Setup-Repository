@@ -757,7 +757,7 @@ security = [
 [package.metadata]
 requires-dist = [
     { name = "bandit", specifier = ">=1.8.6" },
-    { name = "psutil", specifier = ">=5.9.0" },
+    { name = "psutil", specifier = ">=5.9.8" },
     { name = "requests", specifier = ">=2.25.0" },
     { name = "rg", specifier = ">=0.0.75" },
 ]
