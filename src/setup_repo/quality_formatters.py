@@ -101,8 +101,9 @@ class JSONFormatter(logging.Formatter):
             log_entry["platform"] = self._get_platform_info()
 
         # コンテキスト情報を追加
-        if hasattr(record, "context") and record.context:
-            log_entry["context"] = record.context
+        context = getattr(record, "context", None)
+        if context:
+            log_entry["context"] = context
 
         if record.exc_info:
             log_entry["exception"] = self.formatException(record.exc_info)

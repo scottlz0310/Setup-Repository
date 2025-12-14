@@ -132,8 +132,9 @@ class CIErrorHandler:
         )
 
         # 品質チェック固有の詳細情報
-        if hasattr(error, "details") and error.details:
-            self._handle_quality_check_details(check_type, error.details)
+        details = getattr(error, "details", None)
+        if details:
+            self._handle_quality_check_details(check_type, details)
 
     def _handle_quality_check_details(self, check_type: str, details: dict[str, Any]) -> None:
         """品質チェックの詳細情報を処理"""
@@ -179,15 +180,18 @@ class CIErrorHandler:
                 "timestamp": getattr(error, "timestamp", datetime.now().isoformat()),
             }
 
-            if hasattr(error, "error_code"):
-                error_entry["code"] = error.error_code
+            error_code = getattr(error, "error_code", None)
+            if error_code is not None:
+                error_entry["code"] = error_code
 
-            if hasattr(error, "details"):
-                error_entry["details"] = error.details
+            details = getattr(error, "details", None)
+            if details is not None:
+                error_entry["details"] = details
 
             # プラットフォーム固有のエラー情報を追加
-            if hasattr(error, "platform_context"):
-                error_entry["platform_context"] = error.platform_context
+            platform_context = getattr(error, "platform_context", None)
+            if platform_context is not None:
+                error_entry["platform_context"] = platform_context
 
             report["errors"].append(error_entry)
 
@@ -261,11 +265,13 @@ class CIErrorHandler:
             summary_lines.append(f"**{i}. {type(error).__name__}**")
             summary_lines.append(f"   - メッセージ: {str(error)}")
 
-            if hasattr(error, "error_code"):
-                summary_lines.append(f"   - エラーコード: {error.error_code}")
+            error_code = getattr(error, "error_code", None)
+            if error_code is not None:
+                summary_lines.append(f"   - エラーコード: {error_code}")
 
-            if hasattr(error, "details") and error.details:
-                summary_lines.append(f"   - 詳細: {json.dumps(error.details, ensure_ascii=False)}")
+            details = getattr(error, "details", None)
+            if details:
+                summary_lines.append(f"   - 詳細: {json.dumps(details, ensure_ascii=False)}")
 
             # プラットフォーム固有の推奨事項を追加
             if "fcntl" in str(error).lower() and platform_info.name == "windows":

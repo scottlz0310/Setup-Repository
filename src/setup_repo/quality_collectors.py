@@ -10,7 +10,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from .quality_errors import CoverageError, RuffError, TestFailureError
+from .quality_errors import CoverageError, PyrightError, RuffError, TestFailureError
 from .quality_logger import QualityLogger, get_quality_logger
 from .security_helpers import safe_path_join, safe_subprocess
 
@@ -129,8 +129,6 @@ def collect_mypy_metrics(
                 )
             except (subprocess.CalledProcessError, FileNotFoundError):
                 # All tools unavailable
-                from .quality_errors import PyrightError
-
                 logger.log_quality_check_failure("BasedPyright", PyrightError("BasedPyright/Pyright not installed"))
                 return {"success": False, "error_count": 0, "errors": ["BasedPyright/Pyright not available"]}
 
@@ -151,8 +149,6 @@ def collect_mypy_metrics(
         if success:
             logger.log_quality_check_success("BasedPyright", {"error_count": error_count})
         else:
-            from .quality_errors import PyrightError
-
             error = PyrightError(
                 f"BasedPyright/Pyright型チェックで{error_count}件のエラーが見つかりました",
                 error_lines,

@@ -181,11 +181,13 @@ class ErrorReporter:
                 "timestamp": getattr(error, "timestamp", datetime.now().isoformat()),
             }
 
-            if hasattr(error, "error_code"):
-                error_entry["code"] = error.error_code
+            error_code = getattr(error, "error_code", None)
+            if error_code is not None:
+                error_entry["code"] = error_code
 
-            if hasattr(error, "details"):
-                error_entry["details"] = error.details
+            details = getattr(error, "details", None)
+            if details is not None:
+                error_entry["details"] = details
 
             report["errors"].append(error_entry)
 
@@ -209,11 +211,13 @@ class ErrorReporter:
             "timestamp": datetime.now().isoformat(),
         }
 
-        if hasattr(error, "error_code"):
-            error_info["error_code"] = error.error_code
+        error_code = getattr(error, "error_code", None)
+        if error_code is not None:
+            error_info["error_code"] = error_code
 
-        if hasattr(error, "details"):
-            error_info["error_details"] = error.details
+        details = getattr(error, "details", None)
+        if details is not None:
+            error_info["error_details"] = details
 
         from .security_helpers import safe_html_escape
 

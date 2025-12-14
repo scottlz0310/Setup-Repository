@@ -167,7 +167,6 @@ uv run pre-commit run --all-files
 **実行される内容:**
 - Ruffリンティング（自動修正付き）
 - **BasedPyright**: 型チェック（src/ディレクトリのみ）
-- MyPy型チェック
 - Banditセキュリティチェック
 - 基本ファイルチェック（末尾改行、空白削除等）
 - 単体テスト実行

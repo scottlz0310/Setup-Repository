@@ -249,7 +249,7 @@ class ProcessLock:
         log_platform_compatibility_warning()
 
     @classmethod
-    def create_test_lock(cls, test_name: str = None) -> "ProcessLock":
+    def create_test_lock(cls, test_name: str | None = None) -> "ProcessLock":
         """テスト用の一意なロックファイルを作成"""
         import tempfile
         import uuid
@@ -430,6 +430,8 @@ class TeeLogger:
 
     def _setup_tee(self):
         """tee機能をセットアップ"""
+        if not self.log_file:
+            return
         try:
             self.log_file.parent.mkdir(parents=True, exist_ok=True)
             # ファイルハンドルを直接保持（TeeLoggerの特性上必要）

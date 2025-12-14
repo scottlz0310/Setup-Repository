@@ -340,12 +340,12 @@ jobs:
 
           # Type checks
           uv run basedpyright src/ &
-          MYPY_PID=$!
+          BASEDPYRIGHT_PID=$!
 
           # Wait for all checks
           wait $RUFF_PID && echo "✅ Ruff lint完了" || { echo "❌ Ruff lint失敗"; exit 1; }
           wait $FORMAT_PID && echo "✅ Format check完了" || { echo "❌ Format check失敗"; exit 1; }
-          wait $MYPY_PID && echo "✅ MyPy完了" || { echo "❌ MyPy失敗"; exit 1; }
+          wait $BASEDPYRIGHT_PID && echo "✅ basedpyright完了" || { echo "❌ basedpyright失敗"; exit 1; }
 
       - name: Run tests with coverage
         run: |

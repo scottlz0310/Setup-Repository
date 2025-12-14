@@ -69,7 +69,9 @@ def setup_repository_environment(config_path: str | None = None, dry_run: bool =
         result["platform"] = platform_info.name
 
         # GitHub API接続テスト
-        github_api = GitHubAPI(token=config["github_token"], username=config["github_username"])
+        github_token = str(config["github_token"])
+        github_username = str(config["github_username"])
+        github_api = GitHubAPI(token=github_token, username=github_username)
         user_info = github_api.get_user_info()
         result["github_user_info"] = user_info
 
@@ -78,7 +80,7 @@ def setup_repository_environment(config_path: str | None = None, dry_run: bool =
             # クローン先ディレクトリの作成
             clone_destination = config.get("clone_destination")
             if clone_destination:
-                Path(clone_destination).mkdir(parents=True, exist_ok=True)
+                Path(str(clone_destination)).mkdir(parents=True, exist_ok=True)
 
         result["success"] = True
 

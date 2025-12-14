@@ -60,6 +60,13 @@ def sync_repositories(config: dict[str, Any], dry_run: bool = False) -> SyncResu
         errors.append(ValueError(error_msg))
         return SyncResult(success=False, synced_repos=[], errors=errors)
 
+    if not dest:
+        error_msg = "保存先（destまたはclone_destination）が設定されていません"
+        print(f"\\n[ERROR] {error_msg}")
+        print("   [FIX] config.local.json に 'dest' または 'clone_destination' フィールドを作成")
+        errors.append(ValueError(error_msg))
+        return SyncResult(success=False, synced_repos=[], errors=errors)
+
     # ロック取得
     if not dry_run:
         import os
@@ -113,7 +120,7 @@ def sync_repositories(config: dict[str, Any], dry_run: bool = False) -> SyncResu
     print(f"[INFO] 実際の接続方式: {connection_type}")
 
     # 保存先ディレクトリ作成
-    dest_dir = Path(dest)
+    dest_dir = Path(str(dest))
     if not dry_run:
         dest_dir.mkdir(parents=True, exist_ok=True)
 
