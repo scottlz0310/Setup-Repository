@@ -90,8 +90,9 @@ indent-style = "space"
 
 [tool.pyright]
 # basedpyright の設定は pyrightconfig.json でも行えますが、いくつかの設定はここに記載しています
-python_version = "3.11"
-strict = true
+# pythonVersion は自動検出されるため、明示的な指定は不要
+# strict モードは個別のルールで制御
+typeCheckingMode = "standard"
 
 [tool.bandit]
 exclude_dirs = ["tests", "venv", ".venv", "build", "dist"]
