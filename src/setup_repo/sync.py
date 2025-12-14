@@ -37,8 +37,6 @@ def sync_repositories(config: dict[str, Any], dry_run: bool = False) -> SyncResu
     errors: list[Exception] = []
     owner = config.get("owner") or config.get("github_username")
     dest = config.get("dest") or config.get("clone_destination")
-    if not dest:
-        raise ValueError("destまたはclone_destinationが設定されていません")
     dry_run = dry_run or config.get("dry_run", False)
     force = config.get("force", False)
 
@@ -59,6 +57,13 @@ def sync_repositories(config: dict[str, Any], dry_run: bool = False) -> SyncResu
         print("   [FIX] GITHUB_USER 環境変数")
         print("   [FIX] git config --global user.name")
         print("   [FIX] config.local.json に 'owner' フィールドを作成")
+        errors.append(ValueError(error_msg))
+        return SyncResult(success=False, synced_repos=[], errors=errors)
+
+    if not dest:
+        error_msg = "保存先（destまたはclone_destination）が設定されていません"
+        print(f"\\n[ERROR] {error_msg}")
+        print("   [FIX] config.local.json に 'dest' または 'clone_destination' フィールドを作成")
         errors.append(ValueError(error_msg))
         return SyncResult(success=False, synced_repos=[], errors=errors)
 
