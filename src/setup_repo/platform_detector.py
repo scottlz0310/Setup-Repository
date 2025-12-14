@@ -263,9 +263,10 @@ def _log_windows_path_info() -> None:
     # Windows環境でのUTF-8エンコーディング強制設定
     import sys
 
+    # sys.stdoutのreconfigureメソッドは型定義にないが実行時には存在する
     if hasattr(sys.stdout, "reconfigure"):
         with contextlib.suppress(AttributeError, OSError):
-            sys.stdout.reconfigure(encoding="utf-8")
+            sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
 
     print("::group::Windows PATH Diagnostics")
     path_env = os.environ.get("PATH", "")

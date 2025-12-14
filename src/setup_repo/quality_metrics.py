@@ -92,6 +92,9 @@ class QualityMetrics:
             except (ImportError, FileNotFoundError, KeyError):
                 min_coverage = 70.0
 
+        # 型チェッカーのためのアサーション
+        assert min_coverage is not None
+
         # CI環境ではセキュリティ脆弱性を無視（依存関係の問題が多いため）
         security_check = True if is_ci else self.security_vulnerabilities == 0
 

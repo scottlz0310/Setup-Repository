@@ -195,9 +195,8 @@ def _update_repository(repo_name: str, repo_path: Path, config: dict[str, Any]) 
         print(f"   ✅ {repo_name}: 更新予定")
         return True
 
+    stashed = False
     try:
-        stashed = False
-
         # auto_stashが有効な場合、変更をstash
         if auto_stash:
             stashed = _auto_stash_changes(repo_path)

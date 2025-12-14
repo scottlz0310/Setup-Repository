@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 class GitignoreManager:
     """Gitignore管理クラス"""
 
-    def __init__(self, repo_path: Path, templates_dir: Path = None, auto_push: bool = None):
+    def __init__(self, repo_path: Path, templates_dir: Path | None = None, auto_push: bool | None = None):
         self.repo_path = Path(repo_path)
         self.gitignore_path = self.repo_path / ".gitignore"
 
@@ -102,7 +102,7 @@ class GitignoreManager:
         except OSError:
             return set()
 
-    def add_entries(self, new_entries: list[str], dry_run: bool = False, auto_push: bool = None) -> bool:
+    def add_entries(self, new_entries: list[str], dry_run: bool = False, auto_push: bool | None = None) -> bool:
         """新しいエントリを.gitignoreに追加"""
         if not new_entries:
             return True
@@ -195,7 +195,7 @@ class GitignoreManager:
         template_names: list[str],
         dry_run: bool = False,
         merge_mode: bool = True,
-        auto_push: bool = None,
+        auto_push: bool | None = None,
     ) -> bool:
         """テンプレートから.gitignoreを作成またはマージ"""
         if dry_run:
@@ -307,7 +307,7 @@ class GitignoreManager:
         self,
         dry_run: bool = False,
         merge_mode: bool = True,
-        auto_push: bool = None,
+        auto_push: bool | None = None,
     ) -> bool:
         """プロジェクトタイプを自動検出して.gitignoreセットアップ"""
         from .project_detector import ProjectDetector
