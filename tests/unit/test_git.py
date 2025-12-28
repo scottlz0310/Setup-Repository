@@ -4,8 +4,6 @@ import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from setup_repo.core.git import GitOperations
 from setup_repo.models.result import ResultStatus
 
@@ -76,9 +74,7 @@ class TestClone:
     @patch("subprocess.run")
     def test_clone_failure(self, mock_run: MagicMock, tmp_path: Path) -> None:
         """Test clone failure."""
-        mock_run.side_effect = subprocess.CalledProcessError(
-            1, "git", stderr="fatal: repository not found"
-        )
+        mock_run.side_effect = subprocess.CalledProcessError(1, "git", stderr="fatal: repository not found")
 
         git = GitOperations()
         dest = tmp_path / "test-repo"
@@ -212,9 +208,7 @@ class TestDeleteBranch:
     @patch("subprocess.run")
     def test_delete_branch_failure(self, mock_run: MagicMock, tmp_path: Path) -> None:
         """Test branch deletion failure."""
-        mock_run.side_effect = subprocess.CalledProcessError(
-            1, "git", stderr="branch not found"
-        )
+        mock_run.side_effect = subprocess.CalledProcessError(1, "git", stderr="branch not found")
 
         git = GitOperations()
         result = git.delete_branch(tmp_path, "nonexistent")

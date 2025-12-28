@@ -3,8 +3,6 @@
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from setup_repo.core.parallel import ParallelProcessor
 from setup_repo.models.result import ProcessResult, ResultStatus
 

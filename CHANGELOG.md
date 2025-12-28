@@ -1,5 +1,76 @@
-# 📝 変更履歴
+# Changelog
 
+All notable changes to this project will be documented in this file.
+
+## [2.0.0] - Unreleased
+
+### Breaking Changes
+
+- **Complete Architecture Rewrite**: Zero-base rewrite with modern Python stack
+- **New CLI Interface**: Replaced argparse with Typer for improved UX
+- **Removed Legacy Commands**: `setup`, `list`, old `cleanup` subcommands removed
+- **New Configuration System**: Environment variable based with `.env` support
+
+### Added
+
+- **Modern CLI Framework (Typer)**
+  - Rich help output with colors and formatting
+  - Shell completion support (`--install-completion`)
+  - Type-safe argument parsing with Annotated types
+
+- **Rich Console Output**
+  - Progress bars with spinner, ETA, and elapsed time
+  - Colored status messages (success/error/warning)
+  - Summary panels and tables for results
+
+- **Structured Logging (Structlog)**
+  - JSON Lines file output for log aggregation
+  - Context-aware logging with `log_context()`
+  - Console output with Rich formatting
+
+- **Pydantic v2 Data Models**
+  - Type-safe configuration with `AppSettings`
+  - Auto-detection of GitHub owner and token
+  - Environment variable support with `SETUP_REPO_` prefix
+
+- **Async-Ready GitHub Client (httpx)**
+  - Both sync (`GitHubClient`) and async (`AsyncGitHubClient`) clients
+  - Automatic pagination for repository listing
+  - SSL verification control for corporate environments
+
+- **Parallel Processing**
+  - `ThreadPoolExecutor` based parallel repository processing
+  - Configurable worker count (`--jobs`)
+  - Exception handling per repository
+
+- **New Commands**
+  - `sync`: Clone/pull repositories from GitHub owner
+  - `cleanup`: Delete merged branches with confirmation
+
+### Changed
+
+- Python version requirement: 3.11+ (was 3.9+)
+- Test coverage target: 80% (achieved 87.29%)
+- Package structure reorganized to layered architecture:
+  - `cli/` - CLI layer (Typer, Rich)
+  - `core/` - Business logic (Git, GitHub, Parallel)
+  - `models/` - Data models (Pydantic)
+  - `utils/` - Utilities (Console, Logging)
+
+### Technical Details
+
+- **Dependencies Updated**:
+  - typer >= 0.21.0
+  - rich >= 14.2.0
+  - structlog >= 25.5.0
+  - httpx >= 0.28.1
+  - pydantic >= 2.12.5
+  - pydantic-settings >= 2.12.0
+
+- **Test Suite**: 86 unit tests covering all modules
+- **Pre-commit Hooks**: Ruff, BasedPyright, Bandit, pytest
+
+---
 
 ## [1.4.7] - 2025-12-01
 

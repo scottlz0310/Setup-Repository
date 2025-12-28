@@ -2,8 +2,6 @@
 
 from datetime import datetime
 
-import pytest
-
 from setup_repo.models.repository import Repository
 from setup_repo.models.result import ProcessResult, ResultStatus, SyncSummary
 

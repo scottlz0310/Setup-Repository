@@ -1,7 +1,6 @@
 """Tests for logging configuration."""
 
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 import structlog
@@ -102,9 +101,8 @@ class TestLogContext:
         """Test that log_context clears even on exception."""
         configure_logging()
 
-        with pytest.raises(ValueError):
-            with log_context(key="value"):
-                raise ValueError("test error")
+        with pytest.raises(ValueError), log_context(key="value"):
+            raise ValueError("test error")
 
         ctx = structlog.contextvars.get_contextvars()
         assert "key" not in ctx

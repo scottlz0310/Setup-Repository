@@ -135,7 +135,7 @@ class TestAutoDetection:
 
     def test_auto_detect_fails_gracefully(self) -> None:
         """Test that auto-detection fails gracefully."""
-        with patch("subprocess.run", side_effect=Exception("Command failed")):
+        with patch("subprocess.run", side_effect=OSError("Command not found")):
             # Should not raise, just leave values empty/None
             settings = AppSettings()
             # github_owner might be empty, github_token should be None

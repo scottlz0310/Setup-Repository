@@ -68,3 +68,12 @@ def show_success(message: str) -> None:
         message: Success message to display
     """
     console.print(f"[green]✓[/] {message}")
+
+
+def show_info(message: str) -> None:
+    """Display an info message.
+
+    Args:
+        message: Info message to display
+    """
+    console.print(f"[blue]ℹ[/] {message}")

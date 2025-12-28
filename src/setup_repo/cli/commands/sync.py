@@ -6,7 +6,7 @@ from typing import Annotated
 import typer
 from rich.table import Table
 
-from setup_repo.cli.output import show_error, show_summary, show_warning
+from setup_repo.cli.output import show_error, show_info, show_summary, show_warning
 from setup_repo.core.git import GitOperations
 from setup_repo.core.github import GitHubClient
 from setup_repo.core.parallel import ParallelProcessor
@@ -52,7 +52,11 @@ def sync(
     dest_dir = dest or settings.workspace_dir
     dest_dir.mkdir(parents=True, exist_ok=True)
 
+    log.debug("sync_started", owner=owner, dest=str(dest_dir), jobs=jobs)
+    show_info(f"Syncing repositories for [cyan]{owner}[/] to [dim]{dest_dir}[/]")
+
     # Get repository list
+    log.debug("fetching_repositories", owner=owner)
     client = GitHubClient(
         token=settings.github_token,
         verify_ssl=not settings.git_ssl_no_verify,
@@ -60,12 +64,15 @@ def sync(
 
     try:
         repos = client.get_repositories(owner)
+        log.info("repositories_fetched", owner=owner, count=len(repos))
     finally:
         client.close()
 
     if not repos:
         show_warning("No repositories found")
         raise typer.Exit(0)
+
+    show_info(f"Found [cyan]{len(repos)}[/] repositories")
 
     # Dry-run mode
     if dry_run:
@@ -79,13 +86,17 @@ def sync(
     )
     processor = ParallelProcessor(max_workers=jobs)
 
+    log.debug("sync_config", auto_prune=not no_prune, ssl_no_verify=settings.git_ssl_no_verify)
+
     def process_repo(repo_path: Path) -> ProcessResult:
         if repo_path.exists():
+            log.debug("pulling", repo=repo_path.name)
             return git.pull(repo_path)
         else:
             # Find corresponding repository
             repo = next((r for r in repos if r.name == repo_path.name), None)
             if repo:
+                log.debug("cloning", repo=repo_path.name, url=repo.get_clone_url(settings.use_https))
                 return git.clone(
                     repo.get_clone_url(settings.use_https),
                     repo_path,
@@ -99,6 +110,15 @@ def sync(
 
     paths = [dest_dir / repo.name for repo in repos]
     summary = processor.process(paths, process_repo, desc="Syncing")
+
+    log.info(
+        "sync_completed",
+        total=summary.total,
+        success=summary.success,
+        failed=summary.failed,
+        skipped=summary.skipped,
+        duration=f"{summary.duration:.1f}s",
+    )
 
     show_summary(summary)
 

@@ -2,7 +2,6 @@
 
 from unittest.mock import MagicMock, patch
 
-import httpx
 import pytest
 
 from setup_repo.core.github import AsyncGitHubClient, GitHubClient

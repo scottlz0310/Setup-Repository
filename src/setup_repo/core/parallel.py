@@ -1,9 +1,9 @@
 """Parallel processing with Rich progress."""
 
 import time
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import Callable
 
 from rich.progress import (
     BarColumn,
@@ -65,10 +65,7 @@ class ParallelProcessor:
             task = progress.add_task(desc, total=len(items))
 
             with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-                futures = {
-                    executor.submit(self._safe_process, item, process_func): item
-                    for item in items
-                }
+                futures = {executor.submit(self._safe_process, item, process_func): item for item in items}
 
                 for future in as_completed(futures):
                     item = futures[future]

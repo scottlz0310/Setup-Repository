@@ -60,8 +60,9 @@ class AppSettings(BaseSettings):
                     )
                     if result.returncode == 0:
                         self.github_owner = result.stdout.strip()
-                except Exception:
-                    pass
+                except (subprocess.SubprocessError, OSError):
+                    # Git command failed - owner remains empty
+                    pass  # noqa: B110
 
         # Auto-detect github_token
         if not self.github_token:
@@ -74,8 +75,9 @@ class AppSettings(BaseSettings):
                 )
                 if result.returncode == 0:
                     self.github_token = result.stdout.strip()
-            except Exception:
-                pass
+            except (subprocess.SubprocessError, OSError):
+                # gh command failed - token remains None
+                pass  # noqa: B110
 
         return self
 

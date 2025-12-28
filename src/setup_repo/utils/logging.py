@@ -1,10 +1,11 @@
 """Structlog configuration for Setup Repository."""
 
 import logging
+from collections.abc import Generator
 from contextlib import contextmanager
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import Any, Generator
+from typing import Any
 
 import structlog
 from structlog.contextvars import bind_contextvars, clear_contextvars
@@ -39,9 +40,7 @@ def configure_logging(
             structlog.processors.ExceptionPrettyPrinter(),
             structlog.dev.ConsoleRenderer(colors=True),
         ],
-        wrapper_class=structlog.make_filtering_bound_logger(
-            getattr(logging, level.upper())
-        ),
+        wrapper_class=structlog.make_filtering_bound_logger(getattr(logging, level.upper())),
         context_class=dict,
         logger_factory=structlog.PrintLoggerFactory(),
         cache_logger_on_first_use=True,
