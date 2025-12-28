@@ -1,105 +1,142 @@
-"""
-設定管理機能のテスト
+"""Tests for application settings."""
 
-マルチプラットフォームテスト方針に準拠した設定管理機能のテスト
-"""
-
-import os
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
-from setup_repo.config import auto_detect_config, get_github_token, get_github_user, load_config
-from tests.multiplatform.helpers import get_platform_specific_config, verify_current_platform
+from setup_repo.models.config import AppSettings, get_settings, reset_settings
 
 
-class TestConfig:
-    """設定管理機能のテスト"""
+class TestAppSettings:
+    """Tests for AppSettings class."""
 
-    def test_auto_detect_config(self):
-        """設定自動検出テスト"""
-        verify_current_platform()  # プラットフォーム検証
+    def test_default_settings(self) -> None:
+        """Test default settings values."""
+        settings = AppSettings(github_owner="test", github_token="token")
 
-        config = auto_detect_config()
+        assert settings.use_https is False
+        assert settings.max_workers == 10
+        assert settings.auto_prune is True
+        assert settings.auto_stash is False
+        assert settings.git_ssl_no_verify is False
+        assert settings.log_level == "INFO"
+        assert settings.log_file is None
 
-        # 基本的な設定項目が存在することを確認
-        assert "owner" in config
-        assert "dest" in config
-        assert "github_token" in config
-        assert "use_https" in config
-        assert "max_retries" in config
-        assert isinstance(config["max_retries"], int)
-        assert config["max_retries"] >= 0
+    def test_workspace_dir_default(self) -> None:
+        """Test workspace_dir defaults to ~/workspace."""
+        settings = AppSettings(github_owner="test")
+        assert settings.workspace_dir == Path.home() / "workspace"
 
-    def test_load_config_default(self):
-        """デフォルト設定読み込みテスト"""
-        config = load_config()
+    def test_custom_workspace_dir(self) -> None:
+        """Test custom workspace_dir."""
+        settings = AppSettings(
+            github_owner="test",
+            workspace_dir=Path("/custom/path"),
+        )
+        assert settings.workspace_dir == Path("/custom/path")
 
-        # デフォルト設定が正しく読み込まれることを確認
-        assert isinstance(config, dict)
-        assert "owner" in config
-        assert "dest" in config
+    def test_max_workers_validation(self) -> None:
+        """Test max_workers validation."""
+        # Valid range
+        settings = AppSettings(github_owner="test", max_workers=1)
+        assert settings.max_workers == 1
 
-    def test_get_github_token_from_env(self):
-        """環境変数からのGitHubトークン取得テスト"""
-        with patch.dict(os.environ, {"GITHUB_TOKEN": "test_token"}):
-            token = get_github_token()
-            assert token == "test_token"
+        settings = AppSettings(github_owner="test", max_workers=32)
+        assert settings.max_workers == 32
 
-    def test_get_github_token_no_env(self):
-        """環境変数がない場合のGitHubトークン取得テスト（外部コマンドのみモック）"""
-        with patch.dict(os.environ, {}, clear=True), patch("subprocess.run") as mock_run:
-            # 外部コマンド（ghコマンドなど）の失敗をシミュレート
-            mock_run.side_effect = FileNotFoundError()
-            token = get_github_token()
-            assert token is None
+        # Out of range
+        with pytest.raises(ValueError):
+            AppSettings(github_owner="test", max_workers=0)
 
-    def test_get_github_user_from_env(self):
-        """環境変数からのGitHubユーザー取得テスト"""
-        with patch.dict(os.environ, {"GITHUB_USER": "testuser"}):
-            user = get_github_user()
-            assert user == "testuser"
+        with pytest.raises(ValueError):
+            AppSettings(github_owner="test", max_workers=33)
 
-    def test_get_github_user_from_git_config(self):
-        """Git設定からのユーザー取得テスト（外部コマンドのみモック）"""
-        with patch.dict(os.environ, {}, clear=True), patch("subprocess.run") as mock_run:
-            # 外部コマンド（git config）の結果をシミュレート
-            mock_run.return_value.stdout = "testuser\n"
+    def test_github_owner_from_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test github_owner from environment variable."""
+        monkeypatch.setenv("GITHUB_USER", "env-user")
+
+        settings = AppSettings()
+        assert settings.github_owner == "env-user"
+
+    def test_github_owner_explicit_override(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test explicit github_owner overrides env."""
+        monkeypatch.setenv("GITHUB_USER", "env-user")
+
+        settings = AppSettings(github_owner="explicit-user")
+        assert settings.github_owner == "explicit-user"
+
+    def test_settings_from_env_prefix(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test settings from SETUP_REPO_ prefixed env vars."""
+        monkeypatch.setenv("SETUP_REPO_GITHUB_OWNER", "prefix-user")
+        monkeypatch.setenv("SETUP_REPO_USE_HTTPS", "true")
+        monkeypatch.setenv("SETUP_REPO_MAX_WORKERS", "5")
+
+        settings = AppSettings()
+        assert settings.github_owner == "prefix-user"
+        assert settings.use_https is True
+        assert settings.max_workers == 5
+
+    def test_git_ssl_no_verify(self) -> None:
+        """Test git_ssl_no_verify setting."""
+        settings = AppSettings(
+            github_owner="test",
+            git_ssl_no_verify=True,
+        )
+        assert settings.git_ssl_no_verify is True
+
+
+class TestGetSettings:
+    """Tests for get_settings function."""
+
+    def setup_method(self) -> None:
+        """Reset settings cache before each test."""
+        reset_settings()
+
+    def teardown_method(self) -> None:
+        """Reset settings cache after each test."""
+        reset_settings()
+
+    def test_get_settings_returns_cached(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test that get_settings returns cached instance."""
+        monkeypatch.setenv("SETUP_REPO_GITHUB_OWNER", "cached-user")
+
+        settings1 = get_settings()
+        settings2 = get_settings()
+
+        assert settings1 is settings2
+
+    def test_reset_settings_clears_cache(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test that reset_settings clears the cache."""
+        monkeypatch.setenv("SETUP_REPO_GITHUB_OWNER", "user1")
+
+        settings1 = get_settings()
+        reset_settings()
+
+        monkeypatch.setenv("SETUP_REPO_GITHUB_OWNER", "user2")
+        settings2 = get_settings()
+
+        assert settings1 is not settings2
+        assert settings1.github_owner == "user1"
+        assert settings2.github_owner == "user2"
+
+
+class TestAutoDetection:
+    """Tests for auto-detection of GitHub settings."""
+
+    def test_auto_detect_github_token_from_gh(self) -> None:
+        """Test auto-detection of GitHub token from gh CLI."""
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value.returncode = 0
-            user = get_github_user()
-            assert user == "testuser"
+            mock_run.return_value.stdout = "gh_token_12345\n"
 
-    def test_get_github_user_no_config(self):
-        """設定がない場合のユーザー取得テスト（外部コマンドのみモック）"""
-        with patch.dict(os.environ, {}, clear=True), patch("subprocess.run") as mock_run:
-            # 外部コマンド（git config）の失敗をシミュレート
-            mock_run.side_effect = FileNotFoundError()
-            user = get_github_user()
-            assert user is None
+            settings = AppSettings(github_owner="test")
+            assert settings.github_token == "gh_token_12345"
 
-    @pytest.mark.integration
-    def test_config_platform_integration(self):
-        """プラットフォーム統合テスト"""
-        platform_info = verify_current_platform()
-        get_platform_specific_config()  # プラットフォーム設定取得
-
-        config = load_config()
-
-        # プラットフォーム固有の設定が適用されることを確認
-        assert isinstance(config, dict)
-        assert "dest" in config
-
-        # プラットフォーム情報が正しく取得できることを確認
-        assert platform_info.name in ["windows", "linux", "wsl", "macos"]
-
-    def test_config_environment_override(self):
-        """環境変数による設定上書きテスト"""
-        with patch.dict(
-            os.environ,
-            {"GITHUB_TOKEN": "env_token", "GITHUB_USERNAME": "env_user", "CLONE_DESTINATION": "/custom/path"},
-        ):
-            config = load_config()
-
-            assert config["github_token"] == "env_token"
-            assert config.get("github_username") == "env_user"
-            assert config.get("clone_destination") == "/custom/path"
+    def test_auto_detect_fails_gracefully(self) -> None:
+        """Test that auto-detection fails gracefully."""
+        with patch("subprocess.run", side_effect=Exception("Command failed")):
+            # Should not raise, just leave values empty/None
+            settings = AppSettings()
+            # github_owner might be empty, github_token should be None
+            assert settings.github_token is None

@@ -1,1 +1,1 @@
-# 単体テストパッケージ
+"""Unit tests for Setup Repository."""
