@@ -81,7 +81,7 @@ quote-style = "double"
 indent-style = "space"
 
 [tool.basedpyright]
-typeCheckingMode = "struct"
+typeCheckingMode = "strict"
 
 [tool.bandit]
 exclude_dirs = ["tests", "venv", ".venv", "build", "dist"]
