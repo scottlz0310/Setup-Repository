@@ -155,8 +155,8 @@ class GitOperations:
                     self._run(["stash"], cwd=repo_path)
                     stashed = True
                     log.debug("stashed")
-                except subprocess.CalledProcessError:
-                    pass
+                except subprocess.CalledProcessError as e:
+                    log.debug("stash_failed", error=e.stderr)
 
             try:
                 self._run(["pull", "--ff-only"], cwd=repo_path)
