@@ -1,65 +1,65 @@
-# Changelog
+# 更新履歴
 
-All notable changes to this project will be documented in this file.
+このプロジェクトの主な変更点はこのファイルに記載します。
 
 ## [2.0.0] - 2025-12-29
 
-### Breaking Changes
+### 破壊的変更
 
-- **Complete Architecture Rewrite**: Zero-base rewrite with modern Python stack
-- **New CLI Interface**: Replaced argparse with Typer for improved UX
-- **Removed Legacy Commands**: `setup`, `list`, old `cleanup` subcommands removed
-- **New Configuration System**: Environment variable based with `.env` support
+- **アーキテクチャ全面刷新**: モダンなPythonスタックでゼロベースから再実装
+- **新しいCLIインターフェース**: argparseをTyperに置き換え、UXを改善
+- **旧コマンドの削除**: `setup`、`list`、旧`cleanup`サブコマンドを削除
+- **新しい設定システム**: 環境変数ベース（`.env`対応）
 
-### Added
+### 追加
 
-- **Modern CLI Framework (Typer)**
-  - Rich help output with colors and formatting
-  - Shell completion support (`--install-completion`)
-  - Type-safe argument parsing with Annotated types
+- **モダンCLIフレームワーク（Typer）**
+  - Richによる色付き・整形済みヘルプ
+  - シェル補完対応（`--install-completion`）
+  - Annotated型による型安全な引数パース
 
-- **Rich Console Output**
-  - Progress bars with spinner, ETA, and elapsed time
-  - Colored status messages (success/error/warning)
-  - Summary panels and tables for results
+- **Richコンソール出力**
+  - スピナー/ETA/経過時間付きプログレスバー
+  - 色付きステータスメッセージ（success/error/warning）
+  - 結果のサマリーパネル/テーブル表示
 
-- **Structured Logging (Structlog)**
-  - JSON Lines file output for log aggregation
-  - Context-aware logging with `log_context()`
-  - Console output with Rich formatting
+- **構造化ログ（Structlog）**
+  - ログ集約向けのJSON Linesファイル出力
+  - `log_context()` によるコンテキスト対応ログ
+  - Richで整形されたコンソール出力
 
-- **Pydantic v2 Data Models**
-  - Type-safe configuration with `AppSettings`
-  - Auto-detection of GitHub owner and token
-  - Environment variable support with `SETUP_REPO_` prefix
+- **Pydantic v2データモデル**
+  - `AppSettings` による型安全な設定
+  - GitHub owner/token の自動検出
+  - `SETUP_REPO_` プレフィックスの環境変数対応
 
-- **Async-Ready GitHub Client (httpx)**
-  - Both sync (`GitHubClient`) and async (`AsyncGitHubClient`) clients
-  - Automatic pagination for repository listing
-  - SSL verification control for corporate environments
+- **非同期対応GitHubクライアント（httpx）**
+  - 同期（`GitHubClient`）/非同期（`AsyncGitHubClient`）両対応
+  - リポジトリ一覧の自動ページネーション
+  - 企業環境向けSSL検証の制御
 
-- **Parallel Processing**
-  - `ThreadPoolExecutor` based parallel repository processing
-  - Configurable worker count (`--jobs`)
-  - Exception handling per repository
+- **並列処理**
+  - `ThreadPoolExecutor` によるリポジトリ処理の並列化
+  - ワーカー数を指定可能（`--jobs`）
+  - リポジトリ単位の例外ハンドリング
 
-- **New Commands**
-  - `sync`: Clone/pull repositories from GitHub owner
-  - `cleanup`: Delete merged branches with confirmation
+- **新コマンド**
+  - `sync`: GitHub owner配下のリポジトリをclone/pull
+  - `cleanup`: マージ済みブランチを確認付きで削除
 
-### Changed
+### 変更
 
-- Python version requirement: 3.11+ (was 3.9+)
-- Test coverage target: 80% (achieved 87.29%)
-- Package structure reorganized to layered architecture:
-  - `cli/` - CLI layer (Typer, Rich)
-  - `core/` - Business logic (Git, GitHub, Parallel)
-  - `models/` - Data models (Pydantic)
-  - `utils/` - Utilities (Console, Logging)
+- Pythonバージョン要件: 3.11+（旧 3.9+）
+- テストカバレッジ目標: 80%（達成 87.29%）
+- パッケージ構成をレイヤードアーキテクチャへ再編:
+  - `cli/` - CLI層（Typer, Rich）
+  - `core/` - ビジネスロジック（Git, GitHub, Parallel）
+  - `models/` - データモデル（Pydantic）
+  - `utils/` - ユーティリティ（Console, Logging）
 
-### Technical Details
+### 技術詳細
 
-- **Dependencies Updated**:
+- **依存関係の更新**:
   - typer >= 0.21.0
   - rich >= 14.2.0
   - structlog >= 25.5.0
@@ -67,8 +67,8 @@ All notable changes to this project will be documented in this file.
   - pydantic >= 2.12.5
   - pydantic-settings >= 2.12.0
 
-- **Test Suite**: 86 unit tests covering all modules
-- **Pre-commit Hooks**: Ruff, BasedPyright, Bandit, pytest
+- **テストスイート**: 全モジュールをカバーする86個のユニットテスト
+- **pre-commitフック**: Ruff, BasedPyright, Bandit, pytest
 
 ---
 
