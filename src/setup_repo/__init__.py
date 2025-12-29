@@ -1,3 +1,3 @@
 """Setup Repository v2.0 - GitHub repository setup and sync tool."""
 
-__version__ = "2.0.0-alpha.1"
+__version__ = "2.0.0"
