@@ -77,25 +77,27 @@ def save_config(
     if github_token:
         lines.append(f'token = "{github_token}"')
 
-    lines.extend([
-        "",
-        "[workspace]",
-        f'dir = "{workspace_dir}"',
-        f"max_workers = {max_workers}",
-        "",
-        "[git]",
-        f"use_https = {str(use_https).lower()}",
-        f"ssl_no_verify = {str(git_ssl_no_verify).lower()}",
-        f"auto_prune = {str(auto_prune).lower()}",
-        f"auto_stash = {str(auto_stash).lower()}",
-        "",
-        "[logging]",
-    ])
+    lines.extend(
+        [
+            "",
+            "[workspace]",
+            f'dir = "{workspace_dir}"',
+            f"max_workers = {max_workers}",
+            "",
+            "[git]",
+            f"use_https = {str(use_https).lower()}",
+            f"ssl_no_verify = {str(git_ssl_no_verify).lower()}",
+            f"auto_prune = {str(auto_prune).lower()}",
+            f"auto_stash = {str(auto_stash).lower()}",
+            "",
+            "[logging]",
+        ]
+    )
 
     if log_file:
         lines.append(f'file = "{log_file}"')
     else:
-        lines.append("# file = \"~/.local/share/setup-repo/logs/setup-repo.jsonl\"")
+        lines.append('# file = "~/.local/share/setup-repo/logs/setup-repo.jsonl"')
 
     lines.append("")
 
