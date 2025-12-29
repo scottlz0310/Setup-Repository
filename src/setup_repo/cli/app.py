@@ -6,6 +6,7 @@ from typing import Annotated
 import typer
 
 from setup_repo.cli.commands.cleanup import cleanup
+from setup_repo.cli.commands.init import init
 from setup_repo.cli.commands.sync import sync
 from setup_repo.models.config import get_settings
 from setup_repo.utils.logging import configure_logging, get_logger
@@ -18,6 +19,7 @@ app = typer.Typer(
 )
 
 # Register commands
+app.command()(init)
 app.command()(sync)
 app.command()(cleanup)
 

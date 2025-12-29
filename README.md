@@ -1,6 +1,6 @@
 # Setup Repository
 
-[![Coverage](https://img.shields.io/badge/coverage-87.29%25-brightgreen)](output/htmlcov/index.html)
+[![Coverage](https://img.shields.io/badge/coverage-89.58%25-brightgreen)](output/htmlcov/index.html)
 [![Tests](https://github.com/scottlz0310/Setup-Repository/workflows/CI%2FCD%20Pipeline/badge.svg)](https://github.com/scottlz0310/Setup-Repository/actions)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
@@ -43,6 +43,20 @@ uv sync --dev
 
 ## Quick Start
 
+### 初期設定（推奨）
+
+```bash
+# 対話式ウィザードで設定
+setup-repo init
+```
+
+ウィザードでは以下を設定できます:
+
+- GitHub 認証（オーナー名・トークン）
+- ワークスペースディレクトリ
+- クローン方式（HTTPS/SSH）
+- 詳細オプション（ログ設定、auto-prune、auto-stash）
+
 ### リポジトリを同期
 
 ```bash
@@ -80,7 +94,45 @@ setup-repo cleanup --base develop
 
 ## Configuration
 
+設定は以下の優先順位で読み込まれます（上が優先）:
+
+1. 環境変数
+2. TOML 設定ファイル (`~/.config/setup-repo/config.toml`)
+3. 自動検出
+4. デフォルト値
+
+### TOML 設定ファイル（推奨）
+
+`setup-repo init` コマンドで対話式に設定ファイルを作成できます:
+
+```bash
+setup-repo init
+```
+
+設定ファイルは `~/.config/setup-repo/config.toml` に保存されます:
+
+```toml
+[github]
+owner = "your-username"
+token = "ghp_xxxxxxxxxxxx"
+
+[workspace]
+dir = "~/workspace"
+max_workers = 10
+
+[git]
+use_https = true
+ssl_no_verify = false
+auto_prune = true
+auto_stash = false
+
+[logging]
+file = "~/.local/share/setup-repo/logs/setup-repo.jsonl"
+```
+
 ### 環境変数
+
+環境変数は TOML 設定より優先されます:
 
 | 変数名 | 説明 | デフォルト |
 |--------|------|-----------|
@@ -90,18 +142,9 @@ setup-repo cleanup --base develop
 | `SETUP_REPO_MAX_WORKERS` | 並列処理数 | `10` |
 | `SETUP_REPO_USE_HTTPS` | HTTPS でクローン | `false` |
 | `SETUP_REPO_GIT_SSL_NO_VERIFY` | SSL 検証をスキップ | `false` |
+| `SETUP_REPO_AUTO_PRUNE` | pull 時に --prune | `true` |
+| `SETUP_REPO_AUTO_STASH` | pull 時に自動 stash | `false` |
 | `SETUP_REPO_LOG_FILE` | ログファイルパス | なし |
-
-### .env ファイル
-
-プロジェクトルートに `.env` ファイルを作成して設定できます:
-
-```env
-SETUP_REPO_GITHUB_OWNER=your-username
-SETUP_REPO_GITHUB_TOKEN=ghp_xxxxxxxxxxxx
-SETUP_REPO_WORKSPACE_DIR=/home/user/projects
-SETUP_REPO_MAX_WORKERS=10
-```
 
 ### 自動検出
 
@@ -123,6 +166,14 @@ Options:
   --log-file PATH JSON ログファイルパス
   --help          ヘルプを表示
 ```
+
+### init コマンド
+
+```bash
+setup-repo init
+```
+
+対話式ウィザードで設定ファイルを作成します。設定は `~/.config/setup-repo/config.toml` に保存されます。
 
 ### sync コマンド
 
@@ -208,6 +259,7 @@ src/setup_repo/
 │   ├── app.py              # Typer アプリケーション
 │   ├── output.py           # Rich 出力ヘルパー
 │   └── commands/
+│       ├── init.py         # init コマンド（設定ウィザード）
 │       ├── sync.py         # sync コマンド
 │       └── cleanup.py      # cleanup コマンド
 ├── core/                   # コアロジック
