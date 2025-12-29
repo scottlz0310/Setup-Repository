@@ -77,11 +77,12 @@ def save_config(
     if github_token:
         lines.append(f'token = "{github_token}"')
 
+    # Use as_posix() for cross-platform path format in TOML config
     lines.extend(
         [
             "",
             "[workspace]",
-            f'dir = "{workspace_dir}"',
+            f'dir = "{workspace_dir.as_posix()}"',
             f"max_workers = {max_workers}",
             "",
             "[git]",
@@ -95,7 +96,7 @@ def save_config(
     )
 
     if log_file:
-        lines.append(f'file = "{log_file}"')
+        lines.append(f'file = "{log_file.as_posix()}"')
     else:
         lines.append('# file = "~/.local/share/setup-repo/logs/setup-repo.jsonl"')
 

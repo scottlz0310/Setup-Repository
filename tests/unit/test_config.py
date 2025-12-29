@@ -1,5 +1,6 @@
 """Tests for application settings."""
 
+from collections.abc import Generator
 from pathlib import Path
 from unittest.mock import patch
 
@@ -13,6 +14,20 @@ from setup_repo.models.config import (
     reset_settings,
     save_config,
 )
+
+
+@pytest.fixture(autouse=True)
+def mock_load_config_file(request: pytest.FixtureRequest) -> Generator[None, None, None]:
+    """Ensure tests don't read user's actual config file.
+
+    Tests can skip this by using @pytest.mark.uses_real_config_loader
+    """
+    if "uses_real_config_loader" in [m.name for m in request.node.iter_markers()]:
+        yield
+        return
+
+    with patch("setup_repo.models.config.load_config_file", return_value={}):
+        yield
 
 
 class TestAppSettings:
@@ -278,6 +293,7 @@ class TestSaveConfig:
         assert "# file =" in content
 
 
+@pytest.mark.uses_real_config_loader
 class TestAppSettingsWithToml:
     """Tests for AppSettings loading from TOML."""
 

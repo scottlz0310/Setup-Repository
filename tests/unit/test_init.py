@@ -125,20 +125,22 @@ class TestConfigureWorkspace:
         assert workspace == Path("/default/workspace")
         assert workers == 10
 
-    def test_prompts_for_directory_when_not_confirmed(self) -> None:
+    def test_prompts_for_directory_when_not_confirmed(self, tmp_path: Path) -> None:
         """Test prompting for directory when not using default."""
         settings = MagicMock(spec=AppSettings)
         settings.workspace_dir = Path("/default/workspace")
         settings.max_workers = 10
 
+        custom_path = str(tmp_path / "custom")
+
         with patch("setup_repo.cli.commands.init.Confirm") as mock_confirm:
             mock_confirm.ask.side_effect = [False, True]
             with patch("setup_repo.cli.commands.init.Prompt") as mock_prompt:
-                mock_prompt.ask.return_value = "/custom/path"
+                mock_prompt.ask.return_value = custom_path
 
                 workspace, workers = _configure_workspace(settings)
 
-        assert workspace == Path("/custom/path")
+        assert workspace == Path(custom_path)
 
     def test_custom_max_workers(self) -> None:
         """Test setting custom max workers."""
@@ -252,17 +254,19 @@ class TestConfigureAdvanced:
         assert log_file is not None
         assert "setup-repo.jsonl" in str(log_file)
 
-    def test_logging_enabled_custom_path(self) -> None:
+    def test_logging_enabled_custom_path(self, tmp_path: Path) -> None:
         """Test with logging enabled using custom path."""
+        custom_log = str(tmp_path / "custom" / "log.jsonl")
+
         with patch("setup_repo.cli.commands.init.Confirm") as mock_confirm:
             mock_confirm.ask.side_effect = [True, False, True, True]
             with patch("setup_repo.cli.commands.init.Prompt") as mock_prompt:
-                mock_prompt.ask.return_value = "/custom/log.jsonl"
+                mock_prompt.ask.return_value = custom_log
 
                 log_enabled, log_file, auto_prune, auto_stash = _configure_advanced()
 
         assert log_enabled is True
-        assert log_file == Path("/custom/log.jsonl")
+        assert log_file == Path(custom_log)
         assert auto_stash is True
 
 
