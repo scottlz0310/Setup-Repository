@@ -1,377 +1,287 @@
-"""
-CLI機能のテスト
-
-マルチプラットフォームテスト方針に準拠したCLI機能のテスト
-"""
+"""Tests for CLI."""
 
 from pathlib import Path
-from unittest.mock import Mock, patch
-
-import pytest
-
-from setup_repo.cli import migration_cli, quality_cli, setup_cli, sync_cli, trend_cli
-from tests.multiplatform.helpers import verify_current_platform
-
-
-class TestCLI:
-    """CLI機能のテスト"""
-
-    def test_setup_cli_success(self):
-        """setupCLI実行成功テスト"""
-        verify_current_platform()  # プラットフォーム検証
-
-        args = Mock()
-
-        with patch("setup_repo.cli.run_interactive_setup") as mock_setup:
-            setup_cli(args)
-            mock_setup.assert_called_once()
-
-    def test_sync_cli_success(self):
-        """syncCLI実行成功テスト"""
-        verify_current_platform()  # プラットフォーム検証
-
-        args = Mock()
-        args.owner = None
-        args.dest = None
-        args.dry_run = False
-        args.force = False
-        args.use_https = False
-        args.sync_only = False
-        args.auto_stash = False
-        args.skip_uv_install = False
-
-        with patch("setup_repo.cli.load_config") as mock_load, patch("setup_repo.cli.sync_repositories") as mock_sync:
-            mock_load.return_value = {
-                "use_https": False,
-                "sync_only": False,
-                "auto_stash": False,
-                "skip_uv_install": False,
-            }
-            sync_cli(args)
-            mock_sync.assert_called_once()
-
-    def test_quality_cli_success(self):
-        """qualityCLI実行成功テスト"""
-        verify_current_platform()  # プラットフォーム検証
-
-        args = Mock()
-        args.project_root = None
-        args.output = None
-        args.save_trend = False
-
-        with patch("setup_repo.cli.QualityMetricsCollector") as mock_collector:
-            mock_instance = Mock()
-            mock_metrics = Mock()
-            mock_metrics.get_quality_score.return_value = 85.0
-            mock_metrics.test_coverage = 90.0
-            mock_metrics.ruff_issues = 2
-            mock_metrics.mypy_errors = 1
-            mock_metrics.security_vulnerabilities = 0
-            mock_metrics.is_passing.return_value = True
-            mock_instance.collect_all_metrics.return_value = mock_metrics
-            mock_instance.save_metrics_report.return_value = "report.json"
-            mock_collector.return_value = mock_instance
-
-            with patch("builtins.print"):
-                quality_cli(args)
-
-            mock_collector.assert_called_once()
-            mock_instance.collect_all_metrics.assert_called_once()
-
-    def test_trend_cli_analyze(self):
-        """trendCLI分析テスト"""
-        args = Mock()
-        args.project_root = None
-        args.trend_file = None
-        args.action = "analyze"
-        args.days = 30
-
-        with patch("setup_repo.cli.QualityTrendManager") as mock_manager:
-            mock_instance = Mock()
-            mock_analysis = Mock()
-            mock_analysis.period_days = 30
-            mock_analysis.data_points = 10
-            mock_analysis.average_quality_score = 85.0
-            mock_analysis.average_coverage = 90.0
-            mock_analysis.quality_score_trend = "improving"
-            mock_analysis.coverage_trend = "stable"
-            mock_analysis.recent_issues = []
-            mock_analysis.recommendations = ["Keep up the good work"]
-            mock_instance.analyze_trend.return_value = mock_analysis
-            mock_manager.return_value = mock_instance
-
-            with patch("builtins.print"):
-                trend_cli(args)
-
-            mock_manager.assert_called_once()
-            mock_instance.analyze_trend.assert_called_once_with(30)
-
-    def test_quality_cli_with_project_root(self):
-        """品質CLI プロジェクトルート指定テスト"""
-        args = Mock()
-        args.project_root = "test_project"
-        args.output = None
-        args.save_trend = False
-
-        with (
-            patch("setup_repo.cli.QualityMetricsCollector") as mock_collector,
-            patch("setup_repo.cli.safe_path_join") as mock_path_join,
-        ):
-            mock_path_join.return_value = Path("test_project")
-            mock_instance = Mock()
-            mock_metrics = Mock()
-            mock_metrics.get_quality_score.return_value = 85.0
-            mock_metrics.test_coverage = 90.0
-            mock_metrics.ruff_issues = 0
-            mock_metrics.mypy_errors = 0
-            mock_metrics.security_vulnerabilities = 0
-            mock_metrics.is_passing.return_value = True
-            mock_instance.collect_all_metrics.return_value = mock_metrics
-            mock_instance.save_metrics_report.return_value = "report.json"
-            mock_collector.return_value = mock_instance
-
-            with patch("builtins.print"):
-                quality_cli(args)
-
-            mock_collector.assert_called_once_with(Path("test_project"))
-
-    def test_trend_cli_report_action(self):
-        """トレンドCLI レポート生成テスト"""
-        args = Mock()
-        args.project_root = None
-        args.trend_file = None
-        args.action = "report"
-        args.output = None
-
-        with (
-            patch("setup_repo.cli.QualityTrendManager") as mock_manager,
-            patch("setup_repo.cli.safe_path_join") as mock_path_join,
-        ):
-            mock_path_join.return_value = Path("trend-report.html")
-            mock_instance = Mock()
-            mock_instance.generate_html_report.return_value = Path("report.html")
-            mock_manager.return_value = mock_instance
-
-            with patch("builtins.print"):
-                trend_cli(args)
-
-            mock_instance.generate_html_report.assert_called_once()
-
-    def test_trend_cli_clean_action_basic(self):
-        """トレンドCLI クリーンアクション基本テスト"""
-        args = Mock()
-        args.project_root = None
-        args.trend_file = None
-        args.action = "clean"
-        args.keep_days = 30
-
-        with (
-            patch("setup_repo.cli.QualityTrendManager") as mock_manager,
-            patch("setup_repo.cli.safe_path_join") as mock_path_join,
-        ):
-            mock_path_join.side_effect = [Path.cwd(), Path("output/quality-trends"), Path("trend-data.json")]
-            mock_instance = Mock()
-            mock_instance.load_trend_data.return_value = []
-            mock_manager.return_value = mock_instance
-
-            with patch("builtins.print"):
-                trend_cli(args)
-
-            mock_instance.load_trend_data.assert_called_once()
-
-    def test_trend_cli_clean_action_without_keep_days(self):
-        """トレンドCLI クリーンアクション（保持日数未指定）テスト"""
-        args = Mock()
-        args.project_root = None
-        args.trend_file = None
-        args.action = "clean"
-        args.keep_days = None
-
-        with (
-            patch("setup_repo.cli.QualityTrendManager") as mock_manager,
-            patch("setup_repo.cli.safe_path_join") as mock_path_join,
-        ):
-            mock_path_join.side_effect = [Path.cwd(), Path("output/quality-trends"), Path("trend-data.json")]
-            mock_instance = Mock()
-            mock_manager.return_value = mock_instance
-
-            with patch("builtins.print") as mock_print:
-                trend_cli(args)
-
-            mock_print.assert_called_with("--keep-daysオプションを指定してください")
-
-    def test_quality_cli_invalid_project_root(self):
-        """品質CLI 不正なプロジェクトルートエラーテスト"""
-        args = Mock()
-        args.project_root = "../../../etc/passwd"
-        args.output = None
-        args.save_trend = False
-
-        with (
-            patch("setup_repo.cli.safe_path_join", side_effect=ValueError("不正なパス")),
-            pytest.raises(ValueError, match="不正なプロジェクトルートパス"),
-        ):
-            quality_cli(args)
-
-    def test_quality_cli_with_save_trend(self):
-        """品質CLI トレンドデータ保存テスト"""
-        args = Mock()
-        args.project_root = None
-        args.output = None
-        args.save_trend = True
-
-        with (
-            patch("setup_repo.cli.QualityMetricsCollector") as mock_collector,
-            patch("setup_repo.cli.QualityTrendManager") as mock_trend_manager,
-            patch("setup_repo.cli.safe_path_join") as mock_path_join,
-        ):
-            mock_path_join.side_effect = [Path.cwd(), Path("output/quality-trends"), Path("trend-data.json")]
-            mock_instance = Mock()
-            mock_metrics = Mock()
-            mock_metrics.get_quality_score.return_value = 85.0
-            mock_metrics.test_coverage = 90.0
-            mock_metrics.ruff_issues = 0
-            mock_metrics.mypy_errors = 0
-            mock_metrics.security_vulnerabilities = 0
-            mock_metrics.is_passing.return_value = True
-            mock_instance.collect_all_metrics.return_value = mock_metrics
-            mock_instance.save_metrics_report.return_value = "report.json"
-            mock_collector.return_value = mock_instance
-
-            mock_trend_instance = Mock()
-            mock_trend_manager.return_value = mock_trend_instance
-
-            with patch("builtins.print"):
-                quality_cli(args)
-
-            mock_trend_instance.add_data_point.assert_called_once_with(mock_metrics)
-
-    def test_quality_cli_failing_quality_gate(self):
-        """品質CLI 品質基準未達成テスト"""
-        args = Mock()
-        args.project_root = None
-        args.output = None
-        args.save_trend = False
-
-        with (
-            patch("setup_repo.cli.QualityMetricsCollector") as mock_collector,
-            patch("builtins.exit") as mock_exit,
-        ):
-            mock_instance = Mock()
-            mock_metrics = Mock()
-            mock_metrics.get_quality_score.return_value = 50.0
-            mock_metrics.test_coverage = 60.0
-            mock_metrics.ruff_issues = 10
-            mock_metrics.mypy_errors = 5
-            mock_metrics.security_vulnerabilities = 2
-            mock_metrics.is_passing.return_value = False
-            mock_instance.collect_all_metrics.return_value = mock_metrics
-            mock_instance.save_metrics_report.return_value = "report.json"
-            mock_collector.return_value = mock_instance
-
-            with patch("builtins.print"):
-                quality_cli(args)
-
-            mock_exit.assert_called_once_with(1)
-
-    def test_migration_cli_check(self):
-        """マイグレーションCLI チェックテスト"""
-        args = Mock()
-        args.project_root = None
-        args.action = "check"
-
-        with (
-            patch("setup_repo.cli.MigrationManager") as mock_manager,
-            patch("builtins.print"),
-        ):
-            mock_instance = Mock()
-            mock_result = {
-                "current_version": "1.0.0",
-                "target_version": "1.2.0",
-                "migration_needed": True,
-                "changes": [{"description": "新しい設定項目", "type": "config_update"}],
-            }
-            mock_instance.check_migration_needed.return_value = mock_result
-            mock_manager.return_value = mock_instance
-
-            migration_cli(args)
-
-            mock_instance.check_migration_needed.assert_called_once()
-
-    def test_migration_cli_run(self):
-        """マイグレーションCLI 実行テスト"""
-        args = Mock()
-        args.project_root = None
-        args.action = "run"
-        args.no_backup = False
-
-        with (
-            patch("setup_repo.cli.MigrationManager") as mock_manager,
-            patch("builtins.print"),
-        ):
-            mock_instance = Mock()
-            mock_result = {
-                "success": True,
-                "message": "マイグレーションが完了しました",
-                "backup_path": "/path/to/backup.tar.gz",
-                "migration_result": {"migrations": [{"description": "設定ファイルを更新しました"}]},
-            }
-            mock_instance.run_migration.return_value = mock_result
-            mock_manager.return_value = mock_instance
-
-            migration_cli(args)
-
-            mock_instance.run_migration.assert_called_once_with(backup=True)
-
-    def test_migration_cli_rollback(self):
-        """マイグレーションCLI ロールバックテスト"""
-        args = Mock()
-        args.project_root = None
-        args.action = "rollback"
-        args.backup_name = "test_backup"
-
-        with (
-            patch("setup_repo.cli.MigrationManager") as mock_manager,
-            patch("builtins.print"),
-        ):
-            mock_instance = Mock()
-            mock_result = {"success": True, "message": "バックアップ 'test_backup' からロールバックしました"}
-            mock_instance.rollback_migration.return_value = mock_result
-            mock_manager.return_value = mock_instance
-
-            migration_cli(args)
-
-            mock_instance.rollback_migration.assert_called_once_with("test_backup")
-
-    def test_migration_cli_run_failure(self):
-        """マイグレーションCLI 実行失敗テスト"""
-        args = Mock()
-        args.project_root = None
-        args.action = "run"
-        args.no_backup = False
-
-        with (
-            patch("setup_repo.cli.MigrationManager") as mock_manager,
-            patch("builtins.print"),
-            patch("builtins.exit") as mock_exit,
-        ):
-            mock_instance = Mock()
-            mock_result = {"success": False, "error": "マイグレーション失敗", "backup_path": "/path/to/backup.tar.gz"}
-            mock_instance.run_migration.return_value = mock_result
-            mock_manager.return_value = mock_instance
-
-            migration_cli(args)
-
-            mock_exit.assert_called_once_with(1)
-
-    def test_migration_cli_invalid_project_root(self):
-        """マイグレーションCLI 不正なプロジェクトルートエラーテスト"""
-        args = Mock()
-        args.project_root = "../../../etc/passwd"
-        args.action = "check"
-
-        with (
-            patch("setup_repo.cli.safe_path_join", side_effect=ValueError("不正なパス")),
-            pytest.raises(ValueError, match="不正なプロジェクトルートパス"),
-        ):
-            migration_cli(args)
+from unittest.mock import MagicMock, patch
+
+from typer.testing import CliRunner
+
+from setup_repo.cli.app import app
+from setup_repo.models.repository import Repository
+from setup_repo.models.result import ProcessResult, ResultStatus, SyncSummary
+
+runner = CliRunner()
+
+
+class TestAppCallback:
+    """Tests for main app callback."""
+
+    def test_help(self) -> None:
+        """Test --help option."""
+        result = runner.invoke(app, ["--help"])
+        assert result.exit_code == 0
+        assert "setup-repo" in result.stdout or "GitHub" in result.stdout
+
+    def test_no_args_shows_help(self) -> None:
+        """Test no arguments shows help and exits with code 2."""
+        result = runner.invoke(app, [])
+        # no_args_is_help=True causes exit code 2
+        assert result.exit_code == 2
+        assert "Usage" in result.stdout
+
+
+class TestSyncCommand:
+    """Tests for sync command."""
+
+    def test_sync_help(self) -> None:
+        """Test sync --help."""
+        result = runner.invoke(app, ["sync", "--help"])
+        assert result.exit_code == 0
+        assert "owner" in result.stdout.lower() or "Owner" in result.stdout
+
+    @patch("setup_repo.cli.commands.sync.get_settings")
+    def test_sync_no_owner(self, mock_settings: MagicMock) -> None:
+        """Test sync without owner."""
+        mock_settings.return_value = MagicMock(
+            github_owner="",
+            github_token=None,
+            workspace_dir=Path("/tmp"),
+            git_ssl_no_verify=False,
+        )
+
+        result = runner.invoke(app, ["sync"])
+        assert result.exit_code == 1
+        assert "owner" in result.stdout.lower() or "Error" in result.stdout
+
+    @patch("setup_repo.cli.commands.sync.ParallelProcessor")
+    @patch("setup_repo.cli.commands.sync.GitOperations")
+    @patch("setup_repo.cli.commands.sync.GitHubClient")
+    @patch("setup_repo.cli.commands.sync.get_settings")
+    def test_sync_success(
+        self,
+        mock_settings: MagicMock,
+        mock_client_class: MagicMock,
+        mock_git_class: MagicMock,
+        mock_processor_class: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """Test successful sync."""
+        # Setup mocks
+        mock_settings.return_value = MagicMock(
+            github_owner="test-user",
+            github_token="token",
+            workspace_dir=tmp_path,
+            git_ssl_no_verify=False,
+            use_https=True,
+        )
+
+        mock_client = MagicMock()
+        mock_client.get_repositories.return_value = [
+            Repository(
+                name="repo1",
+                full_name="test-user/repo1",
+                clone_url="https://github.com/test-user/repo1.git",
+                ssh_url="git@github.com:test-user/repo1.git",
+            ),
+        ]
+        mock_client_class.return_value = mock_client
+
+        mock_processor = MagicMock()
+        mock_processor.process.return_value = SyncSummary(
+            total=1,
+            success=1,
+            failed=0,
+            skipped=0,
+            duration=1.0,
+            results=[
+                ProcessResult(
+                    repo_name="repo1",
+                    status=ResultStatus.SUCCESS,
+                    message="Cloned",
+                )
+            ],
+        )
+        mock_processor_class.return_value = mock_processor
+
+        result = runner.invoke(app, ["sync"])
+        assert result.exit_code == 0
+
+    @patch("setup_repo.cli.commands.sync.GitHubClient")
+    @patch("setup_repo.cli.commands.sync.get_settings")
+    def test_sync_no_repos(
+        self,
+        mock_settings: MagicMock,
+        mock_client_class: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """Test sync with no repositories."""
+        mock_settings.return_value = MagicMock(
+            github_owner="test-user",
+            github_token="token",
+            workspace_dir=tmp_path,
+            git_ssl_no_verify=False,
+        )
+
+        mock_client = MagicMock()
+        mock_client.get_repositories.return_value = []
+        mock_client_class.return_value = mock_client
+
+        result = runner.invoke(app, ["sync"])
+        assert result.exit_code == 0
+        assert "Warning" in result.stdout or "No" in result.stdout
+
+    @patch("setup_repo.cli.commands.sync.GitHubClient")
+    @patch("setup_repo.cli.commands.sync.get_settings")
+    def test_sync_dry_run(
+        self,
+        mock_settings: MagicMock,
+        mock_client_class: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """Test sync dry-run mode."""
+        mock_settings.return_value = MagicMock(
+            github_owner="test-user",
+            github_token="token",
+            workspace_dir=tmp_path,
+            git_ssl_no_verify=False,
+        )
+
+        mock_client = MagicMock()
+        mock_client.get_repositories.return_value = [
+            Repository(
+                name="repo1",
+                full_name="test-user/repo1",
+                clone_url="https://github.com/test-user/repo1.git",
+                ssh_url="git@github.com:test-user/repo1.git",
+            ),
+        ]
+        mock_client_class.return_value = mock_client
+
+        result = runner.invoke(app, ["sync", "--dry-run"])
+        assert result.exit_code == 0
+        assert "would be synced" in result.stdout
+
+
+class TestCleanupCommand:
+    """Tests for cleanup command."""
+
+    def test_cleanup_help(self) -> None:
+        """Test cleanup --help."""
+        result = runner.invoke(app, ["cleanup", "--help"])
+        assert result.exit_code == 0
+        assert "base" in result.stdout.lower() or "branch" in result.stdout.lower()
+
+    def test_cleanup_not_git_repo(self, tmp_path: Path) -> None:
+        """Test cleanup on non-git directory."""
+        result = runner.invoke(app, ["cleanup", str(tmp_path)])
+        assert result.exit_code == 1
+        assert "Git" in result.stdout or "repository" in result.stdout.lower()
+
+    @patch("setup_repo.cli.commands.cleanup.GitOperations")
+    def test_cleanup_no_branches(
+        self,
+        mock_git_class: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """Test cleanup with no merged branches."""
+        # Create .git directory
+        (tmp_path / ".git").mkdir()
+
+        mock_git = MagicMock()
+        mock_git.get_merged_branches.return_value = []
+        mock_git_class.return_value = mock_git
+
+        result = runner.invoke(app, ["cleanup", str(tmp_path)])
+        assert result.exit_code == 0
+        assert "No" in result.stdout or "✓" in result.stdout
+
+    @patch("setup_repo.cli.commands.cleanup.GitOperations")
+    def test_cleanup_dry_run(
+        self,
+        mock_git_class: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """Test cleanup dry-run mode."""
+        (tmp_path / ".git").mkdir()
+
+        mock_git = MagicMock()
+        mock_git.get_merged_branches.return_value = ["feature/done", "bugfix/fixed"]
+        mock_git_class.return_value = mock_git
+
+        result = runner.invoke(app, ["cleanup", str(tmp_path), "--dry-run"])
+        assert result.exit_code == 0
+        assert "would be deleted" in result.stdout
+
+    @patch("setup_repo.cli.commands.cleanup.GitOperations")
+    def test_cleanup_with_force(
+        self,
+        mock_git_class: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """Test cleanup with force flag."""
+        (tmp_path / ".git").mkdir()
+
+        mock_git = MagicMock()
+        mock_git.get_merged_branches.return_value = ["feature/done"]
+        mock_git.delete_branch.return_value = True
+        mock_git_class.return_value = mock_git
+
+        result = runner.invoke(app, ["cleanup", str(tmp_path), "--force"])
+        assert result.exit_code == 0
+        assert "deleted" in result.stdout
+
+
+class TestOutputHelpers:
+    """Tests for output helper functions."""
+
+    def test_show_summary(self) -> None:
+        """Test show_summary function."""
+        from setup_repo.cli.output import show_summary
+
+        summary = SyncSummary(
+            total=3,
+            success=2,
+            failed=1,
+            skipped=0,
+            duration=5.0,
+            results=[
+                ProcessResult(
+                    repo_name="repo1",
+                    status=ResultStatus.SUCCESS,
+                    message="Done",
+                ),
+                ProcessResult(
+                    repo_name="repo2",
+                    status=ResultStatus.SUCCESS,
+                    message="Done",
+                ),
+                ProcessResult(
+                    repo_name="repo3",
+                    status=ResultStatus.FAILED,
+                    error="Failed",
+                ),
+            ],
+        )
+
+        # Should not raise
+        show_summary(summary)
+
+    def test_show_error(self) -> None:
+        """Test show_error function."""
+        from setup_repo.cli.output import show_error
+
+        # Should not raise
+        show_error("Test error message")
+
+    def test_show_warning(self) -> None:
+        """Test show_warning function."""
+        from setup_repo.cli.output import show_warning
+
+        # Should not raise
+        show_warning("Test warning message")
+
+    def test_show_success(self) -> None:
+        """Test show_success function."""
+        from setup_repo.cli.output import show_success
+
+        # Should not raise
+        show_success("Test success message")

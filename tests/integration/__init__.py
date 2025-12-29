@@ -1,1 +1,1 @@
-# 統合テストパッケージ
+"""Integration tests for Setup Repository."""

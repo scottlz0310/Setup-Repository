@@ -1,1 +1,1 @@
-# テストパッケージ
+"""Tests for Setup Repository."""

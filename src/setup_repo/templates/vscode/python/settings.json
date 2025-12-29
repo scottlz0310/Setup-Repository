@@ -17,7 +17,6 @@
       120
     ]
   },
-  // BasedPyright is configured as the primary type checker via extension settings below
   "basedpyright.analysis.typeCheckingMode": "strict",
   "basedpyright.analysis.diagnosticMode": "workspace",
   "basedpyright.analysis.inlayHints.functionReturnTypes": true,
@@ -34,7 +33,6 @@
   "extensions.recommendations": [
     "ms-python.python",
     "astral-sh.ruff",
-    // If desired, installed MyPy extension can be present; BasedPyright is preferred
     "detachhead.basedpyright"
   ]
 }

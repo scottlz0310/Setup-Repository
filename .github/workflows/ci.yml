@@ -178,14 +178,9 @@ jobs:
           --cov-report=xml `
           --cov-config=pyproject.toml `
           --junit-xml=test-results.xml `
-          --json-report `
-          --json-report-file=test-report.json `
           -v --tb=short `
           -x --maxfail=10 `
-          -m "not performance and not stress" `
-          --ignore=tests/performance/ `
           --disable-warnings `
-          --timeout=120 `
           -o addopts=""
 
           if ($LASTEXITCODE -eq 0) {
@@ -199,7 +194,7 @@ jobs:
           Write-Host "Testing CLI help command" -ForegroundColor Cyan
           # Windows環境ではstdout/stderrのリダイレクトを使用してUnicodeEncodeErrorを回避
           $env:PYTHONIOENCODING = "utf-8"
-          & uv run python main.py --help | Out-Null
+          & uv run setup-repo --help | Out-Null
           if ($LASTEXITCODE -eq 0) {
           Write-Host "✅ CLI help test passed" -ForegroundColor Green
           } else {
@@ -221,8 +216,8 @@ jobs:
           export PRE_COMMIT="1"
           EXIT_CODE=0
 
-          # 全テスト実行（パフォーマンステストを除く）
-          echo "包括的テストスイートを実行します（パフォーマンステストを除く）"
+          # 全テスト実行
+          echo "テストスイートを実行します"
           if ! uv run pytest tests/ \
           --cov=src/setup_repo \
           --cov-report=term-missing \
@@ -230,23 +225,18 @@ jobs:
           --cov-report=xml \
           --cov-config=pyproject.toml \
           --junit-xml=test-results.xml \
-          --json-report \
-          --json-report-file=test-report.json \
           -v --tb=short \
           -x --maxfail=10 \
-          -m "not performance and not stress" \
-          --ignore=tests/performance/ \
           --disable-warnings \
-          --timeout=120 \
           -n auto \
           --dist=worksteal; then
-          echo "❌ 単体テストが失敗しました"
+          echo "❌ テストが失敗しました"
           EXIT_CODE=1
           fi
 
           # CLIヘルプテスト
           echo "CLIヘルプテストを実行します"
-          if ! uv run python main.py --help; then
+          if ! uv run setup-repo --help; then
           echo "❌ CLIヘルプテストが失敗しました"
           EXIT_CODE=1
           fi
@@ -270,26 +260,15 @@ jobs:
             .coverage
           retention-days: 30
 
-      - name: Verify platform detection (quick check)
+      - name: Verify CLI works
         run: |
-          echo "::group::プラットフォーム検出確認"
-          echo "✅ マルチプラットフォームテストが成功したため、プラットフォーム検出は正常に動作しています"
+          echo "::group::CLI動作確認"
           echo "📋 実行環境: ${{ matrix.os }} / Python ${{ matrix.python-version }}"
           echo "🔧 CI環境: ${{ runner.os }}"
 
-          # プラットフォーム情報を簡易取得
-          uv run python -c "
-          try:
-              from src.setup_repo.platform_detector import PlatformDetector
-              detector = PlatformDetector()
-              info = detector.get_platform_info()
-              print('💻 検出されたプラットフォーム: ' + info.display_name)
-              print('🐚 シェル: ' + info.shell)
-              print('📦 パッケージマネージャー: ' + ', '.join(info.package_managers))
-          except Exception as e:
-              print('⚠️ プラットフォーム情報取得エラー: ' + str(e))
-              print('ℹ️ テストが成功しているため、機能は正常です')
-          "
+          # CLIの動作確認
+          uv run setup-repo --help
+          echo "✅ CLIが正常に動作しています"
 
           echo "::endgroup::"
 
@@ -356,12 +335,9 @@ jobs:
           --cov-report=html \
           --cov-config=pyproject.toml \
           --junit-xml=test-results.xml \
-          --json-report \
-          --json-report-file=test-report.json \
           -v --tb=short \
           -x --maxfail=5 \
           --disable-warnings \
-          --timeout=120 \
           -n auto \
           --dist=worksteal
           echo "✅ テスト+カバレッジチェック完了（pyproject.toml設定準拠）"
@@ -408,52 +384,16 @@ jobs:
         run: |
           echo "統合セキュリティスキャンを実行します..."
 
-          # セキュリティツールの利用可能性を確認
-          echo "セキュリティツールの利用可能性を確認します:"
-          BANDIT_AVAILABLE=false
-          SAFETY_AVAILABLE=false
-
-          if uv run bandit --version >/dev/null 2>&1; then
-          echo "- Bandit: 利用可能"
-          BANDIT_AVAILABLE=true
-          else
-          echo "- Bandit: 利用不可"
-          fi
-
-          if uv run safety --version >/dev/null 2>&1; then
-          echo "- Safety: 利用可能"
-          SAFETY_AVAILABLE=true
-          else
-          echo "- Safety: 利用不可"
-          fi
-
           # Banditスキャンを実行（pyproject.toml設定準拠）
-          if [ "$BANDIT_AVAILABLE" = "true" ]; then
-            echo "Banditセキュリティスキャンを実行します（pyproject.toml設定準拠）..."
-            # yamllint disable-line rule:line-length
-            BANDIT_ARGS=$(uv run python -c "from scripts.security_config import generate_bandit_args; print(' '.join(generate_bandit_args()))" 2>/dev/null || echo "-r src/ -f json")
-            uv run bandit $BANDIT_ARGS -o bandit-report.json || echo "Banditスキャンが警告付きで終了しました"
+          if uv run bandit --version >/dev/null 2>&1; then
+            echo "Banditセキュリティスキャンを実行します..."
+            uv run bandit -r src/ -f json -o bandit-report.json || echo "Banditスキャンが警告付きで終了しました"
+            echo "✅ Banditスキャン完了"
           else
-            echo "Banditが利用できないため、スキップします"
+            echo "⚠️ Banditが利用できないため、スキップします"
           fi
 
-          # Safetyチェックを実行（pyproject.toml設定準拠）
-          if [ "$SAFETY_AVAILABLE" = "true" ]; then
-            echo "Safety依存関係チェックを実行します（pyproject.toml設定準拠）..."
-            # yamllint disable-line rule:line-length
-            SAFETY_ARGS=$(uv run python -c "from scripts.security_config import generate_safety_args; print(' '.join(generate_safety_args()))" 2>/dev/null || echo "check --json --output safety-report.json")
-            uv run safety $SAFETY_ARGS || echo "Safetyチェックが警告付きで終了しました"
-          else
-            echo "Safetyが利用できないため、スキップします"
-          fi
-
-          # ツールが利用できない場合のメッセージ
-          if [ "$BANDIT_AVAILABLE" = "false" ] && [ "$SAFETY_AVAILABLE" = "false" ]; then
-          echo "警告: セキュリティツールが利用できません。CI環境では依存関係のインストールに失敗することがあります。"
-          echo "セキュリティスキャンをスキップします。"
-          else
           echo "セキュリティスキャンが完了しました。"
-          fi
 
       - name: Upload security scan results
         uses: actions/upload-artifact@v6
