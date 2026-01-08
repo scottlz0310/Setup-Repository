@@ -12,7 +12,7 @@ fail_fast: true
 repos:
   # Ruff - 高速なPythonリンター・フォーマッター
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.10
+    rev: v0.14.11
     hooks:
       # リンティング（自動修正付き）
       - id: ruff
