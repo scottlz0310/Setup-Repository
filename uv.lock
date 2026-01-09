@@ -41,14 +41,14 @@ wheels = [
 
 [[package]]
 name = "basedpyright"
-version = "1.37.0"
+version = "1.37.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "nodejs-wheel-binaries" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/60/d7/9476af6f45a70e8d23045ec59d99c2698513b7395283cadc75caeeea2b83/basedpyright-1.37.0.tar.gz", hash = "sha256:affbffced97a04a08bfc44aef2da43951a5ab5e2e55921a144ed786c4fd2c6ad", size = 22837441, upload-time = "2026-01-04T09:59:32.652Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/0c/b0/fbba81ea29eed1274e965cd0445f0d6020b467ff4d3393791e4d6ae02e64/basedpyright-1.37.1.tar.gz", hash = "sha256:1f47bc6f45cbcc5d6f8619d60aa42128e4b38942f5118dcd4bc20c3466c5e02f", size = 25235384, upload-time = "2026-01-08T14:42:46.447Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e8/63/753918f0bad07a1b24755a540b64bca1388322615025d4c954e3740fcdbe/basedpyright-1.37.0-py3-none-any.whl", hash = "sha256:261a02a8732a19f3f585e2940582147560058626a062a2320724de84fb2dc41b", size = 11884509, upload-time = "2026-01-04T09:59:35.997Z" },
+    { url = "https://files.pythonhosted.org/packages/ad/d6/6b33bb49f08d761d7c958a1e3cecfb3ffbdcf4ba6bbed65b23ab47516b75/basedpyright-1.37.1-py3-none-any.whl", hash = "sha256:caf3adfe54f51623241712f8b4367adb51ef8a8c2288e3e1ec4118319661340d", size = 12297397, upload-time = "2026-01-08T14:42:50.306Z" },
 ]
 
 [[package]]
@@ -806,14 +806,14 @@ wheels = [
 
 [[package]]
 name = "virtualenv"
-version = "20.35.4"
+version = "20.36.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "distlib" },
     { name = "filelock" },
     { name = "platformdirs" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/20/28/e6f1a6f655d620846bd9df527390ecc26b3805a0c5989048c210e22c5ca9/virtualenv-20.35.4.tar.gz", hash = "sha256:643d3914d73d3eeb0c552cbb12d7e82adf0e504dbf86a3182f8771a153a1971c", size = 6028799, upload-time = "2025-10-29T06:57:40.511Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/78/49/87e23d8f742f10f965bce5d6b285fc88a4f436b11daf6b6225d4d66f8492/virtualenv-20.36.0.tar.gz", hash = "sha256:a3601f540b515a7983508113f14e78993841adc3d83710fa70f0ac50f43b23ed", size = 6032237, upload-time = "2026-01-07T17:20:04.975Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/79/0c/c05523fa3181fdf0c9c52a6ba91a23fbf3246cc095f26f6516f9c60e6771/virtualenv-20.35.4-py3-none-any.whl", hash = "sha256:c21c9cede36c9753eeade68ba7d523529f228a403463376cf821eaae2b650f1b", size = 6005095, upload-time = "2025-10-29T06:57:37.598Z" },
+    { url = "https://files.pythonhosted.org/packages/eb/6a/0af36875e0023a1f2d0b66b4051721fc26740e947696922df1665b75e5d3/virtualenv-20.36.0-py3-none-any.whl", hash = "sha256:e7ded577f3af534fd0886d4ca03277f5542053bedb98a70a989d3c22cfa5c9ac", size = 6008261, upload-time = "2026-01-07T17:20:02.87Z" },
 ]
