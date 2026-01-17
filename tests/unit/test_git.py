@@ -214,3 +214,99 @@ class TestDeleteBranch:
         result = git.delete_branch(tmp_path, "nonexistent")
 
         assert result is False
+
+
+class TestGetRemoteUrl:
+    """Tests for get_remote_url method."""
+
+    @patch("subprocess.run")
+    def test_get_remote_url_success(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        """Test getting remote URL."""
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout="https://github.com/user/repo.git\n",
+        )
+
+        git = GitOperations()
+        url = git.get_remote_url(tmp_path)
+
+        assert url == "https://github.com/user/repo.git"
+
+    @patch("subprocess.run")
+    def test_get_remote_url_not_found(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        """Test when remote URL is not found."""
+        mock_run.return_value = MagicMock(returncode=1, stdout="")
+
+        git = GitOperations()
+        url = git.get_remote_url(tmp_path)
+
+        assert url is None
+
+
+class TestParseGithubRepo:
+    """Tests for parse_github_repo method."""
+
+    def test_parse_ssh_url(self) -> None:
+        """Test parsing SSH URL."""
+        git = GitOperations()
+        result = git.parse_github_repo("git@github.com:owner/repo.git")
+
+        assert result == ("owner", "repo")
+
+    def test_parse_ssh_url_without_git_suffix(self) -> None:
+        """Test parsing SSH URL without .git suffix."""
+        git = GitOperations()
+        result = git.parse_github_repo("git@github.com:owner/repo")
+
+        assert result == ("owner", "repo")
+
+    def test_parse_https_url(self) -> None:
+        """Test parsing HTTPS URL."""
+        git = GitOperations()
+        result = git.parse_github_repo("https://github.com/owner/repo.git")
+
+        assert result == ("owner", "repo")
+
+    def test_parse_https_url_without_git_suffix(self) -> None:
+        """Test parsing HTTPS URL without .git suffix."""
+        git = GitOperations()
+        result = git.parse_github_repo("https://github.com/owner/repo")
+
+        assert result == ("owner", "repo")
+
+    def test_parse_non_github_url(self) -> None:
+        """Test parsing non-GitHub URL."""
+        git = GitOperations()
+        result = git.parse_github_repo("https://gitlab.com/owner/repo.git")
+
+        assert result is None
+
+
+class TestGetLocalBranches:
+    """Tests for get_local_branches method."""
+
+    @patch("subprocess.run")
+    def test_get_local_branches(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        """Test getting local branches."""
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout="main\nfeature/test\nbugfix/issue\n",
+        )
+
+        git = GitOperations()
+        branches = git.get_local_branches(tmp_path)
+
+        assert "main" in branches
+        assert "feature/test" in branches
+        assert "bugfix/issue" in branches
+        assert len(branches) == 3
+
+    @patch("subprocess.run")
+    def test_get_local_branches_empty(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        """Test when no branches found."""
+        mock_run.return_value = MagicMock(returncode=0, stdout="")
+
+        git = GitOperations()
+        branches = git.get_local_branches(tmp_path)
+
+        assert branches == []

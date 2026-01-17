@@ -124,6 +124,56 @@ class TestGitHubClient:
         assert len(repos) == 1
         assert repos[0].name == "repo1"
 
+    @patch("httpx.Client.get")
+    def test_get_merged_pull_requests(self, mock_get: MagicMock) -> None:
+        """Test fetching merged pull requests."""
+        mock_response = MagicMock()
+        mock_response.json.return_value = [
+            {
+                "head": {"ref": "feature/branch1"},
+                "merged_at": "2024-01-01T00:00:00Z",
+                "merge_commit_sha": "abc123",
+            },
+            {
+                "head": {"ref": "feature/branch2"},
+                "merged_at": "2024-01-02T00:00:00Z",
+                "merge_commit_sha": "def456",
+            },
+            {
+                # Not merged, just closed
+                "head": {"ref": "feature/branch3"},
+                "merged_at": None,
+            },
+        ]
+        mock_response.raise_for_status = MagicMock()
+
+        # First call returns data, second returns empty (end of pagination)
+        mock_get.side_effect = [mock_response, MagicMock(json=lambda: [])]
+
+        with GitHubClient(token="test") as client:
+            merged_prs = client.get_merged_pull_requests("owner", "repo", "main")
+
+        assert len(merged_prs) == 2
+        assert "feature/branch1" in merged_prs
+        assert "feature/branch2" in merged_prs
+        assert "feature/branch3" not in merged_prs  # Not merged
+        assert merged_prs["feature/branch1"] == "abc123"
+        assert merged_prs["feature/branch2"] == "def456"
+
+    @patch("httpx.Client.get")
+    def test_get_merged_pull_requests_empty(self, mock_get: MagicMock) -> None:
+        """Test fetching merged PRs when there are none."""
+        mock_response = MagicMock()
+        mock_response.json.return_value = []
+        mock_response.raise_for_status = MagicMock()
+
+        mock_get.return_value = mock_response
+
+        with GitHubClient(token="test") as client:
+            merged_prs = client.get_merged_pull_requests("owner", "repo", "main")
+
+        assert len(merged_prs) == 0
+
 
 class TestAsyncGitHubClient:
     """Tests for AsyncGitHubClient class."""

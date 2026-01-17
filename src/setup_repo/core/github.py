@@ -110,6 +110,59 @@ class GitHubClient:
                 log.warning("invalid_repo_data", repo=item.get("name"), error=str(e))
         return repos
 
+    def get_merged_pull_requests(self, owner: str, repo: str, base_branch: str = "main") -> dict[str, str]:
+        """Get merged pull requests for a repository.
+
+        Args:
+            owner: GitHub username or organization
+            repo: Repository name
+            base_branch: Base branch to check merged PRs against
+
+        Returns:
+            Dictionary mapping branch name to merge commit SHA
+        """
+        merged_prs: dict[str, str] = {}
+        page = 1
+
+        while True:
+            try:
+                response = self.client.get(
+                    f"/repos/{owner}/{repo}/pulls",
+                    params={
+                        "state": "closed",
+                        "base": base_branch,
+                        "page": page,
+                        "per_page": 100,
+                        "sort": "updated",
+                        "direction": "desc",
+                    },
+                )
+                response.raise_for_status()
+
+                data = response.json()
+                if not data:
+                    break
+
+                for pr in data:
+                    # Only include if PR was actually merged (not just closed)
+                    if pr.get("merged_at") and pr.get("head", {}).get("ref"):
+                        branch_name = pr["head"]["ref"]
+                        merge_commit_sha = pr.get("merge_commit_sha", "")
+                        merged_prs[branch_name] = merge_commit_sha
+
+                # Stop if we got less than a full page
+                if len(data) < 100:
+                    break
+
+                page += 1
+
+            except (httpx.HTTPError, KeyError) as e:
+                log.warning("failed_to_fetch_merged_prs", owner=owner, repo=repo, error=str(e))
+                break
+
+        log.info("fetched_merged_prs", owner=owner, repo=repo, count=len(merged_prs))
+        return merged_prs
+
     def close(self) -> None:
         """Close the HTTP client."""
         if self._client:

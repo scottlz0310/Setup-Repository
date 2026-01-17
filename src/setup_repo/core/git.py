@@ -245,3 +245,67 @@ class GitOperations:
         except subprocess.TimeoutExpired:
             log.warning("branch_delete_timeout", branch=branch)
             return False
+
+    def get_remote_url(self, repo_path: Path) -> str | None:
+        """Get the remote origin URL.
+
+        Args:
+            repo_path: Repository path
+
+        Returns:
+            Remote URL or None if not found
+        """
+        try:
+            result = self._run(
+                ["remote", "get-url", "origin"],
+                cwd=repo_path,
+                check=False,
+            )
+            if result.returncode == 0:
+                return result.stdout.strip()
+            return None
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+            return None
+
+    def parse_github_repo(self, remote_url: str) -> tuple[str, str] | None:
+        """Parse GitHub owner and repo name from remote URL.
+
+        Args:
+            remote_url: Git remote URL (HTTPS or SSH)
+
+        Returns:
+            Tuple of (owner, repo) or None if not a GitHub URL
+        """
+        import re
+
+        # Handle SSH URLs: git@github.com:owner/repo.git
+        ssh_pattern = r"git@github\.com:([^/]+)/([^/]+?)(?:\.git)?$"
+        # Handle HTTPS URLs: https://github.com/owner/repo.git
+        https_pattern = r"https://github\.com/([^/]+)/([^/]+?)(?:\.git)?$"
+
+        for pattern in [ssh_pattern, https_pattern]:
+            if match := re.match(pattern, remote_url):
+                owner, repo = match.groups()
+                return (owner, repo)
+
+        return None
+
+    def get_local_branches(self, repo_path: Path) -> list[str]:
+        """Get all local branches (excluding current and base branch).
+
+        Args:
+            repo_path: Repository path
+
+        Returns:
+            List of branch names
+        """
+        try:
+            result = self._run(["branch", "--format=%(refname:short)"], cwd=repo_path)
+            branches: list[str] = []
+            for line in result.stdout.strip().split("\n"):
+                branch = line.strip()
+                if branch:
+                    branches.append(branch)
+            return branches
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+            return []
