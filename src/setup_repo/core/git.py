@@ -1,5 +1,6 @@
 """Git operations wrapper."""
 
+import re
 import subprocess
 from pathlib import Path
 
@@ -276,8 +277,6 @@ class GitOperations:
         Returns:
             Tuple of (owner, repo) or None if not a GitHub URL
         """
-        import re
-
         # Handle SSH URLs: git@github.com:owner/repo.git
         ssh_pattern = r"git@github\.com:([^/]+)/([^/]+?)(?:\.git)?$"
         # Handle HTTPS URLs: https://github.com/owner/repo.git

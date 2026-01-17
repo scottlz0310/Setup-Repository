@@ -210,8 +210,6 @@ Options:
 - `--include-squash` オプションを使用する場合、GitHub トークンが必要です
 - トークンは `SETUP_REPO_GITHUB_TOKEN` 環境変数または設定ファイルから取得されます
 - スクワッシュマージの検出には GitHub API を使用するため、リモートが GitHub である必要があります
-  -f, --force       確認なしで削除
-```
 
 ## Development
 

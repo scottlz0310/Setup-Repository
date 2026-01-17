@@ -128,9 +128,8 @@ def _get_squash_merged_branches(git: GitOperations, repo_path: Path, base_branch
 
     # Fetch merged PRs from GitHub API
     try:
-        client = GitHubClient(token=settings.github_token, verify_ssl=not settings.git_ssl_no_verify)
-        merged_prs = client.get_merged_pull_requests(owner, repo, base_branch)
-        client.close()
+        with GitHubClient(token=settings.github_token, verify_ssl=not settings.git_ssl_no_verify) as client:
+            merged_prs = client.get_merged_pull_requests(owner, repo, base_branch)
     except Exception as e:
         log.error("failed_to_fetch_merged_prs", error=str(e))
         show_warning(f"Failed to fetch merged PRs from GitHub: {e}")
