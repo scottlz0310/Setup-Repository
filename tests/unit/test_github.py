@@ -130,19 +130,37 @@ class TestGitHubClient:
         mock_response = MagicMock()
         mock_response.json.return_value = [
             {
-                "head": {"ref": "feature/branch1"},
+                "head": {
+                    "ref": "feature/branch1",
+                    "repo": {"full_name": "owner/repo"}
+                },
                 "merged_at": "2024-01-01T00:00:00Z",
                 "merge_commit_sha": "abc123",
             },
             {
-                "head": {"ref": "feature/branch2"},
+                "head": {
+                    "ref": "feature/branch2",
+                    "repo": {"full_name": "owner/repo"}
+                },
                 "merged_at": "2024-01-02T00:00:00Z",
                 "merge_commit_sha": "def456",
             },
             {
                 # Not merged, just closed
-                "head": {"ref": "feature/branch3"},
+                "head": {
+                    "ref": "feature/branch3",
+                    "repo": {"full_name": "owner/repo"}
+                },
                 "merged_at": None,
+            },
+            {
+                # Fork PR - should be excluded
+                "head": {
+                    "ref": "feature/branch4",
+                    "repo": {"full_name": "otheruser/repo"}
+                },
+                "merged_at": "2024-01-03T00:00:00Z",
+                "merge_commit_sha": "ghi789",
             },
         ]
         mock_response.raise_for_status = MagicMock()
@@ -157,6 +175,7 @@ class TestGitHubClient:
         assert "feature/branch1" in merged_prs
         assert "feature/branch2" in merged_prs
         assert "feature/branch3" not in merged_prs  # Not merged
+        assert "feature/branch4" not in merged_prs  # Fork PR
         assert merged_prs["feature/branch1"] == "abc123"
         assert merged_prs["feature/branch2"] == "def456"
 

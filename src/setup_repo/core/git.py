@@ -226,19 +226,21 @@ class GitOperations:
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
             return []
 
-    def delete_branch(self, repo_path: Path, branch: str) -> bool:
+    def delete_branch(self, repo_path: Path, branch: str, force: bool = False) -> bool:
         """Delete a local branch.
 
         Args:
             repo_path: Repository path
             branch: Branch name to delete
+            force: Use -D (force delete) instead of -d
 
         Returns:
             True if successful
         """
+        flag = "-D" if force else "-d"
         try:
-            self._run(["branch", "-d", branch], cwd=repo_path)
-            log.info("branch_deleted", branch=branch)
+            self._run(["branch", flag, branch], cwd=repo_path)
+            log.info("branch_deleted", branch=branch, force=force)
             return True
         except subprocess.CalledProcessError as e:
             log.warning("branch_delete_failed", branch=branch, error=e.stderr)
@@ -290,7 +292,7 @@ class GitOperations:
         return None
 
     def get_local_branches(self, repo_path: Path) -> list[str]:
-        """Get all local branches (excluding current and base branch).
+        """Get all local branches.
 
         Args:
             repo_path: Repository path
@@ -308,3 +310,20 @@ class GitOperations:
             return branches
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
             return []
+
+    def get_current_branch(self, repo_path: Path) -> str | None:
+        """Get the current branch name.
+
+        Args:
+            repo_path: Repository path
+
+        Returns:
+            Current branch name or None if not on a branch
+        """
+        try:
+            result = self._run(["branch", "--show-current"], cwd=repo_path, check=False)
+            if result.returncode == 0:
+                return result.stdout.strip()
+            return None
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+            return None

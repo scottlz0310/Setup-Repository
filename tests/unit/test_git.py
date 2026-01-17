@@ -215,6 +215,20 @@ class TestDeleteBranch:
 
         assert result is False
 
+    @patch("subprocess.run")
+    def test_delete_branch_with_force(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        """Test force branch deletion."""
+        mock_run.return_value = MagicMock(returncode=0)
+
+        git = GitOperations()
+        result = git.delete_branch(tmp_path, "feature/old", force=True)
+
+        assert result is True
+        # Verify -D flag was used
+        call_args = mock_run.call_args[0][0]
+        assert "-D" in call_args
+        assert "feature/old" in call_args
+
 
 class TestGetRemoteUrl:
     """Tests for get_remote_url method."""
@@ -300,6 +314,43 @@ class TestGetLocalBranches:
         assert "feature/test" in branches
         assert "bugfix/issue" in branches
         assert len(branches) == 3
+
+    @patch("subprocess.run")
+    def test_get_local_branches_empty(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        """Test when no branches found."""
+        mock_run.return_value = MagicMock(returncode=0, stdout="")
+
+        git = GitOperations()
+        branches = git.get_local_branches(tmp_path)
+
+        assert branches == []
+
+
+class TestGetCurrentBranch:
+    """Tests for get_current_branch method."""
+
+    @patch("subprocess.run")
+    def test_get_current_branch(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        """Test getting current branch."""
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout="feature/test\n",
+        )
+
+        git = GitOperations()
+        branch = git.get_current_branch(tmp_path)
+
+        assert branch == "feature/test"
+
+    @patch("subprocess.run")
+    def test_get_current_branch_not_on_branch(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        """Test when not on a branch (detached HEAD)."""
+        mock_run.return_value = MagicMock(returncode=1, stdout="")
+
+        git = GitOperations()
+        branch = git.get_current_branch(tmp_path)
+
+        assert branch is None
 
     @patch("subprocess.run")
     def test_get_local_branches_empty(self, mock_run: MagicMock, tmp_path: Path) -> None:

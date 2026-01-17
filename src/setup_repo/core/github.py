@@ -123,6 +123,8 @@ class GitHubClient:
         """
         merged_prs: dict[str, str] = {}
         page = 1
+        # Full repo name to check against PR head.repo
+        expected_repo_full_name = f"{owner}/{repo}"
 
         while True:
             try:
@@ -145,10 +147,17 @@ class GitHubClient:
 
                 for pr in data:
                     # Only include if PR was actually merged (not just closed)
-                    if pr.get("merged_at") and pr.get("head", {}).get("ref"):
-                        branch_name = pr["head"]["ref"]
-                        merge_commit_sha = pr.get("merge_commit_sha", "")
-                        merged_prs[branch_name] = merge_commit_sha
+                    if not pr.get("merged_at") or not pr.get("head", {}).get("ref"):
+                        continue
+
+                    # Check if PR is from the same repository (not a fork)
+                    head_repo = pr.get("head", {}).get("repo")
+                    if not head_repo or head_repo.get("full_name") != expected_repo_full_name:
+                        continue
+
+                    branch_name = pr["head"]["ref"]
+                    merge_commit_sha = pr.get("merge_commit_sha", "")
+                    merged_prs[branch_name] = merge_commit_sha
 
                 # Stop if we got less than a full page
                 if len(data) < 100:
