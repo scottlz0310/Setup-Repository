@@ -119,7 +119,7 @@ class GitHubClient:
             base_branch: Base branch to check merged PRs against
 
         Returns:
-            Dictionary mapping branch name to merge commit SHA
+            Dictionary mapping branch name to head commit SHA (the PR's head.sha)
         """
         merged_prs: dict[str, str] = {}
         page = 1
@@ -156,8 +156,10 @@ class GitHubClient:
                         continue
 
                     branch_name = pr["head"]["ref"]
-                    merge_commit_sha = pr.get("merge_commit_sha", "")
-                    merged_prs[branch_name] = merge_commit_sha
+                    # Get the head SHA of the PR (the commit that was merged)
+                    head_sha = pr.get("head", {}).get("sha", "")
+                    # Store head SHA instead of merge commit SHA for verification
+                    merged_prs[branch_name] = head_sha
 
                 # Stop if we got less than a full page
                 if len(data) < 100:

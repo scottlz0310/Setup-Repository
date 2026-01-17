@@ -132,24 +132,27 @@ class TestGitHubClient:
             {
                 "head": {
                     "ref": "feature/branch1",
-                    "repo": {"full_name": "owner/repo"}
+                    "repo": {"full_name": "owner/repo"},
+                    "sha": "abc123head",
                 },
                 "merged_at": "2024-01-01T00:00:00Z",
-                "merge_commit_sha": "abc123",
+                "merge_commit_sha": "abc123merge",
             },
             {
                 "head": {
                     "ref": "feature/branch2",
-                    "repo": {"full_name": "owner/repo"}
+                    "repo": {"full_name": "owner/repo"},
+                    "sha": "def456head",
                 },
                 "merged_at": "2024-01-02T00:00:00Z",
-                "merge_commit_sha": "def456",
+                "merge_commit_sha": "def456merge",
             },
             {
                 # Not merged, just closed
                 "head": {
                     "ref": "feature/branch3",
-                    "repo": {"full_name": "owner/repo"}
+                    "repo": {"full_name": "owner/repo"},
+                    "sha": "ghi789head",
                 },
                 "merged_at": None,
             },
@@ -157,10 +160,11 @@ class TestGitHubClient:
                 # Fork PR - should be excluded
                 "head": {
                     "ref": "feature/branch4",
-                    "repo": {"full_name": "otheruser/repo"}
+                    "repo": {"full_name": "otheruser/repo"},
+                    "sha": "jkl012head",
                 },
                 "merged_at": "2024-01-03T00:00:00Z",
-                "merge_commit_sha": "ghi789",
+                "merge_commit_sha": "jkl012merge",
             },
         ]
         mock_response.raise_for_status = MagicMock()
@@ -176,8 +180,8 @@ class TestGitHubClient:
         assert "feature/branch2" in merged_prs
         assert "feature/branch3" not in merged_prs  # Not merged
         assert "feature/branch4" not in merged_prs  # Fork PR
-        assert merged_prs["feature/branch1"] == "abc123"
-        assert merged_prs["feature/branch2"] == "def456"
+        assert merged_prs["feature/branch1"] == "abc123head"
+        assert merged_prs["feature/branch2"] == "def456head"
 
     @patch("httpx.Client.get")
     def test_get_merged_pull_requests_empty(self, mock_get: MagicMock) -> None:

@@ -361,3 +361,54 @@ class TestGetCurrentBranch:
         branches = git.get_local_branches(tmp_path)
 
         assert branches == []
+
+
+class TestGetBranchSha:
+    """Tests for get_branch_sha method."""
+
+    @patch("subprocess.run")
+    def test_get_branch_sha(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        """Test getting branch SHA."""
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout="abc123def456\n",
+        )
+
+        git = GitOperations()
+        sha = git.get_branch_sha(tmp_path, "feature/test")
+
+        assert sha == "abc123def456"
+
+    @patch("subprocess.run")
+    def test_get_branch_sha_not_found(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        """Test when branch doesn't exist."""
+        mock_run.return_value = MagicMock(returncode=1, stdout="")
+
+        git = GitOperations()
+        sha = git.get_branch_sha(tmp_path, "nonexistent")
+
+        assert sha is None
+
+
+class TestIsAncestor:
+    """Tests for is_ancestor method."""
+
+    @patch("subprocess.run")
+    def test_is_ancestor_true(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        """Test when commit is an ancestor."""
+        mock_run.return_value = MagicMock(returncode=0)
+
+        git = GitOperations()
+        result = git.is_ancestor(tmp_path, "abc123", "def456")
+
+        assert result is True
+
+    @patch("subprocess.run")
+    def test_is_ancestor_false(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        """Test when commit is not an ancestor."""
+        mock_run.return_value = MagicMock(returncode=1)
+
+        git = GitOperations()
+        result = git.is_ancestor(tmp_path, "abc123", "def456")
+
+        assert result is False

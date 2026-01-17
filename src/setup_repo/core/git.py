@@ -327,3 +327,43 @@ class GitOperations:
             return None
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
             return None
+
+    def get_branch_sha(self, repo_path: Path, branch: str) -> str | None:
+        """Get the commit SHA for a branch.
+
+        Args:
+            repo_path: Repository path
+            branch: Branch name
+
+        Returns:
+            Commit SHA or None if branch doesn't exist
+        """
+        try:
+            result = self._run(["rev-parse", branch], cwd=repo_path, check=False)
+            if result.returncode == 0:
+                return result.stdout.strip()
+            return None
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+            return None
+
+    def is_ancestor(self, repo_path: Path, ancestor_sha: str, descendant_ref: str) -> bool:
+        """Check if a commit is an ancestor of another ref.
+
+        Args:
+            repo_path: Repository path
+            ancestor_sha: The potential ancestor commit SHA
+            descendant_ref: The descendant ref (branch name or SHA)
+
+        Returns:
+            True if ancestor_sha is an ancestor of descendant_ref
+        """
+        try:
+            # git merge-base --is-ancestor returns 0 if true, 1 if false
+            result = self._run(
+                ["merge-base", "--is-ancestor", ancestor_sha, descendant_ref],
+                cwd=repo_path,
+                check=False,
+            )
+            return result.returncode == 0
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+            return False

@@ -170,9 +170,34 @@ def _get_squash_merged_branches(git: GitOperations, repo_path: Path, base_branch
         # Exclude base branch and current branch
         if branch == base_branch or branch == current_branch:
             continue
+        
         # Check if this branch was merged as a PR
-        if branch in merged_prs:
+        if branch not in merged_prs:
+            continue
+            
+        # Verify that the local branch head matches or is ancestor of the PR head
+        # This prevents deleting branches that have been reused or have new commits
+        pr_head_sha = merged_prs[branch]
+        if not pr_head_sha:
+            log.warning("no_pr_head_sha", branch=branch)
+            continue
+            
+        local_branch_sha = git.get_branch_sha(repo_path, branch)
+        if not local_branch_sha:
+            log.warning("no_local_branch_sha", branch=branch)
+            continue
+        
+        # Check if local branch head is the same as PR head or PR head is ancestor
+        # (PR head is ancestor means local branch has new commits after merge)
+        if local_branch_sha == pr_head_sha:
+            # Exact match - safe to delete
             squash_merged.append(branch)
+        elif git.is_ancestor(repo_path, pr_head_sha, local_branch_sha):
+            # PR head is ancestor of local branch - local has new commits, skip
+            log.info("branch_has_new_commits", branch=branch, pr_sha=pr_head_sha, local_sha=local_branch_sha)
+        else:
+            # Branches have diverged or local is older - skip for safety
+            log.info("branch_diverged", branch=branch, pr_sha=pr_head_sha, local_sha=local_branch_sha)
 
     log.info("found_squash_merged_branches", count=len(squash_merged))
     return squash_merged
