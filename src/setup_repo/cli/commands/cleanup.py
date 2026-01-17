@@ -175,8 +175,8 @@ def _get_squash_merged_branches(git: GitOperations, repo_path: Path, base_branch
         if branch not in merged_prs:
             continue
             
-        # Verify that the local branch head matches or is ancestor of the PR head
-        # This prevents deleting branches that have been reused or have new commits
+        # Verify that the local branch head is same or older than PR head
+        # This safely deletes branches where work is complete while protecting active work
         pr_head_sha = merged_prs[branch]
         if not pr_head_sha:
             log.warning("no_pr_head_sha", branch=branch)
@@ -187,16 +187,24 @@ def _get_squash_merged_branches(git: GitOperations, repo_path: Path, base_branch
             log.warning("no_local_branch_sha", branch=branch)
             continue
         
-        # Check if local branch head is the same as PR head or PR head is ancestor
-        # (PR head is ancestor means local branch has new commits after merge)
+        # Check relationship between local and PR head:
+        # 1. Equal: local == PR head -> safe to delete
+        # 2. Older: local is ancestor of PR head -> safe to delete (not synced yet)
+        # 3. Newer: PR head is ancestor of local -> skip (has new commits)
+        # 4. Diverged: no ancestor relationship -> skip (branches diverged)
         if local_branch_sha == pr_head_sha:
             # Exact match - safe to delete
             squash_merged.append(branch)
+            log.debug("branch_matches_pr", branch=branch, sha=local_branch_sha)
+        elif git.is_ancestor(repo_path, local_branch_sha, pr_head_sha):
+            # Local is ancestor of PR head - local is older, safe to delete
+            squash_merged.append(branch)
+            log.debug("branch_is_older", branch=branch, local_sha=local_branch_sha, pr_sha=pr_head_sha)
         elif git.is_ancestor(repo_path, pr_head_sha, local_branch_sha):
             # PR head is ancestor of local branch - local has new commits, skip
             log.info("branch_has_new_commits", branch=branch, pr_sha=pr_head_sha, local_sha=local_branch_sha)
         else:
-            # Branches have diverged or local is older - skip for safety
+            # Branches have diverged - skip for safety
             log.info("branch_diverged", branch=branch, pr_sha=pr_head_sha, local_sha=local_branch_sha)
 
     log.info("found_squash_merged_branches", count=len(squash_merged))

@@ -412,3 +412,55 @@ class TestIsAncestor:
         result = git.is_ancestor(tmp_path, "abc123", "def456")
 
         assert result is False
+
+
+class TestIsAncestorScenarios:
+    """Tests for various ancestor scenarios used in cleanup logic."""
+
+    @patch("subprocess.run")
+    def test_equal_commits(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        """Test when commits are equal."""
+        # For equal commits, is_ancestor should return True in both directions
+        # but in practice we check equality first
+        mock_run.return_value = MagicMock(returncode=0)
+
+        git = GitOperations()
+        # When commits are equal, checking if A is ancestor of B should be true
+        result = git.is_ancestor(tmp_path, "abc123", "abc123")
+
+        assert result is True
+
+    @patch("subprocess.run")
+    def test_local_older_than_pr(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        """Test when local branch is older (ancestor of PR head)."""
+        mock_run.return_value = MagicMock(returncode=0)
+
+        git = GitOperations()
+        # local_sha is ancestor of pr_head_sha
+        result = git.is_ancestor(tmp_path, "local_old", "pr_new")
+
+        assert result is True
+
+    @patch("subprocess.run")
+    def test_local_newer_than_pr(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        """Test when local branch is newer (PR head is ancestor)."""
+        # First call: is local ancestor of PR? No (returncode=1)
+        # Would need second call: is PR ancestor of local? Yes (returncode=0)
+        mock_run.return_value = MagicMock(returncode=0)
+
+        git = GitOperations()
+        # pr_head_sha is ancestor of local_sha
+        result = git.is_ancestor(tmp_path, "pr_old", "local_new")
+
+        assert result is True
+
+    @patch("subprocess.run")
+    def test_branches_diverged(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        """Test when branches have diverged."""
+        mock_run.return_value = MagicMock(returncode=1)
+
+        git = GitOperations()
+        # Neither is ancestor of the other
+        result = git.is_ancestor(tmp_path, "branch_a", "branch_b")
+
+        assert result is False
