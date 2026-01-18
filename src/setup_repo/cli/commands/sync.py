@@ -6,7 +6,7 @@ from typing import Annotated
 import typer
 from rich.table import Table
 
-from setup_repo.cli.output import show_error, show_info, show_summary, show_warning
+from setup_repo.cli.output import show_error, show_info, show_success, show_summary, show_warning
 from setup_repo.core.git import GitOperations
 from setup_repo.core.github import GitHubClient
 from setup_repo.core.parallel import ParallelProcessor
@@ -89,6 +89,7 @@ def sync(
     log.debug("sync_config", auto_prune=not no_prune, ssl_no_verify=settings.git_ssl_no_verify)
 
     repo_by_name = {repo.name: repo for repo in repos}
+    cleanup_stats = {"total_deleted": 0, "total_repos": 0}
 
     def process_repo(repo_path: Path) -> ProcessResult:
         repo = repo_by_name.get(repo_path.name)
@@ -113,7 +114,10 @@ def sync(
 
         if settings.auto_cleanup and result.status == ResultStatus.SUCCESS:
             base_branch = repo.default_branch if repo else "main"
-            _run_auto_cleanup(git, repo_path, base_branch)
+            deleted = _run_auto_cleanup(git, repo_path, base_branch)
+            if deleted > 0:
+                cleanup_stats["total_deleted"] += deleted
+                cleanup_stats["total_repos"] += 1
 
         return result
 
@@ -130,6 +134,13 @@ def sync(
     )
 
     show_summary(summary)
+
+    # Show auto-cleanup results if enabled
+    if settings.auto_cleanup and cleanup_stats["total_deleted"] > 0:
+        show_success(
+            f"Auto-cleanup: {cleanup_stats['total_deleted']} merged branch(es) deleted "
+            f"across {cleanup_stats['total_repos']} repository(ies)"
+        )
 
     if summary.failed > 0:
         raise typer.Exit(1)
@@ -175,6 +186,8 @@ def _run_auto_cleanup(git: GitOperations, repo_path: Path, base_branch: str) -> 
     for branch in merged_branches:
         if git.delete_branch(repo_path, branch, force=False):
             deleted += 1
+        else:
+            log.warning("delete_branch_failed", repo=repo_path.name, branch=branch)
 
     log.info(
         "auto_cleanup_completed",
