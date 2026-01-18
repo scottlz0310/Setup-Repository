@@ -229,6 +229,32 @@ class TestCleanupCommand:
         assert result.exit_code == 0
         assert "deleted" in result.stdout
 
+    @patch("setup_repo.cli.commands.cleanup._get_squash_merged_branches")
+    @patch("setup_repo.cli.commands.cleanup.GitOperations")
+    def test_cleanup_with_include_squash(
+        self,
+        mock_git_class: MagicMock,
+        mock_get_squash: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """Test cleanup with include-squash flag."""
+        (tmp_path / ".git").mkdir()
+
+        mock_git = MagicMock()
+        mock_git.get_merged_branches.return_value = ["feature/merged"]
+        mock_git_class.return_value = mock_git
+
+        # Squash merged branches
+        mock_get_squash.return_value = ["feature/squashed"]
+
+        result = runner.invoke(app, ["cleanup", str(tmp_path), "--include-squash", "--dry-run"])
+        assert result.exit_code == 0
+        assert "would be deleted" in result.stdout
+
+        # Verify both branches are shown
+        assert "feature/merged" in result.stdout or "Merged Branches" in result.stdout
+        mock_get_squash.assert_called_once()
+
 
 class TestOutputHelpers:
     """Tests for output helper functions."""

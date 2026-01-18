@@ -110,6 +110,70 @@ class GitHubClient:
                 log.warning("invalid_repo_data", repo=item.get("name"), error=str(e))
         return repos
 
+    def get_merged_pull_requests(self, owner: str, repo: str, base_branch: str = "main") -> dict[str, str]:
+        """Get merged pull requests for a repository.
+
+        Args:
+            owner: GitHub username or organization
+            repo: Repository name
+            base_branch: Base branch to check merged PRs against
+
+        Returns:
+            Dictionary mapping branch name to head commit SHA (the PR's head.sha)
+        """
+        merged_prs: dict[str, str] = {}
+        page = 1
+        # Full repo name to check against PR head.repo
+        expected_repo_full_name = f"{owner}/{repo}"
+
+        while True:
+            try:
+                response = self.client.get(
+                    f"/repos/{owner}/{repo}/pulls",
+                    params={
+                        "state": "closed",
+                        "base": base_branch,
+                        "page": page,
+                        "per_page": 100,
+                        "sort": "updated",
+                        "direction": "desc",
+                    },
+                )
+                response.raise_for_status()
+
+                data = response.json()
+                if not data:
+                    break
+
+                for pr in data:
+                    # Only include if PR was actually merged (not just closed)
+                    if not pr.get("merged_at") or not pr.get("head", {}).get("ref"):
+                        continue
+
+                    # Check if PR is from the same repository (not a fork)
+                    head_repo = pr.get("head", {}).get("repo")
+                    if not head_repo or head_repo.get("full_name") != expected_repo_full_name:
+                        continue
+
+                    branch_name = pr["head"]["ref"]
+                    # Get the head SHA of the PR (the commit that was merged)
+                    head_sha = pr.get("head", {}).get("sha", "")
+                    # Store head SHA instead of merge commit SHA for verification
+                    merged_prs[branch_name] = head_sha
+
+                # Stop if we got less than a full page
+                if len(data) < 100:
+                    break
+
+                page += 1
+
+            except (httpx.HTTPError, KeyError) as e:
+                log.warning("failed_to_fetch_merged_prs", owner=owner, repo=repo, error=str(e))
+                break
+
+        log.info("fetched_merged_prs", owner=owner, repo=repo, count=len(merged_prs))
+        return merged_prs
+
     def close(self) -> None:
         """Close the HTTP client."""
         if self._client:

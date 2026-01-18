@@ -22,7 +22,7 @@ def mock_load_config_file(request: pytest.FixtureRequest) -> Generator[None, Non
 
     Tests can skip this by using @pytest.mark.uses_real_config_loader
     """
-    if "uses_real_config_loader" in [m.name for m in request.node.iter_markers()]:
+    if "uses_real_config_loader" in request.keywords:
         yield
         return
 

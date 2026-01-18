@@ -29,15 +29,28 @@ class TestGitOperations:
         assert git.auto_stash is True
         assert git.ssl_no_verify is True
 
-    def test_get_env_without_ssl_no_verify(self) -> None:
-        """Test _get_env returns None when ssl_no_verify is False."""
-        git = GitOperations(ssl_no_verify=False)
-        assert git._get_env() is None
+    @patch("subprocess.run")
+    def test_get_env_without_ssl_no_verify(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        """Test git commands run without custom env when ssl_no_verify is False."""
+        mock_run.return_value = MagicMock(returncode=0)
 
-    def test_get_env_with_ssl_no_verify(self) -> None:
-        """Test _get_env returns env dict with GIT_SSL_NO_VERIFY."""
+        git = GitOperations(ssl_no_verify=False)
+        dest = tmp_path / "test-repo"
+        git.clone("https://github.com/user/test-repo.git", dest)
+
+        env = mock_run.call_args.kwargs.get("env")
+        assert env is None
+
+    @patch("subprocess.run")
+    def test_get_env_with_ssl_no_verify(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        """Test git commands set GIT_SSL_NO_VERIFY when enabled."""
+        mock_run.return_value = MagicMock(returncode=0)
+
         git = GitOperations(ssl_no_verify=True)
-        env = git._get_env()
+        dest = tmp_path / "test-repo"
+        git.clone("https://github.com/user/test-repo.git", dest)
+
+        env = mock_run.call_args.kwargs.get("env")
         assert env is not None
         assert env.get("GIT_SSL_NO_VERIFY") == "1"
 
@@ -212,5 +225,255 @@ class TestDeleteBranch:
 
         git = GitOperations()
         result = git.delete_branch(tmp_path, "nonexistent")
+
+        assert result is False
+
+    @patch("subprocess.run")
+    def test_delete_branch_with_force(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        """Test force branch deletion."""
+        mock_run.return_value = MagicMock(returncode=0)
+
+        git = GitOperations()
+        result = git.delete_branch(tmp_path, "feature/old", force=True)
+
+        assert result is True
+        # Verify -D flag was used
+        call_args = mock_run.call_args[0][0]
+        assert "-D" in call_args
+        assert "feature/old" in call_args
+
+
+class TestGetRemoteUrl:
+    """Tests for get_remote_url method."""
+
+    @patch("subprocess.run")
+    def test_get_remote_url_success(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        """Test getting remote URL."""
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout="https://github.com/user/repo.git\n",
+        )
+
+        git = GitOperations()
+        url = git.get_remote_url(tmp_path)
+
+        assert url == "https://github.com/user/repo.git"
+
+    @patch("subprocess.run")
+    def test_get_remote_url_not_found(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        """Test when remote URL is not found."""
+        mock_run.return_value = MagicMock(returncode=1, stdout="")
+
+        git = GitOperations()
+        url = git.get_remote_url(tmp_path)
+
+        assert url is None
+
+
+class TestParseGithubRepo:
+    """Tests for parse_github_repo method."""
+
+    def test_parse_ssh_url(self) -> None:
+        """Test parsing SSH URL."""
+        git = GitOperations()
+        result = git.parse_github_repo("git@github.com:owner/repo.git")
+
+        assert result == ("owner", "repo")
+
+    def test_parse_ssh_url_without_git_suffix(self) -> None:
+        """Test parsing SSH URL without .git suffix."""
+        git = GitOperations()
+        result = git.parse_github_repo("git@github.com:owner/repo")
+
+        assert result == ("owner", "repo")
+
+    def test_parse_https_url(self) -> None:
+        """Test parsing HTTPS URL."""
+        git = GitOperations()
+        result = git.parse_github_repo("https://github.com/owner/repo.git")
+
+        assert result == ("owner", "repo")
+
+    def test_parse_https_url_without_git_suffix(self) -> None:
+        """Test parsing HTTPS URL without .git suffix."""
+        git = GitOperations()
+        result = git.parse_github_repo("https://github.com/owner/repo")
+
+        assert result == ("owner", "repo")
+
+    def test_parse_non_github_url(self) -> None:
+        """Test parsing non-GitHub URL."""
+        git = GitOperations()
+        result = git.parse_github_repo("https://gitlab.com/owner/repo.git")
+
+        assert result is None
+
+
+class TestGetLocalBranches:
+    """Tests for get_local_branches method."""
+
+    @patch("subprocess.run")
+    def test_get_local_branches(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        """Test getting local branches."""
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout="main\nfeature/test\nbugfix/issue\n",
+        )
+
+        git = GitOperations()
+        branches = git.get_local_branches(tmp_path)
+
+        assert "main" in branches
+        assert "feature/test" in branches
+        assert "bugfix/issue" in branches
+        assert len(branches) == 3
+
+    @patch("subprocess.run")
+    def test_get_local_branches_empty(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        """Test when no branches found."""
+        mock_run.return_value = MagicMock(returncode=0, stdout="")
+
+        git = GitOperations()
+        branches = git.get_local_branches(tmp_path)
+
+        assert branches == []
+
+
+class TestGetCurrentBranch:
+    """Tests for get_current_branch method."""
+
+    @patch("subprocess.run")
+    def test_get_current_branch(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        """Test getting current branch."""
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout="feature/test\n",
+        )
+
+        git = GitOperations()
+        branch = git.get_current_branch(tmp_path)
+
+        assert branch == "feature/test"
+
+    @patch("subprocess.run")
+    def test_get_current_branch_not_on_branch(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        """Test when not on a branch (detached HEAD)."""
+        mock_run.return_value = MagicMock(returncode=1, stdout="")
+
+        git = GitOperations()
+        branch = git.get_current_branch(tmp_path)
+
+        assert branch is None
+
+    @patch("subprocess.run")
+    def test_get_local_branches_empty(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        """Test when no branches found."""
+        mock_run.return_value = MagicMock(returncode=0, stdout="")
+
+        git = GitOperations()
+        branches = git.get_local_branches(tmp_path)
+
+        assert branches == []
+
+
+class TestGetBranchSha:
+    """Tests for get_branch_sha method."""
+
+    @patch("subprocess.run")
+    def test_get_branch_sha(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        """Test getting branch SHA."""
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout="abc123def456\n",
+        )
+
+        git = GitOperations()
+        sha = git.get_branch_sha(tmp_path, "feature/test")
+
+        assert sha == "abc123def456"
+
+    @patch("subprocess.run")
+    def test_get_branch_sha_not_found(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        """Test when branch doesn't exist."""
+        mock_run.return_value = MagicMock(returncode=1, stdout="")
+
+        git = GitOperations()
+        sha = git.get_branch_sha(tmp_path, "nonexistent")
+
+        assert sha is None
+
+
+class TestIsAncestor:
+    """Tests for is_ancestor method."""
+
+    @patch("subprocess.run")
+    def test_is_ancestor_true(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        """Test when commit is an ancestor."""
+        mock_run.return_value = MagicMock(returncode=0)
+
+        git = GitOperations()
+        result = git.is_ancestor(tmp_path, "abc123", "def456")
+
+        assert result is True
+
+    @patch("subprocess.run")
+    def test_is_ancestor_false(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        """Test when commit is not an ancestor."""
+        mock_run.return_value = MagicMock(returncode=1)
+
+        git = GitOperations()
+        result = git.is_ancestor(tmp_path, "abc123", "def456")
+
+        assert result is False
+
+
+class TestIsAncestorScenarios:
+    """Tests for various ancestor scenarios used in cleanup logic."""
+
+    @patch("subprocess.run")
+    def test_equal_commits(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        """Test when commits are equal."""
+        # For equal commits, is_ancestor should return True in both directions
+        # but in practice we check equality first
+        mock_run.return_value = MagicMock(returncode=0)
+
+        git = GitOperations()
+        # When commits are equal, checking if A is ancestor of B should be true
+        result = git.is_ancestor(tmp_path, "abc123", "abc123")
+
+        assert result is True
+
+    @patch("subprocess.run")
+    def test_local_older_than_pr(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        """Test when local branch is older (ancestor of PR head)."""
+        mock_run.return_value = MagicMock(returncode=0)
+
+        git = GitOperations()
+        # local_sha is ancestor of pr_head_sha
+        result = git.is_ancestor(tmp_path, "local_old", "pr_new")
+
+        assert result is True
+
+    @patch("subprocess.run")
+    def test_local_newer_than_pr(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        """Test when local branch is newer (PR head is ancestor)."""
+        # First call: is local ancestor of PR? No (returncode=1)
+        # Would need second call: is PR ancestor of local? Yes (returncode=0)
+        mock_run.return_value = MagicMock(returncode=0)
+
+        git = GitOperations()
+        # pr_head_sha is ancestor of local_sha
+        result = git.is_ancestor(tmp_path, "pr_old", "local_new")
+
+        assert result is True
+
+    @patch("subprocess.run")
+    def test_branches_diverged(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        """Test when branches have diverged."""
+        mock_run.return_value = MagicMock(returncode=1)
+
+        git = GitOperations()
+        # Neither is ancestor of the other
+        result = git.is_ancestor(tmp_path, "branch_a", "branch_b")
 
         assert result is False

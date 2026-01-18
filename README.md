@@ -90,6 +90,9 @@ setup-repo cleanup --force
 
 # ベースブランチを指定
 setup-repo cleanup --base develop
+
+# スクワッシュマージされたブランチも検出（GitHub API使用）
+setup-repo cleanup --include-squash
 ```
 
 ## Configuration
@@ -197,10 +200,16 @@ Arguments:
   [PATH]  対象リポジトリパス [default: カレントディレクトリ]
 
 Options:
-  -b, --base TEXT   ベースブランチ [default: main]
-  -n, --dry-run     削除せずにプレビュー
-  -f, --force       確認なしで削除
+  -b, --base TEXT       ベースブランチ [default: main]
+  -n, --dry-run         削除せずにプレビュー
+  -f, --force           確認なしで削除
+  -s, --include-squash  スクワッシュマージされたブランチも検出（GitHub API使用）
 ```
+
+**注意事項:**
+- `--include-squash` オプションを使用する場合、GitHub トークンが必要です
+- トークンは `SETUP_REPO_GITHUB_TOKEN` 環境変数または設定ファイルから取得されます
+- スクワッシュマージの検出には GitHub API を使用するため、リモートが GitHub である必要があります
 
 ## Development
 

@@ -1,5 +1,6 @@
 """Git operations wrapper."""
 
+import re
 import subprocess
 from pathlib import Path
 
@@ -225,23 +226,144 @@ class GitOperations:
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
             return []
 
-    def delete_branch(self, repo_path: Path, branch: str) -> bool:
+    def delete_branch(self, repo_path: Path, branch: str, force: bool = False) -> bool:
         """Delete a local branch.
 
         Args:
             repo_path: Repository path
             branch: Branch name to delete
+            force: Use -D (force delete) instead of -d
 
         Returns:
             True if successful
         """
+        flag = "-D" if force else "-d"
         try:
-            self._run(["branch", "-d", branch], cwd=repo_path)
-            log.info("branch_deleted", branch=branch)
+            self._run(["branch", flag, branch], cwd=repo_path)
+            log.info("branch_deleted", branch=branch, force=force)
             return True
         except subprocess.CalledProcessError as e:
             log.warning("branch_delete_failed", branch=branch, error=e.stderr)
             return False
         except subprocess.TimeoutExpired:
             log.warning("branch_delete_timeout", branch=branch)
+            return False
+
+    def get_remote_url(self, repo_path: Path) -> str | None:
+        """Get the remote origin URL.
+
+        Args:
+            repo_path: Repository path
+
+        Returns:
+            Remote URL or None if not found
+        """
+        try:
+            result = self._run(
+                ["remote", "get-url", "origin"],
+                cwd=repo_path,
+                check=False,
+            )
+            if result.returncode == 0:
+                return result.stdout.strip()
+            return None
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+            return None
+
+    def parse_github_repo(self, remote_url: str) -> tuple[str, str] | None:
+        """Parse GitHub owner and repo name from remote URL.
+
+        Args:
+            remote_url: Git remote URL (HTTPS or SSH)
+
+        Returns:
+            Tuple of (owner, repo) or None if not a GitHub URL
+        """
+        # Handle SSH URLs: git@github.com:owner/repo.git
+        ssh_pattern = r"git@github\.com:([^/]+)/([^/]+?)(?:\.git)?$"
+        # Handle HTTPS URLs: https://github.com/owner/repo.git
+        https_pattern = r"https://github\.com/([^/]+)/([^/]+?)(?:\.git)?$"
+
+        for pattern in [ssh_pattern, https_pattern]:
+            if match := re.match(pattern, remote_url):
+                owner, repo = match.groups()
+                return (owner, repo)
+
+        return None
+
+    def get_local_branches(self, repo_path: Path) -> list[str]:
+        """Get all local branches.
+
+        Args:
+            repo_path: Repository path
+
+        Returns:
+            List of branch names
+        """
+        try:
+            result = self._run(["branch", "--format=%(refname:short)"], cwd=repo_path)
+            branches: list[str] = []
+            for line in result.stdout.strip().split("\n"):
+                branch = line.strip()
+                if branch:
+                    branches.append(branch)
+            return branches
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+            return []
+
+    def get_current_branch(self, repo_path: Path) -> str | None:
+        """Get the current branch name.
+
+        Args:
+            repo_path: Repository path
+
+        Returns:
+            Current branch name or None if not on a branch
+        """
+        try:
+            result = self._run(["branch", "--show-current"], cwd=repo_path, check=False)
+            if result.returncode == 0:
+                return result.stdout.strip()
+            return None
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+            return None
+
+    def get_branch_sha(self, repo_path: Path, branch: str) -> str | None:
+        """Get the commit SHA for a branch.
+
+        Args:
+            repo_path: Repository path
+            branch: Branch name
+
+        Returns:
+            Commit SHA or None if branch doesn't exist
+        """
+        try:
+            result = self._run(["rev-parse", branch], cwd=repo_path, check=False)
+            if result.returncode == 0:
+                return result.stdout.strip()
+            return None
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+            return None
+
+    def is_ancestor(self, repo_path: Path, ancestor_sha: str, descendant_ref: str) -> bool:
+        """Check if a commit is an ancestor of another ref.
+
+        Args:
+            repo_path: Repository path
+            ancestor_sha: The potential ancestor commit SHA
+            descendant_ref: The descendant ref (branch name or SHA)
+
+        Returns:
+            True if ancestor_sha is an ancestor of descendant_ref
+        """
+        try:
+            # git merge-base --is-ancestor returns 0 if true, 1 if false
+            result = self._run(
+                ["merge-base", "--is-ancestor", ancestor_sha, descendant_ref],
+                cwd=repo_path,
+                check=False,
+            )
+            return result.returncode == 0
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
             return False

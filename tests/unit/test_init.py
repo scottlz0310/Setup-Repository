@@ -7,18 +7,18 @@ import pytest
 import typer
 
 from setup_repo.cli.commands.init import (
-    _configure_advanced,
-    _configure_git,
-    _configure_github,
-    _configure_workspace,
-    _show_summary,
+    configure_advanced,
+    configure_git,
+    configure_github,
+    configure_workspace,
     init,
+    show_summary,
 )
 from setup_repo.models.config import AppSettings
 
 
 class TestConfigureGithub:
-    """Tests for _configure_github function."""
+    """Tests for configure_github function."""
 
     def test_uses_detected_owner_when_confirmed(self) -> None:
         """Test using detected GitHub owner when confirmed."""
@@ -31,7 +31,7 @@ class TestConfigureGithub:
             with patch("setup_repo.cli.commands.init.Prompt") as mock_prompt:
                 mock_prompt.ask.return_value = ""
 
-                owner, token = _configure_github(settings)
+                owner, token = configure_github(settings)
 
         assert owner == "detected-owner"
         assert token is None
@@ -47,7 +47,7 @@ class TestConfigureGithub:
             with patch("setup_repo.cli.commands.init.Prompt") as mock_prompt:
                 mock_prompt.ask.side_effect = ["custom-owner", ""]
 
-                owner, token = _configure_github(settings)
+                owner, _ = configure_github(settings)
 
         assert owner == "custom-owner"
 
@@ -60,7 +60,7 @@ class TestConfigureGithub:
         with patch("setup_repo.cli.commands.init.Prompt") as mock_prompt:
             mock_prompt.ask.side_effect = ["manual-owner", ""]
 
-            owner, token = _configure_github(settings)
+            owner, _ = configure_github(settings)
 
         assert owner == "manual-owner"
 
@@ -73,7 +73,7 @@ class TestConfigureGithub:
         with patch("setup_repo.cli.commands.init.Confirm") as mock_confirm:
             mock_confirm.ask.return_value = True
 
-            owner, token = _configure_github(settings)
+            _, token = configure_github(settings)
 
         assert token == "ghp_detected123token456"
 
@@ -88,7 +88,7 @@ class TestConfigureGithub:
             with patch("setup_repo.cli.commands.init.Prompt") as mock_prompt:
                 mock_prompt.ask.return_value = "custom-token"
 
-                owner, token = _configure_github(settings)
+                _, token = configure_github(settings)
 
         assert token == "custom-token"
 
@@ -103,13 +103,13 @@ class TestConfigureGithub:
             with patch("setup_repo.cli.commands.init.Prompt") as mock_prompt:
                 mock_prompt.ask.return_value = ""
 
-                owner, token = _configure_github(settings)
+                _, token = configure_github(settings)
 
         assert token is None
 
 
 class TestConfigureWorkspace:
-    """Tests for _configure_workspace function."""
+    """Tests for configure_workspace function."""
 
     def test_uses_default_directory_when_confirmed(self) -> None:
         """Test using default workspace directory when confirmed."""
@@ -120,7 +120,7 @@ class TestConfigureWorkspace:
         with patch("setup_repo.cli.commands.init.Confirm") as mock_confirm:
             mock_confirm.ask.return_value = True
 
-            workspace, workers = _configure_workspace(settings)
+            workspace, workers = configure_workspace(settings)
 
         assert workspace == Path("/default/workspace")
         assert workers == 10
@@ -138,7 +138,7 @@ class TestConfigureWorkspace:
             with patch("setup_repo.cli.commands.init.Prompt") as mock_prompt:
                 mock_prompt.ask.return_value = custom_path
 
-                workspace, workers = _configure_workspace(settings)
+                workspace, _ = configure_workspace(settings)
 
         assert workspace == Path(custom_path)
 
@@ -153,13 +153,13 @@ class TestConfigureWorkspace:
             with patch("setup_repo.cli.commands.init.Prompt") as mock_prompt:
                 mock_prompt.ask.return_value = "5"
 
-                workspace, workers = _configure_workspace(settings)
+                _, workers = configure_workspace(settings)
 
         assert workers == 5
 
 
 class TestConfigureGit:
-    """Tests for _configure_git function."""
+    """Tests for configure_git function."""
 
     def test_https_selection(self) -> None:
         """Test selecting HTTPS clone method."""
@@ -170,7 +170,7 @@ class TestConfigureGit:
             with patch("setup_repo.cli.commands.init.Confirm") as mock_confirm:
                 mock_confirm.ask.return_value = False
 
-                use_https, ssl_no_verify = _configure_git(settings, "token")
+                use_https, ssl_no_verify = configure_git(settings, "token")
 
         assert use_https is True
         assert ssl_no_verify is False
@@ -182,7 +182,7 @@ class TestConfigureGit:
         with patch("setup_repo.cli.commands.init.Prompt") as mock_prompt:
             mock_prompt.ask.return_value = "2"
 
-            use_https, ssl_no_verify = _configure_git(settings, "token")
+            use_https, ssl_no_verify = configure_git(settings, "token")
 
         assert use_https is False
         assert ssl_no_verify is False
@@ -196,7 +196,7 @@ class TestConfigureGit:
             with patch("setup_repo.cli.commands.init.Confirm") as mock_confirm:
                 mock_confirm.ask.return_value = False
                 with patch("setup_repo.cli.commands.init.show_warning") as mock_warn:
-                    _configure_git(settings, None)
+                    configure_git(settings, None)
 
         mock_warn.assert_called()
 
@@ -209,7 +209,7 @@ class TestConfigureGit:
             with patch("setup_repo.cli.commands.init.Confirm") as mock_confirm:
                 mock_confirm.ask.return_value = True
 
-                use_https, ssl_no_verify = _configure_git(settings, "token")
+                _, ssl_no_verify = configure_git(settings, "token")
 
         assert ssl_no_verify is True
 
@@ -223,20 +223,20 @@ class TestConfigureGit:
             patch("setup_repo.cli.commands.init.show_warning") as mock_warn,
         ):
             mock_prompt.ask.return_value = "2"
-            _configure_git(settings, "token")
+            configure_git(settings, "token")
 
         mock_warn.assert_called()
 
 
 class TestConfigureAdvanced:
-    """Tests for _configure_advanced function."""
+    """Tests for configure_advanced function."""
 
     def test_logging_disabled(self) -> None:
         """Test with logging disabled."""
         with patch("setup_repo.cli.commands.init.Confirm") as mock_confirm:
             mock_confirm.ask.side_effect = [False, True, False]
 
-            log_enabled, log_file, auto_prune, auto_stash = _configure_advanced()
+            log_enabled, log_file, auto_prune, auto_stash = configure_advanced()
 
         assert log_enabled is False
         assert log_file is None
@@ -248,7 +248,7 @@ class TestConfigureAdvanced:
         with patch("setup_repo.cli.commands.init.Confirm") as mock_confirm:
             mock_confirm.ask.side_effect = [True, True, True, False]
 
-            log_enabled, log_file, auto_prune, auto_stash = _configure_advanced()
+            log_enabled, log_file, _, _ = configure_advanced()
 
         assert log_enabled is True
         assert log_file is not None
@@ -263,7 +263,7 @@ class TestConfigureAdvanced:
             with patch("setup_repo.cli.commands.init.Prompt") as mock_prompt:
                 mock_prompt.ask.return_value = custom_log
 
-                log_enabled, log_file, auto_prune, auto_stash = _configure_advanced()
+                log_enabled, log_file, _, auto_stash = configure_advanced()
 
         assert log_enabled is True
         assert log_file == Path(custom_log)
@@ -271,12 +271,12 @@ class TestConfigureAdvanced:
 
 
 class TestShowSummary:
-    """Tests for _show_summary function."""
+    """Tests for show_summary function."""
 
     def test_shows_summary_table(self) -> None:
         """Test that summary table is displayed."""
         with patch("setup_repo.cli.commands.init.console") as mock_console:
-            _show_summary(
+            show_summary(
                 github_owner="test-owner",
                 github_token="token",
                 workspace_dir=Path("/workspace"),
@@ -294,7 +294,7 @@ class TestShowSummary:
     def test_shows_log_file_when_enabled(self) -> None:
         """Test that log file path is shown when logging is enabled."""
         with patch("setup_repo.cli.commands.init.console") as mock_console:
-            _show_summary(
+            show_summary(
                 github_owner="test-owner",
                 github_token=None,
                 workspace_dir=Path("/workspace"),
