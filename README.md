@@ -15,6 +15,12 @@ GitHub リポジトリのセットアップ・同期ツール。モダンなCLI�
 - **リッチな出力**: プログレスバー、カラー出力、サマリー表示
 - **構造化ログ**: JSON形式のログファイル出力対応
 
+## What's New in v2.1.0
+
+- sync後の自動クリーンアップ（`auto_cleanup`）
+- スクワッシュマージ検出（`cleanup --include-squash`）
+- initウィザード/環境変数に `auto_cleanup` を追加
+
 ## Installation
 
 ### uv を使用（推奨）
