@@ -1,5 +1,6 @@
 """Sync command for CLI."""
 
+import threading
 from pathlib import Path
 from typing import Annotated
 
@@ -90,6 +91,7 @@ def sync(
 
     repo_by_name = {repo.name: repo for repo in repos}
     cleanup_stats = {"total_deleted": 0, "total_repos": 0}
+    cleanup_lock = threading.Lock()
 
     def process_repo(repo_path: Path) -> ProcessResult:
         repo = repo_by_name.get(repo_path.name)
@@ -116,8 +118,9 @@ def sync(
             base_branch = repo.default_branch if repo else "main"
             deleted = _run_auto_cleanup(git, repo_path, base_branch)
             if deleted > 0:
-                cleanup_stats["total_deleted"] += deleted
-                cleanup_stats["total_repos"] += 1
+                with cleanup_lock:
+                    cleanup_stats["total_deleted"] += deleted
+                    cleanup_stats["total_repos"] += 1
 
         return result
 
