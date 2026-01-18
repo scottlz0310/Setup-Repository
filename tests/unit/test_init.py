@@ -236,25 +236,34 @@ class TestConfigureAdvanced:
         with patch("setup_repo.cli.commands.init.Confirm") as mock_confirm:
             mock_confirm.ask.side_effect = [False, True, False, False]
 
-            log_enabled, log_file, auto_prune, auto_stash, auto_cleanup = configure_advanced()
+            (
+                log_enabled,
+                log_file,
+                auto_prune,
+                auto_stash,
+                auto_cleanup,
+                auto_cleanup_include_squash,
+            ) = configure_advanced()
 
         assert log_enabled is False
         assert log_file is None
         assert auto_prune is True
         assert auto_stash is False
         assert auto_cleanup is False
+        assert auto_cleanup_include_squash is False
 
     def test_logging_enabled_default_path(self) -> None:
         """Test with logging enabled using default path."""
         with patch("setup_repo.cli.commands.init.Confirm") as mock_confirm:
             mock_confirm.ask.side_effect = [True, True, True, False, False]
 
-            log_enabled, log_file, _, _, auto_cleanup = configure_advanced()
+            log_enabled, log_file, _, _, auto_cleanup, auto_cleanup_include_squash = configure_advanced()
 
         assert log_enabled is True
         assert log_file is not None
         assert "setup-repo.jsonl" in str(log_file)
         assert auto_cleanup is False
+        assert auto_cleanup_include_squash is False
 
     def test_logging_enabled_custom_path(self, tmp_path: Path) -> None:
         """Test with logging enabled using custom path."""
@@ -265,12 +274,13 @@ class TestConfigureAdvanced:
             with patch("setup_repo.cli.commands.init.Prompt") as mock_prompt:
                 mock_prompt.ask.return_value = custom_log
 
-                log_enabled, log_file, _, auto_stash, auto_cleanup = configure_advanced()
+                log_enabled, log_file, _, auto_stash, auto_cleanup, auto_cleanup_include_squash = configure_advanced()
 
         assert log_enabled is True
         assert log_file == Path(custom_log)
         assert auto_stash is True
         assert auto_cleanup is False
+        assert auto_cleanup_include_squash is False
 
 
 class TestShowSummary:
@@ -291,6 +301,7 @@ class TestShowSummary:
                 auto_prune=True,
                 auto_stash=False,
                 auto_cleanup=False,
+                auto_cleanup_include_squash=False,
             )
 
         mock_console.print.assert_called_once()
@@ -310,6 +321,7 @@ class TestShowSummary:
                 auto_prune=False,
                 auto_stash=True,
                 auto_cleanup=True,
+                auto_cleanup_include_squash=True,
             )
 
         mock_console.print.assert_called_once()

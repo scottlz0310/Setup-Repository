@@ -48,6 +48,7 @@ class TestSyncCommand:
             workspace_dir=Path("/tmp"),
             git_ssl_no_verify=False,
             auto_cleanup=False,
+            auto_cleanup_include_squash=False,
         )
 
         result = runner.invoke(app, ["sync"])
@@ -75,6 +76,7 @@ class TestSyncCommand:
             git_ssl_no_verify=False,
             use_https=True,
             auto_cleanup=False,
+            auto_cleanup_include_squash=False,
         )
 
         mock_client = MagicMock()
@@ -123,6 +125,7 @@ class TestSyncCommand:
             workspace_dir=tmp_path,
             git_ssl_no_verify=False,
             auto_cleanup=False,
+            auto_cleanup_include_squash=False,
         )
 
         mock_client = MagicMock()
@@ -148,6 +151,7 @@ class TestSyncCommand:
             workspace_dir=tmp_path,
             git_ssl_no_verify=False,
             auto_cleanup=False,
+            auto_cleanup_include_squash=False,
         )
 
         mock_client = MagicMock()
@@ -188,6 +192,7 @@ class TestSyncCommand:
             git_ssl_no_verify=False,
             use_https=True,
             auto_cleanup=True,
+            auto_cleanup_include_squash=False,
         )
 
         mock_client = MagicMock()
@@ -305,7 +310,7 @@ class TestCleanupCommand:
         assert result.exit_code == 0
         assert "deleted" in result.stdout
 
-    @patch("setup_repo.cli.commands.cleanup._get_squash_merged_branches")
+    @patch("setup_repo.cli.commands.cleanup.get_squash_merged_branches")
     @patch("setup_repo.cli.commands.cleanup.GitOperations")
     def test_cleanup_with_include_squash(
         self,

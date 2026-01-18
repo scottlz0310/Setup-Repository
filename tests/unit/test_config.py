@@ -42,6 +42,7 @@ class TestAppSettings:
         assert settings.auto_prune is True
         assert settings.auto_stash is False
         assert settings.auto_cleanup is False
+        assert settings.auto_cleanup_include_squash is False
         assert settings.git_ssl_no_verify is False
         assert settings.log_level == "INFO"
         assert settings.log_file is None
@@ -240,6 +241,7 @@ class TestSaveConfig:
             auto_prune=True,
             auto_stash=False,
             auto_cleanup=True,
+            auto_cleanup_include_squash=True,
         )
 
         assert config_path.exists()
@@ -252,6 +254,7 @@ class TestSaveConfig:
         assert "auto_prune = true" in content
         assert "auto_stash = false" in content
         assert "auto_cleanup = true" in content
+        assert "auto_cleanup_include_squash = true" in content
         assert 'file = "/var/log/test.jsonl"' in content
 
     def test_save_config_without_token(self, tmp_path: Path) -> None:
@@ -270,6 +273,7 @@ class TestSaveConfig:
             auto_prune=True,
             auto_stash=False,
             auto_cleanup=False,
+            auto_cleanup_include_squash=False,
         )
 
         content = config_path.read_text()
@@ -292,6 +296,7 @@ class TestSaveConfig:
             auto_prune=True,
             auto_stash=False,
             auto_cleanup=False,
+            auto_cleanup_include_squash=False,
         )
 
         content = config_path.read_text()
@@ -317,6 +322,7 @@ max_workers = 15
 use_https = true
 auto_stash = true
 auto_cleanup = true
+auto_cleanup_include_squash = true
 """)
         with patch("setup_repo.models.config.get_config_path", return_value=config_file):
             settings = AppSettings()
@@ -327,6 +333,7 @@ auto_cleanup = true
         assert settings.use_https is True
         assert settings.auto_stash is True
         assert settings.auto_cleanup is True
+        assert settings.auto_cleanup_include_squash is True
 
     def test_env_overrides_toml(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test environment variables override TOML settings."""

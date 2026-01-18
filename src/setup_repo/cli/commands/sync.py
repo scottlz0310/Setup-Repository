@@ -8,6 +8,7 @@ import typer
 from rich.table import Table
 
 from setup_repo.cli.output import show_error, show_info, show_success, show_summary, show_warning
+from setup_repo.core.branch_cleanup import get_squash_merged_branches
 from setup_repo.core.git import GitOperations
 from setup_repo.core.github import GitHubClient
 from setup_repo.core.parallel import ParallelProcessor
@@ -92,6 +93,10 @@ def sync(
     repo_by_name = {repo.name: repo for repo in repos}
     cleanup_stats = {"total_deleted": 0, "total_repos": 0}
     cleanup_lock = threading.Lock()
+    include_squash = settings.auto_cleanup_include_squash
+    if include_squash and not settings.github_token:
+        show_warning("Auto cleanup with squash detection requires a GitHub token. Skipping squash detection.")
+        include_squash = False
 
     def process_repo(repo_path: Path) -> ProcessResult:
         repo = repo_by_name.get(repo_path.name)
@@ -116,7 +121,14 @@ def sync(
 
         if settings.auto_cleanup and result.status == ResultStatus.SUCCESS:
             base_branch = repo.default_branch if repo else "main"
-            deleted = _run_auto_cleanup(git, repo_path, base_branch)
+            deleted = _run_auto_cleanup(
+                git,
+                repo_path,
+                base_branch,
+                include_squash=include_squash,
+                github_token=settings.github_token,
+                git_ssl_no_verify=settings.git_ssl_no_verify,
+            )
             if deleted > 0:
                 with cleanup_lock:
                     cleanup_stats["total_deleted"] += deleted
@@ -165,7 +177,15 @@ def _show_dry_run(repos: list[Repository], dest_dir: Path) -> None:
     console.print(f"\n[dim]{len(repos)} repository(ies) would be synced[/]")
 
 
-def _run_auto_cleanup(git: GitOperations, repo_path: Path, base_branch: str) -> int:
+def _run_auto_cleanup(
+    git: GitOperations,
+    repo_path: Path,
+    base_branch: str,
+    *,
+    include_squash: bool,
+    github_token: str | None,
+    git_ssl_no_verify: bool,
+) -> int:
     """Auto cleanup merged branches after sync.
 
     Args:
@@ -181,7 +201,20 @@ def _run_auto_cleanup(git: GitOperations, repo_path: Path, base_branch: str) -> 
         return 0
 
     merged_branches = git.get_merged_branches(repo_path, base_branch)
-    if not merged_branches:
+    squash_branches: list[str] = []
+    if include_squash:
+        merged_set = set(merged_branches)
+        squash_branches = get_squash_merged_branches(
+            git,
+            repo_path,
+            base_branch,
+            github_token=github_token,
+            git_ssl_no_verify=git_ssl_no_verify,
+            warn=show_warning,
+        )
+        squash_branches = [branch for branch in squash_branches if branch not in merged_set]
+
+    if not merged_branches and not squash_branches:
         log.debug("auto_cleanup_no_branches", repo=repo_path.name, base=base_branch)
         return 0
 
@@ -192,11 +225,18 @@ def _run_auto_cleanup(git: GitOperations, repo_path: Path, base_branch: str) -> 
         else:
             log.warning("delete_branch_failed", repo=repo_path.name, branch=branch)
 
+    for branch in squash_branches:
+        if git.delete_branch(repo_path, branch, force=True):
+            deleted += 1
+        else:
+            log.warning("delete_branch_failed", repo=repo_path.name, branch=branch)
+
+    total = len(merged_branches) + len(squash_branches)
     log.info(
         "auto_cleanup_completed",
         repo=repo_path.name,
         base=base_branch,
         deleted=deleted,
-        total=len(merged_branches),
+        total=total,
     )
     return deleted

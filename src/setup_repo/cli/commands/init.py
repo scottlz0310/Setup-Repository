@@ -40,7 +40,7 @@ def init() -> None:
 
     # Step 4: Advanced Options
     console.rule("[bold]Step 4: Advanced Options[/]")
-    log_enabled, log_file, auto_prune, auto_stash, auto_cleanup = _configure_advanced()
+    log_enabled, log_file, auto_prune, auto_stash, auto_cleanup, auto_cleanup_include_squash = _configure_advanced()
 
     # Show summary and confirm
     console.rule("[bold]Configuration Summary[/]")
@@ -56,6 +56,7 @@ def init() -> None:
         auto_prune=auto_prune,
         auto_stash=auto_stash,
         auto_cleanup=auto_cleanup,
+        auto_cleanup_include_squash=auto_cleanup_include_squash,
     )
 
     console.print()
@@ -78,6 +79,7 @@ def init() -> None:
             auto_prune=auto_prune,
             auto_stash=auto_stash,
             auto_cleanup=auto_cleanup,
+            auto_cleanup_include_squash=auto_cleanup_include_squash,
         )
         show_success(f"Configuration saved to [cyan]{config_path}[/]")
     except OSError as e:
@@ -176,7 +178,7 @@ def _configure_git(settings: AppSettings, github_token: str | None) -> tuple[boo
     return use_https, ssl_no_verify
 
 
-def _configure_advanced() -> tuple[bool, Path | None, bool, bool, bool]:
+def _configure_advanced() -> tuple[bool, Path | None, bool, bool, bool, bool]:
     """Configure advanced options."""
     # Logging
     log_enabled = Confirm.ask("Enable file logging?", default=False)
@@ -206,7 +208,15 @@ def _configure_advanced() -> tuple[bool, Path | None, bool, bool, bool]:
     show_info("Auto cleanup: Remove merged branches after sync")
     auto_cleanup = Confirm.ask("Enable auto cleanup after sync?", default=False)
 
-    return log_enabled, log_file, auto_prune, auto_stash, auto_cleanup
+    auto_cleanup_include_squash = False
+    if auto_cleanup:
+        show_info("Include squash-merged branches (requires GitHub API access)")
+        auto_cleanup_include_squash = Confirm.ask(
+            "Include squash-merged branches in auto cleanup?",
+            default=False,
+        )
+
+    return log_enabled, log_file, auto_prune, auto_stash, auto_cleanup, auto_cleanup_include_squash
 
 
 def _show_summary(
@@ -222,6 +232,7 @@ def _show_summary(
     auto_prune: bool,
     auto_stash: bool,
     auto_cleanup: bool,
+    auto_cleanup_include_squash: bool,
 ) -> None:
     """Display configuration summary."""
     table = Table(title="Configuration", show_header=True, header_style="bold cyan")
@@ -245,6 +256,10 @@ def _show_summary(
     table.add_row("Auto Prune", "[green]enabled[/]" if auto_prune else "[dim]disabled[/]")
     table.add_row("Auto Stash", "[green]enabled[/]" if auto_stash else "[dim]disabled[/]")
     table.add_row("Auto Cleanup", "[green]enabled[/]" if auto_cleanup else "[dim]disabled[/]")
+    table.add_row(
+        "Auto Cleanup (Squash)",
+        "[green]enabled[/]" if auto_cleanup_include_squash else "[dim]disabled[/]",
+    )
     if log_enabled and log_file:
         table.add_row("Log File", str(log_file))
     else:
@@ -268,7 +283,7 @@ def configure_git(settings: AppSettings, github_token: str | None) -> tuple[bool
     return _configure_git(settings, github_token)
 
 
-def configure_advanced() -> tuple[bool, Path | None, bool, bool, bool]:
+def configure_advanced() -> tuple[bool, Path | None, bool, bool, bool, bool]:
     """Public wrapper for advanced configuration."""
     return _configure_advanced()
 
@@ -286,6 +301,7 @@ def show_summary(
     auto_prune: bool,
     auto_stash: bool,
     auto_cleanup: bool,
+    auto_cleanup_include_squash: bool,
 ) -> None:
     """Public wrapper for summary output."""
     _show_summary(
@@ -300,4 +316,5 @@ def show_summary(
         auto_prune=auto_prune,
         auto_stash=auto_stash,
         auto_cleanup=auto_cleanup,
+        auto_cleanup_include_squash=auto_cleanup_include_squash,
     )

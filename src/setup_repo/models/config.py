@@ -50,6 +50,7 @@ def save_config(
     auto_prune: bool,
     auto_stash: bool,
     auto_cleanup: bool,
+    auto_cleanup_include_squash: bool,
 ) -> None:
     """Save configuration to TOML file.
 
@@ -65,6 +66,7 @@ def save_config(
         auto_prune: Enable auto prune on pull
         auto_stash: Enable auto stash on pull
         auto_cleanup: Enable auto cleanup after sync
+        auto_cleanup_include_squash: Include squash-merged branches for auto cleanup
     """
     config_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -93,6 +95,7 @@ def save_config(
             f"auto_prune = {str(auto_prune).lower()}",
             f"auto_stash = {str(auto_stash).lower()}",
             f"auto_cleanup = {str(auto_cleanup).lower()}",
+            f"auto_cleanup_include_squash = {str(auto_cleanup_include_squash).lower()}",
             "",
             "[logging]",
         ]
@@ -137,6 +140,10 @@ class AppSettings(BaseSettings):
     auto_stash: bool = Field(default=False, description="Auto stash/pop on pull")
     git_ssl_no_verify: bool = Field(default=False, description="Skip SSL verification (for internal CA)")
     auto_cleanup: bool = Field(default=False, description="Auto cleanup merged branches after sync")
+    auto_cleanup_include_squash: bool = Field(
+        default=False,
+        description="Include squash-merged branches in auto cleanup",
+    )
 
     # Logging settings
     log_level: str = Field(default="INFO", description="Log level")
@@ -225,6 +232,8 @@ class AppSettings(BaseSettings):
                 self.auto_stash = git["auto_stash"]
             if "auto_cleanup" in git and _env_not_set("AUTO_CLEANUP"):
                 self.auto_cleanup = git["auto_cleanup"]
+            if "auto_cleanup_include_squash" in git and _env_not_set("AUTO_CLEANUP_INCLUDE_SQUASH"):
+                self.auto_cleanup_include_squash = git["auto_cleanup_include_squash"]
 
         # Logging settings
         if logging := config.get("logging"):
