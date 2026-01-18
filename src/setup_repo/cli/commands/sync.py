@@ -88,25 +88,34 @@ def sync(
 
     log.debug("sync_config", auto_prune=not no_prune, ssl_no_verify=settings.git_ssl_no_verify)
 
+    repo_by_name = {repo.name: repo for repo in repos}
+
     def process_repo(repo_path: Path) -> ProcessResult:
+        repo = repo_by_name.get(repo_path.name)
         if repo_path.exists():
             log.debug("pulling", repo=repo_path.name)
-            return git.pull(repo_path)
+            result = git.pull(repo_path)
         else:
             # Find corresponding repository
-            repo = next((r for r in repos if r.name == repo_path.name), None)
             if repo:
                 log.debug("cloning", repo=repo_path.name, url=repo.get_clone_url(settings.use_https))
-                return git.clone(
+                result = git.clone(
                     repo.get_clone_url(settings.use_https),
                     repo_path,
                     repo.default_branch,
                 )
-            return ProcessResult(
-                repo_name=repo_path.name,
-                status=ResultStatus.SKIPPED,
-                message="Repository not found",
-            )
+            else:
+                result = ProcessResult(
+                    repo_name=repo_path.name,
+                    status=ResultStatus.SKIPPED,
+                    message="Repository not found",
+                )
+
+        if settings.auto_cleanup and result.status == ResultStatus.SUCCESS:
+            base_branch = repo.default_branch if repo else "main"
+            _run_auto_cleanup(git, repo_path, base_branch)
+
+        return result
 
     paths = [dest_dir / repo.name for repo in repos]
     summary = processor.process(paths, process_repo, desc="Syncing")
@@ -140,3 +149,38 @@ def _show_dry_run(repos: list[Repository], dest_dir: Path) -> None:
 
     console.print(table)
     console.print(f"\n[dim]{len(repos)} repository(ies) would be synced[/]")
+
+
+def _run_auto_cleanup(git: GitOperations, repo_path: Path, base_branch: str) -> int:
+    """Auto cleanup merged branches after sync.
+
+    Args:
+        git: GitOperations instance
+        repo_path: Repository path
+        base_branch: Base branch name for merge check
+
+    Returns:
+        Number of branches deleted
+    """
+    if not (repo_path / ".git").exists():
+        log.debug("auto_cleanup_skipped_not_git", repo=repo_path.name)
+        return 0
+
+    merged_branches = git.get_merged_branches(repo_path, base_branch)
+    if not merged_branches:
+        log.debug("auto_cleanup_no_branches", repo=repo_path.name, base=base_branch)
+        return 0
+
+    deleted = 0
+    for branch in merged_branches:
+        if git.delete_branch(repo_path, branch, force=False):
+            deleted += 1
+
+    log.info(
+        "auto_cleanup_completed",
+        repo=repo_path.name,
+        base=base_branch,
+        deleted=deleted,
+        total=len(merged_branches),
+    )
+    return deleted

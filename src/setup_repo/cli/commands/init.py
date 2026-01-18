@@ -40,7 +40,7 @@ def init() -> None:
 
     # Step 4: Advanced Options
     console.rule("[bold]Step 4: Advanced Options[/]")
-    log_enabled, log_file, auto_prune, auto_stash = _configure_advanced()
+    log_enabled, log_file, auto_prune, auto_stash, auto_cleanup = _configure_advanced()
 
     # Show summary and confirm
     console.rule("[bold]Configuration Summary[/]")
@@ -55,6 +55,7 @@ def init() -> None:
         log_file=log_file,
         auto_prune=auto_prune,
         auto_stash=auto_stash,
+        auto_cleanup=auto_cleanup,
     )
 
     console.print()
@@ -76,6 +77,7 @@ def init() -> None:
             log_file=log_file if log_enabled else None,
             auto_prune=auto_prune,
             auto_stash=auto_stash,
+            auto_cleanup=auto_cleanup,
         )
         show_success(f"Configuration saved to [cyan]{config_path}[/]")
     except OSError as e:
@@ -174,7 +176,7 @@ def _configure_git(settings: AppSettings, github_token: str | None) -> tuple[boo
     return use_https, ssl_no_verify
 
 
-def _configure_advanced() -> tuple[bool, Path | None, bool, bool]:
+def _configure_advanced() -> tuple[bool, Path | None, bool, bool, bool]:
     """Configure advanced options."""
     # Logging
     log_enabled = Confirm.ask("Enable file logging?", default=False)
@@ -201,7 +203,10 @@ def _configure_advanced() -> tuple[bool, Path | None, bool, bool]:
     show_info("Auto stash: Automatically stash/unstash uncommitted changes on pull")
     auto_stash = Confirm.ask("Enable auto stash on pull?", default=False)
 
-    return log_enabled, log_file, auto_prune, auto_stash
+    show_info("Auto cleanup: Remove merged branches after sync")
+    auto_cleanup = Confirm.ask("Enable auto cleanup after sync?", default=False)
+
+    return log_enabled, log_file, auto_prune, auto_stash, auto_cleanup
 
 
 def _show_summary(
@@ -216,6 +221,7 @@ def _show_summary(
     log_file: Path | None,
     auto_prune: bool,
     auto_stash: bool,
+    auto_cleanup: bool,
 ) -> None:
     """Display configuration summary."""
     table = Table(title="Configuration", show_header=True, header_style="bold cyan")
@@ -238,6 +244,7 @@ def _show_summary(
     # Advanced
     table.add_row("Auto Prune", "[green]enabled[/]" if auto_prune else "[dim]disabled[/]")
     table.add_row("Auto Stash", "[green]enabled[/]" if auto_stash else "[dim]disabled[/]")
+    table.add_row("Auto Cleanup", "[green]enabled[/]" if auto_cleanup else "[dim]disabled[/]")
     if log_enabled and log_file:
         table.add_row("Log File", str(log_file))
     else:
@@ -261,7 +268,7 @@ def configure_git(settings: AppSettings, github_token: str | None) -> tuple[bool
     return _configure_git(settings, github_token)
 
 
-def configure_advanced() -> tuple[bool, Path | None, bool, bool]:
+def configure_advanced() -> tuple[bool, Path | None, bool, bool, bool]:
     """Public wrapper for advanced configuration."""
     return _configure_advanced()
 
@@ -278,6 +285,7 @@ def show_summary(
     log_file: Path | None,
     auto_prune: bool,
     auto_stash: bool,
+    auto_cleanup: bool,
 ) -> None:
     """Public wrapper for summary output."""
     _show_summary(
@@ -291,4 +299,5 @@ def show_summary(
         log_file=log_file,
         auto_prune=auto_prune,
         auto_stash=auto_stash,
+        auto_cleanup=auto_cleanup,
     )
