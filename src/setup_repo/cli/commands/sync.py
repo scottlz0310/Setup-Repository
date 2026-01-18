@@ -6,7 +6,7 @@ from typing import Annotated
 import typer
 from rich.table import Table
 
-from setup_repo.cli.output import show_error, show_info, show_summary, show_warning
+from setup_repo.cli.output import show_error, show_info, show_success, show_summary, show_warning
 from setup_repo.core.git import GitOperations
 from setup_repo.core.github import GitHubClient
 from setup_repo.core.parallel import ParallelProcessor
@@ -88,25 +88,38 @@ def sync(
 
     log.debug("sync_config", auto_prune=not no_prune, ssl_no_verify=settings.git_ssl_no_verify)
 
+    repo_by_name = {repo.name: repo for repo in repos}
+    cleanup_stats = {"total_deleted": 0, "total_repos": 0}
+
     def process_repo(repo_path: Path) -> ProcessResult:
+        repo = repo_by_name.get(repo_path.name)
         if repo_path.exists():
             log.debug("pulling", repo=repo_path.name)
-            return git.pull(repo_path)
+            result = git.pull(repo_path)
         else:
             # Find corresponding repository
-            repo = next((r for r in repos if r.name == repo_path.name), None)
             if repo:
                 log.debug("cloning", repo=repo_path.name, url=repo.get_clone_url(settings.use_https))
-                return git.clone(
+                result = git.clone(
                     repo.get_clone_url(settings.use_https),
                     repo_path,
                     repo.default_branch,
                 )
-            return ProcessResult(
-                repo_name=repo_path.name,
-                status=ResultStatus.SKIPPED,
-                message="Repository not found",
-            )
+            else:
+                result = ProcessResult(
+                    repo_name=repo_path.name,
+                    status=ResultStatus.SKIPPED,
+                    message="Repository not found",
+                )
+
+        if settings.auto_cleanup and result.status == ResultStatus.SUCCESS:
+            base_branch = repo.default_branch if repo else "main"
+            deleted = _run_auto_cleanup(git, repo_path, base_branch)
+            if deleted > 0:
+                cleanup_stats["total_deleted"] += deleted
+                cleanup_stats["total_repos"] += 1
+
+        return result
 
     paths = [dest_dir / repo.name for repo in repos]
     summary = processor.process(paths, process_repo, desc="Syncing")
@@ -121,6 +134,13 @@ def sync(
     )
 
     show_summary(summary)
+
+    # Show auto-cleanup results if enabled
+    if settings.auto_cleanup and cleanup_stats["total_deleted"] > 0:
+        show_success(
+            f"Auto-cleanup: {cleanup_stats['total_deleted']} merged branch(es) deleted "
+            f"across {cleanup_stats['total_repos']} repository(ies)"
+        )
 
     if summary.failed > 0:
         raise typer.Exit(1)
@@ -140,3 +160,40 @@ def _show_dry_run(repos: list[Repository], dest_dir: Path) -> None:
 
     console.print(table)
     console.print(f"\n[dim]{len(repos)} repository(ies) would be synced[/]")
+
+
+def _run_auto_cleanup(git: GitOperations, repo_path: Path, base_branch: str) -> int:
+    """Auto cleanup merged branches after sync.
+
+    Args:
+        git: GitOperations instance
+        repo_path: Repository path
+        base_branch: Base branch name for merge check
+
+    Returns:
+        Number of branches deleted
+    """
+    if not (repo_path / ".git").exists():
+        log.debug("auto_cleanup_skipped_not_git", repo=repo_path.name)
+        return 0
+
+    merged_branches = git.get_merged_branches(repo_path, base_branch)
+    if not merged_branches:
+        log.debug("auto_cleanup_no_branches", repo=repo_path.name, base=base_branch)
+        return 0
+
+    deleted = 0
+    for branch in merged_branches:
+        if git.delete_branch(repo_path, branch, force=False):
+            deleted += 1
+        else:
+            log.warning("delete_branch_failed", repo=repo_path.name, branch=branch)
+
+    log.info(
+        "auto_cleanup_completed",
+        repo=repo_path.name,
+        base=base_branch,
+        deleted=deleted,
+        total=len(merged_branches),
+    )
+    return deleted

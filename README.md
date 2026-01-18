@@ -55,7 +55,7 @@ setup-repo init
 - GitHub 認証（オーナー名・トークン）
 - ワークスペースディレクトリ
 - クローン方式（HTTPS/SSH）
-- 詳細オプション（ログ設定、auto-prune、auto-stash）
+- 詳細オプション（ログ設定、auto-prune、auto-stash、auto-cleanup）
 
 ### リポジトリを同期
 
@@ -128,6 +128,7 @@ use_https = true
 ssl_no_verify = false
 auto_prune = true
 auto_stash = false
+auto_cleanup = false
 
 [logging]
 file = "~/.local/share/setup-repo/logs/setup-repo.jsonl"
@@ -147,6 +148,7 @@ file = "~/.local/share/setup-repo/logs/setup-repo.jsonl"
 | `SETUP_REPO_GIT_SSL_NO_VERIFY` | SSL 検証をスキップ | `false` |
 | `SETUP_REPO_AUTO_PRUNE` | pull 時に --prune | `true` |
 | `SETUP_REPO_AUTO_STASH` | pull 時に自動 stash | `false` |
+| `SETUP_REPO_AUTO_CLEANUP` | sync 後に自動 cleanup | `false` |
 | `SETUP_REPO_LOG_FILE` | ログファイルパス | なし |
 
 ### 自動検出

@@ -1,5 +1,6 @@
 """Tests for CLI."""
 
+from collections.abc import Callable
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -46,6 +47,7 @@ class TestSyncCommand:
             github_token=None,
             workspace_dir=Path("/tmp"),
             git_ssl_no_verify=False,
+            auto_cleanup=False,
         )
 
         result = runner.invoke(app, ["sync"])
@@ -72,6 +74,7 @@ class TestSyncCommand:
             workspace_dir=tmp_path,
             git_ssl_no_verify=False,
             use_https=True,
+            auto_cleanup=False,
         )
 
         mock_client = MagicMock()
@@ -119,6 +122,7 @@ class TestSyncCommand:
             github_token="token",
             workspace_dir=tmp_path,
             git_ssl_no_verify=False,
+            auto_cleanup=False,
         )
 
         mock_client = MagicMock()
@@ -143,6 +147,7 @@ class TestSyncCommand:
             github_token="token",
             workspace_dir=tmp_path,
             git_ssl_no_verify=False,
+            auto_cleanup=False,
         )
 
         mock_client = MagicMock()
@@ -159,6 +164,77 @@ class TestSyncCommand:
         result = runner.invoke(app, ["sync", "--dry-run"])
         assert result.exit_code == 0
         assert "would be synced" in result.stdout
+
+    @patch("setup_repo.cli.commands.sync.ParallelProcessor")
+    @patch("setup_repo.cli.commands.sync.GitOperations")
+    @patch("setup_repo.cli.commands.sync.GitHubClient")
+    @patch("setup_repo.cli.commands.sync.get_settings")
+    def test_sync_auto_cleanup(
+        self,
+        mock_settings: MagicMock,
+        mock_client_class: MagicMock,
+        mock_git_class: MagicMock,
+        mock_processor_class: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """Test auto cleanup runs after sync when enabled."""
+        repo_path = tmp_path / "repo1"
+        (repo_path / ".git").mkdir(parents=True)
+
+        mock_settings.return_value = MagicMock(
+            github_owner="test-user",
+            github_token="token",
+            workspace_dir=tmp_path,
+            git_ssl_no_verify=False,
+            use_https=True,
+            auto_cleanup=True,
+        )
+
+        mock_client = MagicMock()
+        mock_client.get_repositories.return_value = [
+            Repository(
+                name="repo1",
+                full_name="test-user/repo1",
+                clone_url="https://github.com/test-user/repo1.git",
+                ssh_url="git@github.com:test-user/repo1.git",
+            ),
+        ]
+        mock_client_class.return_value = mock_client
+
+        mock_git = MagicMock()
+        mock_git.pull.return_value = ProcessResult(
+            repo_name="repo1",
+            status=ResultStatus.SUCCESS,
+            message="Pulled",
+        )
+        mock_git.get_merged_branches.return_value = ["feature/merged"]
+        mock_git.delete_branch.return_value = True
+        mock_git_class.return_value = mock_git
+
+        def process_side_effect(
+            paths: list[Path],
+            func: Callable[[Path], ProcessResult],
+            desc: str | None = None,
+        ) -> SyncSummary:
+            _ = desc
+            results = [func(paths[0])]
+            return SyncSummary(
+                total=1,
+                success=1,
+                failed=0,
+                skipped=0,
+                duration=1.0,
+                results=results,
+            )
+
+        mock_processor = MagicMock()
+        mock_processor.process.side_effect = process_side_effect
+        mock_processor_class.return_value = mock_processor
+
+        result = runner.invoke(app, ["sync"])
+        assert result.exit_code == 0
+        mock_git.get_merged_branches.assert_called_once()
+        mock_git.delete_branch.assert_called_once_with(repo_path, "feature/merged", force=False)
 
 
 class TestCleanupCommand:

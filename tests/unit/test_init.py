@@ -234,40 +234,43 @@ class TestConfigureAdvanced:
     def test_logging_disabled(self) -> None:
         """Test with logging disabled."""
         with patch("setup_repo.cli.commands.init.Confirm") as mock_confirm:
-            mock_confirm.ask.side_effect = [False, True, False]
+            mock_confirm.ask.side_effect = [False, True, False, False]
 
-            log_enabled, log_file, auto_prune, auto_stash = configure_advanced()
+            log_enabled, log_file, auto_prune, auto_stash, auto_cleanup = configure_advanced()
 
         assert log_enabled is False
         assert log_file is None
         assert auto_prune is True
         assert auto_stash is False
+        assert auto_cleanup is False
 
     def test_logging_enabled_default_path(self) -> None:
         """Test with logging enabled using default path."""
         with patch("setup_repo.cli.commands.init.Confirm") as mock_confirm:
-            mock_confirm.ask.side_effect = [True, True, True, False]
+            mock_confirm.ask.side_effect = [True, True, True, False, False]
 
-            log_enabled, log_file, _, _ = configure_advanced()
+            log_enabled, log_file, _, _, auto_cleanup = configure_advanced()
 
         assert log_enabled is True
         assert log_file is not None
         assert "setup-repo.jsonl" in str(log_file)
+        assert auto_cleanup is False
 
     def test_logging_enabled_custom_path(self, tmp_path: Path) -> None:
         """Test with logging enabled using custom path."""
         custom_log = str(tmp_path / "custom" / "log.jsonl")
 
         with patch("setup_repo.cli.commands.init.Confirm") as mock_confirm:
-            mock_confirm.ask.side_effect = [True, False, True, True]
+            mock_confirm.ask.side_effect = [True, False, True, True, False]
             with patch("setup_repo.cli.commands.init.Prompt") as mock_prompt:
                 mock_prompt.ask.return_value = custom_log
 
-                log_enabled, log_file, _, auto_stash = configure_advanced()
+                log_enabled, log_file, _, auto_stash, auto_cleanup = configure_advanced()
 
         assert log_enabled is True
         assert log_file == Path(custom_log)
         assert auto_stash is True
+        assert auto_cleanup is False
 
 
 class TestShowSummary:
@@ -287,6 +290,7 @@ class TestShowSummary:
                 log_file=None,
                 auto_prune=True,
                 auto_stash=False,
+                auto_cleanup=False,
             )
 
         mock_console.print.assert_called_once()
@@ -305,6 +309,7 @@ class TestShowSummary:
                 log_file=Path("/var/log/test.jsonl"),
                 auto_prune=False,
                 auto_stash=True,
+                auto_cleanup=True,
             )
 
         mock_console.print.assert_called_once()
@@ -336,7 +341,7 @@ class TestInit:
                 # 7. Enable auto prune? True
                 # 8. Enable auto stash? False
                 # 9. Save config? True
-                mock_confirm.ask.side_effect = [True, True, True, True, False, False, True, False, True]
+                mock_confirm.ask.side_effect = [True, True, True, True, False, False, True, False, False, True]
                 with patch("setup_repo.cli.commands.init.Prompt") as mock_prompt:
                     mock_prompt.ask.return_value = "1"  # HTTPS
 
@@ -367,7 +372,7 @@ class TestInit:
                 # 6. Enable auto prune? True
                 # 7. Enable auto stash? False
                 # 8. Save config? False (cancel)
-                mock_confirm.ask.side_effect = [True, True, True, False, False, True, False, False]
+                mock_confirm.ask.side_effect = [True, True, True, False, False, True, False, False, False]
                 with patch("setup_repo.cli.commands.init.Prompt") as mock_prompt:
                     mock_prompt.ask.side_effect = ["1", ""]  # HTTPS, empty token
 
@@ -398,7 +403,7 @@ class TestInit:
                 # 7. Enable auto prune? True
                 # 8. Enable auto stash? False
                 # 9. Save config? True
-                mock_confirm.ask.side_effect = [True, True, True, True, False, False, True, False, True]
+                mock_confirm.ask.side_effect = [True, True, True, True, False, False, True, False, False, True]
                 with patch("setup_repo.cli.commands.init.Prompt") as mock_prompt:
                     mock_prompt.ask.return_value = "1"  # HTTPS
 
