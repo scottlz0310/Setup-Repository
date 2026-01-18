@@ -4,10 +4,10 @@
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import re
 import subprocess
 import sys
-from datetime import datetime
 from pathlib import Path
 from typing import NoReturn
 
@@ -84,12 +84,12 @@ def _update_version(path: Path, pattern: re.Pattern[str], label: str, version: s
 def _get_repo_versions() -> tuple[str, str]:
     pyproject_version = _extract_version(
         PYPROJECT_PATH,
-        re.compile(r'^version\\s*=\\s*"(?P<version>[^"]+)"', re.MULTILINE),
+        re.compile(r'^version\s*=\s*"(?P<version>[^"]+)"', re.MULTILINE),
         "pyproject",
     )
     init_version = _extract_version(
         INIT_PATH,
-        re.compile(r'^__version__\\s*=\\s*"(?P<version>[^"]+)"', re.MULTILINE),
+        re.compile(r'^__version__\s*=\s*"(?P<version>[^"]+)"', re.MULTILINE),
         "package __init__",
     )
     return pyproject_version, init_version
@@ -167,13 +167,13 @@ def _set_version(version: str) -> None:
     _version_key(version)
     _update_version(
         PYPROJECT_PATH,
-        re.compile(r'^(version\\s*=\\s*")([^"]+)(")', re.MULTILINE),
+        re.compile(r'^(version\s*=\s*")([^"]+)(")', re.MULTILINE),
         "pyproject",
         version,
     )
     _update_version(
         INIT_PATH,
-        re.compile(r'^(__version__\\s*=\\s*")([^"]+)(")', re.MULTILINE),
+        re.compile(r'^(__version__\s*=\s*")([^"]+)(")', re.MULTILINE),
         "package __init__",
         version,
     )
@@ -182,7 +182,7 @@ def _set_version(version: str) -> None:
 
 def _update_changelog(version: str, prerelease: bool) -> None:
     _version_key(version)
-    date_str = datetime.now(datetime.UTC).strftime("%Y-%m-%d")
+    date_str = dt.datetime.now(dt.UTC).strftime("%Y-%m-%d")
 
     if CHANGELOG_PATH.exists():
         content = _read_text(CHANGELOG_PATH)
@@ -228,7 +228,7 @@ def _generate_notes(version: str, prerelease: bool) -> None:
     _version_key(version)
     changelog = _read_text(CHANGELOG_PATH)
     section_pattern = re.compile(
-        rf"^## \\[{re.escape(version)}\\].*?$",
+        rf"^## \[{re.escape(version)}\].*?$",
         re.MULTILINE,
     )
     match = section_pattern.search(changelog)
