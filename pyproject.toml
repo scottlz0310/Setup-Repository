@@ -47,6 +47,8 @@ dev = [
     "pytest-cov>=7.0.0",
     "pytest-xdist>=3.8.0",
     "ruff>=0.14.13",
+    "tomli-w>=1.2.0",
+    "tomli>=2.4.0",
 ]
 security = ["bandit>=1.9.2"]
 
