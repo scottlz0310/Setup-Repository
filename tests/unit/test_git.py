@@ -29,15 +29,28 @@ class TestGitOperations:
         assert git.auto_stash is True
         assert git.ssl_no_verify is True
 
-    def test_get_env_without_ssl_no_verify(self) -> None:
-        """Test _get_env returns None when ssl_no_verify is False."""
-        git = GitOperations(ssl_no_verify=False)
-        assert git._get_env() is None
+    @patch("subprocess.run")
+    def test_get_env_without_ssl_no_verify(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        """Test git commands run without custom env when ssl_no_verify is False."""
+        mock_run.return_value = MagicMock(returncode=0)
 
-    def test_get_env_with_ssl_no_verify(self) -> None:
-        """Test _get_env returns env dict with GIT_SSL_NO_VERIFY."""
+        git = GitOperations(ssl_no_verify=False)
+        dest = tmp_path / "test-repo"
+        git.clone("https://github.com/user/test-repo.git", dest)
+
+        env = mock_run.call_args.kwargs.get("env")
+        assert env is None
+
+    @patch("subprocess.run")
+    def test_get_env_with_ssl_no_verify(self, mock_run: MagicMock, tmp_path: Path) -> None:
+        """Test git commands set GIT_SSL_NO_VERIFY when enabled."""
+        mock_run.return_value = MagicMock(returncode=0)
+
         git = GitOperations(ssl_no_verify=True)
-        env = git._get_env()
+        dest = tmp_path / "test-repo"
+        git.clone("https://github.com/user/test-repo.git", dest)
+
+        env = mock_run.call_args.kwargs.get("env")
         assert env is not None
         assert env.get("GIT_SSL_NO_VERIFY") == "1"
 

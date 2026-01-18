@@ -55,7 +55,7 @@ def cleanup(
 
     # Track which branches need force delete
     squash_merged_branches: list[str] = []
-    
+
     # If include_squash is enabled, also check GitHub API for squash-merged branches
     if include_squash:
         merged_set = set(merged_branches)
@@ -82,7 +82,7 @@ def cleanup(
             table.add_row(branch, "merged")
         else:
             table.add_row(branch)
-    
+
     for branch in squash_merged_branches:
         table.add_row(branch, "squash")
 
@@ -108,7 +108,7 @@ def cleanup(
     for branch in merged_branches:
         if git.delete_branch(repo_path, branch, force=False):
             deleted += 1
-    
+
     for branch in squash_merged_branches:
         if git.delete_branch(repo_path, branch, force=True):
             deleted += 1
@@ -160,7 +160,7 @@ def _get_squash_merged_branches(git: GitOperations, repo_path: Path, base_branch
 
     # Get local branches
     local_branches = git.get_local_branches(repo_path)
-    
+
     # Get current branch to exclude it
     current_branch = git.get_current_branch(repo_path)
 
@@ -168,25 +168,25 @@ def _get_squash_merged_branches(git: GitOperations, repo_path: Path, base_branch
     squash_merged: list[str] = []
     for branch in local_branches:
         # Exclude base branch and current branch
-        if branch == base_branch or branch == current_branch:
+        if branch in (base_branch, current_branch):
             continue
-        
+
         # Check if this branch was merged as a PR
         if branch not in merged_prs:
             continue
-            
+
         # Verify that the local branch head is same or older than PR head
         # This safely deletes branches where work is complete while protecting active work
         pr_head_sha = merged_prs[branch]
         if not pr_head_sha:
             log.warning("no_pr_head_sha", branch=branch)
             continue
-            
+
         local_branch_sha = git.get_branch_sha(repo_path, branch)
         if not local_branch_sha:
             log.warning("no_local_branch_sha", branch=branch)
             continue
-        
+
         # Check relationship between local and PR head:
         # 1. Equal: local == PR head -> safe to delete
         # 2. Older: local is ancestor of PR head -> safe to delete (not synced yet)

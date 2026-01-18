@@ -244,3 +244,51 @@ def _show_summary(
         table.add_row("File Logging", "[dim]disabled[/]")
 
     console.print(table)
+
+
+def configure_github(settings: AppSettings) -> tuple[str, str | None]:
+    """Public wrapper for GitHub configuration."""
+    return _configure_github(settings)
+
+
+def configure_workspace(settings: AppSettings) -> tuple[Path, int]:
+    """Public wrapper for workspace configuration."""
+    return _configure_workspace(settings)
+
+
+def configure_git(settings: AppSettings, github_token: str | None) -> tuple[bool, bool]:
+    """Public wrapper for Git configuration."""
+    return _configure_git(settings, github_token)
+
+
+def configure_advanced() -> tuple[bool, Path | None, bool, bool]:
+    """Public wrapper for advanced configuration."""
+    return _configure_advanced()
+
+
+def show_summary(
+    *,
+    github_owner: str,
+    github_token: str | None,
+    workspace_dir: Path,
+    max_workers: int,
+    use_https: bool,
+    ssl_no_verify: bool,
+    log_enabled: bool,
+    log_file: Path | None,
+    auto_prune: bool,
+    auto_stash: bool,
+) -> None:
+    """Public wrapper for summary output."""
+    _show_summary(
+        github_owner=github_owner,
+        github_token=github_token,
+        workspace_dir=workspace_dir,
+        max_workers=max_workers,
+        use_https=use_https,
+        ssl_no_verify=ssl_no_verify,
+        log_enabled=log_enabled,
+        log_file=log_file,
+        auto_prune=auto_prune,
+        auto_stash=auto_stash,
+    )
