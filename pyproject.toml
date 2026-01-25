@@ -40,7 +40,7 @@ Issues = "https://github.com/scottlz0310/Setup-Repository/issues"
 
 [dependency-groups]
 dev = [
-    "coverage>=7.13.1",
+    "coverage>=7.13.2",
     "basedpyright",
     "pre-commit>=4.5.1",
     "pytest>=9.0.2",
