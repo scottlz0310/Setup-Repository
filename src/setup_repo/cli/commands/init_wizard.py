@@ -9,7 +9,7 @@ from setup_repo.models.config import AppSettings
 from setup_repo.utils.console import console
 
 
-def configure_github(settings: AppSettings) -> tuple[str, str | None]:
+def configure_github(settings: AppSettings, interactive: bool = True) -> tuple[str, str | None]:
     """Configure GitHub settings.
 
     Args:
@@ -22,26 +22,43 @@ def configure_github(settings: AppSettings) -> tuple[str, str | None]:
     detected_owner = settings.github_owner
     if detected_owner:
         show_info(f"Detected GitHub owner: [cyan]{detected_owner}[/]")
-        if Confirm.ask("Use this owner?", default=True):
-            github_owner = detected_owner
+        if interactive:
+            if Confirm.ask("Use this owner?", default=True):
+                github_owner = detected_owner
+            else:
+                github_owner = Prompt.ask("Enter GitHub owner (username or organization)")
         else:
-            github_owner = Prompt.ask("Enter GitHub owner (username or organization)")
+            github_owner = detected_owner
     else:
         show_warning("Could not auto-detect GitHub owner")
-        github_owner = Prompt.ask("Enter GitHub owner (username or organization)")
+        github_owner = Prompt.ask("Enter GitHub owner (username or organization)") if interactive else ""
 
     # GitHub Token
     detected_token = settings.github_token
     if detected_token:
         masked = detected_token[:4] + "..." + detected_token[-4:] if len(detected_token) > 8 else "****"
         show_info(f"Detected GitHub token: [dim]{masked}[/]")
-        if Confirm.ask("Use this token?", default=True):
-            github_token = detected_token
+        if interactive:
+            if Confirm.ask("Use this token?", default=True):
+                github_token = detected_token
+            else:
+                github_token = (
+                    Prompt.ask(
+                        "Enter GitHub token (or leave empty)",
+                        default="",
+                        password=True,
+                    )
+                    or None
+                )
         else:
-            github_token = Prompt.ask("Enter GitHub token (or leave empty)", default="", password=True) or None
+            github_token = detected_token
     else:
         show_warning("Could not auto-detect GitHub token (run 'gh auth login' to set up)")
-        github_token = Prompt.ask("Enter GitHub token (or leave empty)", default="", password=True) or None
+        github_token = (
+            (Prompt.ask("Enter GitHub token (or leave empty)", default="", password=True) or None)
+            if interactive
+            else None
+        )
 
     return github_owner, github_token
 

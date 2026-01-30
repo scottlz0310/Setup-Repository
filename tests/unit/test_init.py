@@ -344,22 +344,24 @@ class TestInit:
                 # 2. Use detected token? True
                 # 3. Use default workspace? True
                 # 4. Use default workers? True
-                # 5. Disable SSL? False (HTTPS selected)
-                # 6. Enable file logging? False
-                # 7. Enable auto prune? True
-                # 8. Enable auto stash? False
+                # 5. Enable file logging? False
+                # 6. Enable auto prune? True
+                # 7. Enable auto stash? False
+                # 8. Enable auto cleanup? False
                 # 9. Save config? True
-                mock_confirm.ask.side_effect = [True, True, True, True, False, False, True, False, False, True]
-                with patch("setup_repo.cli.commands.init_validators.Prompt") as mock_prompt:
-                    mock_prompt.ask.return_value = "1"  # HTTPS
+                mock_confirm.ask.side_effect = [True, True, True, True, False, True, False, False, True]
+                with patch("setup_repo.cli.commands.init_validators.Confirm") as mock_git_confirm:
+                    mock_git_confirm.ask.return_value = False  # SSL verify remains enabled
+                    with patch("setup_repo.cli.commands.init_validators.Prompt") as mock_prompt:
+                        mock_prompt.ask.return_value = "1"  # HTTPS
 
-                    with (
-                        patch("setup_repo.cli.commands.init.console"),
-                        patch("setup_repo.cli.commands.init_validators.console"),
-                        patch("setup_repo.cli.commands.init_wizard.console"),
-                        patch("setup_repo.cli.commands.init.get_config_path", return_value=config_path),
-                    ):
-                        init()
+                        with (
+                            patch("setup_repo.cli.commands.init.console"),
+                            patch("setup_repo.cli.commands.init_validators.console"),
+                            patch("setup_repo.cli.commands.init_wizard.console"),
+                            patch("setup_repo.cli.commands.init.get_config_path", return_value=config_path),
+                        ):
+                            init()
 
         assert config_path.exists()
         content = config_path.read_text()
@@ -380,22 +382,26 @@ class TestInit:
                 # 1. Use detected owner? True
                 # 2. Use default workspace? True
                 # 3. Use default workers? True
-                # 4. Disable SSL? False
-                # 5. Enable file logging? False
-                # 6. Enable auto prune? True
-                # 7. Enable auto stash? False
+                # 4. Enable file logging? False
+                # 5. Enable auto prune? True
+                # 6. Enable auto stash? False
+                # 7. Enable auto cleanup? False
                 # 8. Save config? False (cancel)
-                mock_confirm.ask.side_effect = [True, True, True, False, False, True, False, False, False]
-                with patch("setup_repo.cli.commands.init_validators.Prompt") as mock_prompt:
-                    mock_prompt.ask.side_effect = ["1", ""]  # HTTPS, empty token
+                mock_confirm.ask.side_effect = [True, True, True, False, True, False, False, False]
+                with patch("setup_repo.cli.commands.init_wizard.Prompt") as mock_wizard_prompt:
+                    mock_wizard_prompt.ask.return_value = ""  # Empty token
+                    with patch("setup_repo.cli.commands.init_validators.Confirm") as mock_git_confirm:
+                        mock_git_confirm.ask.return_value = False
+                        with patch("setup_repo.cli.commands.init_validators.Prompt") as mock_prompt:
+                            mock_prompt.ask.return_value = "1"  # HTTPS
 
-                    with (
-                        patch("setup_repo.cli.commands.init.console"),
-                        patch("setup_repo.cli.commands.init_validators.console"),
-                        patch("setup_repo.cli.commands.init_wizard.console"),
-                        pytest.raises(typer.Exit) as exc_info,
-                    ):
-                        init()
+                            with (
+                                patch("setup_repo.cli.commands.init.console"),
+                                patch("setup_repo.cli.commands.init_validators.console"),
+                                patch("setup_repo.cli.commands.init_wizard.console"),
+                                pytest.raises(typer.Exit) as exc_info,
+                            ):
+                                init()
 
         assert exc_info.value.exit_code == 0
 
@@ -416,23 +422,25 @@ class TestInit:
                 # 2. Use detected token? True
                 # 3. Use default workspace? True
                 # 4. Use default workers? True
-                # 5. Disable SSL? False (HTTPS selected)
-                # 6. Enable file logging? False
-                # 7. Enable auto prune? True
-                # 8. Enable auto stash? False
+                # 5. Enable file logging? False
+                # 6. Enable auto prune? True
+                # 7. Enable auto stash? False
+                # 8. Enable auto cleanup? False
                 # 9. Save config? True
-                mock_confirm.ask.side_effect = [True, True, True, True, False, False, True, False, False, True]
-                with patch("setup_repo.cli.commands.init_wizard.Prompt") as mock_prompt:
-                    mock_prompt.ask.return_value = "1"  # HTTPS
+                mock_confirm.ask.side_effect = [True, True, True, True, False, True, False, False, True]
+                with patch("setup_repo.cli.commands.init_validators.Confirm") as mock_git_confirm:
+                    mock_git_confirm.ask.return_value = False
+                    with patch("setup_repo.cli.commands.init_validators.Prompt") as mock_prompt:
+                        mock_prompt.ask.return_value = "1"  # HTTPS
 
-                    with (
-                        patch("setup_repo.cli.commands.init.console"),
-                        patch("setup_repo.cli.commands.init_validators.console"),
-                        patch("setup_repo.cli.commands.init_wizard.console"),
-                        patch("setup_repo.cli.commands.init.save_config") as mock_save,
-                        pytest.raises(typer.Exit) as exc_info,
-                    ):
-                        mock_save.side_effect = OSError("Write error")
-                        init()
+                        with (
+                            patch("setup_repo.cli.commands.init.console"),
+                            patch("setup_repo.cli.commands.init_validators.console"),
+                            patch("setup_repo.cli.commands.init_wizard.console"),
+                            patch("setup_repo.cli.commands.init.save_config") as mock_save,
+                            pytest.raises(typer.Exit) as exc_info,
+                        ):
+                            mock_save.side_effect = OSError("Write error")
+                            init()
 
         assert exc_info.value.exit_code == 1

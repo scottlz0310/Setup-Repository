@@ -2,8 +2,8 @@
 
 import typer
 from rich.panel import Panel
-from rich.prompt import Confirm
 
+from setup_repo.cli.commands import init_wizard
 from setup_repo.cli.commands.init_display import show_summary
 from setup_repo.cli.commands.init_validators import configure_git
 from setup_repo.cli.commands.init_wizard import configure_advanced, configure_github, configure_workspace
@@ -60,7 +60,7 @@ def init() -> None:
     )
 
     console.print()
-    if not Confirm.ask("[bold]Save this configuration?[/]", default=True):
+    if not init_wizard.Confirm.ask("[bold]Save this configuration?[/]", default=True):
         show_warning("Configuration cancelled")
         raise typer.Exit(0)
 
