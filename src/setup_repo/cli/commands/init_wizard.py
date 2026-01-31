@@ -63,7 +63,7 @@ def configure_github(settings: AppSettings, interactive: bool = True) -> tuple[s
     return github_owner, github_token
 
 
-def configure_workspace(settings: AppSettings) -> tuple[Path, int]:
+def configure_workspace(settings: AppSettings, interactive: bool = True) -> tuple[Path, int]:
     """Configure workspace settings.
 
     Args:
@@ -76,64 +76,83 @@ def configure_workspace(settings: AppSettings) -> tuple[Path, int]:
     default_dir = settings.workspace_dir
     show_info(f"Default workspace directory: [cyan]{default_dir}[/]")
 
-    if Confirm.ask("Use this directory?", default=True):
-        workspace_dir = default_dir
+    if interactive:
+        if Confirm.ask("Use this directory?", default=True):
+            workspace_dir = default_dir
+        else:
+            workspace_str = Prompt.ask("Enter workspace directory", default=str(default_dir))
+            workspace_dir = Path(workspace_str).expanduser().resolve()
     else:
-        workspace_str = Prompt.ask("Enter workspace directory", default=str(default_dir))
-        workspace_dir = Path(workspace_str).expanduser().resolve()
+        workspace_dir = default_dir
 
     # Max workers
     default_workers = settings.max_workers
     show_info(f"Default parallel workers: [cyan]{default_workers}[/]")
 
-    if Confirm.ask("Use this setting?", default=True):
-        max_workers = default_workers
+    if interactive:
+        if Confirm.ask("Use this setting?", default=True):
+            max_workers = default_workers
+        else:
+            max_workers = int(Prompt.ask("Enter number of parallel workers", default=str(default_workers)))
     else:
-        max_workers = int(Prompt.ask("Enter number of parallel workers", default=str(default_workers)))
+        max_workers = default_workers
 
     return workspace_dir, max_workers
 
 
-def configure_advanced() -> tuple[bool, Path | None, bool, bool, bool, bool]:
+def configure_advanced(
+    settings: AppSettings,
+    interactive: bool = True,
+) -> tuple[bool, Path | None, bool, bool, bool, bool]:
     """Configure advanced options.
 
     Returns:
         Tuple of (log_enabled, log_file, auto_prune, auto_stash, auto_cleanup, auto_cleanup_include_squash)
     """
     # Logging
-    log_enabled = Confirm.ask("Enable file logging?", default=False)
-    log_file: Path | None = None
+    if interactive:
+        log_enabled = Confirm.ask("Enable file logging?", default=False)
+        log_file: Path | None = None
 
-    if log_enabled:
-        default_log = Path.home() / ".local" / "share" / "setup-repo" / "logs" / "setup-repo.jsonl"
-        show_info(f"Default log path: [dim]{default_log}[/]")
+        if log_enabled:
+            default_log = Path.home() / ".local" / "share" / "setup-repo" / "logs" / "setup-repo.jsonl"
+            show_info(f"Default log path: [dim]{default_log}[/]")
 
-        if Confirm.ask("Use this path?", default=True):
-            log_file = default_log
-        else:
-            log_str = Prompt.ask("Enter log file path", default=str(default_log))
-            log_file = Path(log_str).expanduser().resolve()
+            if Confirm.ask("Use this path?", default=True):
+                log_file = default_log
+            else:
+                log_str = Prompt.ask("Enter log file path", default=str(default_log))
+                log_file = Path(log_str).expanduser().resolve()
 
-        show_success(f"Logs will be saved to: [cyan]{log_file}[/]")
+            show_success(f"Logs will be saved to: [cyan]{log_file}[/]")
+    else:
+        log_file = settings.log_file
+        log_enabled = log_file is not None
 
     # Auto prune
-    console.print()
-    show_info("Auto prune: Remove remote-tracking references that no longer exist")
-    auto_prune = Confirm.ask("Enable auto prune on pull?", default=True)
+    if interactive:
+        console.print()
+        show_info("Auto prune: Remove remote-tracking references that no longer exist")
+        auto_prune = Confirm.ask("Enable auto prune on pull?", default=True)
 
-    # Auto stash
-    show_info("Auto stash: Automatically stash/unstash uncommitted changes on pull")
-    auto_stash = Confirm.ask("Enable auto stash on pull?", default=False)
+        # Auto stash
+        show_info("Auto stash: Automatically stash/unstash uncommitted changes on pull")
+        auto_stash = Confirm.ask("Enable auto stash on pull?", default=False)
 
-    show_info("Auto cleanup: Remove merged branches after sync")
-    auto_cleanup = Confirm.ask("Enable auto cleanup after sync?", default=False)
+        show_info("Auto cleanup: Remove merged branches after sync")
+        auto_cleanup = Confirm.ask("Enable auto cleanup after sync?", default=False)
 
-    auto_cleanup_include_squash = False
-    if auto_cleanup:
-        show_info("Include squash-merged branches (requires GitHub API access)")
-        auto_cleanup_include_squash = Confirm.ask(
-            "Include squash-merged branches in auto cleanup?",
-            default=False,
-        )
+        auto_cleanup_include_squash = False
+        if auto_cleanup:
+            show_info("Include squash-merged branches (requires GitHub API access)")
+            auto_cleanup_include_squash = Confirm.ask(
+                "Include squash-merged branches in auto cleanup?",
+                default=False,
+            )
+    else:
+        auto_prune = settings.auto_prune
+        auto_stash = settings.auto_stash
+        auto_cleanup = settings.auto_cleanup
+        auto_cleanup_include_squash = settings.auto_cleanup_include_squash
 
     return log_enabled, log_file, auto_prune, auto_stash, auto_cleanup, auto_cleanup_include_squash

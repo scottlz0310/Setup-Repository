@@ -9,7 +9,11 @@ from setup_repo.models.config import AppSettings
 from setup_repo.utils.console import console
 
 
-def configure_git(settings: AppSettings, github_token: str | None, interactive: bool = True) -> tuple[bool, bool]:
+def configure_git(
+    settings: AppSettings,
+    github_token: str | None,
+    interactive: bool = True,
+) -> tuple[bool, bool]:
     """Configure Git settings and validate.
 
     Args:
@@ -26,8 +30,10 @@ def configure_git(settings: AppSettings, github_token: str | None, interactive: 
     if interactive:
         choice = Prompt.ask("Select clone method", choices=["1", "2"], default="1")
         use_https = choice == "1"
+        ssl_no_verify = False
     else:
-        use_https = True
+        use_https = settings.use_https
+        ssl_no_verify = settings.git_ssl_no_verify
 
     # Validate the choice
     if use_https and not github_token:
@@ -46,7 +52,6 @@ def configure_git(settings: AppSettings, github_token: str | None, interactive: 
         show_success("SSH clone will be used")
 
     # SSL verification
-    ssl_no_verify = False
     if use_https and interactive:
         console.print()
         show_info("SSL verification is enabled by default")

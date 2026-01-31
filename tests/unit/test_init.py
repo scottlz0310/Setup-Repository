@@ -239,7 +239,7 @@ class TestConfigureAdvanced:
                 auto_stash,
                 auto_cleanup,
                 auto_cleanup_include_squash,
-            ) = configure_advanced()
+            ) = configure_advanced(settings=MagicMock(spec=AppSettings))
 
         assert log_enabled is False
         assert log_file is None
@@ -253,7 +253,9 @@ class TestConfigureAdvanced:
         with patch("setup_repo.cli.commands.init_wizard.Confirm") as mock_confirm:
             mock_confirm.ask.side_effect = [True, True, True, False, False]
 
-            log_enabled, log_file, _, _, auto_cleanup, auto_cleanup_include_squash = configure_advanced()
+            log_enabled, log_file, _, _, auto_cleanup, auto_cleanup_include_squash = configure_advanced(
+                settings=MagicMock(spec=AppSettings),
+            )
 
         assert log_enabled is True
         assert log_file is not None
@@ -270,7 +272,9 @@ class TestConfigureAdvanced:
             with patch("setup_repo.cli.commands.init_wizard.Prompt") as mock_prompt:
                 mock_prompt.ask.return_value = custom_log
 
-                log_enabled, log_file, _, auto_stash, auto_cleanup, auto_cleanup_include_squash = configure_advanced()
+                log_enabled, log_file, _, auto_stash, auto_cleanup, auto_cleanup_include_squash = configure_advanced(
+                    settings=MagicMock(spec=AppSettings),
+                )
 
         assert log_enabled is True
         assert log_file == Path(custom_log)
@@ -350,7 +354,10 @@ class TestInit:
                 # 8. Enable auto cleanup? False
                 # 9. Save config? True
                 mock_confirm.ask.side_effect = [True, True, True, True, False, True, False, False, True]
-                with patch("setup_repo.cli.commands.init_validators.Confirm") as mock_git_confirm:
+                with (
+                    patch("setup_repo.cli.commands.init.sys.stdin.isatty", return_value=True),
+                    patch("setup_repo.cli.commands.init_validators.Confirm") as mock_git_confirm,
+                ):
                     mock_git_confirm.ask.return_value = False  # SSL verify remains enabled
                     with patch("setup_repo.cli.commands.init_validators.Prompt") as mock_prompt:
                         mock_prompt.ask.return_value = "1"  # HTTPS
@@ -388,7 +395,10 @@ class TestInit:
                 # 7. Enable auto cleanup? False
                 # 8. Save config? False (cancel)
                 mock_confirm.ask.side_effect = [True, True, True, False, True, False, False, False]
-                with patch("setup_repo.cli.commands.init_wizard.Prompt") as mock_wizard_prompt:
+                with (
+                    patch("setup_repo.cli.commands.init.sys.stdin.isatty", return_value=True),
+                    patch("setup_repo.cli.commands.init_wizard.Prompt") as mock_wizard_prompt,
+                ):
                     mock_wizard_prompt.ask.return_value = ""  # Empty token
                     with patch("setup_repo.cli.commands.init_validators.Confirm") as mock_git_confirm:
                         mock_git_confirm.ask.return_value = False
@@ -428,7 +438,10 @@ class TestInit:
                 # 8. Enable auto cleanup? False
                 # 9. Save config? True
                 mock_confirm.ask.side_effect = [True, True, True, True, False, True, False, False, True]
-                with patch("setup_repo.cli.commands.init_validators.Confirm") as mock_git_confirm:
+                with (
+                    patch("setup_repo.cli.commands.init.sys.stdin.isatty", return_value=True),
+                    patch("setup_repo.cli.commands.init_validators.Confirm") as mock_git_confirm,
+                ):
                     mock_git_confirm.ask.return_value = False
                     with patch("setup_repo.cli.commands.init_validators.Prompt") as mock_prompt:
                         mock_prompt.ask.return_value = "1"  # HTTPS

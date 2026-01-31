@@ -1,5 +1,7 @@
 """Init command for CLI - Interactive setup wizard."""
 
+import sys
+
 import typer
 from rich.panel import Panel
 
@@ -28,19 +30,28 @@ def init() -> None:
 
     # Step 1: GitHub Authentication
     console.rule("[bold]Step 1: GitHub Authentication[/]")
-    github_owner, github_token = configure_github(settings)
+    interactive = sys.stdin.isatty()
+    github_owner, github_token = configure_github(settings, interactive=interactive)
+    if not interactive and not github_owner:
+        show_error(
+            "GitHub owner is required in non-interactive mode. "
+            "Set SETUP_REPO_GITHUB_OWNER or configure ~/.config/setup-repo/config.toml."
+        )
+        raise typer.Exit(1)
 
     # Step 2: Workspace Settings
     console.rule("[bold]Step 2: Workspace Settings[/]")
-    workspace_dir, max_workers = configure_workspace(settings)
+    workspace_dir, max_workers = configure_workspace(settings, interactive=interactive)
 
     # Step 3: Git Settings
     console.rule("[bold]Step 3: Git Settings[/]")
-    use_https, ssl_no_verify = configure_git(settings, github_token)
+    use_https, ssl_no_verify = configure_git(settings, github_token, interactive=interactive)
 
     # Step 4: Advanced Options
     console.rule("[bold]Step 4: Advanced Options[/]")
-    log_enabled, log_file, auto_prune, auto_stash, auto_cleanup, auto_cleanup_include_squash = configure_advanced()
+    log_enabled, log_file, auto_prune, auto_stash, auto_cleanup, auto_cleanup_include_squash = configure_advanced(
+        settings, interactive=interactive
+    )
 
     # Show summary and confirm
     console.rule("[bold]Configuration Summary[/]")
@@ -60,7 +71,7 @@ def init() -> None:
     )
 
     console.print()
-    if not init_wizard.Confirm.ask("[bold]Save this configuration?[/]", default=True):
+    if interactive and not init_wizard.Confirm.ask("[bold]Save this configuration?[/]", default=True):
         show_warning("Configuration cancelled")
         raise typer.Exit(0)
 
