@@ -1,17 +1,23 @@
-"""Git operations wrapper."""
+"""Git operations wrapper - main interface."""
 
-import re
 import subprocess
 from pathlib import Path
 
-from setup_repo.models.result import ProcessResult, ResultStatus
-from setup_repo.utils.logging import get_logger, log_context
+from setup_repo.core.git_branch import GitBranchOperations
+from setup_repo.core.git_operations import BasicGitOperations
+from setup_repo.core.git_remote import GitRemoteOperations
+from setup_repo.models.result import ProcessResult
+from setup_repo.utils.logging import get_logger
 
 log = get_logger(__name__)
 
 
 class GitOperations:
-    """Git command wrapper."""
+    """Git command wrapper - unified interface.
+
+    This class provides a unified interface to all Git operations
+    by delegating to specialized operation classes.
+    """
 
     def __init__(
         self,
@@ -26,19 +32,25 @@ class GitOperations:
             auto_stash: Stash changes before pull and pop after
             ssl_no_verify: Skip SSL verification
         """
+        # Initialize basic operations
+        self._basic_ops = BasicGitOperations(
+            auto_prune=auto_prune,
+            auto_stash=auto_stash,
+            ssl_no_verify=ssl_no_verify,
+        )
+
+        # Initialize specialized operations
+        self._branch_ops = GitBranchOperations(self._basic_ops)
+        self._remote_ops = GitRemoteOperations(self._basic_ops)
+
+        # Keep these for backward compatibility
         self.auto_prune = auto_prune
         self.auto_stash = auto_stash
         self.ssl_no_verify = ssl_no_verify
 
     def _get_env(self) -> dict[str, str] | None:
         """Get environment variables for git commands."""
-        if self.ssl_no_verify:
-            import os
-
-            env = os.environ.copy()
-            env["GIT_SSL_NO_VERIFY"] = "1"
-            return env
-        return None
+        return self._basic_ops.get_env()
 
     def _run(
         self,
@@ -56,18 +68,7 @@ class GitOperations:
         Returns:
             CompletedProcess result
         """
-        cmd = ["git", *args]
-        log.debug("git_command", cmd=" ".join(cmd), cwd=str(cwd) if cwd else None)
-
-        return subprocess.run(
-            cmd,
-            cwd=cwd,
-            capture_output=True,
-            text=True,
-            check=check,
-            env=self._get_env(),
-            timeout=300,  # 5 minutes timeout
-        )
+        return self._basic_ops.run(args, cwd, check)
 
     def clone(
         self,
@@ -85,33 +86,7 @@ class GitOperations:
         Returns:
             ProcessResult
         """
-        args = ["clone", "--depth", "1"]
-        if branch:
-            args.extend(["--branch", branch])
-        args.extend([url, str(dest)])
-
-        try:
-            self._run(args)
-            log.info("cloned", url=url, dest=str(dest))
-            return ProcessResult(
-                repo_name=dest.name,
-                status=ResultStatus.SUCCESS,
-                message="Cloned successfully",
-            )
-        except subprocess.CalledProcessError as e:
-            log.error("clone_failed", url=url, error=e.stderr)
-            return ProcessResult(
-                repo_name=dest.name,
-                status=ResultStatus.FAILED,
-                error=e.stderr,
-            )
-        except subprocess.TimeoutExpired:
-            log.error("clone_timeout", url=url)
-            return ProcessResult(
-                repo_name=dest.name,
-                status=ResultStatus.FAILED,
-                error="Clone timed out",
-            )
+        return self._basic_ops.clone(url, dest, branch)
 
     def fetch_and_prune(self, repo_path: Path) -> bool:
         """Run fetch --prune.
@@ -122,19 +97,7 @@ class GitOperations:
         Returns:
             True if successful
         """
-        if not self.auto_prune:
-            return True
-
-        try:
-            self._run(["fetch", "--prune"], cwd=repo_path)
-            log.debug("fetched_and_pruned", repo=repo_path.name)
-            return True
-        except subprocess.CalledProcessError as e:
-            log.warning("fetch_prune_failed", repo=repo_path.name, error=e.stderr)
-            return False
-        except subprocess.TimeoutExpired:
-            log.warning("fetch_prune_timeout", repo=repo_path.name)
-            return False
+        return self._basic_ops.fetch_and_prune(repo_path)
 
     def pull(self, repo_path: Path) -> ProcessResult:
         """Pull a repository.
@@ -145,47 +108,7 @@ class GitOperations:
         Returns:
             ProcessResult
         """
-        with log_context(repo=repo_path.name):
-            # First fetch --prune
-            self.fetch_and_prune(repo_path)
-
-            # Stash if needed
-            stashed = False
-            if self.auto_stash and self._has_changes(repo_path):
-                try:
-                    self._run(["stash"], cwd=repo_path)
-                    stashed = True
-                    log.debug("stashed")
-                except subprocess.CalledProcessError as e:
-                    log.debug("stash_failed", error=e.stderr)
-
-            try:
-                self._run(["pull", "--ff-only"], cwd=repo_path)
-                log.info("pulled")
-
-                if stashed:
-                    self._run(["stash", "pop"], cwd=repo_path, check=False)
-                    log.debug("stash_popped")
-
-                return ProcessResult(
-                    repo_name=repo_path.name,
-                    status=ResultStatus.SUCCESS,
-                    message="Pulled successfully",
-                )
-            except subprocess.CalledProcessError as e:
-                log.error("pull_failed", error=e.stderr)
-                return ProcessResult(
-                    repo_name=repo_path.name,
-                    status=ResultStatus.FAILED,
-                    error=e.stderr,
-                )
-            except subprocess.TimeoutExpired:
-                log.error("pull_timeout")
-                return ProcessResult(
-                    repo_name=repo_path.name,
-                    status=ResultStatus.FAILED,
-                    error="Pull timed out",
-                )
+        return self._basic_ops.pull(repo_path)
 
     def _has_changes(self, repo_path: Path) -> bool:
         """Check if repository has uncommitted changes.
@@ -196,11 +119,7 @@ class GitOperations:
         Returns:
             True if there are changes
         """
-        try:
-            result = self._run(["status", "--porcelain"], cwd=repo_path, check=False)
-            return bool(result.stdout.strip())
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
-            return False
+        return self._basic_ops.has_changes(repo_path)
 
     def get_merged_branches(self, repo_path: Path, base_branch: str = "main") -> list[str]:
         """Get merged branches.
@@ -212,19 +131,7 @@ class GitOperations:
         Returns:
             List of merged branch names
         """
-        try:
-            result = self._run(
-                ["branch", "--merged", base_branch],
-                cwd=repo_path,
-            )
-            branches: list[str] = []
-            for line in result.stdout.strip().split("\n"):
-                branch = line.strip().lstrip("* ")
-                if branch and branch != base_branch:
-                    branches.append(branch)
-            return branches
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
-            return []
+        return self._branch_ops.get_merged_branches(repo_path, base_branch)
 
     def delete_branch(self, repo_path: Path, branch: str, force: bool = False) -> bool:
         """Delete a local branch.
@@ -237,17 +144,7 @@ class GitOperations:
         Returns:
             True if successful
         """
-        flag = "-D" if force else "-d"
-        try:
-            self._run(["branch", flag, branch], cwd=repo_path)
-            log.info("branch_deleted", branch=branch, force=force)
-            return True
-        except subprocess.CalledProcessError as e:
-            log.warning("branch_delete_failed", branch=branch, error=e.stderr)
-            return False
-        except subprocess.TimeoutExpired:
-            log.warning("branch_delete_timeout", branch=branch)
-            return False
+        return self._branch_ops.delete_branch(repo_path, branch, force)
 
     def get_remote_url(self, repo_path: Path) -> str | None:
         """Get the remote origin URL.
@@ -258,17 +155,7 @@ class GitOperations:
         Returns:
             Remote URL or None if not found
         """
-        try:
-            result = self._run(
-                ["remote", "get-url", "origin"],
-                cwd=repo_path,
-                check=False,
-            )
-            if result.returncode == 0:
-                return result.stdout.strip()
-            return None
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
-            return None
+        return self._remote_ops.get_remote_url(repo_path)
 
     def parse_github_repo(self, remote_url: str) -> tuple[str, str] | None:
         """Parse GitHub owner and repo name from remote URL.
@@ -279,17 +166,7 @@ class GitOperations:
         Returns:
             Tuple of (owner, repo) or None if not a GitHub URL
         """
-        # Handle SSH URLs: git@github.com:owner/repo.git
-        ssh_pattern = r"git@github\.com:([^/]+)/([^/]+?)(?:\.git)?$"
-        # Handle HTTPS URLs: https://github.com/owner/repo.git
-        https_pattern = r"https://github\.com/([^/]+)/([^/]+?)(?:\.git)?$"
-
-        for pattern in [ssh_pattern, https_pattern]:
-            if match := re.match(pattern, remote_url):
-                owner, repo = match.groups()
-                return (owner, repo)
-
-        return None
+        return self._remote_ops.parse_github_repo(remote_url)
 
     def get_local_branches(self, repo_path: Path) -> list[str]:
         """Get all local branches.
@@ -300,16 +177,7 @@ class GitOperations:
         Returns:
             List of branch names
         """
-        try:
-            result = self._run(["branch", "--format=%(refname:short)"], cwd=repo_path)
-            branches: list[str] = []
-            for line in result.stdout.strip().split("\n"):
-                branch = line.strip()
-                if branch:
-                    branches.append(branch)
-            return branches
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
-            return []
+        return self._branch_ops.get_local_branches(repo_path)
 
     def get_current_branch(self, repo_path: Path) -> str | None:
         """Get the current branch name.
@@ -320,13 +188,7 @@ class GitOperations:
         Returns:
             Current branch name or None if not on a branch
         """
-        try:
-            result = self._run(["branch", "--show-current"], cwd=repo_path, check=False)
-            if result.returncode == 0:
-                return result.stdout.strip()
-            return None
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
-            return None
+        return self._branch_ops.get_current_branch(repo_path)
 
     def get_branch_sha(self, repo_path: Path, branch: str) -> str | None:
         """Get the commit SHA for a branch.
@@ -338,13 +200,7 @@ class GitOperations:
         Returns:
             Commit SHA or None if branch doesn't exist
         """
-        try:
-            result = self._run(["rev-parse", branch], cwd=repo_path, check=False)
-            if result.returncode == 0:
-                return result.stdout.strip()
-            return None
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
-            return None
+        return self._branch_ops.get_branch_sha(repo_path, branch)
 
     def is_ancestor(self, repo_path: Path, ancestor_sha: str, descendant_ref: str) -> bool:
         """Check if a commit is an ancestor of another ref.
@@ -357,13 +213,4 @@ class GitOperations:
         Returns:
             True if ancestor_sha is an ancestor of descendant_ref
         """
-        try:
-            # git merge-base --is-ancestor returns 0 if true, 1 if false
-            result = self._run(
-                ["merge-base", "--is-ancestor", ancestor_sha, descendant_ref],
-                cwd=repo_path,
-                check=False,
-            )
-            return result.returncode == 0
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
-            return False
+        return self._branch_ops.is_ancestor(repo_path, ancestor_sha, descendant_ref)

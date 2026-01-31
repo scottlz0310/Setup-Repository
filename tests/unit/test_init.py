@@ -6,14 +6,10 @@ from unittest.mock import MagicMock, patch
 import pytest
 import typer
 
-from setup_repo.cli.commands.init import (
-    configure_advanced,
-    configure_git,
-    configure_github,
-    configure_workspace,
-    init,
-    show_summary,
-)
+from setup_repo.cli.commands.init import init
+from setup_repo.cli.commands.init_display import show_summary
+from setup_repo.cli.commands.init_validators import configure_git
+from setup_repo.cli.commands.init_wizard import configure_advanced, configure_github, configure_workspace
 from setup_repo.models.config import AppSettings
 
 
@@ -26,9 +22,9 @@ class TestConfigureGithub:
         settings.github_owner = "detected-owner"
         settings.github_token = None
 
-        with patch("setup_repo.cli.commands.init.Confirm") as mock_confirm:
+        with patch("setup_repo.cli.commands.init_wizard.Confirm") as mock_confirm:
             mock_confirm.ask.return_value = True
-            with patch("setup_repo.cli.commands.init.Prompt") as mock_prompt:
+            with patch("setup_repo.cli.commands.init_wizard.Prompt") as mock_prompt:
                 mock_prompt.ask.return_value = ""
 
                 owner, token = configure_github(settings)
@@ -42,9 +38,9 @@ class TestConfigureGithub:
         settings.github_owner = "detected-owner"
         settings.github_token = None
 
-        with patch("setup_repo.cli.commands.init.Confirm") as mock_confirm:
+        with patch("setup_repo.cli.commands.init_wizard.Confirm") as mock_confirm:
             mock_confirm.ask.return_value = False
-            with patch("setup_repo.cli.commands.init.Prompt") as mock_prompt:
+            with patch("setup_repo.cli.commands.init_wizard.Prompt") as mock_prompt:
                 mock_prompt.ask.side_effect = ["custom-owner", ""]
 
                 owner, _ = configure_github(settings)
@@ -57,7 +53,7 @@ class TestConfigureGithub:
         settings.github_owner = ""
         settings.github_token = None
 
-        with patch("setup_repo.cli.commands.init.Prompt") as mock_prompt:
+        with patch("setup_repo.cli.commands.init_wizard.Prompt") as mock_prompt:
             mock_prompt.ask.side_effect = ["manual-owner", ""]
 
             owner, _ = configure_github(settings)
@@ -70,7 +66,7 @@ class TestConfigureGithub:
         settings.github_owner = "owner"
         settings.github_token = "ghp_detected123token456"
 
-        with patch("setup_repo.cli.commands.init.Confirm") as mock_confirm:
+        with patch("setup_repo.cli.commands.init_wizard.Confirm") as mock_confirm:
             mock_confirm.ask.return_value = True
 
             _, token = configure_github(settings)
@@ -83,9 +79,9 @@ class TestConfigureGithub:
         settings.github_owner = "owner"
         settings.github_token = "detected-token"
 
-        with patch("setup_repo.cli.commands.init.Confirm") as mock_confirm:
+        with patch("setup_repo.cli.commands.init_wizard.Confirm") as mock_confirm:
             mock_confirm.ask.side_effect = [True, False]
-            with patch("setup_repo.cli.commands.init.Prompt") as mock_prompt:
+            with patch("setup_repo.cli.commands.init_wizard.Prompt") as mock_prompt:
                 mock_prompt.ask.return_value = "custom-token"
 
                 _, token = configure_github(settings)
@@ -98,9 +94,9 @@ class TestConfigureGithub:
         settings.github_owner = "owner"
         settings.github_token = "detected"
 
-        with patch("setup_repo.cli.commands.init.Confirm") as mock_confirm:
+        with patch("setup_repo.cli.commands.init_wizard.Confirm") as mock_confirm:
             mock_confirm.ask.side_effect = [True, False]
-            with patch("setup_repo.cli.commands.init.Prompt") as mock_prompt:
+            with patch("setup_repo.cli.commands.init_wizard.Prompt") as mock_prompt:
                 mock_prompt.ask.return_value = ""
 
                 _, token = configure_github(settings)
@@ -117,7 +113,7 @@ class TestConfigureWorkspace:
         settings.workspace_dir = Path("/default/workspace")
         settings.max_workers = 10
 
-        with patch("setup_repo.cli.commands.init.Confirm") as mock_confirm:
+        with patch("setup_repo.cli.commands.init_wizard.Confirm") as mock_confirm:
             mock_confirm.ask.return_value = True
 
             workspace, workers = configure_workspace(settings)
@@ -133,9 +129,9 @@ class TestConfigureWorkspace:
 
         custom_path = str(tmp_path / "custom")
 
-        with patch("setup_repo.cli.commands.init.Confirm") as mock_confirm:
+        with patch("setup_repo.cli.commands.init_wizard.Confirm") as mock_confirm:
             mock_confirm.ask.side_effect = [False, True]
-            with patch("setup_repo.cli.commands.init.Prompt") as mock_prompt:
+            with patch("setup_repo.cli.commands.init_wizard.Prompt") as mock_prompt:
                 mock_prompt.ask.return_value = custom_path
 
                 workspace, _ = configure_workspace(settings)
@@ -148,9 +144,9 @@ class TestConfigureWorkspace:
         settings.workspace_dir = Path("/workspace")
         settings.max_workers = 10
 
-        with patch("setup_repo.cli.commands.init.Confirm") as mock_confirm:
+        with patch("setup_repo.cli.commands.init_wizard.Confirm") as mock_confirm:
             mock_confirm.ask.side_effect = [True, False]
-            with patch("setup_repo.cli.commands.init.Prompt") as mock_prompt:
+            with patch("setup_repo.cli.commands.init_wizard.Prompt") as mock_prompt:
                 mock_prompt.ask.return_value = "5"
 
                 _, workers = configure_workspace(settings)
@@ -165,9 +161,9 @@ class TestConfigureGit:
         """Test selecting HTTPS clone method."""
         settings = MagicMock(spec=AppSettings)
 
-        with patch("setup_repo.cli.commands.init.Prompt") as mock_prompt:
+        with patch("setup_repo.cli.commands.init_validators.Prompt") as mock_prompt:
             mock_prompt.ask.return_value = "1"
-            with patch("setup_repo.cli.commands.init.Confirm") as mock_confirm:
+            with patch("setup_repo.cli.commands.init_validators.Confirm") as mock_confirm:
                 mock_confirm.ask.return_value = False
 
                 use_https, ssl_no_verify = configure_git(settings, "token")
@@ -179,7 +175,7 @@ class TestConfigureGit:
         """Test selecting SSH clone method."""
         settings = MagicMock(spec=AppSettings)
 
-        with patch("setup_repo.cli.commands.init.Prompt") as mock_prompt:
+        with patch("setup_repo.cli.commands.init_validators.Prompt") as mock_prompt:
             mock_prompt.ask.return_value = "2"
 
             use_https, ssl_no_verify = configure_git(settings, "token")
@@ -191,11 +187,11 @@ class TestConfigureGit:
         """Test warning when using HTTPS without token."""
         settings = MagicMock(spec=AppSettings)
 
-        with patch("setup_repo.cli.commands.init.Prompt") as mock_prompt:
+        with patch("setup_repo.cli.commands.init_validators.Prompt") as mock_prompt:
             mock_prompt.ask.return_value = "1"
-            with patch("setup_repo.cli.commands.init.Confirm") as mock_confirm:
+            with patch("setup_repo.cli.commands.init_validators.Confirm") as mock_confirm:
                 mock_confirm.ask.return_value = False
-                with patch("setup_repo.cli.commands.init.show_warning") as mock_warn:
+                with patch("setup_repo.cli.commands.init_validators.show_warning") as mock_warn:
                     configure_git(settings, None)
 
         mock_warn.assert_called()
@@ -204,9 +200,9 @@ class TestConfigureGit:
         """Test enabling SSL no verify."""
         settings = MagicMock(spec=AppSettings)
 
-        with patch("setup_repo.cli.commands.init.Prompt") as mock_prompt:
+        with patch("setup_repo.cli.commands.init_validators.Prompt") as mock_prompt:
             mock_prompt.ask.return_value = "1"
-            with patch("setup_repo.cli.commands.init.Confirm") as mock_confirm:
+            with patch("setup_repo.cli.commands.init_validators.Confirm") as mock_confirm:
                 mock_confirm.ask.return_value = True
 
                 _, ssl_no_verify = configure_git(settings, "token")
@@ -218,9 +214,9 @@ class TestConfigureGit:
         settings = MagicMock(spec=AppSettings)
 
         with (
-            patch("setup_repo.cli.commands.init.Prompt") as mock_prompt,
+            patch("setup_repo.cli.commands.init_validators.Prompt") as mock_prompt,
             patch("pathlib.Path.exists", return_value=False),
-            patch("setup_repo.cli.commands.init.show_warning") as mock_warn,
+            patch("setup_repo.cli.commands.init_validators.show_warning") as mock_warn,
         ):
             mock_prompt.ask.return_value = "2"
             configure_git(settings, "token")
@@ -233,7 +229,7 @@ class TestConfigureAdvanced:
 
     def test_logging_disabled(self) -> None:
         """Test with logging disabled."""
-        with patch("setup_repo.cli.commands.init.Confirm") as mock_confirm:
+        with patch("setup_repo.cli.commands.init_wizard.Confirm") as mock_confirm:
             mock_confirm.ask.side_effect = [False, True, False, False]
 
             (
@@ -243,7 +239,7 @@ class TestConfigureAdvanced:
                 auto_stash,
                 auto_cleanup,
                 auto_cleanup_include_squash,
-            ) = configure_advanced()
+            ) = configure_advanced(settings=MagicMock(spec=AppSettings))
 
         assert log_enabled is False
         assert log_file is None
@@ -254,10 +250,12 @@ class TestConfigureAdvanced:
 
     def test_logging_enabled_default_path(self) -> None:
         """Test with logging enabled using default path."""
-        with patch("setup_repo.cli.commands.init.Confirm") as mock_confirm:
+        with patch("setup_repo.cli.commands.init_wizard.Confirm") as mock_confirm:
             mock_confirm.ask.side_effect = [True, True, True, False, False]
 
-            log_enabled, log_file, _, _, auto_cleanup, auto_cleanup_include_squash = configure_advanced()
+            log_enabled, log_file, _, _, auto_cleanup, auto_cleanup_include_squash = configure_advanced(
+                settings=MagicMock(spec=AppSettings),
+            )
 
         assert log_enabled is True
         assert log_file is not None
@@ -269,12 +267,14 @@ class TestConfigureAdvanced:
         """Test with logging enabled using custom path."""
         custom_log = str(tmp_path / "custom" / "log.jsonl")
 
-        with patch("setup_repo.cli.commands.init.Confirm") as mock_confirm:
+        with patch("setup_repo.cli.commands.init_wizard.Confirm") as mock_confirm:
             mock_confirm.ask.side_effect = [True, False, True, True, False]
-            with patch("setup_repo.cli.commands.init.Prompt") as mock_prompt:
+            with patch("setup_repo.cli.commands.init_wizard.Prompt") as mock_prompt:
                 mock_prompt.ask.return_value = custom_log
 
-                log_enabled, log_file, _, auto_stash, auto_cleanup, auto_cleanup_include_squash = configure_advanced()
+                log_enabled, log_file, _, auto_stash, auto_cleanup, auto_cleanup_include_squash = configure_advanced(
+                    settings=MagicMock(spec=AppSettings),
+                )
 
         assert log_enabled is True
         assert log_file == Path(custom_log)
@@ -288,7 +288,7 @@ class TestShowSummary:
 
     def test_shows_summary_table(self) -> None:
         """Test that summary table is displayed."""
-        with patch("setup_repo.cli.commands.init.console") as mock_console:
+        with patch("setup_repo.cli.commands.init_display.console") as mock_console:
             show_summary(
                 github_owner="test-owner",
                 github_token="token",
@@ -308,7 +308,7 @@ class TestShowSummary:
 
     def test_shows_log_file_when_enabled(self) -> None:
         """Test that log file path is shown when logging is enabled."""
-        with patch("setup_repo.cli.commands.init.console") as mock_console:
+        with patch("setup_repo.cli.commands.init_display.console") as mock_console:
             show_summary(
                 github_owner="test-owner",
                 github_token=None,
@@ -342,23 +342,33 @@ class TestInit:
             mock_settings.max_workers = 10
             mock_settings_cls.return_value = mock_settings
 
-            with patch("setup_repo.cli.commands.init.Confirm") as mock_confirm:
+            with patch("setup_repo.cli.commands.init_wizard.Confirm") as mock_confirm:
                 # Confirm calls in order:
                 # 1. Use detected owner? True
                 # 2. Use detected token? True
                 # 3. Use default workspace? True
                 # 4. Use default workers? True
-                # 5. Disable SSL? False (HTTPS selected)
-                # 6. Enable file logging? False
-                # 7. Enable auto prune? True
-                # 8. Enable auto stash? False
+                # 5. Enable file logging? False
+                # 6. Enable auto prune? True
+                # 7. Enable auto stash? False
+                # 8. Enable auto cleanup? False
                 # 9. Save config? True
-                mock_confirm.ask.side_effect = [True, True, True, True, False, False, True, False, False, True]
-                with patch("setup_repo.cli.commands.init.Prompt") as mock_prompt:
-                    mock_prompt.ask.return_value = "1"  # HTTPS
+                mock_confirm.ask.side_effect = [True, True, True, True, False, True, False, False, True]
+                with (
+                    patch("setup_repo.cli.commands.init.sys.stdin.isatty", return_value=True),
+                    patch("setup_repo.cli.commands.init_validators.Confirm") as mock_git_confirm,
+                ):
+                    mock_git_confirm.ask.return_value = False  # SSL verify remains enabled
+                    with patch("setup_repo.cli.commands.init_validators.Prompt") as mock_prompt:
+                        mock_prompt.ask.return_value = "1"  # HTTPS
 
-                    with patch("setup_repo.cli.commands.init.get_config_path", return_value=config_path):
-                        init()
+                        with (
+                            patch("setup_repo.cli.commands.init.console"),
+                            patch("setup_repo.cli.commands.init_validators.console"),
+                            patch("setup_repo.cli.commands.init_wizard.console"),
+                            patch("setup_repo.cli.commands.init.get_config_path", return_value=config_path),
+                        ):
+                            init()
 
         assert config_path.exists()
         content = config_path.read_text()
@@ -374,22 +384,34 @@ class TestInit:
             mock_settings.max_workers = 10
             mock_settings_cls.return_value = mock_settings
 
-            with patch("setup_repo.cli.commands.init.Confirm") as mock_confirm:
+            with patch("setup_repo.cli.commands.init_wizard.Confirm") as mock_confirm:
                 # Confirm calls in order:
                 # 1. Use detected owner? True
                 # 2. Use default workspace? True
                 # 3. Use default workers? True
-                # 4. Disable SSL? False
-                # 5. Enable file logging? False
-                # 6. Enable auto prune? True
-                # 7. Enable auto stash? False
+                # 4. Enable file logging? False
+                # 5. Enable auto prune? True
+                # 6. Enable auto stash? False
+                # 7. Enable auto cleanup? False
                 # 8. Save config? False (cancel)
-                mock_confirm.ask.side_effect = [True, True, True, False, False, True, False, False, False]
-                with patch("setup_repo.cli.commands.init.Prompt") as mock_prompt:
-                    mock_prompt.ask.side_effect = ["1", ""]  # HTTPS, empty token
+                mock_confirm.ask.side_effect = [True, True, True, False, True, False, False, False]
+                with (
+                    patch("setup_repo.cli.commands.init.sys.stdin.isatty", return_value=True),
+                    patch("setup_repo.cli.commands.init_wizard.Prompt") as mock_wizard_prompt,
+                ):
+                    mock_wizard_prompt.ask.return_value = ""  # Empty token
+                    with patch("setup_repo.cli.commands.init_validators.Confirm") as mock_git_confirm:
+                        mock_git_confirm.ask.return_value = False
+                        with patch("setup_repo.cli.commands.init_validators.Prompt") as mock_prompt:
+                            mock_prompt.ask.return_value = "1"  # HTTPS
 
-                    with pytest.raises(typer.Exit) as exc_info:
-                        init()
+                            with (
+                                patch("setup_repo.cli.commands.init.console"),
+                                patch("setup_repo.cli.commands.init_validators.console"),
+                                patch("setup_repo.cli.commands.init_wizard.console"),
+                                pytest.raises(typer.Exit) as exc_info,
+                            ):
+                                init()
 
         assert exc_info.value.exit_code == 0
 
@@ -404,24 +426,34 @@ class TestInit:
             mock_settings.max_workers = 10
             mock_settings_cls.return_value = mock_settings
 
-            with patch("setup_repo.cli.commands.init.Confirm") as mock_confirm:
+            with patch("setup_repo.cli.commands.init_wizard.Confirm") as mock_confirm:
                 # Confirm calls in order:
                 # 1. Use detected owner? True
                 # 2. Use detected token? True
                 # 3. Use default workspace? True
                 # 4. Use default workers? True
-                # 5. Disable SSL? False (HTTPS selected)
-                # 6. Enable file logging? False
-                # 7. Enable auto prune? True
-                # 8. Enable auto stash? False
+                # 5. Enable file logging? False
+                # 6. Enable auto prune? True
+                # 7. Enable auto stash? False
+                # 8. Enable auto cleanup? False
                 # 9. Save config? True
-                mock_confirm.ask.side_effect = [True, True, True, True, False, False, True, False, False, True]
-                with patch("setup_repo.cli.commands.init.Prompt") as mock_prompt:
-                    mock_prompt.ask.return_value = "1"  # HTTPS
+                mock_confirm.ask.side_effect = [True, True, True, True, False, True, False, False, True]
+                with (
+                    patch("setup_repo.cli.commands.init.sys.stdin.isatty", return_value=True),
+                    patch("setup_repo.cli.commands.init_validators.Confirm") as mock_git_confirm,
+                ):
+                    mock_git_confirm.ask.return_value = False
+                    with patch("setup_repo.cli.commands.init_validators.Prompt") as mock_prompt:
+                        mock_prompt.ask.return_value = "1"  # HTTPS
 
-                    with patch("setup_repo.cli.commands.init.save_config") as mock_save:
-                        mock_save.side_effect = OSError("Write error")
-                        with pytest.raises(typer.Exit) as exc_info:
+                        with (
+                            patch("setup_repo.cli.commands.init.console"),
+                            patch("setup_repo.cli.commands.init_validators.console"),
+                            patch("setup_repo.cli.commands.init_wizard.console"),
+                            patch("setup_repo.cli.commands.init.save_config") as mock_save,
+                            pytest.raises(typer.Exit) as exc_info,
+                        ):
+                            mock_save.side_effect = OSError("Write error")
                             init()
 
         assert exc_info.value.exit_code == 1
