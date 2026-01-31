@@ -47,6 +47,12 @@ repos:
       - id: trailing-whitespace
         name: "行末空白削除"
         description: "行末の不要な空白文字を削除"
+      # 改行コードの正規化
+      - id: mixed-line-ending
+        name: "改行コード正規化"
+        description: "LFに統一（Windows用スクリプトは.gitattributesでCRLF指定）"
+        args: ["--fix=lf"]
+        files: "(^|/)(\\.yamllint)$|\\.(py|ya?ml|toml|md|json|sh|txt)$"
       # YAML構文チェック
       - id: check-yaml
         name: "YAML構文チェック"
