@@ -36,6 +36,7 @@ def _read_text(path: Path) -> str:
         return path.read_text(encoding="utf-8")
     except FileNotFoundError:
         _fail(f"Missing file: {path}")
+        return ""
 
 
 def _version_key(value: str) -> tuple[int, int, int, int, tuple[tuple[int, str | int], ...]]:
