@@ -1,13 +1,13 @@
 """Result models for repository operations."""
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Self
 
 from pydantic import BaseModel, Field
 
 
-class ResultStatus(str, Enum):
+class ResultStatus(StrEnum):
     """Status of a repository operation."""
 
     SUCCESS = "success"
