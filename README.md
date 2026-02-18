@@ -1,3 +1,14 @@
+> [!WARNING]
+> **アーカイブ予定のお知らせ（2026-02-18）**
+> このリポジトリは近く GitHub 上で `Archived`（read-only）化します。既存ユーザー向けに理由と移行先を明記します。
+>
+> **理由**
+> - 本リポジトリの主要機能は `devsync` に統合済みのため。
+>
+> **移行先 / 代替手段**
+> - `devsync`（後継ツール）: https://github.com/scottlz0310/devsync
+>
+> 既存利用中の方は、必要に応じて `devsync` への移行をご検討ください。
 # Setup Repository
 
 [![Coverage](https://img.shields.io/badge/coverage-89.58%25-brightgreen)](output/htmlcov/index.html)
